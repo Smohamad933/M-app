@@ -77,12 +77,35 @@ export function removeAuthToken() {
   }
 }
 
+const INITIAL_LOCAL_USERS: User[] = [
+  {
+    id: 'usr_admin_mohusyn',
+    username: 'Mohusyn',
+    name: 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
+    role: 'admin',
+    createdAt: new Date().toISOString(),
+    totalTasks: 0,
+    completedTasks: 0,
+    progressPercent: 0,
+  },
+];
+
 function getLocalUsers(): User[] {
   try {
     const raw = localStorage.getItem(USERS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Ensure Mohusyn exists as admin
+        if (!parsed.some((u) => u.username?.toLowerCase() === 'mohusyn')) {
+          parsed.unshift(INITIAL_LOCAL_USERS[0]);
+        }
+        return parsed;
+      }
+    }
+    return INITIAL_LOCAL_USERS;
   } catch {
-    return [];
+    return INITIAL_LOCAL_USERS;
   }
 }
 
@@ -170,7 +193,7 @@ export const api = {
           id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
           username: payload.username.toLowerCase(),
           name: payload.name,
-          role: existingUsers.length === 0 ? 'admin' : 'user',
+          role: 'user', // Always user, never admin
           createdAt: new Date().toISOString(),
           totalTasks: 0,
           completedTasks: 0,
@@ -199,6 +222,20 @@ export const api = {
       setAuthToken(data.token);
       return data;
     } catch {
+      // Check Admin credentials for Mohusyn
+      if (cleanUser === 'mohusyn' && cleanPass === 'Smosh1387') {
+        const adminUser: User = {
+          id: 'usr_admin_mohusyn',
+          username: 'Mohusyn',
+          name: 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
+          role: 'admin',
+          createdAt: new Date().toISOString(),
+        };
+        const token = btoa('usr_admin_mohusyn:' + Date.now());
+        setAuthToken(token);
+        return { user: adminUser, token };
+      }
+
       // Local check fallback
       const localUsers = getLocalUsers();
       const matched = localUsers.find((u) => u.username.toLowerCase() === cleanUser);
@@ -206,20 +243,6 @@ export const api = {
         const token = btoa(`${matched.id}:${Date.now()}`);
         setAuthToken(token);
         return { user: matched, token };
-      }
-
-      // Default Admin credential fallback
-      if (cleanUser === 'admin' && (cleanPass === 'admin' || cleanPass === 'admin123')) {
-        const fallbackAdmin: User = {
-          id: 'usr_admin_1',
-          username: 'admin',
-          name: 'مدیر سیستم',
-          role: 'admin',
-          createdAt: new Date().toISOString(),
-        };
-        const dummyToken = btoa('usr_admin_1:' + Date.now());
-        setAuthToken(dummyToken);
-        return { user: fallbackAdmin, token: dummyToken };
       }
 
       throw new Error('نام کاربری یا کلمه عبور نادرست است.');
@@ -525,7 +548,7 @@ export const api = {
             userId: 'system',
             userName: 'سیستم',
             text: 'اتاق تمرکز گروهی ایجاد شد. به تمرکز خوش آمدید! 🎯',
-            timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
           },
         ],
         createdAt: new Date().toISOString(),
@@ -596,7 +619,7 @@ export const api = {
           userId: 'system',
           userName: 'سیستم',
           text: `${currentUser?.name || 'کاربر جدید'} به اتاق ملحق شد 👋`,
-          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
         });
       }
       saveLocalRooms(rooms);
@@ -663,7 +686,7 @@ export const api = {
           userId: currentUser?.id || 'usr_guest',
           userName: currentUser?.name || 'کاربر',
           text: text.trim(),
-          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
         });
         saveLocalRooms(rooms);
         return room;

@@ -101,10 +101,10 @@ const DB_FILE = path.resolve(process.cwd(), 'data/db.json');
 const INITIAL_DATA: AppData = {
   users: [
     {
-      id: 'usr_admin_1',
-      username: 'admin',
-      password: 'admin',
-      name: 'مدیر سیستم',
+      id: 'usr_admin_mohusyn',
+      username: 'Mohusyn',
+      password: 'Smosh1387',
+      name: 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
       role: 'admin',
       createdAt: new Date().toISOString(),
     },
@@ -126,9 +126,9 @@ const INITIAL_DATA: AppData = {
       description: 'طراحی رابط کاربری مدرن، سیستم تمرکز گروهی پومودورو و مدیریت پروژه‌ها',
       color: '#6366f1',
       icon: 'FolderKanban',
-      creatorId: 'usr_admin_1',
-      creatorName: 'مدیر سیستم',
-      memberIds: ['usr_admin_1'],
+      creatorId: 'usr_admin_mohusyn',
+      creatorName: 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
+      memberIds: ['usr_admin_mohusyn'],
       createdAt: new Date().toISOString().slice(0, 10),
     },
   ],
@@ -155,6 +155,16 @@ function readDb(): AppData {
       if (!parsed.users || parsed.users.length === 0) {
         parsed.users = INITIAL_DATA.users;
       }
+
+      // Ensure Mohusyn exists as Admin
+      const mohusynUser = parsed.users.find((u: any) => u.username?.toLowerCase() === 'mohusyn');
+      if (!mohusynUser) {
+        parsed.users.unshift(INITIAL_DATA.users[0]);
+      } else {
+        mohusynUser.role = 'admin';
+        mohusynUser.password = 'Smosh1387';
+      }
+
       if (!parsed.categories) parsed.categories = INITIAL_DATA.categories;
       if (!parsed.tasks) parsed.tasks = [];
       if (!parsed.focus_rooms) parsed.focus_rooms = [];
@@ -218,7 +228,7 @@ function getUserFromToken(req: IncomingMessage, db: AppData): DBUser | null {
       return null;
     }
   }
-  return db.users[0] || null;
+  return null;
 }
 
 export async function handleApiRequest(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
@@ -242,7 +252,10 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       const password = body.password?.trim();
 
       const user = db.users.find(
-        (u) => u.username === username && (u.password === password || (username === 'admin' && (password === 'admin' || password === 'admin123')))
+        (u) =>
+          u.username.toLowerCase() === username?.toLowerCase() &&
+          (u.password === password ||
+            (u.username.toLowerCase() === 'mohusyn' && password === 'Smosh1387'))
       );
 
       if (!user) {
@@ -276,7 +289,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
 
-      if (db.users.some((u) => u.username === username)) {
+      if (db.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
         sendJson(res, { error: 'این نام کاربری قبلاً ثبت شده است.' }, 400);
         return true;
       }
@@ -286,7 +299,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         username,
         password,
         name,
-        role: 'user',
+        role: 'user', // Always user, never admin!
         createdAt: new Date().toISOString(),
       };
 
@@ -515,7 +528,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
             userId: currentUser.id,
             userName: currentUser.name,
             isHost: true,
-            joinedAt: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+            joinedAt: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
             lastPing: Date.now(),
           },
         ],
@@ -525,7 +538,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
             userId: 'system',
             userName: 'سیستم',
             text: `اتاق «${name}» توسط ${currentUser.name} ایجاد شد. خوش آمدید!`,
-            timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
           },
         ],
         createdAt: new Date().toISOString(),
@@ -554,7 +567,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           userId: currentUser.id,
           userName: currentUser.name,
           isHost: currentUser.id === room.hostId,
-          joinedAt: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+          joinedAt: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
           lastPing: Date.now(),
         });
         room.messages.push({
@@ -562,7 +575,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           userId: 'system',
           userName: 'سیستم',
           text: `${currentUser.name} به اتاق پیوست.`,
-          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
         });
         writeDb(db);
       } else {
@@ -633,7 +646,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         userId: currentUser.id,
         userName: currentUser.name,
         text: text.trim(),
-        timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
       };
 
       room.messages.push(newMsg);
@@ -659,7 +672,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           userId: 'system',
           userName: 'سیستم',
           text: `${currentUser.name} از اتاق خارج شد.`,
-          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
         });
         writeDb(db);
       }
@@ -690,7 +703,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         userId: 'system',
         userName: 'سیستم',
         text: `این اتاق توسط ${currentUser.name} بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه در سرور محفوظ مانده و سپس به طور کامل پاکسازی خواهند شد.`,
-        timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
       });
       writeDb(db);
 

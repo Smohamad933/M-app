@@ -272,7 +272,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       userId: currentUser.id,
       userName: currentUser.name,
       text: text.trim(),
-      timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
     };
 
     if (activeRoom) {

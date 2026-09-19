@@ -180,6 +180,18 @@ export function getDaysAround(selectedISO: string, daysBefore = 3, daysAfter = 1
   return days;
 }
 
+export function formatPersianTime24(dateInput?: Date | string | number): string {
+  const date = dateInput ? (typeof dateInput === 'string' ? parseISODate(dateInput) : new Date(dateInput)) : new Date();
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+export function formatPersianTime24WithSeconds(dateInput?: Date | string | number): string {
+  const date = dateInput ? (typeof dateInput === 'string' ? parseISODate(dateInput) : new Date(dateInput)) : new Date();
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+}
+
 export function getGreeting(): { text: string; subtext: string; icon: string } {
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 12) {

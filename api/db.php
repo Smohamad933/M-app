@@ -77,10 +77,10 @@ class TaskRoozDB {
         $this->data = [
             'users' => [
                 [
-                    'id' => 'usr_admin_1',
-                    'username' => 'admin',
-                    'password_hash' => password_hash('admin123', PASSWORD_DEFAULT),
-                    'name' => 'مدیر سیستم',
+                    'id' => 'usr_admin_mohusyn',
+                    'username' => 'Mohusyn',
+                    'password_hash' => password_hash('Smosh1387', PASSWORD_DEFAULT),
+                    'name' => 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
                     'role' => 'admin',
                     'created_at' => date('Y-m-d H:i:s'),
                 ]

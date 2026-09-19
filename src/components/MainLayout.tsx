@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
-import { toPersianDigits, getTodayISO, getGreeting } from '../utils/persianDate';
+import { toPersianDigits, getTodayISO, getGreeting, formatPersianDate } from '../utils/persianDate';
 import type { TabType } from '../types';
 import { TaskList } from './TaskList';
 import { KanbanBoard } from './KanbanBoard';
@@ -72,12 +72,12 @@ export const MainLayout: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
-  // Live clock
+  // Live 24-hour clock
   const [liveClock, setLiveClock] = useState('');
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      setLiveClock(now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setLiveClock(now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -247,12 +247,16 @@ export const MainLayout: React.FC = () => {
                 </span>
               </div>
 
-              {/* Greeting & Live Clock */}
-              <div className="min-w-0 flex items-center gap-2">
+              {/* Greeting & Persian Date & Live 24-Hour Clock */}
+              <div className="min-w-0 flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-black text-white hidden sm:inline truncate">
                   {greeting.text}
                 </span>
-                <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-zinc-800/90 text-zinc-300 border border-zinc-700/60 font-mono flex-shrink-0">
+                <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] px-2.5 py-0.5 rounded-full bg-zinc-900 text-zinc-300 border border-zinc-800 font-semibold" title="تاریخ شمسی امروز">
+                  <CalendarDays className="w-3.5 h-3.5 text-zinc-400" />
+                  {formatPersianDate(new Date(), 'full')}
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800 font-mono font-bold flex-shrink-0" title="ساعت ۲۴ ساعته">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   {liveClock}
                 </span>
