@@ -55,12 +55,14 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+    headers['X-Auth-Token'] = token;
   }
 
   let res: Response;
   try {
     res = await fetch(endpoint, {
       ...options,
+      credentials: 'same-origin',
       headers,
     });
   } catch (err: any) {
@@ -183,8 +185,10 @@ export const api = {
     try {
       const data = await request<{ authenticated: boolean; user?: User }>('api/auth.php?action=me');
       if (data.authenticated && data.user) return data.user;
+      removeAuthToken();
+      return null;
     } catch {
-      // Offline fallback: decode token
+      // Offline fallback: verify against actual local users list
       try {
         const decoded = atob(token);
         const [userId] = decoded.split(':');
@@ -192,22 +196,13 @@ export const api = {
           const localUsers = getLocalUsers();
           const found = localUsers.find((u) => u.id === userId);
           if (found) return found;
-
-          if (userId === 'usr_admin_1') {
-            return {
-              id: 'usr_admin_1',
-              username: 'admin',
-              name: 'مدیر سیستم',
-              role: 'admin',
-              createdAt: new Date().toISOString(),
-            };
-          }
         }
       } catch {
         // ignore
       }
+      removeAuthToken();
+      return null;
     }
-    return null;
   },
 
   async logout(): Promise<void> {

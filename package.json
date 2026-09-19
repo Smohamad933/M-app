@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build && cp dist/index.html index.html && cp -r dist/assets .",
+    "dev": "cp index.source.html index.html && vite",
+    "build": "cp index.source.html index.html && tsc -b && vite build && cp dist/index.html index.html && cp -r dist/assets .",
     "lint": "oxlint",
     "preview": "vite preview"
   },

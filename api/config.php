@@ -11,7 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Auth-Token');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -41,6 +41,7 @@ function getCurrentUser($dbInstance = null) {
     global $db;
     $storage = $dbInstance ?: $db;
 
+    // 1. Session check
     if (!empty($_SESSION['user_id'])) {
         $u = $storage->getUserById($_SESSION['user_id']);
         if ($u) {
@@ -49,10 +50,25 @@ function getCurrentUser($dbInstance = null) {
         }
     }
 
+    // 2. Token check (IIS strips Authorization, so check X-Auth-Token and HTTP_X_AUTH_TOKEN as well)
     $headers = function_exists('getallheaders') ? getallheaders() : [];
-    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-    if (preg_match('/Bearer\s+(\S+)/', $authHeader, $matches)) {
+    $authHeader = $headers['Authorization'] 
+        ?? $headers['authorization'] 
+        ?? $headers['X-Auth-Token']
+        ?? $headers['x-auth-token']
+        ?? $_SERVER['HTTP_AUTHORIZATION'] 
+        ?? $_SERVER['HTTP_X_AUTH_TOKEN'] 
+        ?? $_GET['token'] 
+        ?? '';
+
+    $token = '';
+    if (preg_match('/Bearer\s+(\S+)/i', $authHeader, $matches)) {
         $token = $matches[1];
+    } elseif (!empty($authHeader)) {
+        $token = trim($authHeader);
+    }
+
+    if (!empty($token)) {
         $decoded = base64_decode($token);
         if ($decoded && strpos($decoded, ':') !== false) {
             list($userId) = explode(':', $decoded);
