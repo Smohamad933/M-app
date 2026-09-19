@@ -7,6 +7,20 @@ import { handleApiRequest } from './server/apiHandler.ts';
 export default defineConfig({
   base: './',
   plugins: [
+    {
+      name: 'html-dev-transform',
+      transformIndexHtml(html, ctx) {
+        if (ctx.server) {
+          return html
+            .replace(
+              /<script type="module" crossorigin src="\.\/assets\/.*?"><\/script>/,
+              '<script type="module" src="/src/main.tsx"></script>'
+            )
+            .replace(/<link rel="stylesheet" crossorigin href="\.\/assets\/.*?">/, '');
+        }
+        return html;
+      },
+    },
     react(),
     tailwindcss(),
     {

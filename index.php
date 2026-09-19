@@ -1,30 +1,16 @@
 <?php
 /**
- * TaskRooz - Main Entry Point for IIS / Apache
+ * TaskRooz - Main Entry Point for IIS / Apache / PHP Built-in Server
  */
 header('Content-Type: text/html; charset=utf-8');
 
-// Determine base URL path for subfolder support on IIS
-$scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
-$baseDir = rtrim(dirname($scriptName), '/\\');
-$baseUrl = ($baseDir === '' || $baseDir === '/') ? './' : $baseDir . '/';
+$indexPath = file_exists(__DIR__ . '/index.html') 
+    ? __DIR__ . '/index.html' 
+    : (file_exists(__DIR__ . '/dist/index.html') ? __DIR__ . '/dist/index.html' : null);
 
-// 1. Check if dist/index.html exists
-$distHtmlPath = __DIR__ . '/dist/index.html';
-if (file_exists($distHtmlPath)) {
-    $html = file_get_contents($distHtmlPath);
-    if (strpos($html, '<base ') === false) {
-        $html = str_replace('<head>', "<head>\n    <base href=\"{$baseUrl}\">", $html);
-    }
-    echo $html;
+if ($indexPath && file_exists($indexPath)) {
+    echo file_get_contents($indexPath);
     exit;
 }
 
-// 2. Fallback to index.html
-if (file_exists(__DIR__ . '/index.html')) {
-    $html = file_get_contents(__DIR__ . '/index.html');
-    echo $html;
-    exit;
-}
-
-echo "TaskRooz - Application Ready";
+echo "TaskRooz - Application Ready. Please check index.html.";
