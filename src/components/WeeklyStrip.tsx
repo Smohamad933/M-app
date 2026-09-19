@@ -21,7 +21,7 @@ export const WeeklyStrip: React.FC = () => {
   }, [selectedDate]);
 
   return (
-    <div className="py-2 px-1">
+    <div className="w-full min-w-0 max-w-full overflow-hidden py-2 px-1">
       <div className="flex items-center justify-between mb-2 px-1">
         <span className="text-[11px] font-semibold text-zinc-400">
           روزهای هفته
@@ -39,7 +39,7 @@ export const WeeklyStrip: React.FC = () => {
 
       <div
         ref={scrollRef}
-        className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 px-1 -mx-1"
+        className="w-full flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 px-1"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {days.map((day) => {

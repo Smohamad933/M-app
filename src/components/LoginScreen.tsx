@@ -63,8 +63,8 @@ export const LoginScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 selection:bg-white selection:text-zinc-950">
-      <div className="w-full max-w-sm bg-zinc-900/80 rounded-3xl p-7 shadow-2xl border border-zinc-800 space-y-6 backdrop-blur-xl animate-in fade-in zoom-in-95">
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-3 sm:p-4 selection:bg-white selection:text-zinc-950 w-full overflow-x-hidden">
+      <div className="w-full max-w-sm bg-zinc-900/80 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-2xl border border-zinc-800 space-y-5 sm:space-y-6 backdrop-blur-xl animate-in fade-in zoom-in-95">
         
         {/* Brand signature matching mohusyn.ir */}
         <div className="text-center space-y-2">

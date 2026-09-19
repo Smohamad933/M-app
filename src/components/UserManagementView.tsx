@@ -201,8 +201,8 @@ export const UserManagementView: React.FC = () => {
                 </div>
 
                 {/* Task progress & action buttons */}
-                <div className="flex items-center gap-4 self-end sm:self-center">
-                  <div className="text-left hidden md:block">
+                <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-0 border-zinc-800/60">
+                  <div className="text-right sm:text-left">
                     <div className="text-xs font-bold text-zinc-200">
                       {toPersianDigits(done)} از {toPersianDigits(total)} تسک
                     </div>
@@ -211,7 +211,7 @@ export const UserManagementView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     {/* View user tasks */}
                     <button
                       onClick={() => handleViewUserTasks(u.id)}
