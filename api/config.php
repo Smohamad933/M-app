@@ -1,7 +1,7 @@
 <?php
 /**
  * TaskRooz - Configuration & Database Initialization
- * Compatible with PHP 7.4, 8.0, 8.1, 8.2, 8.3 on Windows IIS / Linux Apache / Nginx
+ * Compatible with PHP 7.4, 8.0, 8.1, 8.2, 8.3, 8.4 on Windows IIS / Linux Apache / Nginx
  */
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -21,6 +21,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
 
+require_once __DIR__ . '/db.php';
+
+$db = TaskRoozDB::getInstance();
+$pdo = $db->getPdo();
+
 function jsonResponse($data, $status = 200) {
     http_response_code($status);
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
@@ -32,83 +37,46 @@ function getJsonInput() {
     return json_decode($raw, true) ?? [];
 }
 
-// Database setup
-$dbDir = __DIR__ . '/../data';
-if (!is_dir($dbDir)) {
-    @mkdir($dbDir, 0777, true);
-}
-$dbPath = $dbDir . '/taskrooz.sqlite';
-
-$pdo = null;
-
-if (!extension_loaded('pdo_sqlite')) {
-    // Return friendly error if driver not loaded
-    if (basename($_SERVER['PHP_SELF']) !== 'config.php') {
-        // Will be handled per endpoint
-    }
-} else {
-    try {
-        $dbExists = file_exists($dbPath);
-        $pdo = new PDO("sqlite:" . $dbPath);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-
-        if (!$dbExists || filesize($dbPath) === 0) {
-            $schemaFile = __DIR__ . '/schema.sql';
-            if (file_exists($schemaFile)) {
-                $schemaSql = file_get_contents($schemaFile);
-                $pdo->exec($schemaSql);
-            }
-        }
-    } catch (Exception $e) {
-        $pdo = null;
-    }
-}
-
-function getCurrentUser($pdo) {
-    if (!$pdo) {
-        // Fallback default admin if no DB
-        return [
-            'id' => 'usr_admin_1',
-            'username' => 'admin',
-            'name' => 'مدیر سیستم',
-            'role' => 'admin',
-            'created_at' => date('Y-m-d H:i:s'),
-        ];
-    }
+function getCurrentUser($dbInstance = null) {
+    global $db;
+    $storage = $dbInstance ?: $db;
 
     if (!empty($_SESSION['user_id'])) {
-        $stmt = $pdo->prepare("SELECT id, username, name, role, created_at FROM users WHERE id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
-        return $stmt->fetch() ?: null;
+        $u = $storage->getUserById($_SESSION['user_id']);
+        if ($u) {
+            unset($u['password_hash']);
+            return $u;
+        }
     }
 
-    $headers = getallheaders();
-    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     if (preg_match('/Bearer\s+(\S+)/', $authHeader, $matches)) {
         $token = $matches[1];
         $decoded = base64_decode($token);
         if ($decoded && strpos($decoded, ':') !== false) {
             list($userId) = explode(':', $decoded);
-            $stmt = $pdo->prepare("SELECT id, username, name, role, created_at FROM users WHERE id = ?");
-            $stmt->execute([$userId]);
-            return $stmt->fetch() ?: null;
+            $u = $storage->getUserById($userId);
+            if ($u) {
+                unset($u['password_hash']);
+                return $u;
+            }
         }
     }
 
     return null;
 }
 
-function requireAuth($pdo) {
-    $user = getCurrentUser($pdo);
+function requireAuth($dbInstance = null) {
+    $user = getCurrentUser($dbInstance);
     if (!$user) {
         jsonResponse(['error' => 'لطفاً ابتدا وارد شوید.'], 401);
     }
     return $user;
 }
 
-function requireAdmin($pdo) {
-    $user = requireAuth($pdo);
+function requireAdmin($dbInstance = null) {
+    $user = requireAuth($dbInstance);
     if ($user['role'] !== 'admin') {
         jsonResponse(['error' => 'دسترسی فقط برای مدیر مجاز است.'], 403);
     }

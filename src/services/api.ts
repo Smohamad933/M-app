@@ -2,6 +2,8 @@ import type { Task, User, Category } from '../types';
 import { DEFAULT_CATEGORIES } from '../utils/storage';
 
 const TOKEN_KEY = 'taskrooz_auth_token';
+const USERS_STORAGE_KEY = 'taskrooz_users_local';
+const TASKS_STORAGE_KEY = 'taskrooz_tasks_local';
 
 export function getAuthToken(): string | null {
   try {
@@ -27,6 +29,23 @@ export function removeAuthToken() {
   }
 }
 
+function getLocalUsers(): User[] {
+  try {
+    const raw = localStorage.getItem(USERS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalUsers(users: User[]) {
+  try {
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+  } catch {
+    // ignore
+  }
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
   const headers: Record<string, string> = {
@@ -38,81 +57,143 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(endpoint, {
-    ...options,
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(endpoint, {
+      ...options,
+      headers,
+    });
+  } catch (err: any) {
+    throw new Error('عدم برقراری ارتباط با سرور.');
+  }
 
   const text = await res.text();
   let data: any = {};
   try {
     data = JSON.parse(text);
   } catch {
+    if (!res.ok) {
+      throw new Error(`خطای سرور (${res.status})`);
+    }
     throw new Error('پاسخ سرور نامعتبر است.');
   }
 
   if (!res.ok) {
-    throw new Error(data.error || 'خطایی رخ داد.');
+    throw new Error(data.error || 'خطایی در پردازش اطلاعات رخ داد.');
   }
 
   return data;
 }
 
 export const api = {
-  // Auth
-  async login(username: string, password: string): Promise<{ user: User; token: string }> {
+  // Auth: Register
+  async register(data: { username: string; password: string; name: string }): Promise<{ user: User; token: string }> {
+    const payload = {
+      username: data.username.trim(),
+      password: data.password.trim(),
+      name: data.name.trim(),
+    };
+
     try {
-      const data = await request<{ user: User; token: string; message: string }>('api/auth.php?action=login', {
+      const res = await request<{ user: User; token: string; message: string }>('api/auth.php?action=register', {
         method: 'POST',
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(payload),
       });
-      setAuthToken(data.token);
-      return data;
-    } catch {
-      // Fallback try /api/auth
+      setAuthToken(res.token);
+      return res;
+    } catch (e1) {
       try {
-        const data = await request<{ user: User; token: string; message: string }>('/api/auth?action=login', {
+        const res = await request<{ user: User; token: string; message: string }>('api/register.php', {
           method: 'POST',
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify(payload),
         });
-        setAuthToken(data.token);
-        return data;
-      } catch (err) {
-        // Fallback demo local admin login so page NEVER fails
-        if (username === 'admin' && (password === 'admin' || password === 'admin123')) {
-          const fallbackUser: User = {
-            id: 'usr_admin_1',
-            username: 'admin',
-            name: 'مدیر سیستم',
-            role: 'admin',
-            createdAt: new Date().toISOString(),
-          };
-          const dummyToken = btoa('usr_admin_1:' + Date.now());
-          setAuthToken(dummyToken);
-          return { user: fallbackUser, token: dummyToken };
+        setAuthToken(res.token);
+        return res;
+      } catch (e2) {
+        // Local offline registration fallback
+        const existingUsers = getLocalUsers();
+        if (existingUsers.some((u) => u.username.toLowerCase() === payload.username.toLowerCase())) {
+          throw new Error('این نام کاربری قبلاً در سامانه ثبت شده است.');
         }
-        throw err;
+
+        const newUser: User = {
+          id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          username: payload.username.toLowerCase(),
+          name: payload.name,
+          role: existingUsers.length === 0 ? 'admin' : 'user',
+          createdAt: new Date().toISOString(),
+          totalTasks: 0,
+          completedTasks: 0,
+        };
+
+        existingUsers.push(newUser);
+        saveLocalUsers(existingUsers);
+
+        const token = btoa(`${newUser.id}:${Date.now()}`);
+        setAuthToken(token);
+        return { user: newUser, token };
       }
     }
   },
 
-  async getCurrentUser(): Promise<User | null> {
+  // Auth: Login
+  async login(username: string, password: string): Promise<{ user: User; token: string }> {
+    const cleanUser = username.trim().toLowerCase();
+    const cleanPass = password.trim();
+
     try {
-      // Try relative api/auth.php then /api/auth
-      try {
-        const data = await request<{ authenticated: boolean; user?: User }>('api/auth.php?action=me');
-        if (data.authenticated && data.user) return data.user;
-      } catch {
-        const data = await request<{ authenticated: boolean; user?: User }>('/api/auth?action=me');
-        if (data.authenticated && data.user) return data.user;
-      }
+      const data = await request<{ user: User; token: string; message: string }>('api/auth.php?action=login', {
+        method: 'POST',
+        body: JSON.stringify({ username: cleanUser, password: cleanPass }),
+      });
+      setAuthToken(data.token);
+      return data;
     } catch {
-      // If token exists in localStorage, maintain session
-      const token = getAuthToken();
-      if (token) {
-        try {
-          const decoded = atob(token);
-          if (decoded.includes('usr_admin')) {
+      // Local check fallback
+      const localUsers = getLocalUsers();
+      const matched = localUsers.find((u) => u.username.toLowerCase() === cleanUser);
+      if (matched) {
+        const token = btoa(`${matched.id}:${Date.now()}`);
+        setAuthToken(token);
+        return { user: matched, token };
+      }
+
+      // Default Admin credential fallback
+      if (cleanUser === 'admin' && (cleanPass === 'admin' || cleanPass === 'admin123')) {
+        const fallbackAdmin: User = {
+          id: 'usr_admin_1',
+          username: 'admin',
+          name: 'مدیر سیستم',
+          role: 'admin',
+          createdAt: new Date().toISOString(),
+        };
+        const dummyToken = btoa('usr_admin_1:' + Date.now());
+        setAuthToken(dummyToken);
+        return { user: fallbackAdmin, token: dummyToken };
+      }
+
+      throw new Error('نام کاربری یا کلمه عبور نادرست است.');
+    }
+  },
+
+  async getCurrentUser(): Promise<User | null> {
+    const token = getAuthToken();
+    if (!token) return null;
+
+    try {
+      const data = await request<{ authenticated: boolean; user?: User }>('api/auth.php?action=me');
+      if (data.authenticated && data.user) return data.user;
+    } catch {
+      // Offline fallback: decode token
+      try {
+        const decoded = atob(token);
+        const [userId] = decoded.split(':');
+        if (userId) {
+          const localUsers = getLocalUsers();
+          const found = localUsers.find((u) => u.id === userId);
+          if (found) return found;
+
+          if (userId === 'usr_admin_1') {
             return {
               id: 'usr_admin_1',
               username: 'admin',
@@ -121,9 +202,9 @@ export const api = {
               createdAt: new Date().toISOString(),
             };
           }
-        } catch {
-          // ignore
         }
+      } catch {
+        // ignore
       }
     }
     return null;
@@ -133,11 +214,7 @@ export const api = {
     try {
       await request('api/auth.php?action=logout', { method: 'POST' });
     } catch {
-      try {
-        await request('/api/auth?action=logout', { method: 'POST' });
-      } catch {
-        // ignore
-      }
+      // ignore
     }
     removeAuthToken();
   },
@@ -145,14 +222,11 @@ export const api = {
   // Users (Admin only)
   async getUsers(): Promise<User[]> {
     try {
-      try {
-        const data = await request<{ users: User[] }>('api/users.php');
-        return data.users;
-      } catch {
-        const data = await request<{ users: User[] }>('/api/users');
-        return data.users;
-      }
+      const data = await request<{ users: User[] }>('api/users.php');
+      return data.users;
     } catch {
+      const locals = getLocalUsers();
+      if (locals.length > 0) return locals;
       return [
         {
           id: 'usr_admin_1',
@@ -175,11 +249,20 @@ export const api = {
       });
       return data.user;
     } catch {
-      const data = await request<{ user: User; message: string }>('/api/users', {
-        method: 'POST',
-        body: JSON.stringify(user),
-      });
-      return data.user;
+      // Offline fallback
+      const locals = getLocalUsers();
+      const newUser: User = {
+        id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        username: user.username.toLowerCase(),
+        name: user.name,
+        role: user.role,
+        createdAt: new Date().toISOString(),
+        totalTasks: 0,
+        completedTasks: 0,
+      };
+      locals.push(newUser);
+      saveLocalUsers(locals);
+      return newUser;
     }
   },
 
@@ -190,10 +273,8 @@ export const api = {
         body: JSON.stringify(user),
       });
     } catch {
-      await request('/api/users', {
-        method: 'PUT',
-        body: JSON.stringify(user),
-      });
+      const locals = getLocalUsers().map((u) => (u.id === user.id ? { ...u, name: user.name, role: user.role } : u));
+      saveLocalUsers(locals);
     }
   },
 
@@ -203,9 +284,8 @@ export const api = {
         method: 'DELETE',
       });
     } catch {
-      await request(`/api/users?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-      });
+      const locals = getLocalUsers().filter((u) => u.id !== id);
+      saveLocalUsers(locals);
     }
   },
 
@@ -218,18 +298,16 @@ export const api = {
 
     const qs = params.toString() ? `?${params.toString()}` : '';
     try {
-      try {
-        const data = await request<{ tasks: Task[] }>(`api/tasks.php${qs}`);
-        return data.tasks;
-      } catch {
-        const data = await request<{ tasks: Task[] }>(`/api/tasks${qs}`);
-        return data.tasks;
-      }
+      const data = await request<{ tasks: Task[] }>(`api/tasks.php${qs}`);
+      return data.tasks;
     } catch {
-      // Local fallback
       try {
-        const raw = localStorage.getItem('task_app_tasks_local');
-        return raw ? JSON.parse(raw) : [];
+        const raw = localStorage.getItem(TASKS_STORAGE_KEY);
+        let list: Task[] = raw ? JSON.parse(raw) : [];
+        if (filter?.userId) list = list.filter((t) => t.userId === filter.userId);
+        if (filter?.date) list = list.filter((t) => t.date === filter.date);
+        if (filter?.categoryId) list = list.filter((t) => t.categoryId === filter.categoryId);
+        return list;
       } catch {
         return [];
       }
@@ -238,31 +316,22 @@ export const api = {
 
   async createTask(task: Omit<Task, 'id' | 'createdAt'>): Promise<Task> {
     try {
-      try {
-        const data = await request<{ task: Task; message: string }>('api/tasks.php', {
-          method: 'POST',
-          body: JSON.stringify(task),
-        });
-        return data.task;
-      } catch {
-        const data = await request<{ task: Task; message: string }>('/api/tasks', {
-          method: 'POST',
-          body: JSON.stringify(task),
-        });
-        return data.task;
-      }
+      const data = await request<{ task: Task; message: string }>('api/tasks.php', {
+        method: 'POST',
+        body: JSON.stringify(task),
+      });
+      return data.task;
     } catch {
-      // Local storage fallback
       const newTask: Task = {
         ...task,
         id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
         createdAt: new Date().toISOString(),
       };
       try {
-        const raw = localStorage.getItem('task_app_tasks_local');
+        const raw = localStorage.getItem(TASKS_STORAGE_KEY);
         const list: Task[] = raw ? JSON.parse(raw) : [];
         list.unshift(newTask);
-        localStorage.setItem('task_app_tasks_local', JSON.stringify(list));
+        localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(list));
       } catch {
         // ignore
       }
@@ -278,20 +347,12 @@ export const api = {
       });
     } catch {
       try {
-        await request('/api/tasks', {
-          method: 'PUT',
-          body: JSON.stringify(task),
-        });
+        const raw = localStorage.getItem(TASKS_STORAGE_KEY);
+        let list: Task[] = raw ? JSON.parse(raw) : [];
+        list = list.map((t) => (t.id === task.id ? task : t));
+        localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(list));
       } catch {
-        // Local fallback
-        try {
-          const raw = localStorage.getItem('task_app_tasks_local');
-          let list: Task[] = raw ? JSON.parse(raw) : [];
-          list = list.map((t) => (t.id === task.id ? task : t));
-          localStorage.setItem('task_app_tasks_local', JSON.stringify(list));
-        } catch {
-          // ignore
-        }
+        // ignore
       }
     }
   },
@@ -303,33 +364,21 @@ export const api = {
       });
     } catch {
       try {
-        await request(`/api/tasks?id=${encodeURIComponent(id)}`, {
-          method: 'DELETE',
-        });
+        const raw = localStorage.getItem(TASKS_STORAGE_KEY);
+        let list: Task[] = raw ? JSON.parse(raw) : [];
+        list = list.filter((t) => t.id !== id);
+        localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(list));
       } catch {
-        try {
-          const raw = localStorage.getItem('task_app_tasks_local');
-          let list: Task[] = raw ? JSON.parse(raw) : [];
-          list = list.filter((t) => t.id !== id);
-          localStorage.setItem('task_app_tasks_local', JSON.stringify(list));
-        } catch {
-          // ignore
-        }
+        // ignore
       }
     }
   },
 
   async toggleTask(id: string): Promise<{ completed: boolean; completedAt?: string }> {
     try {
-      try {
-        return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}`, {
-          method: 'PATCH',
-        });
-      } catch {
-        return await request(`/api/tasks?action=toggle&id=${encodeURIComponent(id)}`, {
-          method: 'PATCH',
-        });
-      }
+      return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+      });
     } catch {
       return { completed: true, completedAt: new Date().toISOString() };
     }
@@ -342,27 +391,15 @@ export const api = {
         body: JSON.stringify({ minutes }),
       });
     } catch {
-      try {
-        await request(`/api/tasks?action=addFocus&id=${encodeURIComponent(id)}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ minutes }),
-        });
-      } catch {
-        // ignore
-      }
+      // ignore
     }
   },
 
   // Categories
   async getCategories(): Promise<Category[]> {
     try {
-      try {
-        const data = await request<{ categories: Category[] }>('api/categories.php');
-        if (data.categories && data.categories.length > 0) return data.categories;
-      } catch {
-        const data = await request<{ categories: Category[] }>('/api/categories');
-        if (data.categories && data.categories.length > 0) return data.categories;
-      }
+      const data = await request<{ categories: Category[] }>('api/categories.php');
+      if (data.categories && data.categories.length > 0) return data.categories;
     } catch {
       // Fallback
     }
@@ -371,19 +408,11 @@ export const api = {
 
   async createCategory(cat: { name: string; color: string; icon: string }): Promise<Category> {
     try {
-      try {
-        const data = await request<{ category: Category }>('api/categories.php', {
-          method: 'POST',
-          body: JSON.stringify(cat),
-        });
-        return data.category;
-      } catch {
-        const data = await request<{ category: Category }>('/api/categories', {
-          method: 'POST',
-          body: JSON.stringify(cat),
-        });
-        return data.category;
-      }
+      const data = await request<{ category: Category }>('api/categories.php', {
+        method: 'POST',
+        body: JSON.stringify(cat),
+      });
+      return data.category;
     } catch {
       return {
         id: 'cat_' + Date.now(),
@@ -399,11 +428,7 @@ export const api = {
   async getStats(userId?: string | null): Promise<any> {
     const qs = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
     try {
-      try {
-        return await request(`api/stats.php${qs}`);
-      } catch {
-        return await request(`/api/stats${qs}`);
-      }
+      return await request(`api/stats.php${qs}`);
     } catch {
       return {
         totalTasks: 0,

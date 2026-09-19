@@ -27,6 +27,7 @@ interface TaskContextType {
   
   // Auth & User Actions
   login: (username: string, password: string) => Promise<boolean>;
+  register: (data: { username: string; password: string; name: string }) => Promise<boolean>;
   logout: () => Promise<void>;
   createUser: (data: { username: string; password: string; name: string; role: 'admin' | 'user' }) => Promise<User>;
   updateUser: (data: { id: string; name: string; role: 'admin' | 'user'; password?: string }) => Promise<void>;
@@ -126,15 +127,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const user = await api.getCurrentUser();
         if (user) {
           setCurrentUser(user);
-        } else {
-          // Auto login default admin
-          try {
-            const res = await api.login('admin', 'admin');
-            setCurrentUser(res.user);
-          } catch {
-            // Not logged in
-          }
         }
+        // Do NOT auto-login: default to login screen if not authenticated
 
         const cats = await api.getCategories();
         setCategories(cats);
@@ -185,8 +179,18 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sounds.playComplete();
       return true;
     } catch (e: any) {
-      alert(e.message || 'خطا در ورود.');
-      return false;
+      throw e;
+    }
+  };
+
+  const register = async (data: { username: string; password: string; name: string }): Promise<boolean> => {
+    try {
+      const res = await api.register(data);
+      setCurrentUser(res.user);
+      sounds.playComplete();
+      return true;
+    } catch (e: any) {
+      throw e;
     }
   };
 
@@ -416,6 +420,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isShareModalOpen,
       isLoading,
       login,
+      register,
       logout,
       createUser,
       updateUser,

@@ -1,43 +1,16 @@
 <?php
+/**
+ * TaskRooz - Users Management Endpoint (Admin Only)
+ */
 require_once __DIR__ . '/config.php';
 
-$currentUser = requireAdmin($pdo);
+$currentUser = requireAdmin();
 $method = $_SERVER['REQUEST_METHOD'];
 
 // GET /api/users -> List all users with stats
 if ($method === 'GET') {
-    $stmt = $pdo->query("
-        SELECT 
-            u.id, 
-            u.username, 
-            u.name, 
-            u.role, 
-            u.created_at,
-            COUNT(t.id) as total_tasks,
-            SUM(CASE WHEN t.completed = 1 THEN 1 ELSE 0 END) as completed_tasks
-        FROM users u
-        LEFT JOIN tasks t ON u.id = t.user_id
-        GROUP BY u.id
-        ORDER BY u.created_at ASC
-    ");
-    $users = $stmt->fetchAll();
-
-    $result = array_map(function($u) {
-        $total = (int)$u['total_tasks'];
-        $done = (int)($u['completed_tasks'] ?? 0);
-        return [
-            'id' => $u['id'],
-            'username' => $u['username'],
-            'name' => $u['name'],
-            'role' => $u['role'],
-            'createdAt' => $u['created_at'],
-            'totalTasks' => $total,
-            'completedTasks' => $done,
-            'progressPercent' => $total > 0 ? round(($done / $total) * 100) : 0,
-        ];
-    }, $users);
-
-    jsonResponse(['users' => $result]);
+    $users = $db->getAllUsers();
+    jsonResponse(['users' => $users]);
 }
 
 // POST /api/users -> Create new user
@@ -52,27 +25,20 @@ if ($method === 'POST') {
         jsonResponse(['error' => 'لطفاً تمامی فیلدهای الزامی (نام، نام کاربری و رمز عبور) را وارد کنید.'], 400);
     }
 
-    // Check if username already exists
-    $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
-    $stmt->execute([$username]);
-    if ($stmt->fetch()) {
+    $existing = $db->getUserByUsername($username);
+    if ($existing) {
         jsonResponse(['error' => 'این نام کاربری قبلاً استفاده شده است.'], 400);
     }
 
-    $id = 'usr_' . time() . '_' . substr(bin2hex(random_bytes(4)), 0, 6);
-    $hash = password_hash($password, PASSWORD_DEFAULT);
-
-    $stmt = $pdo->prepare("INSERT INTO users (id, username, password_hash, name, role, created_at) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$id, $username, $hash, $name, $role, date('Y-m-d H:i:s')]);
-
+    $user = $db->createUser($username, $password, $name, $role);
     jsonResponse([
         'message' => 'کاربر جدید با موفقیت ایجاد شد.',
         'user' => [
-            'id' => $id,
-            'username' => $username,
-            'name' => $name,
-            'role' => $role,
-            'createdAt' => date('Y-m-d H:i:s'),
+            'id' => $user['id'],
+            'username' => $user['username'],
+            'name' => $user['name'],
+            'role' => $user['role'],
+            'createdAt' => $user['createdAt'],
             'totalTasks' => 0,
             'completedTasks' => 0,
             'progressPercent' => 0,
@@ -92,16 +58,12 @@ if ($method === 'PUT') {
         jsonResponse(['error' => 'شناسه و نام کاربر الزامی است.'], 400);
     }
 
-    if (!empty($password)) {
-        $hash = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("UPDATE users SET name = ?, role = ?, password_hash = ? WHERE id = ?");
-        $stmt->execute([$name, $role, $hash, $id]);
+    $ok = $db->updateUser($id, $name, $role, $password);
+    if ($ok) {
+        jsonResponse(['message' => 'اطلاعات کاربر با موفقیت به‌روزرسانی شد.']);
     } else {
-        $stmt = $pdo->prepare("UPDATE users SET name = ?, role = ? WHERE id = ?");
-        $stmt->execute([$name, $role, $id]);
+        jsonResponse(['error' => 'کاربر پیدا نشد.'], 404);
     }
-
-    jsonResponse(['message' => 'اطلاعات کاربر با موفقیت به‌روزرسانی شد.']);
 }
 
 // DELETE /api/users -> Delete user
@@ -115,9 +77,7 @@ if ($method === 'DELETE') {
         jsonResponse(['error' => 'شما نمی‌توانید حساب کاربری فعلی خود را حذف کنید.'], 400);
     }
 
-    $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
-    $stmt->execute([$id]);
-
+    $db->deleteUser($id);
     jsonResponse(['message' => 'کاربر با موفقیت حذف شد.']);
 }
 
