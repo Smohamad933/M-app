@@ -9,6 +9,7 @@ import { FocusTimer } from './FocusTimer';
 import { CategoriesView } from './CategoriesView';
 import { StatsView } from './StatsView';
 import { UserManagementView } from './UserManagementView';
+import { TeamProjectsView } from './TeamProjectsView';
 import { WeeklyStrip } from './WeeklyStrip';
 import { QuickAddBar } from './QuickAddBar';
 import { TaskModal } from './TaskModal';
@@ -17,6 +18,7 @@ import { BottomNav } from './BottomNav';
 import {
   LayoutDashboard,
   CheckSquare,
+  FolderKanban,
   CalendarDays,
   Timer,
   LayoutGrid,
@@ -45,6 +47,7 @@ export const MainLayout: React.FC = () => {
     currentUser,
     users,
     tasks,
+    projects,
     activeTab,
     setActiveTab,
     taskViewMode,
@@ -93,6 +96,7 @@ export const MainLayout: React.FC = () => {
   const navItems: Array<{ id: TabType; label: string; icon: React.ElementType; adminOnly?: boolean; badge?: number }> = [
     { id: 'dashboard', label: 'داشبورد و آمار', icon: LayoutDashboard },
     { id: 'tasks', label: 'کارهای روزانه', icon: CheckSquare, badge: todayTasks.filter((t) => !t.completed).length },
+    { id: 'projects', label: 'پروژه‌های تیمی', icon: FolderKanban, badge: projects.length },
     { id: 'calendar', label: 'تقویم شمسی', icon: CalendarDays },
     { id: 'focus', label: 'تمرکز پومودورو', icon: Timer },
     { id: 'categories', label: 'دسته‌بندی‌ها', icon: LayoutGrid },
@@ -515,6 +519,13 @@ export const MainLayout: React.FC = () => {
               )}
 
               {taskViewMode === 'kanban' && <KanbanBoard />}
+            </div>
+          )}
+
+          {/* TAB: TEAM PROJECTS */}
+          {activeTab === 'projects' && (
+            <div className="w-full min-w-0">
+              <TeamProjectsView />
             </div>
           )}
 

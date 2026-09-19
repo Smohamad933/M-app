@@ -6,30 +6,25 @@ import {
   CheckSquare,
   Timer,
   CalendarDays,
-  Users,
-  BarChart3,
+  FolderKanban,
   Plus,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 
 export const BottomNav: React.FC = () => {
-  const { activeTab, setActiveTab, openCreateModal, selectedDate, currentUser } = useTask();
+  const { activeTab, setActiveTab, openCreateModal, selectedDate } = useTask();
 
   const handleTabClick = (tab: TabType) => {
     sounds.playPop();
     setActiveTab(tab);
   };
 
-  const isAdmin = currentUser?.role === 'admin';
-
   const tabs: Array<{ id: TabType; label: string; icon: React.ElementType }> = [
     { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
     { id: 'tasks', label: 'تسک‌ها', icon: CheckSquare },
+    { id: 'projects', label: 'پروژه‌ها', icon: FolderKanban },
     { id: 'focus', label: 'تمرکز', icon: Timer },
     { id: 'calendar', label: 'تقویم', icon: CalendarDays },
-    isAdmin
-      ? { id: 'users', label: 'کاربران', icon: Users }
-      : { id: 'stats', label: 'آمار', icon: BarChart3 },
   ];
 
   return (

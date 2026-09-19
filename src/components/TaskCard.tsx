@@ -21,6 +21,7 @@ import {
   ShoppingCart,
   CreditCard,
   Folder,
+  FolderKanban,
 } from 'lucide-react';
 
 interface TaskCardProps {
@@ -44,6 +45,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     openEditModal,
     deleteTask,
     categories,
+    projects,
     setActiveFocusTaskId,
     setActiveTab,
     currentUser,
@@ -54,6 +56,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
 
   const category = categories.find((c) => c.id === task.categoryId);
   const CategoryIcon = category?.icon && CATEGORY_ICONS[category.icon] ? CATEGORY_ICONS[category.icon] : Folder;
+  const project = task.projectId ? projects.find((p) => p.id === task.projectId) : null;
 
   const totalSubtasks = task.subtasks?.length || 0;
   const completedSubtasks = task.subtasks?.filter((s) => s.completed).length || 0;
@@ -295,6 +298,22 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
             >
               <CategoryIcon className="w-3 h-3" />
               {category.name}
+            </span>
+          )}
+
+          {/* Team Project */}
+          {(project || task.projectName) && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{
+                backgroundColor: `${project?.color || '#6366f1'}15`,
+                color: project?.color || '#6366f1',
+                borderColor: `${project?.color || '#6366f1'}30`,
+                borderWidth: '1px',
+              }}
+            >
+              <FolderKanban className="w-3 h-3" />
+              {project?.name || task.projectName}
             </span>
           )}
 

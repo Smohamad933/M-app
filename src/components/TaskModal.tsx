@@ -19,6 +19,7 @@ import {
   CreditCard,
   Folder,
   UserCheck,
+  FolderKanban,
 } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -38,6 +39,8 @@ export const TaskModal: React.FC = () => {
     addTask,
     updateTask,
     categories,
+    projects,
+    selectedProjectId,
     selectedDate,
     currentUser,
     users,
@@ -49,6 +52,7 @@ export const TaskModal: React.FC = () => {
   const [time, setTime] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [categoryId, setCategoryId] = useState(categories[0]?.id || 'cat-work');
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [assignedUserId, setAssignedUserId] = useState(currentUser?.id || 'usr_admin_1');
   const [isPinned, setIsPinned] = useState(false);
   const [subtasks, setSubtasks] = useState<SubTask[]>([]);
@@ -62,6 +66,7 @@ export const TaskModal: React.FC = () => {
       setTime(editingTask.time || '');
       setPriority(editingTask.priority);
       setCategoryId(editingTask.categoryId);
+      setProjectId(editingTask.projectId || null);
       setAssignedUserId(editingTask.userId || currentUser?.id || 'usr_admin_1');
       setIsPinned(!!editingTask.isPinned);
       setSubtasks(editingTask.subtasks || []);
@@ -72,12 +77,13 @@ export const TaskModal: React.FC = () => {
       setTime('');
       setPriority('medium');
       setCategoryId(categories[0]?.id || 'cat-work');
+      setProjectId(selectedProjectId || null);
       setAssignedUserId(currentUser?.id || 'usr_admin_1');
       setIsPinned(false);
       setSubtasks([]);
     }
     setNewSubtaskTitle('');
-  }, [editingTask, isTaskModalOpen, selectedDate, categories, currentUser]);
+  }, [editingTask, isTaskModalOpen, selectedDate, categories, currentUser, selectedProjectId]);
 
   if (!isTaskModalOpen) return null;
 
@@ -107,6 +113,7 @@ export const TaskModal: React.FC = () => {
       await updateTask({
         ...editingTask,
         userId: assignedUserId,
+        projectId: projectId || undefined,
         title: title.trim(),
         description: description.trim() || undefined,
         date,
@@ -119,6 +126,7 @@ export const TaskModal: React.FC = () => {
     } else {
       await addTask({
         userId: assignedUserId,
+        projectId: projectId || undefined,
         title: title.trim(),
         description: description.trim() || undefined,
         date,
@@ -344,6 +352,50 @@ export const TaskModal: React.FC = () => {
               })}
             </div>
           </div>
+
+          {/* Team Project selection */}
+          {projects.length > 0 && (
+            <div className="space-y-1.5">
+              <label className="font-bold text-zinc-300 flex items-center gap-1.5">
+                <FolderKanban className="w-3.5 h-3.5 text-indigo-400" />
+                پروژه تیمی (اختیاری)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setProjectId(null)}
+                  className={`px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer ${
+                    projectId === null
+                      ? 'border-white bg-zinc-800 text-white font-bold'
+                      : 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  بدون پروژه (شخصی)
+                </button>
+                {projects.map((p) => {
+                  const isSelected = projectId === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setProjectId(p.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border-white bg-zinc-800 text-white font-bold shadow-xs'
+                          : 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: p.color || '#6366f1' }}
+                      />
+                      <span>{p.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Subtasks (Checklist) */}
           <div className="space-y-2 pt-2 border-t border-zinc-800">

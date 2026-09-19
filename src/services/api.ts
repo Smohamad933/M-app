@@ -1,10 +1,40 @@
-import type { Task, User, Category, FocusRoom } from '../types';
+import type { Task, User, Category, FocusRoom, TeamProject } from '../types';
 import { DEFAULT_CATEGORIES } from '../utils/storage';
 
 const TOKEN_KEY = 'taskrooz_auth_token';
 const USERS_STORAGE_KEY = 'taskrooz_users_local';
 const TASKS_STORAGE_KEY = 'taskrooz_tasks_local';
 const ROOMS_STORAGE_KEY = 'taskrooz_rooms_local';
+const PROJECTS_STORAGE_KEY = 'taskrooz_projects_local';
+
+function getLocalProjects(): TeamProject[] {
+  try {
+    const raw = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [
+      {
+        id: 'proj_default_1',
+        name: 'پروژه آلفا (توسعه محصول)',
+        description: 'طراحی رابط کاربری و پیاده‌سازی سیستم مدیریت تسک‌های مدرن',
+        color: '#6366f1',
+        icon: 'FolderKanban',
+        creatorId: 'usr_admin_1',
+        creatorName: 'سید محمدحسین شیخ الاسلامی',
+        memberIds: ['usr_admin_1'],
+        createdAt: '1403/07/01',
+      }
+    ];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalProjects(projects: TeamProject[]) {
+  try {
+    localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projects));
+  } catch {
+    // ignore
+  }
+}
 
 function getLocalRooms(): FocusRoom[] {
   try {
@@ -659,18 +689,110 @@ export const api = {
     }
   },
 
+  async deleteFocusRoom(roomId: string): Promise<void> {
+    try {
+      await request('api/rooms.php?action=delete', {
+        method: 'POST',
+        body: JSON.stringify({ roomId }),
+      });
+    } catch {
+      const rooms = getLocalRooms();
+      const room = rooms.find((r) => r.id === roomId);
+      if (room) {
+        room.isDeleted = true;
+        room.deletedAt = Math.floor(Date.now() / 1000);
+        saveLocalRooms(rooms);
+      }
+    }
+  },
+
   async getActiveFocusRooms(): Promise<Array<{ id: string; name: string; hostName: string; participantCount: number; isRunning: boolean }>> {
     try {
       const data = await request<{ rooms: any[] }>('api/rooms.php?action=list');
       return data.rooms;
     } catch {
-      return getLocalRooms().map((r) => ({
-        id: r.id,
-        name: r.name,
-        hostName: r.hostName,
-        participantCount: r.participants.length,
-        isRunning: r.isRunning,
-      }));
+      const now = Math.floor(Date.now() / 1000);
+      return getLocalRooms()
+        .filter((r) => !r.isDeleted || (r.deletedAt && now - r.deletedAt < 600))
+        .map((r) => ({
+          id: r.id,
+          name: r.name,
+          hostName: r.hostName,
+          participantCount: r.participants.length,
+          isRunning: r.isRunning,
+          isDeleted: r.isDeleted,
+        }));
+    }
+  },
+
+  // Team Projects
+  async getTeamProjects(): Promise<TeamProject[]> {
+    try {
+      const data = await request<{ projects: TeamProject[] }>('api/projects.php');
+      return data.projects || [];
+    } catch {
+      return getLocalProjects();
+    }
+  },
+
+  async createTeamProject(projectData: {
+    name: string;
+    description?: string;
+    color?: string;
+    icon?: string;
+    memberIds?: string[];
+  }): Promise<TeamProject> {
+    try {
+      const data = await request<{ project: TeamProject; message: string }>('api/projects.php', {
+        method: 'POST',
+        body: JSON.stringify(projectData),
+      });
+      return data.project;
+    } catch {
+      const projects = getLocalProjects();
+      const currentUser = await this.getCurrentUser();
+      const newProj: TeamProject = {
+        id: 'proj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        name: projectData.name.trim(),
+        description: projectData.description?.trim() || '',
+        color: projectData.color || '#6366f1',
+        icon: projectData.icon || 'FolderKanban',
+        creatorId: currentUser?.id || 'usr_guest',
+        creatorName: currentUser?.name || 'کاربر',
+        memberIds: projectData.memberIds || (currentUser ? [currentUser.id] : []),
+        createdAt: new Date().toLocaleDateString('fa-IR'),
+      };
+      projects.unshift(newProj);
+      saveLocalProjects(projects);
+      return newProj;
+    }
+  },
+
+  async updateTeamProject(id: string, updates: Partial<TeamProject>): Promise<void> {
+    try {
+      await request('api/projects.php', {
+        method: 'PUT',
+        body: JSON.stringify({ id, ...updates }),
+      });
+    } catch {
+      const projects = getLocalProjects();
+      const idx = projects.findIndex((p) => p.id === id);
+      if (idx !== -1) {
+        projects[idx] = { ...projects[idx], ...updates };
+        saveLocalProjects(projects);
+      }
+    }
+  },
+
+  async deleteTeamProject(id: string): Promise<void> {
+    try {
+      await request(`api/projects.php?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    } catch {
+      const projects = getLocalProjects();
+      const filtered = projects.filter((p) => p.id !== id);
+      saveLocalProjects(filtered);
     }
   },
 };

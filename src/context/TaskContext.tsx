@@ -1,5 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import type { Task, Category, AppSettings, DailyStreak, TabType, FilterStatus, User, TaskViewMode, TaskCreateInput, FocusRoom } from '../types';
+import type {
+  Task,
+  Category,
+  AppSettings,
+  DailyStreak,
+  TabType,
+  FilterStatus,
+  User,
+  TaskViewMode,
+  TaskCreateInput,
+  FocusRoom,
+  TeamProject,
+} from '../types';
 import { api } from '../services/api';
 import { getTodayISO, formatPersianDate, toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
@@ -10,6 +22,9 @@ interface TaskContextType {
   users: User[];
   tasks: Task[];
   categories: Category[];
+  projects: TeamProject[];
+  selectedProjectId: string | null;
+  setSelectedProjectId: (id: string | null) => void;
   settings: AppSettings;
   streak: DailyStreak;
   selectedDate: string;
@@ -39,10 +54,17 @@ interface TaskContextType {
   activeRoom: FocusRoom | null;
   joinFocusRoom: (roomId: string) => Promise<boolean>;
   leaveFocusRoom: () => Promise<void>;
+  deleteFocusRoom: (roomId?: string) => Promise<void>;
   createFocusRoom: (name: string, focusDuration?: number, breakDuration?: number) => Promise<FocusRoom>;
   syncRoomTimer: (action: 'start' | 'pause' | 'reset' | 'setMode', timeLeft?: number, mode?: string) => Promise<void>;
   sendRoomMessage: (text: string) => Promise<void>;
   refreshActiveRoom: () => Promise<void>;
+
+  // Team Projects
+  createTeamProject: (data: { name: string; description?: string; color?: string; icon?: string; memberIds?: string[] }) => Promise<TeamProject>;
+  updateTeamProject: (id: string, updates: Partial<TeamProject>) => Promise<void>;
+  deleteTeamProject: (id: string) => Promise<void>;
+  refreshProjects: () => Promise<void>;
 
   // Navigation & Filters
   setSelectedDate: (date: string) => void;
@@ -66,7 +88,7 @@ interface TaskContextType {
   refreshTasks: () => Promise<void>;
   
   // Modal controllers
-  openCreateModal: (defaultDate?: string, defaultUserId?: string) => void;
+  openCreateModal: (defaultDate?: string, defaultUserId?: string, defaultProjectId?: string) => void;
   openEditModal: (task: Task) => void;
   closeTaskModal: () => void;
   
@@ -86,6 +108,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [projects, setProjects] = useState<TeamProject[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const [settings, setSettings] = useState<AppSettings>(() => ({
@@ -113,7 +137,14 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeFocusTaskId, setActiveFocusTaskId] = useState<string | null>(null);
 
   // Group Focus Room State
-  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('room') || params.get('room_id') || null;
+    } catch {
+      return null;
+    }
+  });
   const [activeRoom, setActiveRoom] = useState<FocusRoom | null>(null);
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -133,6 +164,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [settings]);
 
+  // Refresh active room data
   const refreshActiveRoom = useCallback(async () => {
     if (!activeRoomId) return;
     try {
@@ -145,11 +177,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [activeRoomId]);
 
-  // Periodic polling for active room (sync timer and participants)
+  // Periodic polling for active room (sync timer, participants and real-time messages every 1.5s)
   useEffect(() => {
     if (!activeRoomId) return;
     refreshActiveRoom();
-    const interval = setInterval(refreshActiveRoom, 2500);
+    const interval = setInterval(refreshActiveRoom, 1500);
     return () => clearInterval(interval);
   }, [activeRoomId, refreshActiveRoom]);
 
@@ -159,6 +191,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setActiveRoomId(room.id);
       setActiveRoom(room);
       setActiveTab('focus');
+      try {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('room', room.id);
+        window.history.replaceState(null, '', newUrl.toString());
+      } catch {}
       sounds.playComplete();
       return true;
     } catch (e: any) {
@@ -173,7 +210,33 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setActiveRoomId(null);
     setActiveRoom(null);
+    try {
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('room');
+      newUrl.searchParams.delete('room_id');
+      window.history.replaceState(null, '', newUrl.toString());
+    } catch {}
     sounds.playPop();
+  };
+
+  const deleteFocusRoom = async (targetRoomId?: string) => {
+    const idToDelete = targetRoomId || activeRoomId;
+    if (!idToDelete) return;
+    try {
+      await api.deleteFocusRoom(idToDelete);
+      // If we are currently inside that room, update activeRoom to reflect isDeleted
+      if (activeRoom && activeRoom.id === idToDelete) {
+        setActiveRoom({
+          ...activeRoom,
+          isDeleted: true,
+          deletedAt: Math.floor(Date.now() / 1000),
+          isRunning: false,
+        });
+      }
+      sounds.playPop();
+    } catch (e: any) {
+      alert(e.message || 'خطا در حذف اتاق');
+    }
   };
 
   const createFocusRoom = async (name: string, focusDuration = 1500, breakDuration = 300): Promise<FocusRoom> => {
@@ -181,6 +244,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveRoomId(room.id);
     setActiveRoom(room);
     setActiveTab('focus');
+    try {
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('room', room.id);
+      window.history.replaceState(null, '', newUrl.toString());
+    } catch {}
     sounds.playComplete();
     return room;
   };
@@ -196,7 +264,24 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const sendRoomMessage = async (text: string) => {
-    if (!activeRoomId || !text.trim()) return;
+    if (!activeRoomId || !text.trim() || !currentUser) return;
+    
+    // Optimistic message append
+    const tempMsg = {
+      id: 'opt_' + Date.now(),
+      userId: currentUser.id,
+      userName: currentUser.name,
+      text: text.trim(),
+      timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    if (activeRoom) {
+      setActiveRoom({
+        ...activeRoom,
+        messages: [...activeRoom.messages, tempMsg],
+      });
+    }
+
     try {
       const updated = await api.sendFocusRoomMessage(activeRoomId, text);
       setActiveRoom(updated);
@@ -221,12 +306,50 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshProjects = useCallback(async () => {
+    try {
+      const pList = await api.getTeamProjects();
+      setProjects(pList);
+    } catch (e) {
+      console.error('Error fetching projects:', e);
+    }
+  }, []);
+
+  const createTeamProject = async (data: {
+    name: string;
+    description?: string;
+    color?: string;
+    icon?: string;
+    memberIds?: string[];
+  }): Promise<TeamProject> => {
+    const created = await api.createTeamProject(data);
+    setProjects((prev) => [created, ...prev]);
+    sounds.playComplete();
+    return created;
+  };
+
+  const updateTeamProject = async (id: string, updates: Partial<TeamProject>) => {
+    await api.updateTeamProject(id, updates);
+    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+    sounds.playPop();
+    refreshTasks();
+  };
+
+  const deleteTeamProject = async (id: string) => {
+    await api.deleteTeamProject(id);
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    if (selectedProjectId === id) {
+      setSelectedProjectId(null);
+    }
+    sounds.playPop();
+    refreshTasks();
+  };
+
   // Load initial data
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
-        // Save invite room from URL if present
         const urlParams = new URLSearchParams(window.location.search);
         const inviteRoom = urlParams.get('room') || urlParams.get('room_id');
         if (inviteRoom) {
@@ -236,7 +359,6 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const user = await api.getCurrentUser();
         if (user) {
           setCurrentUser(user);
-          // If already logged in, join the room directly!
           if (inviteRoom) {
             sessionStorage.removeItem('taskrooz_pending_room');
             await joinFocusRoom(inviteRoom);
@@ -245,6 +367,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const cats = await api.getCategories();
         setCategories(cats);
+        await refreshProjects();
       } catch (e) {
         console.error('Initialization error:', e);
       } finally {
@@ -256,16 +379,19 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshTasks = useCallback(async () => {
     try {
-      const filter: { userId?: string | null } = {};
+      const filter: { userId?: string | null; projectId?: string | null } = {};
       if (selectedFilterUserId) {
         filter.userId = selectedFilterUserId;
+      }
+      if (selectedProjectId) {
+        filter.projectId = selectedProjectId;
       }
       const fetched = await api.getTasks(filter);
       setTasks(fetched);
     } catch (e) {
       console.error('Error fetching tasks:', e);
     }
-  }, [selectedFilterUserId]);
+  }, [selectedFilterUserId, selectedProjectId]);
 
   const refreshUsers = useCallback(async () => {
     if (currentUser?.role === 'admin') {
@@ -282,8 +408,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentUser) {
       refreshTasks();
       refreshUsers();
+      refreshProjects();
     }
-  }, [currentUser, refreshTasks, refreshUsers]);
+  }, [currentUser, refreshTasks, refreshUsers, refreshProjects]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -357,6 +484,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTasks((prev) => [created, ...prev]);
     sounds.playPop();
     refreshUsers();
+    refreshProjects();
     return created;
   };
 
@@ -365,6 +493,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
     sounds.playPop();
     refreshUsers();
+    refreshProjects();
   };
 
   const deleteTask = async (id: string) => {
@@ -375,6 +504,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     sounds.playPop();
     refreshUsers();
+    refreshProjects();
   };
 
   const toggleTaskComplete = async (id: string) => {
@@ -403,6 +533,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     await api.toggleTask(id);
     refreshUsers();
+    refreshProjects();
   };
 
   const toggleSubtask = async (taskId: string, subtaskId: string) => {
@@ -431,6 +562,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));
     await api.updateTask(updatedTask);
     refreshUsers();
+    refreshProjects();
   };
 
   const togglePin = async (taskId: string) => {
@@ -454,9 +586,10 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
-  const openCreateModal = (defaultDate?: string, defaultUserId?: string) => {
+  const openCreateModal = (defaultDate?: string, defaultUserId?: string, defaultProjectId?: string) => {
     if (defaultDate) setSelectedDate(defaultDate);
     if (defaultUserId) setSelectedFilterUserId(defaultUserId);
+    if (defaultProjectId) setSelectedProjectId(defaultProjectId);
     setEditingTask(null);
     setIsTaskModalOpen(true);
   };
@@ -520,6 +653,13 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       users,
       tasks,
       categories,
+      projects,
+      selectedProjectId,
+      setSelectedProjectId,
+      createTeamProject,
+      updateTeamProject,
+      deleteTeamProject,
+      refreshProjects,
       settings,
       streak,
       selectedDate,
@@ -554,6 +694,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       activeRoom,
       joinFocusRoom,
       leaveFocusRoom,
+      deleteFocusRoom,
       createFocusRoom,
       syncRoomTimer,
       sendRoomMessage,
@@ -578,6 +719,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       users,
       tasks,
       categories,
+      projects,
+      selectedProjectId,
       settings,
       streak,
       selectedDate,
@@ -592,9 +735,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       editingTask,
       isShareModalOpen,
       isLoading,
-      refreshTasks,
-      refreshUsers,
+      activeRoomId,
+      activeRoom,
+      refreshActiveRoom,
       getDailySummaryText,
+      refreshProjects,
     ]
   );
 

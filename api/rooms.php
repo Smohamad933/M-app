@@ -22,7 +22,7 @@ if ($method === 'GET' && ($action === 'get' || !empty($_GET['room_id']))) {
     }
     $room = $db->getFocusRoom($roomId);
     if (!$room) {
-        jsonResponse(['error' => 'اتاق پیدا نشد یا منقضی شده است.'], 404);
+        jsonResponse(['error' => 'اتاق پیدا نشد یا پس از ۱۰ دقیقه منقضی و پاک شده است.'], 404);
     }
     jsonResponse(['room' => $room]);
 }
@@ -47,7 +47,7 @@ if ($method === 'POST' && $action === 'join') {
     }
     $room = $db->joinFocusRoom($roomId, $currentUser);
     if (!$room) {
-        jsonResponse(['error' => 'اتاق مورد نظر یافت نشد.'], 404);
+        jsonResponse(['error' => 'اتاق مورد نظر یافت نشد یا پاک شده است.'], 404);
     }
     jsonResponse(['message' => 'شما به اتاق ملحق شدید.', 'room' => $room]);
 }
@@ -65,7 +65,7 @@ if ($method === 'POST' && $action === 'sync') {
     }
     $room = $db->syncFocusRoomTimer($roomId, $currentUser, $timerAction, $timeLeft, $mode);
     if (!$room) {
-        jsonResponse(['error' => 'اتاق یافت نشد.'], 404);
+        jsonResponse(['error' => 'اتاق یافت نشد یا بسته شده است.'], 404);
     }
     jsonResponse(['room' => $room]);
 }
@@ -93,6 +93,22 @@ if ($method === 'POST' && $action === 'leave') {
         $db->leaveFocusRoom($roomId, $currentUser['id']);
     }
     jsonResponse(['message' => 'از اتاق خارج شدید.']);
+}
+
+// POST /api/rooms.php?action=delete (Host or Admin deleting room, retaining messages for 10 min)
+if ($method === 'POST' && ($action === 'delete' || $action === 'close')) {
+    $input = getJsonInput();
+    $roomId = $input['roomId'] ?? $_GET['room_id'] ?? '';
+    if (empty($roomId)) {
+        jsonResponse(['error' => 'شناسه اتاق الزامی است.'], 400);
+    }
+    $isAdmin = ($currentUser['role'] === 'admin');
+    $ok = $db->deleteFocusRoom($roomId, $currentUser['id'], $isAdmin);
+    if ($ok) {
+        jsonResponse(['message' => 'اتاق با موفقیت بسته شد. پیام‌ها به مدت ۱۰ دقیقه تا پاکسازی کامل در سرور نگه‌داری می‌شوند.']);
+    } else {
+        jsonResponse(['error' => 'فقط میزبان یا مدیر سیستم مجاز به حذف اتاق هستند.'], 403);
+    }
 }
 
 jsonResponse(['error' => 'درخواست نامعتبر است.'], 405);

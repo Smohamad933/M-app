@@ -18,6 +18,14 @@ class TaskRoozDB {
             @mkdir($dbDir, 0777, true);
         }
 
+        // Always initialize JSON file path and data so fallback is ALWAYS functional
+        $jsonPath = $dbDir . '/taskrooz_data.json';
+        if (!is_writable($dbDir) && !file_exists($jsonPath)) {
+            $jsonPath = sys_get_temp_dir() . '/taskrooz_data.json';
+        }
+        $this->jsonFile = $jsonPath;
+        $this->loadJson();
+
         // 1. Attempt SQLite if extension loaded
         if (extension_loaded('pdo_sqlite') && class_exists('PDO')) {
             try {
@@ -34,23 +42,11 @@ class TaskRoozDB {
                     }
                 }
                 $this->mode = 'sqlite';
-                return;
             } catch (Exception $e) {
                 $this->pdo = null;
+                $this->mode = 'json';
             }
         }
-
-        // 2. Fallback to robust JSON file storage
-        $this->mode = 'json';
-        $jsonPath = $dbDir . '/taskrooz_data.json';
-        
-        // If data dir not writable, use system temp
-        if (!is_writable($dbDir) && !file_exists($jsonPath)) {
-            $jsonPath = sys_get_temp_dir() . '/taskrooz_data.json';
-        }
-        
-        $this->jsonFile = $jsonPath;
-        $this->loadJson();
     }
 
     public static function getInstance() {
@@ -71,11 +67,13 @@ class TaskRoozDB {
             $parsed = json_decode($content, true);
             if (is_array($parsed) && isset($parsed['users'])) {
                 $this->data = $parsed;
+                if (!isset($this->data['rooms'])) $this->data['rooms'] = [];
+                if (!isset($this->data['projects'])) $this->data['projects'] = [];
                 return;
             }
         }
 
-        // Initialize default JSON structure
+        // Initialize default structure
         $this->data = [
             'users' => [
                 [
@@ -95,7 +93,9 @@ class TaskRoozDB {
                 ['id' => 'cat-shopping', 'name' => 'خرید و منزل', 'color' => '#0ea5e9', 'icon' => 'ShoppingCart', 'is_default' => 1],
                 ['id' => 'cat-finance', 'name' => 'امور مالی', 'color' => '#8b5cf6', 'icon' => 'CreditCard', 'is_default' => 1],
             ],
-            'tasks' => []
+            'tasks' => [],
+            'rooms' => [],
+            'projects' => []
         ];
         $this->saveJson();
     }
@@ -109,9 +109,12 @@ class TaskRoozDB {
     public function getUserByUsername($username) {
         $username = strtolower(trim($username));
         if ($this->mode === 'sqlite') {
-            $stmt = $this->pdo->prepare("SELECT * FROM users WHERE LOWER(username) = ?");
-            $stmt->execute([$username]);
-            return $stmt->fetch() ?: null;
+            try {
+                $stmt = $this->pdo->prepare("SELECT * FROM users WHERE LOWER(username) = ?");
+                $stmt->execute([$username]);
+                $u = $stmt->fetch();
+                if ($u) return $u;
+            } catch (Exception $e) {}
         }
 
         foreach ($this->data['users'] as $u) {
@@ -124,9 +127,12 @@ class TaskRoozDB {
 
     public function getUserById($id) {
         if ($this->mode === 'sqlite') {
-            $stmt = $this->pdo->prepare("SELECT * FROM users WHERE id = ?");
-            $stmt->execute([$id]);
-            return $stmt->fetch() ?: null;
+            try {
+                $stmt = $this->pdo->prepare("SELECT * FROM users WHERE id = ?");
+                $stmt->execute([$id]);
+                $u = $stmt->fetch();
+                if ($u) return $u;
+            } catch (Exception $e) {}
         }
 
         foreach ($this->data['users'] as $u) {
@@ -144,19 +150,21 @@ class TaskRoozDB {
         $now = date('Y-m-d H:i:s');
 
         if ($this->mode === 'sqlite') {
-            $stmt = $this->pdo->prepare("INSERT INTO users (id, username, password_hash, name, role, created_at) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$id, $username, $hash, $name, $role, $now]);
-        } else {
-            $this->data['users'][] = [
-                'id' => $id,
-                'username' => $username,
-                'password_hash' => $hash,
-                'name' => $name,
-                'role' => $role,
-                'created_at' => $now,
-            ];
-            $this->saveJson();
+            try {
+                $stmt = $this->pdo->prepare("INSERT INTO users (id, username, password_hash, name, role, created_at) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$id, $username, $hash, $name, $role, $now]);
+            } catch (Exception $e) {}
         }
+
+        $this->data['users'][] = [
+            'id' => $id,
+            'username' => $username,
+            'password_hash' => $hash,
+            'name' => $name,
+            'role' => $role,
+            'created_at' => $now,
+        ];
+        $this->saveJson();
 
         return [
             'id' => $id,
@@ -169,31 +177,35 @@ class TaskRoozDB {
 
     public function getAllUsers() {
         if ($this->mode === 'sqlite') {
-            $stmt = $this->pdo->query("
-                SELECT 
-                    u.id, u.username, u.name, u.role, u.created_at,
-                    COUNT(t.id) as total_tasks,
-                    SUM(CASE WHEN t.completed = 1 THEN 1 ELSE 0 END) as completed_tasks
-                FROM users u
-                LEFT JOIN tasks t ON u.id = t.user_id
-                GROUP BY u.id
-                ORDER BY u.created_at ASC
-            ");
-            $users = $stmt->fetchAll();
-            return array_map(function($u) {
-                $total = (int)$u['total_tasks'];
-                $done = (int)($u['completed_tasks'] ?? 0);
-                return [
-                    'id' => $u['id'],
-                    'username' => $u['username'],
-                    'name' => $u['name'],
-                    'role' => $u['role'],
-                    'createdAt' => $u['created_at'],
-                    'totalTasks' => $total,
-                    'completedTasks' => $done,
-                    'progressPercent' => $total > 0 ? round(($done / $total) * 100) : 0,
-                ];
-            }, $users);
+            try {
+                $stmt = $this->pdo->query("
+                    SELECT 
+                        u.id, u.username, u.name, u.role, u.created_at,
+                        COUNT(t.id) as total_tasks,
+                        SUM(CASE WHEN t.completed = 1 THEN 1 ELSE 0 END) as completed_tasks
+                    FROM users u
+                    LEFT JOIN tasks t ON u.id = t.user_id
+                    GROUP BY u.id
+                    ORDER BY u.created_at ASC
+                ");
+                $users = $stmt->fetchAll();
+                if ($users && count($users) > 0) {
+                    return array_map(function($u) {
+                        $total = (int)$u['total_tasks'];
+                        $done = (int)($u['completed_tasks'] ?? 0);
+                        return [
+                            'id' => $u['id'],
+                            'username' => $u['username'],
+                            'name' => $u['name'],
+                            'role' => $u['role'],
+                            'createdAt' => $u['created_at'],
+                            'totalTasks' => $total,
+                            'completedTasks' => $done,
+                            'progressPercent' => $total > 0 ? round(($done / $total) * 100) : 0,
+                        ];
+                    }, $users);
+                }
+            } catch (Exception $e) {}
         }
 
         $res = [];
@@ -223,14 +235,15 @@ class TaskRoozDB {
     public function updateUser($id, $name, $role, $password = null) {
         $hash = !empty($password) ? password_hash($password, PASSWORD_DEFAULT) : null;
         if ($this->mode === 'sqlite') {
-            if ($hash) {
-                $stmt = $this->pdo->prepare("UPDATE users SET name = ?, role = ?, password_hash = ? WHERE id = ?");
-                $stmt->execute([$name, $role, $hash, $id]);
-            } else {
-                $stmt = $this->pdo->prepare("UPDATE users SET name = ?, role = ? WHERE id = ?");
-                $stmt->execute([$name, $role, $id]);
-            }
-            return true;
+            try {
+                if ($hash) {
+                    $stmt = $this->pdo->prepare("UPDATE users SET name = ?, role = ?, password_hash = ? WHERE id = ?");
+                    $stmt->execute([$name, $role, $hash, $id]);
+                } else {
+                    $stmt = $this->pdo->prepare("UPDATE users SET name = ?, role = ? WHERE id = ?");
+                    $stmt->execute([$name, $role, $id]);
+                }
+            } catch (Exception $e) {}
         }
 
         foreach ($this->data['users'] as &$u) {
@@ -249,11 +262,12 @@ class TaskRoozDB {
 
     public function deleteUser($id) {
         if ($this->mode === 'sqlite') {
-            $stmt = $this->pdo->prepare("DELETE FROM tasks WHERE user_id = ?");
-            $stmt->execute([$id]);
-            $stmt = $this->pdo->prepare("DELETE FROM users WHERE id = ?");
-            $stmt->execute([$id]);
-            return true;
+            try {
+                $stmt = $this->pdo->prepare("DELETE FROM tasks WHERE user_id = ?");
+                $stmt->execute([$id]);
+                $stmt = $this->pdo->prepare("DELETE FROM users WHERE id = ?");
+                $stmt->execute([$id]);
+            } catch (Exception $e) {}
         }
 
         $this->data['users'] = array_values(array_filter($this->data['users'], function($u) use ($id) {
@@ -267,55 +281,33 @@ class TaskRoozDB {
     }
 
     // --- Task Operations ---
-    public function getTasks($userId = null, $date = null, $categoryId = null, $completed = null) {
-        if ($this->mode === 'sqlite') {
-            $where = [];
-            $params = [];
-            if ($userId) {
-                $where[] = "t.user_id = ?";
-                $params[] = $userId;
-            }
-            if ($date) {
-                $where[] = "t.date = ?";
-                $params[] = $date;
-            }
-            if ($categoryId) {
-                $where[] = "t.category_id = ?";
-                $params[] = $categoryId;
-            }
-            if ($completed !== null) {
-                $where[] = "t.completed = ?";
-                $params[] = $completed ? 1 : 0;
-            }
-            $sql = "SELECT t.*, u.name as user_name FROM tasks t LEFT JOIN users u ON t.user_id = u.id";
-            if (count($where) > 0) {
-                $sql .= " WHERE " . implode(" AND ", $where);
-            }
-            $sql .= " ORDER BY t.is_pinned DESC, t.time ASC, t.created_at DESC";
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($params);
-            $rows = $stmt->fetchAll();
-            return array_map([$this, 'formatTaskRow'], $rows);
-        }
-
+    public function getTasks($userId = null, $date = null, $categoryId = null, $completed = null, $projectId = null) {
         $filtered = [];
         $userMap = [];
         foreach ($this->data['users'] as $u) {
             $userMap[$u['id']] = $u['name'];
         }
 
+        $projectMap = [];
+        if (!empty($this->data['projects'])) {
+            foreach ($this->data['projects'] as $p) {
+                $projectMap[$p['id']] = $p['name'];
+            }
+        }
+
         foreach ($this->data['tasks'] as $t) {
             if ($userId && $t['user_id'] !== $userId) continue;
             if ($date && $t['date'] !== $date) continue;
             if ($categoryId && $t['category_id'] !== $categoryId) continue;
+            if ($projectId && ($t['project_id'] ?? '') !== $projectId) continue;
             if ($completed !== null && (bool)$t['completed'] !== (bool)$completed) continue;
 
             $row = $t;
             $row['user_name'] = $userMap[$t['user_id']] ?? '';
+            $row['project_name'] = $projectMap[$t['project_id'] ?? ''] ?? '';
             $filtered[] = $this->formatTaskRow($row);
         }
 
-        // Sort by isPinned DESC, time ASC
         usort($filtered, function($a, $b) {
             if ($a['isPinned'] !== $b['isPinned']) {
                 return $a['isPinned'] ? -1 : 1;
@@ -332,57 +324,50 @@ class TaskRoozDB {
         $isPinned = !empty($data['isPinned']) ? 1 : 0;
         $subtasksJson = !empty($data['subtasks']) ? json_encode($data['subtasks'], JSON_UNESCAPED_UNICODE) : '[]';
 
-        if ($this->mode === 'sqlite') {
-            $stmt = $this->pdo->prepare("
-                INSERT INTO tasks (
-                    id, user_id, title, description, date, time, duration_minutes,
-                    completed, priority, category_id, is_pinned, focus_minutes_spent,
-                    subtasks_json, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 0, ?, ?)
-            ");
-            $stmt->execute([
-                $id, $data['userId'], $data['title'], $data['description'] ?? null,
-                $data['date'], $data['time'] ?? null, (int)($data['durationMinutes'] ?? 0),
-                $data['priority'] ?? 'medium', $data['categoryId'] ?? 'cat-work',
-                $isPinned, $subtasksJson, $now
-            ]);
+        $userName = '';
+        foreach ($this->data['users'] as $u) {
+            if ($u['id'] === $data['userId']) {
+                $userName = $u['name'];
+                break;
+            }
+        }
 
-            $uStmt = $this->pdo->prepare("SELECT name FROM users WHERE id = ?");
-            $uStmt->execute([$data['userId']]);
-            $userName = $uStmt->fetchColumn() ?: '';
-        } else {
-            $userName = '';
-            foreach ($this->data['users'] as $u) {
-                if ($u['id'] === $data['userId']) {
-                    $userName = $u['name'];
+        $projectName = '';
+        if (!empty($data['projectId']) && !empty($this->data['projects'])) {
+            foreach ($this->data['projects'] as $p) {
+                if ($p['id'] === $data['projectId']) {
+                    $projectName = $p['name'];
                     break;
                 }
             }
-
-            $this->data['tasks'][] = [
-                'id' => $id,
-                'user_id' => $data['userId'],
-                'title' => $data['title'],
-                'description' => $data['description'] ?? '',
-                'date' => $data['date'],
-                'time' => $data['time'] ?? '',
-                'duration_minutes' => (int)($data['durationMinutes'] ?? 0),
-                'completed' => 0,
-                'completed_at' => null,
-                'priority' => $data['priority'] ?? 'medium',
-                'category_id' => $data['categoryId'] ?? 'cat-work',
-                'is_pinned' => $isPinned,
-                'focus_minutes_spent' => 0,
-                'subtasks_json' => $subtasksJson,
-                'created_at' => $now,
-            ];
-            $this->saveJson();
         }
+
+        $this->data['tasks'][] = [
+            'id' => $id,
+            'user_id' => $data['userId'],
+            'project_id' => $data['projectId'] ?? null,
+            'title' => $data['title'],
+            'description' => $data['description'] ?? '',
+            'date' => $data['date'],
+            'time' => $data['time'] ?? '',
+            'duration_minutes' => (int)($data['durationMinutes'] ?? 0),
+            'completed' => 0,
+            'completed_at' => null,
+            'priority' => $data['priority'] ?? 'medium',
+            'category_id' => $data['categoryId'] ?? 'cat-work',
+            'is_pinned' => $isPinned,
+            'focus_minutes_spent' => 0,
+            'subtasks_json' => $subtasksJson,
+            'created_at' => $now,
+        ];
+        $this->saveJson();
 
         return [
             'id' => $id,
             'userId' => $data['userId'],
             'userName' => $userName,
+            'projectId' => $data['projectId'] ?? null,
+            'projectName' => $projectName,
             'title' => $data['title'],
             'description' => $data['description'] ?? '',
             'date' => $data['date'],
@@ -406,35 +391,10 @@ class TaskRoozDB {
         $completed = isset($data['completed']) ? ($data['completed'] ? 1 : 0) : null;
         $completedAt = $completed ? date('Y-m-d H:i:s') : null;
 
-        if ($this->mode === 'sqlite') {
-            $stmt = $this->pdo->prepare("
-                UPDATE tasks SET
-                    user_id = COALESCE(?, user_id),
-                    title = COALESCE(?, title),
-                    description = COALESCE(?, description),
-                    date = COALESCE(?, date),
-                    time = COALESCE(?, time),
-                    duration_minutes = COALESCE(?, duration_minutes),
-                    priority = COALESCE(?, priority),
-                    category_id = COALESCE(?, category_id),
-                    is_pinned = COALESCE(?, is_pinned),
-                    completed = COALESCE(?, completed),
-                    completed_at = COALESCE(?, completed_at)
-                WHERE id = ?
-            ");
-            $stmt->execute([
-                $data['userId'] ?? null, $data['title'] ?? null, $data['description'] ?? null,
-                $data['date'] ?? null, $data['time'] ?? null, $data['durationMinutes'] ?? null,
-                $data['priority'] ?? null, $data['categoryId'] ?? null,
-                isset($data['isPinned']) ? $isPinned : null,
-                $completed, $completedAt, $id
-            ]);
-            return true;
-        }
-
         foreach ($this->data['tasks'] as &$t) {
             if ($t['id'] === $id) {
                 if (isset($data['userId'])) $t['user_id'] = $data['userId'];
+                if (array_key_exists('projectId', $data)) $t['project_id'] = $data['projectId'];
                 if (isset($data['title'])) $t['title'] = $data['title'];
                 if (isset($data['description'])) $t['description'] = $data['description'];
                 if (isset($data['date'])) $t['date'] = $data['date'];
@@ -456,17 +416,6 @@ class TaskRoozDB {
     }
 
     public function toggleTask($id) {
-        if ($this->mode === 'sqlite') {
-            $stmt = $this->pdo->prepare("SELECT completed FROM tasks WHERE id = ?");
-            $stmt->execute([$id]);
-            $curr = (int)$stmt->fetchColumn();
-            $new = $curr ? 0 : 1;
-            $completedAt = $new ? date('Y-m-d H:i:s') : null;
-            $up = $this->pdo->prepare("UPDATE tasks SET completed = ?, completed_at = ? WHERE id = ?");
-            $up->execute([$new, $completedAt, $id]);
-            return ['completed' => (bool)$new, 'completedAt' => $completedAt];
-        }
-
         foreach ($this->data['tasks'] as &$t) {
             if ($t['id'] === $id) {
                 $new = !empty($t['completed']) ? 0 : 1;
@@ -481,12 +430,6 @@ class TaskRoozDB {
 
     public function addFocusMinutes($id, $minutes) {
         $minutes = (int)$minutes;
-        if ($this->mode === 'sqlite') {
-            $stmt = $this->pdo->prepare("UPDATE tasks SET focus_minutes_spent = focus_minutes_spent + ? WHERE id = ?");
-            $stmt->execute([$minutes, $id]);
-            return true;
-        }
-
         foreach ($this->data['tasks'] as &$t) {
             if ($t['id'] === $id) {
                 $t['focus_minutes_spent'] = (int)($t['focus_minutes_spent'] ?? 0) + $minutes;
@@ -498,12 +441,6 @@ class TaskRoozDB {
     }
 
     public function deleteTask($id) {
-        if ($this->mode === 'sqlite') {
-            $stmt = $this->pdo->prepare("DELETE FROM tasks WHERE id = ?");
-            $stmt->execute([$id]);
-            return true;
-        }
-
         $this->data['tasks'] = array_values(array_filter($this->data['tasks'], function($t) use ($id) {
             return $t['id'] !== $id;
         }));
@@ -512,20 +449,6 @@ class TaskRoozDB {
     }
 
     public function getCategories() {
-        if ($this->mode === 'sqlite') {
-            $stmt = $this->pdo->query("SELECT * FROM categories ORDER BY is_default DESC, name ASC");
-            $rows = $stmt->fetchAll();
-            return array_map(function($c) {
-                return [
-                    'id' => $c['id'],
-                    'name' => $c['name'],
-                    'color' => $c['color'],
-                    'icon' => $c['icon'],
-                    'isDefault' => (bool)$c['is_default'],
-                ];
-            }, $rows);
-        }
-
         return array_map(function($c) {
             return [
                 'id' => $c['id'],
@@ -539,19 +462,14 @@ class TaskRoozDB {
 
     public function createCategory($name, $color, $icon) {
         $id = 'cat_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4);
-        if ($this->mode === 'sqlite') {
-            $stmt = $this->pdo->prepare("INSERT INTO categories (id, name, color, icon, is_default) VALUES (?, ?, ?, ?, 0)");
-            $stmt->execute([$id, $name, $color, $icon]);
-        } else {
-            $this->data['categories'][] = [
-                'id' => $id,
-                'name' => $name,
-                'color' => $color,
-                'icon' => $icon,
-                'is_default' => 0,
-            ];
-            $this->saveJson();
-        }
+        $this->data['categories'][] = [
+            'id' => $id,
+            'name' => $name,
+            'color' => $color,
+            'icon' => $icon,
+            'is_default' => 0,
+        ];
+        $this->saveJson();
 
         return [
             'id' => $id,
@@ -563,12 +481,6 @@ class TaskRoozDB {
     }
 
     public function deleteCategory($id) {
-        if ($this->mode === 'sqlite') {
-            $stmt = $this->pdo->prepare("DELETE FROM categories WHERE id = ? AND is_default = 0");
-            $stmt->execute([$id]);
-            return true;
-        }
-
         $this->data['categories'] = array_values(array_filter($this->data['categories'], function($c) use ($id) {
             return $c['id'] !== $id || !empty($c['is_default']);
         }));
@@ -623,6 +535,8 @@ class TaskRoozDB {
             'id' => $row['id'],
             'userId' => $row['user_id'],
             'userName' => $row['user_name'] ?? '',
+            'projectId' => $row['project_id'] ?? null,
+            'projectName' => $row['project_name'] ?? '',
             'title' => $row['title'],
             'description' => $row['description'] ?? '',
             'date' => $row['date'],
@@ -639,8 +553,29 @@ class TaskRoozDB {
         ];
     }
 
-    // --- Focus Rooms (Pomodoro Group Focus) ---
+    // --- Focus Rooms (Pomodoro Group Focus with 10-min message retention upon deletion) ---
+    private function purgeExpiredDeletedRooms() {
+        if (!isset($this->data['rooms'])) return;
+        $now = time();
+        $initialCount = count($this->data['rooms']);
+        // Retain deleted rooms and their messages for 10 minutes (600 seconds)
+        $this->data['rooms'] = array_values(array_filter($this->data['rooms'], function($r) use ($now) {
+            if (!empty($r['is_deleted'])) {
+                $deletedAt = (int)($r['deleted_at'] ?? 0);
+                if (($now - $deletedAt) > 600) {
+                    return false; // Permanently purge after 10 minutes
+                }
+            }
+            return true;
+        }));
+
+        if (count($this->data['rooms']) !== $initialCount) {
+            $this->saveJson();
+        }
+    }
+
     public function createFocusRoom($name, $host, $focusDuration = 1500, $breakDuration = 300) {
+        $this->purgeExpiredDeletedRooms();
         $roomId = 'room_' . substr(bin2hex(random_bytes(3)), 0, 6);
         $room = [
             'id' => $roomId,
@@ -653,6 +588,8 @@ class TaskRoozDB {
             'isRunning' => false,
             'timeLeft' => (int)$focusDuration,
             'lastUpdated' => round(microtime(true) * 1000),
+            'is_deleted' => 0,
+            'deleted_at' => 0,
             'participants' => [
                 [
                     'userId' => $host['id'],
@@ -685,10 +622,12 @@ class TaskRoozDB {
     }
 
     public function getFocusRoom($roomId) {
+        $this->purgeExpiredDeletedRooms();
         if (!isset($this->data['rooms'])) return null;
         foreach ($this->data['rooms'] as &$r) {
             if ($r['id'] === $roomId) {
-                if (!empty($r['isRunning']) && !empty($r['lastUpdated'])) {
+                // If room running, compute real-time elapsed
+                if (!empty($r['isRunning']) && !empty($r['lastUpdated']) && empty($r['is_deleted'])) {
                     $nowMs = round(microtime(true) * 1000);
                     $elapsedSeconds = floor(($nowMs - $r['lastUpdated']) / 1000);
                     if ($elapsedSeconds > 0) {
@@ -715,7 +654,12 @@ class TaskRoozDB {
     }
 
     public function listFocusRooms() {
+        $this->purgeExpiredDeletedRooms();
         if (!isset($this->data['rooms'])) return [];
+        $activeOnly = array_filter($this->data['rooms'], function($r) {
+            return empty($r['is_deleted']);
+        });
+
         return array_map(function($r) {
             return [
                 'id' => $r['id'],
@@ -726,13 +670,18 @@ class TaskRoozDB {
                 'mode' => $r['mode'],
                 'createdAt' => $r['createdAt'],
             ];
-        }, array_slice(array_reverse($this->data['rooms']), 0, 10));
+        }, array_slice(array_reverse(array_values($activeOnly)), 0, 15));
     }
 
     public function joinFocusRoom($roomId, $user) {
+        $this->purgeExpiredDeletedRooms();
         if (!isset($this->data['rooms'])) return null;
         foreach ($this->data['rooms'] as &$r) {
             if ($r['id'] === $roomId) {
+                if (!empty($r['is_deleted'])) {
+                    return $r; // allow viewing closed room during retention period
+                }
+
                 $found = false;
                 foreach ($r['participants'] as &$p) {
                     if ($p['userId'] === $user['id']) {
@@ -770,7 +719,7 @@ class TaskRoozDB {
     public function syncFocusRoomTimer($roomId, $user, $action, $timeLeft = null, $mode = null) {
         if (!isset($this->data['rooms'])) return null;
         foreach ($this->data['rooms'] as &$r) {
-            if ($r['id'] === $roomId) {
+            if ($r['id'] === $roomId && empty($r['is_deleted'])) {
                 $nowMs = round(microtime(true) * 1000);
                 if ($action === 'start') {
                     $r['isRunning'] = true;
@@ -817,8 +766,8 @@ class TaskRoozDB {
                     'text' => trim($text),
                     'timestamp' => date('H:i'),
                 ];
-                if (count($r['messages']) > 40) {
-                    $r['messages'] = array_slice($r['messages'], -40);
+                if (count($r['messages']) > 50) {
+                    $r['messages'] = array_slice($r['messages'], -50);
                 }
                 $this->saveJson();
                 return $r;
@@ -838,6 +787,130 @@ class TaskRoozDB {
                 return true;
             }
         }
+        return true;
+    }
+
+    public function deleteFocusRoom($roomId, $userId, $isAdmin = false) {
+        if (!isset($this->data['rooms'])) return false;
+        foreach ($this->data['rooms'] as &$r) {
+            if ($r['id'] === $roomId) {
+                if ($r['hostId'] !== $userId && !$isAdmin) {
+                    return false;
+                }
+
+                // Mark soft deleted with timestamp. Messages kept for 10 minutes.
+                $r['is_deleted'] = 1;
+                $r['deleted_at'] = time();
+                $r['isRunning'] = false;
+                $r['messages'][] = [
+                    'id' => 'msg_' . time(),
+                    'userId' => 'system',
+                    'userName' => 'سیستم',
+                    'text' => 'این اتاق توسط میزبان بسته شد. پیام‌ها تا ۱۰ دقیقه نگه‌داری شده و سپس حذف خواهند شد. 🔒',
+                    'timestamp' => date('H:i'),
+                ];
+                $this->saveJson();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // --- Team Projects ---
+    public function createTeamProject($name, $description, $color, $icon, $creator, $memberIds = []) {
+        $id = 'proj_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4);
+        if (!is_array($memberIds)) $memberIds = [];
+        if (!in_array($creator['id'], $memberIds)) {
+            $memberIds[] = $creator['id'];
+        }
+
+        $project = [
+            'id' => $id,
+            'name' => trim($name),
+            'description' => trim($description ?? ''),
+            'color' => $color ?: '#6366f1',
+            'icon' => $icon ?: 'Folder',
+            'creatorId' => $creator['id'],
+            'creatorName' => $creator['name'],
+            'memberIds' => $memberIds,
+            'createdAt' => date('Y-m-d H:i:s'),
+        ];
+
+        if (!isset($this->data['projects'])) {
+            $this->data['projects'] = [];
+        }
+        $this->data['projects'][] = $project;
+        $this->saveJson();
+        return $project;
+    }
+
+    public function getAllTeamProjects($userId = null, $isAdmin = false) {
+        if (!isset($this->data['projects'])) return [];
+
+        $projects = [];
+        foreach ($this->data['projects'] as $p) {
+            // Admin sees all, regular users see projects they created or belong to
+            if (!$isAdmin && $userId) {
+                $isMember = in_array($userId, $p['memberIds'] ?? []) || ($p['creatorId'] === $userId);
+                if (!$isMember) continue;
+            }
+
+            // Calculate task progress for this project
+            $total = 0;
+            $done = 0;
+            foreach ($this->data['tasks'] as $t) {
+                if (($t['project_id'] ?? '') === $p['id']) {
+                    $total++;
+                    if (!empty($t['completed'])) $done++;
+                }
+            }
+
+            $item = $p;
+            $item['totalTasks'] = $total;
+            $item['completedTasks'] = $done;
+            $item['progressPercent'] = $total > 0 ? round(($done / $total) * 100) : 0;
+            $projects[] = $item;
+        }
+
+        return array_reverse($projects);
+    }
+
+    public function getTeamProject($id) {
+        if (!isset($this->data['projects'])) return null;
+        foreach ($this->data['projects'] as $p) {
+            if ($p['id'] === $id) return $p;
+        }
+        return null;
+    }
+
+    public function updateTeamProject($id, $name, $description, $color, $icon, $memberIds) {
+        if (!isset($this->data['projects'])) return false;
+        foreach ($this->data['projects'] as &$p) {
+            if ($p['id'] === $id) {
+                if (isset($name)) $p['name'] = trim($name);
+                if (isset($description)) $p['description'] = trim($description);
+                if (isset($color)) $p['color'] = $color;
+                if (isset($icon)) $p['icon'] = $icon;
+                if (is_array($memberIds)) $p['memberIds'] = $memberIds;
+                $this->saveJson();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function deleteTeamProject($id) {
+        if (!isset($this->data['projects'])) return false;
+        $this->data['projects'] = array_values(array_filter($this->data['projects'], function($p) use ($id) {
+            return $p['id'] !== $id;
+        }));
+        // Unlink tasks
+        foreach ($this->data['tasks'] as &$t) {
+            if (($t['project_id'] ?? '') === $id) {
+                $t['project_id'] = null;
+            }
+        }
+        $this->saveJson();
         return true;
     }
 }

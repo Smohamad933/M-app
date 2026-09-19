@@ -21,8 +21,9 @@ if ($method === 'GET') {
     $date = !empty($_GET['date']) ? $_GET['date'] : null;
     $categoryId = !empty($_GET['category_id']) ? $_GET['category_id'] : null;
     $completed = isset($_GET['completed']) ? (bool)$_GET['completed'] : null;
+    $projectId = !empty($_GET['project_id']) ? $_GET['project_id'] : null;
 
-    $tasks = $db->getTasks($targetUserId, $date, $categoryId, $completed);
+    $tasks = $db->getTasks($targetUserId, $date, $categoryId, $completed, $projectId);
     jsonResponse(['tasks' => $tasks]);
 }
 
@@ -50,6 +51,7 @@ if ($method === 'POST') {
         'durationMinutes' => (int)($input['durationMinutes'] ?? 0),
         'priority' => in_array($input['priority'] ?? '', ['high', 'medium', 'low']) ? $input['priority'] : 'medium',
         'categoryId' => $input['categoryId'] ?? 'cat-work',
+        'projectId' => $input['projectId'] ?? null,
         'isPinned' => !empty($input['isPinned']) ? 1 : 0,
         'subtasks' => !empty($input['subtasks']) ? $input['subtasks'] : [],
     ];
@@ -82,6 +84,7 @@ if ($method === 'PUT') {
         'durationMinutes' => isset($input['durationMinutes']) ? (int)$input['durationMinutes'] : null,
         'priority' => $input['priority'] ?? null,
         'categoryId' => $input['categoryId'] ?? null,
+        'projectId' => array_key_exists('projectId', $input) ? $input['projectId'] : null,
         'isPinned' => isset($input['isPinned']) ? $input['isPinned'] : null,
         'subtasks' => isset($input['subtasks']) ? $input['subtasks'] : null,
         'completed' => isset($input['completed']) ? $input['completed'] : null,

@@ -53,5 +53,37 @@
       "icon": "CreditCard",
       "isDefault": true
     }
+  ],
+  "focus_rooms": [],
+  "projects": [
+    {
+      "id": "proj_1789837429737_pz7m",
+      "name": "پروژه بازطراحی پلتفرم",
+      "description": "بهبود UX و یکپارچه‌سازی تایمر گروهی و پروژه‌ها",
+      "color": "#10b981",
+      "icon": "Rocket",
+      "creatorId": "usr_admin_1",
+      "creatorName": "مدیر سیستم",
+      "memberIds": [
+        "usr_admin_1"
+      ],
+      "createdAt": "۱۴۰۵/۶/۲۸",
+      "totalTasks": 0,
+      "completedTasks": 0,
+      "progressPercent": 0
+    },
+    {
+      "id": "proj_alpha_1",
+      "name": "پروژه آلفا (توسعه تسک‌روز)",
+      "description": "طراحی رابط کاربری مدرن، سیستم تمرکز گروهی پومودورو و مدیریت پروژه‌ها",
+      "color": "#6366f1",
+      "icon": "FolderKanban",
+      "creatorId": "usr_admin_1",
+      "creatorName": "مدیر سیستم",
+      "memberIds": [
+        "usr_admin_1"
+      ],
+      "createdAt": "2026-09-19"
+    }
   ]
 }

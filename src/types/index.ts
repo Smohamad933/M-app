@@ -22,6 +22,8 @@ export interface Task {
   id: string;
   userId: string;
   userName?: string;
+  projectId?: string;
+  projectName?: string;
   title: string;
   description?: string;
   date: string; // YYYY-MM-DD
@@ -49,7 +51,22 @@ export interface Category {
   isDefault?: boolean;
 }
 
-export type TabType = 'dashboard' | 'tasks' | 'calendar' | 'focus' | 'categories' | 'stats' | 'users';
+export interface TeamProject {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  icon: string;
+  creatorId: string;
+  creatorName: string;
+  memberIds: string[];
+  createdAt: string;
+  totalTasks?: number;
+  completedTasks?: number;
+  progressPercent?: number;
+}
+
+export type TabType = 'dashboard' | 'tasks' | 'calendar' | 'focus' | 'projects' | 'categories' | 'stats' | 'users';
 
 export type TaskViewMode = 'list' | 'kanban' | 'calendar';
 
@@ -71,10 +88,12 @@ export interface AppSettings {
 
 export interface RoomParticipant {
   userId: string;
-  name: string;
-  username: string;
-  role: UserRole;
-  status: 'focusing' | 'break' | 'idle' | 'completed';
+  name?: string;
+  userName?: string;
+  username?: string;
+  role?: UserRole;
+  isHost?: boolean;
+  status?: 'focusing' | 'break' | 'idle' | 'completed';
   joinedAt: string;
   lastPing: number;
 }
@@ -100,5 +119,7 @@ export interface FocusRoom {
   lastUpdated: number;
   participants: RoomParticipant[];
   messages: RoomMessage[];
+  isDeleted?: boolean;
+  deletedAt?: number; // epoch timestamp in seconds
   createdAt: string;
 }
