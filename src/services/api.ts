@@ -1,9 +1,27 @@
-import type { Task, User, Category } from '../types';
+import type { Task, User, Category, FocusRoom } from '../types';
 import { DEFAULT_CATEGORIES } from '../utils/storage';
 
 const TOKEN_KEY = 'taskrooz_auth_token';
 const USERS_STORAGE_KEY = 'taskrooz_users_local';
 const TASKS_STORAGE_KEY = 'taskrooz_tasks_local';
+const ROOMS_STORAGE_KEY = 'taskrooz_rooms_local';
+
+function getLocalRooms(): FocusRoom[] {
+  try {
+    const raw = localStorage.getItem(ROOMS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalRooms(rooms: FocusRoom[]) {
+  try {
+    localStorage.setItem(ROOMS_STORAGE_KEY, JSON.stringify(rooms));
+  } catch {
+    // ignore
+  }
+}
 
 export function getAuthToken(): string | null {
   try {
@@ -435,6 +453,224 @@ export const api = {
         focusMinutes: 0,
         totalUsers: 1,
       };
+    }
+  },
+
+  // Focus Rooms (Group Pomodoro)
+  async createFocusRoom(name: string, focusDuration = 1500, breakDuration = 300): Promise<FocusRoom> {
+    try {
+      const data = await request<{ room: FocusRoom; message: string }>('api/rooms.php?action=create', {
+        method: 'POST',
+        body: JSON.stringify({ name, focusDuration, breakDuration }),
+      });
+      return data.room;
+    } catch {
+      const rooms = getLocalRooms();
+      const currentUser = await this.getCurrentUser();
+      const newRoom: FocusRoom = {
+        id: 'room_' + Math.random().toString(36).substr(2, 6),
+        name: name.trim() || 'اتاق تمرکز گروهی',
+        hostId: currentUser?.id || 'usr_admin_1',
+        hostName: currentUser?.name || 'شما',
+        focusDuration,
+        breakDuration,
+        mode: 'focus',
+        isRunning: false,
+        timeLeft: focusDuration,
+        lastUpdated: Date.now(),
+        participants: [
+          {
+            userId: currentUser?.id || 'usr_admin_1',
+            name: currentUser?.name || 'شما',
+            username: currentUser?.username || 'user',
+            role: currentUser?.role || 'user',
+            status: 'focusing',
+            joinedAt: new Date().toISOString(),
+            lastPing: Date.now(),
+          },
+        ],
+        messages: [
+          {
+            id: 'msg_' + Date.now(),
+            userId: 'system',
+            userName: 'سیستم',
+            text: 'اتاق تمرکز گروهی ایجاد شد. به تمرکز خوش آمدید! 🎯',
+            timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+          },
+        ],
+        createdAt: new Date().toISOString(),
+      };
+      rooms.unshift(newRoom);
+      saveLocalRooms(rooms);
+      return newRoom;
+    }
+  },
+
+  async getFocusRoom(roomId: string): Promise<FocusRoom | null> {
+    try {
+      const data = await request<{ room: FocusRoom }>(`api/rooms.php?action=get&room_id=${encodeURIComponent(roomId)}`);
+      return data.room;
+    } catch {
+      const rooms = getLocalRooms();
+      const found = rooms.find((r) => r.id === roomId);
+      return found || null;
+    }
+  },
+
+  async joinFocusRoom(roomId: string): Promise<FocusRoom> {
+    try {
+      const data = await request<{ room: FocusRoom }>(`api/rooms.php?action=join`, {
+        method: 'POST',
+        body: JSON.stringify({ roomId }),
+      });
+      return data.room;
+    } catch {
+      const rooms = getLocalRooms();
+      const currentUser = await this.getCurrentUser();
+      let room = rooms.find((r) => r.id === roomId);
+      if (!room) {
+        // Create auto room if not existing locally
+        room = {
+          id: roomId,
+          name: 'اتاق تمرکز مشترک',
+          hostId: currentUser?.id || 'usr_admin_1',
+          hostName: currentUser?.name || 'کاربر',
+          focusDuration: 1500,
+          breakDuration: 300,
+          mode: 'focus',
+          isRunning: false,
+          timeLeft: 1500,
+          lastUpdated: Date.now(),
+          participants: [],
+          messages: [],
+          createdAt: new Date().toISOString(),
+        };
+        rooms.push(room);
+      }
+
+      const pIdx = room.participants.findIndex((p) => p.userId === (currentUser?.id || 'usr_admin_1'));
+      if (pIdx >= 0) {
+        room.participants[pIdx].lastPing = Date.now();
+      } else {
+        room.participants.push({
+          userId: currentUser?.id || 'usr_guest',
+          name: currentUser?.name || 'کاربر جدید',
+          username: currentUser?.username || 'user',
+          role: currentUser?.role || 'user',
+          status: 'focusing',
+          joinedAt: new Date().toISOString(),
+          lastPing: Date.now(),
+        });
+        room.messages.push({
+          id: 'msg_' + Date.now(),
+          userId: 'system',
+          userName: 'سیستم',
+          text: `${currentUser?.name || 'کاربر جدید'} به اتاق ملحق شد 👋`,
+          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+        });
+      }
+      saveLocalRooms(rooms);
+      return room;
+    }
+  },
+
+  async syncFocusRoomTimer(
+    roomId: string,
+    timerAction: 'start' | 'pause' | 'reset' | 'setMode',
+    timeLeft?: number,
+    mode?: string
+  ): Promise<FocusRoom> {
+    try {
+      const data = await request<{ room: FocusRoom }>('api/rooms.php?action=sync', {
+        method: 'POST',
+        body: JSON.stringify({ roomId, timerAction, timeLeft, mode }),
+      });
+      return data.room;
+    } catch {
+      const rooms = getLocalRooms();
+      const room = rooms.find((r) => r.id === roomId);
+      if (room) {
+        if (timerAction === 'start') {
+          room.isRunning = true;
+          room.lastUpdated = Date.now();
+          if (timeLeft !== undefined) room.timeLeft = timeLeft;
+          if (mode) room.mode = mode as any;
+        } else if (timerAction === 'pause') {
+          room.isRunning = false;
+          room.lastUpdated = Date.now();
+          if (timeLeft !== undefined) room.timeLeft = timeLeft;
+        } else if (timerAction === 'reset') {
+          room.isRunning = false;
+          room.lastUpdated = Date.now();
+          room.timeLeft = room.mode === 'focus' ? room.focusDuration : room.breakDuration;
+        } else if (timerAction === 'setMode') {
+          room.mode = (mode as any) || 'focus';
+          room.isRunning = false;
+          room.timeLeft = room.mode === 'focus' ? room.focusDuration : room.breakDuration;
+          room.lastUpdated = Date.now();
+        }
+        saveLocalRooms(rooms);
+        return room;
+      }
+      throw new Error('اتاق یافت نشد.');
+    }
+  },
+
+  async sendFocusRoomMessage(roomId: string, text: string): Promise<FocusRoom> {
+    try {
+      const data = await request<{ room: FocusRoom }>('api/rooms.php?action=message', {
+        method: 'POST',
+        body: JSON.stringify({ roomId, text }),
+      });
+      return data.room;
+    } catch {
+      const rooms = getLocalRooms();
+      const currentUser = await this.getCurrentUser();
+      const room = rooms.find((r) => r.id === roomId);
+      if (room) {
+        room.messages.push({
+          id: 'msg_' + Date.now(),
+          userId: currentUser?.id || 'usr_guest',
+          userName: currentUser?.name || 'کاربر',
+          text: text.trim(),
+          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+        });
+        saveLocalRooms(rooms);
+        return room;
+      }
+      throw new Error('اتاق یافت نشد.');
+    }
+  },
+
+  async leaveFocusRoom(roomId: string): Promise<void> {
+    try {
+      await request('api/rooms.php?action=leave', {
+        method: 'POST',
+        body: JSON.stringify({ roomId }),
+      });
+    } catch {
+      const currentUser = await this.getCurrentUser();
+      const rooms = getLocalRooms();
+      const room = rooms.find((r) => r.id === roomId);
+      if (room && currentUser) {
+        room.participants = room.participants.filter((p) => p.userId !== currentUser.id);
+        saveLocalRooms(rooms);
+      }
+    }
+  },
+
+  async getActiveFocusRooms(): Promise<Array<{ id: string; name: string; hostName: string; participantCount: number; isRunning: boolean }>> {
+    try {
+      const data = await request<{ rooms: any[] }>('api/rooms.php?action=list');
+      return data.rooms;
+    } catch {
+      return getLocalRooms().map((r) => ({
+        id: r.id,
+        name: r.name,
+        hostName: r.hostName,
+        participantCount: r.participants.length,
+        isRunning: r.isRunning,
+      }));
     }
   },
 };

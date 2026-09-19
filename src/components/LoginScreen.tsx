@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 import { useTask } from '../context/TaskContext';
-import { CheckSquare, Lock, User, ArrowLeft, UserPlus, LogIn, Sparkles } from 'lucide-react';
+import { CheckSquare, Lock, User, ArrowLeft, UserPlus, LogIn, Sparkles, Timer } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
   const { login, register } = useTask();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   
+  // Detect if user is joining via room invite link
+  const inviteRoom = typeof window !== 'undefined' 
+    ? (new URLSearchParams(window.location.search).get('room') || 
+       new URLSearchParams(window.location.search).get('room_id') || 
+       sessionStorage.getItem('taskrooz_pending_room'))
+    : null;
+
   // Form fields (all blank by default - no hardcoded admin credentials)
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -80,6 +87,19 @@ export const LoginScreen: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {/* Room Invite Banner */}
+        {inviteRoom && (
+          <div className="p-3 rounded-2xl bg-indigo-950/40 text-indigo-300 text-xs border border-indigo-800/60 text-center font-bold animate-in fade-in space-y-1">
+            <div className="flex items-center justify-center gap-1.5 text-white">
+              <Timer className="w-4 h-4 text-indigo-400" />
+              <span>دعوت‌نامه اتاق تمرکز گروهی</span>
+            </div>
+            <p className="text-[11px] font-normal text-indigo-200">
+              وارد شوید یا حساب بسازید تا مستقیماً به اتاق متصل شوید.
+            </p>
+          </div>
+        )}
 
         {/* Tab switch between Login and Register */}
         <div className="grid grid-cols-2 p-1 bg-zinc-950/70 rounded-2xl border border-zinc-800 text-xs font-bold">

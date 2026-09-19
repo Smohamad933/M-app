@@ -68,3 +68,37 @@ export interface AppSettings {
   hapticEnabled: boolean;
   theme: 'dark' | 'light' | 'system';
 }
+
+export interface RoomParticipant {
+  userId: string;
+  name: string;
+  username: string;
+  role: UserRole;
+  status: 'focusing' | 'break' | 'idle' | 'completed';
+  joinedAt: string;
+  lastPing: number;
+}
+
+export interface RoomMessage {
+  id: string;
+  userId: string;
+  userName: string;
+  text: string;
+  timestamp: string;
+}
+
+export interface FocusRoom {
+  id: string;
+  name: string;
+  hostId: string;
+  hostName: string;
+  focusDuration: number; // seconds
+  breakDuration: number; // seconds
+  mode: 'focus' | 'shortBreak' | 'longBreak';
+  isRunning: boolean;
+  timeLeft: number;
+  lastUpdated: number;
+  participants: RoomParticipant[];
+  messages: RoomMessage[];
+  createdAt: string;
+}

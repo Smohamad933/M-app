@@ -638,4 +638,206 @@ class TaskRoozDB {
             'createdAt' => $row['created_at'] ?? date('Y-m-d H:i:s'),
         ];
     }
+
+    // --- Focus Rooms (Pomodoro Group Focus) ---
+    public function createFocusRoom($name, $host, $focusDuration = 1500, $breakDuration = 300) {
+        $roomId = 'room_' . substr(bin2hex(random_bytes(3)), 0, 6);
+        $room = [
+            'id' => $roomId,
+            'name' => trim($name) ?: 'اتاق تمرکز گروهی',
+            'hostId' => $host['id'],
+            'hostName' => $host['name'],
+            'focusDuration' => (int)$focusDuration,
+            'breakDuration' => (int)$breakDuration,
+            'mode' => 'focus',
+            'isRunning' => false,
+            'timeLeft' => (int)$focusDuration,
+            'lastUpdated' => round(microtime(true) * 1000),
+            'participants' => [
+                [
+                    'userId' => $host['id'],
+                    'name' => $host['name'],
+                    'username' => $host['username'],
+                    'role' => $host['role'],
+                    'status' => 'focusing',
+                    'joinedAt' => date('Y-m-d H:i:s'),
+                    'lastPing' => time(),
+                ]
+            ],
+            'messages' => [
+                [
+                    'id' => 'msg_' . time(),
+                    'userId' => 'system',
+                    'userName' => 'سیستم',
+                    'text' => 'اتاق تمرکز گروهی توسط ' . $host['name'] . ' ایجاد شد. به تمرکز خوش آمدید! 🎯',
+                    'timestamp' => date('H:i'),
+                ]
+            ],
+            'createdAt' => date('Y-m-d H:i:s'),
+        ];
+
+        if (!isset($this->data['rooms'])) {
+            $this->data['rooms'] = [];
+        }
+        $this->data['rooms'][] = $room;
+        $this->saveJson();
+        return $room;
+    }
+
+    public function getFocusRoom($roomId) {
+        if (!isset($this->data['rooms'])) return null;
+        foreach ($this->data['rooms'] as &$r) {
+            if ($r['id'] === $roomId) {
+                if (!empty($r['isRunning']) && !empty($r['lastUpdated'])) {
+                    $nowMs = round(microtime(true) * 1000);
+                    $elapsedSeconds = floor(($nowMs - $r['lastUpdated']) / 1000);
+                    if ($elapsedSeconds > 0) {
+                        $newTimeLeft = max(0, $r['timeLeft'] - $elapsedSeconds);
+                        $r['timeLeft'] = $newTimeLeft;
+                        $r['lastUpdated'] = $nowMs;
+                        if ($newTimeLeft === 0) {
+                            $r['isRunning'] = false;
+                            if ($r['mode'] === 'focus') {
+                                $r['mode'] = 'shortBreak';
+                                $r['timeLeft'] = $r['breakDuration'];
+                            } else {
+                                $r['mode'] = 'focus';
+                                $r['timeLeft'] = $r['focusDuration'];
+                            }
+                        }
+                        $this->saveJson();
+                    }
+                }
+                return $r;
+            }
+        }
+        return null;
+    }
+
+    public function listFocusRooms() {
+        if (!isset($this->data['rooms'])) return [];
+        return array_map(function($r) {
+            return [
+                'id' => $r['id'],
+                'name' => $r['name'],
+                'hostName' => $r['hostName'],
+                'participantCount' => count($r['participants'] ?? []),
+                'isRunning' => !empty($r['isRunning']),
+                'mode' => $r['mode'],
+                'createdAt' => $r['createdAt'],
+            ];
+        }, array_slice(array_reverse($this->data['rooms']), 0, 10));
+    }
+
+    public function joinFocusRoom($roomId, $user) {
+        if (!isset($this->data['rooms'])) return null;
+        foreach ($this->data['rooms'] as &$r) {
+            if ($r['id'] === $roomId) {
+                $found = false;
+                foreach ($r['participants'] as &$p) {
+                    if ($p['userId'] === $user['id']) {
+                        $p['lastPing'] = time();
+                        $p['status'] = $r['isRunning'] ? ($r['mode'] === 'focus' ? 'focusing' : 'break') : 'idle';
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    $r['participants'][] = [
+                        'userId' => $user['id'],
+                        'name' => $user['name'],
+                        'username' => $user['username'],
+                        'role' => $user['role'],
+                        'status' => 'focusing',
+                        'joinedAt' => date('Y-m-d H:i:s'),
+                        'lastPing' => time(),
+                    ];
+                    $r['messages'][] = [
+                        'id' => 'msg_' . time() . '_' . rand(10, 99),
+                        'userId' => 'system',
+                        'userName' => 'سیستم',
+                        'text' => $user['name'] . ' به اتاق تمرکز پیوست 👋',
+                        'timestamp' => date('H:i'),
+                    ];
+                }
+                $this->saveJson();
+                return $r;
+            }
+        }
+        return null;
+    }
+
+    public function syncFocusRoomTimer($roomId, $user, $action, $timeLeft = null, $mode = null) {
+        if (!isset($this->data['rooms'])) return null;
+        foreach ($this->data['rooms'] as &$r) {
+            if ($r['id'] === $roomId) {
+                $nowMs = round(microtime(true) * 1000);
+                if ($action === 'start') {
+                    $r['isRunning'] = true;
+                    $r['lastUpdated'] = $nowMs;
+                    if ($timeLeft !== null) $r['timeLeft'] = (int)$timeLeft;
+                    if ($mode) $r['mode'] = $mode;
+                } elseif ($action === 'pause') {
+                    $r['isRunning'] = false;
+                    $r['lastUpdated'] = $nowMs;
+                    if ($timeLeft !== null) $r['timeLeft'] = (int)$timeLeft;
+                } elseif ($action === 'reset') {
+                    $r['isRunning'] = false;
+                    $r['lastUpdated'] = $nowMs;
+                    $r['timeLeft'] = $r['mode'] === 'focus' ? $r['focusDuration'] : $r['breakDuration'];
+                } elseif ($action === 'setMode') {
+                    $r['mode'] = $mode ?: 'focus';
+                    $r['isRunning'] = false;
+                    $r['timeLeft'] = $r['mode'] === 'focus' ? $r['focusDuration'] : $r['breakDuration'];
+                    $r['lastUpdated'] = $nowMs;
+                }
+
+                foreach ($r['participants'] as &$p) {
+                    if ($p['userId'] === $user['id']) {
+                        $p['lastPing'] = time();
+                        $p['status'] = $r['isRunning'] ? ($r['mode'] === 'focus' ? 'focusing' : 'break') : 'idle';
+                    }
+                }
+
+                $this->saveJson();
+                return $r;
+            }
+        }
+        return null;
+    }
+
+    public function addFocusRoomMessage($roomId, $user, $text) {
+        if (!isset($this->data['rooms'])) return null;
+        foreach ($this->data['rooms'] as &$r) {
+            if ($r['id'] === $roomId) {
+                $r['messages'][] = [
+                    'id' => 'msg_' . time() . '_' . rand(10, 99),
+                    'userId' => $user['id'],
+                    'userName' => $user['name'],
+                    'text' => trim($text),
+                    'timestamp' => date('H:i'),
+                ];
+                if (count($r['messages']) > 40) {
+                    $r['messages'] = array_slice($r['messages'], -40);
+                }
+                $this->saveJson();
+                return $r;
+            }
+        }
+        return null;
+    }
+
+    public function leaveFocusRoom($roomId, $userId) {
+        if (!isset($this->data['rooms'])) return true;
+        foreach ($this->data['rooms'] as &$r) {
+            if ($r['id'] === $roomId) {
+                $r['participants'] = array_values(array_filter($r['participants'], function($p) use ($userId) {
+                    return $p['userId'] !== $userId;
+                }));
+                $this->saveJson();
+                return true;
+            }
+        }
+        return true;
+    }
 }

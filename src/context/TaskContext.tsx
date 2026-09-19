@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import type { Task, Category, AppSettings, DailyStreak, TabType, FilterStatus, User, TaskViewMode, TaskCreateInput } from '../types';
+import type { Task, Category, AppSettings, DailyStreak, TabType, FilterStatus, User, TaskViewMode, TaskCreateInput, FocusRoom } from '../types';
 import { api } from '../services/api';
 import { getTodayISO, formatPersianDate, toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
@@ -33,6 +33,16 @@ interface TaskContextType {
   updateUser: (data: { id: string; name: string; role: 'admin' | 'user'; password?: string }) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   refreshUsers: () => Promise<void>;
+
+  // Group Focus Rooms (Pomodoro Rooms)
+  activeRoomId: string | null;
+  activeRoom: FocusRoom | null;
+  joinFocusRoom: (roomId: string) => Promise<boolean>;
+  leaveFocusRoom: () => Promise<void>;
+  createFocusRoom: (name: string, focusDuration?: number, breakDuration?: number) => Promise<FocusRoom>;
+  syncRoomTimer: (action: 'start' | 'pause' | 'reset' | 'setMode', timeLeft?: number, mode?: string) => Promise<void>;
+  sendRoomMessage: (text: string) => Promise<void>;
+  refreshActiveRoom: () => Promise<void>;
 
   // Navigation & Filters
   setSelectedDate: (date: string) => void;
@@ -102,6 +112,10 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeFocusTaskId, setActiveFocusTaskId] = useState<string | null>(null);
 
+  // Group Focus Room State
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  const [activeRoom, setActiveRoom] = useState<FocusRoom | null>(null);
+
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -119,16 +133,115 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [settings]);
 
+  const refreshActiveRoom = useCallback(async () => {
+    if (!activeRoomId) return;
+    try {
+      const room = await api.getFocusRoom(activeRoomId);
+      if (room) {
+        setActiveRoom(room);
+      }
+    } catch {
+      // ignore
+    }
+  }, [activeRoomId]);
+
+  // Periodic polling for active room (sync timer and participants)
+  useEffect(() => {
+    if (!activeRoomId) return;
+    refreshActiveRoom();
+    const interval = setInterval(refreshActiveRoom, 2500);
+    return () => clearInterval(interval);
+  }, [activeRoomId, refreshActiveRoom]);
+
+  const joinFocusRoom = async (roomId: string): Promise<boolean> => {
+    try {
+      const room = await api.joinFocusRoom(roomId);
+      setActiveRoomId(room.id);
+      setActiveRoom(room);
+      setActiveTab('focus');
+      sounds.playComplete();
+      return true;
+    } catch (e: any) {
+      alert(e.message || 'خطا در ورود به اتاق.');
+      return false;
+    }
+  };
+
+  const leaveFocusRoom = async () => {
+    if (activeRoomId) {
+      await api.leaveFocusRoom(activeRoomId);
+    }
+    setActiveRoomId(null);
+    setActiveRoom(null);
+    sounds.playPop();
+  };
+
+  const createFocusRoom = async (name: string, focusDuration = 1500, breakDuration = 300): Promise<FocusRoom> => {
+    const room = await api.createFocusRoom(name, focusDuration, breakDuration);
+    setActiveRoomId(room.id);
+    setActiveRoom(room);
+    setActiveTab('focus');
+    sounds.playComplete();
+    return room;
+  };
+
+  const syncRoomTimer = async (action: 'start' | 'pause' | 'reset' | 'setMode', timeLeft?: number, mode?: string) => {
+    if (!activeRoomId) return;
+    try {
+      const updated = await api.syncFocusRoomTimer(activeRoomId, action, timeLeft, mode);
+      setActiveRoom(updated);
+    } catch {
+      // ignore
+    }
+  };
+
+  const sendRoomMessage = async (text: string) => {
+    if (!activeRoomId || !text.trim()) return;
+    try {
+      const updated = await api.sendFocusRoomMessage(activeRoomId, text);
+      setActiveRoom(updated);
+      sounds.playPop();
+    } catch {
+      // ignore
+    }
+  };
+
+  // Helper to check pending room invite after auth
+  const checkPendingRoomInvite = async () => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlRoom = urlParams.get('room') || urlParams.get('room_id');
+      const pendingRoom = urlRoom || sessionStorage.getItem('taskrooz_pending_room');
+      if (pendingRoom) {
+        sessionStorage.removeItem('taskrooz_pending_room');
+        await joinFocusRoom(pendingRoom);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   // Load initial data
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
+        // Save invite room from URL if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const inviteRoom = urlParams.get('room') || urlParams.get('room_id');
+        if (inviteRoom) {
+          sessionStorage.setItem('taskrooz_pending_room', inviteRoom);
+        }
+
         const user = await api.getCurrentUser();
         if (user) {
           setCurrentUser(user);
+          // If already logged in, join the room directly!
+          if (inviteRoom) {
+            sessionStorage.removeItem('taskrooz_pending_room');
+            await joinFocusRoom(inviteRoom);
+          }
         }
-        // Do NOT auto-login: default to login screen if not authenticated
 
         const cats = await api.getCategories();
         setCategories(cats);
@@ -177,6 +290,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await api.login(username, password);
       setCurrentUser(res.user);
       sounds.playComplete();
+      await checkPendingRoomInvite();
       return true;
     } catch (e: any) {
       throw e;
@@ -188,6 +302,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await api.register(data);
       setCurrentUser(res.user);
       sounds.playComplete();
+      await checkPendingRoomInvite();
       return true;
     } catch (e: any) {
       throw e;
@@ -435,6 +550,14 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSearchQuery,
       setActiveFocusTaskId,
       setIsShareModalOpen,
+      activeRoomId,
+      activeRoom,
+      joinFocusRoom,
+      leaveFocusRoom,
+      createFocusRoom,
+      syncRoomTimer,
+      sendRoomMessage,
+      refreshActiveRoom,
       addTask,
       updateTask,
       deleteTask,
