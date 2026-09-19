@@ -1,87 +1,40 @@
-# راهنمای جامع راه‌اندازی و اجرای «تسک‌روز» روی وب‌سرور IIS ویندوز 🚀
+# راهنمای استقرار و رفع مشکل در ویندوز سرور و IIS 🚀
 
-این پروژه کاملاً بر مبنای **PHP** و سازگار با وب‌سرور **Microsoft IIS (Internet Information Services)** در ویندوز سرور و ویندوز ۱۰/۱۱ طراحی شده است.
-
----
-
-## ۱. پیش‌نیازهای ویندوز
-
-1. **فعال‌سازی IIS و CGI در ویندوز**:
-   - به `Control Panel > Programs > Turn Windows features on or off` بروید.
-   - تیک گزینه‌های زیر را بزنید:
-     - `Internet Information Services`
-     - `World Wide Web Services > Application Development Features > CGI` (برای اجرای FastCGI در PHP الزامی است).
-     - `Common HTTP Features` (Static Content, Default Document).
-   - روی OK کلیک کنید تا نصب انجام شود.
-
-2. **نصب ماژول URL Rewrite روی IIS**:
-   - فایل نصبی رسمی مایکروسافت را دانلود و نصب کنید:
-     👉 [دانلود Microsoft URL Rewrite Module 2.1](https://www.iis.net/downloads/microsoft/url-rewrite)
-
-3. **نصب PHP روی ویندوز**:
-   - پیشنهاد می‌شود نسخه **PHP 8.2 یا 8.3 Non-Thread Safe (NTS) x64** را از [windows.php.net](https://windows.php.net/download/) دانلود کرده و در مسیر `C:\PHP` اکسترکت کنید.
-   - فایل `php.ini-production` را به `php.ini` تغییر نام دهید و خطوط زیر را فعال کنید (برداشتن `;` اول خط):
-     ```ini
-     extension_dir = "ext"
-     extension=pdo_sqlite
-     extension=sqlite3
-     extension=mbstring
-     extension=curl
-     extension=fileinfo
-     
-     cgi.force_redirect = 0
-     cgi.fix_pathinfo = 1
-     fastcgi.impersonate = 1
-     ```
-
-4. **اتصال PHP به IIS (Handler Mappings)**:
-   - در **IIS Manager**:
-   - روی سرور یا سایت کلیک کنید و گزینه **Handler Mappings** را باز کنید.
-   - در ستون سمت راست گزینه **Add Module Mapping** را بزنید:
-     - Request path: `*.php`
-     - Module: `FastCgiModule`
-     - Executable: `C:\PHP\php-cgi.exe`
-     - Name: `PHP_via_FastCGI`
-   - تایید کنید.
+اگر پس از استقرار یا دانلود، با صفحه سفید مواجه شدید، این راهنما را بررسی کنید.
 
 ---
 
-## ۲. استقرار و راه‌اندازی پروژه
+## 🔍 دلیل نمایش صفحه سفید و راه حل قطعی
 
-1. پوشه پروژه را در مسیر روت IIS قرار دهید (مثلاً `C:\inetpub\wwwroot\taskrooz`).
-2. ساخت نسخه نهایی فرانت‌اند (در صورت نیاز به بیلد):
-   ```bash
-   npm run build
-   ```
-   فایل‌های داخل پوشه `dist/` در روت سایت قرار می‌گیرند.
-3. فایل‌های بک‌اند و کانفیگ شامل:
-   - `web.config` (قوانین URL Rewrite و امنیت فایل دیتابیس)
-   - `index.php` (اجرای صفحه اصلی)
-   - پوشه `api/` (شامل کدهای بک‌اند PHP و `schema.sql`)
-   - پوشه `data/` (محل ذخیره پایگاه داده SQLite)
+صفحه سفید معمولاً به ۲ دلیل در محیط‌های ویندوز و IIS رخ می‌دهد:
 
----
+### ۱. باز کردن مستقیم فایل روت `index.html` به جای `dist/index.html` یا `index.php`
+- فایل موجود در روت برای محیط توسعه Vite است و کدهای TypeScript را فراخوانی می‌کند که مرورگر بدون سرور نمی‌تواند آن را کامپایل کند.
+- **راه حل:**
+  - **اگر می‌خواهید بدون سرور وب تست کنید:** وارد پوشه `dist` شده و فایل **`dist/index.html`** را با مرورگر باز کنید.
+  - **اگر روی IIS اجرا می‌کنید:** وب‌سرور به صورت خودکار فایل **`index.php`** را اجرا می‌کند که نسخه کامپایل‌شده نهایی را فراخوانی می‌نماید.
 
-## ۳. تنظیم دسترسی پوشه داده‌ها (Permission)
+### ۲. فعال نبودن ماژول URL Rewrite در IIS
+- برای اینکه آدرس‌های وب‌اپلیکیشن و مسیرهای API کار کنند، ماژول رسمی مایکروسافت باید روی IIS نصب باشد:
+  👉 [دانلود مستقیم Microsoft URL Rewrite 2.1](https://www.iis.net/downloads/microsoft/url-rewrite)
 
-وب‌سرور IIS برای ذخیره پایگاه‌داده SQLite نیاز به دسترسی نوشتن روی پوشه `data/` دارد:
-- روی پوشه `data` در ویندوز راست کلیک کنید و وارد `Properties > Security` شوید.
-- دکمه `Edit` را بزنید و سپس `Add`.
-- نام کاربر `IIS_IUSRS` و همچنین `IUSR` را وارد کرده و مجوز **Modify / Write** را به آن بدهید.
+### ۳. عدم اجرای PHP در IIS
+- اگر PHP روی IIS کانفیگ نشده باشد، فایل `index.php` به صورت خام خوانده نمی‌شود.
+- اطمینان حاصل کنید در **IIS Manager > Handler Mappings**، مپینگ `*.php` به `FastCgiModule` و `php-cgi.exe` متصل باشد.
 
 ---
 
-## ۴. حساب مدیر اولیه سیستم (Admin)
+## 📁 فایل‌های اجرایی پروژه برای IIS
 
-پس از باز کردن سایت، دیتابیس به صورت خودکار ایجاد شده و حساب اولیه مدیر آماده ورود است:
-- **نام کاربری**: `admin`
-- **کلمه عبور**: `admin` (یا `admin123`)
-- **نقش**: مدیر سیستم (دارای دسترسی به پنل ساخت اکانت و مشاهده تسک‌های همه کاربران)
+فایل‌های پروژه به گونه‌ای بازطراحی شدند که مسیر فایل‌های CSS و JS هم در پوشه اصلی `assets/` و هم در `dist/assets/` به صورت نسبی (`./assets/...`) قرار دارد:
+- `index.php`: فایل اصلی ورودی IIS با تنظیم خودکار مسیر روت و پوشه‌های فرعی (Subfolder Support).
+- `web.config`: قوانین ریرایت IIS برای هدایت به `index.php` و روت‌های `api/`.
+- `dist/index.html`: نسخه کامپایل‌شده کامل و مستقل با فونت و استایل‌های بهینه‌سازی‌شده.
+- پوشه `api/`: کدهای بک‌اند PHP برای ثبت‌نام، ورود، و مدیریت کاربران و تسک‌ها.
+- پوشه `data/`: پایگاه داده SQLite (به این پوشه مجوز Write/Modify برای کاربر `IIS_IUSRS` بدهید).
 
 ---
 
-## ۵. تست و بررسی در مرورگر
-
-مرورگر خود را باز کنید و آدرس را وارد کنید:
-`http://localhost/taskrooz` (یا دامنه و پورت تنظیم‌شده در IIS).
-سایت با موفقیت باز شده و مستقیماً توسط PHP و IIS اجرا می‌گردد.
+## 🔑 حساب پیش‌فرض مدیر (Admin)
+- **نام کاربری:** `admin`
+- **کلمه عبور:** `admin` (یا `admin123`)

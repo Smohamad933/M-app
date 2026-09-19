@@ -5,6 +5,7 @@ import { handleApiRequest } from './server/apiHandler.ts';
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [
     react(),
     tailwindcss(),
