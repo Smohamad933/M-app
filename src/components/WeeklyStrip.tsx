@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
-import { getDaysAround, getTodayISO, toPersianDigits } from '../utils/persianDate';
+import { getDaysAround, getTodayISO, toPersianDigits, formatPersianDate } from '../utils/persianDate';
 import { Calendar as CalendarIcon } from 'lucide-react';
 
 export const WeeklyStrip: React.FC = () => {
@@ -23,16 +23,19 @@ export const WeeklyStrip: React.FC = () => {
   return (
     <div className="w-full min-w-0 max-w-full overflow-hidden py-2 px-1">
       <div className="flex items-center justify-between mb-2 px-1">
-        <span className="text-[11px] font-semibold text-zinc-400">
-          روزهای هفته
+        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+          <CalendarIcon className="w-3.5 h-3.5 text-zinc-400" />
+          <span>{formatPersianDate(selectedDate, 'monthYear')}</span>
+          <span className="text-[11px] font-normal text-zinc-400 mr-1">
+            ({formatPersianDate(selectedDate, 'weekday')})
+          </span>
         </span>
         {selectedDate !== todayISO && (
           <button
             onClick={() => setSelectedDate(todayISO)}
-            className="text-[11px] font-medium text-zinc-300 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+            className="text-[11px] font-bold text-zinc-200 hover:text-white flex items-center gap-1 cursor-pointer transition-colors bg-zinc-800/80 px-2.5 py-1 rounded-xl border border-zinc-700/50"
           >
-            <CalendarIcon className="w-3 h-3" />
-            امروز
+            <span>برو به امروز</span>
           </button>
         )}
       </div>

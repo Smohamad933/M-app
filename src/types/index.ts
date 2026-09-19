@@ -84,6 +84,7 @@ export interface AppSettings {
   soundEnabled: boolean;
   hapticEnabled: boolean;
   theme: 'dark' | 'light' | 'system';
+  systemFont?: string;
 }
 
 export interface RoomParticipant {

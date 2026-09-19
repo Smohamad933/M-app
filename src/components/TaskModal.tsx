@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import type { Priority, SubTask } from '../types';
-import { getTodayISO } from '../utils/persianDate';
+import {
+  getTodayISO,
+  formatPersianDate,
+  PERSIAN_MONTHS,
+  isoToJalali,
+  jalaliToISO,
+  toPersianDigits,
+} from '../utils/persianDate';
 import {
   X,
   Calendar,
@@ -149,6 +156,14 @@ export const TaskModal: React.FC = () => {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
+  const [jy, jm, jd] = isoToJalali(date || todayISO);
+
+  const onJalaliChange = (newJy: number, newJm: number, newJd: number) => {
+    const maxD = newJm <= 6 ? 31 : newJm <= 11 ? 30 : 29;
+    const safeD = Math.min(newJd, maxD);
+    setDate(jalaliToISO(newJy, newJm, safeD));
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs transition-opacity animate-in fade-in">
       <div
@@ -221,57 +236,141 @@ export const TaskModal: React.FC = () => {
             />
           </div>
 
-          {/* Date & Time */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="font-bold text-zinc-300 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                تاریخ
-              </label>
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white text-xs font-mono outline-hidden focus:border-zinc-500"
-              />
-              <div className="flex gap-1 pt-0.5">
+          {/* Persian Date & 24-Hour Time Picker */}
+          <div className="space-y-3 p-3.5 bg-zinc-800/40 rounded-2xl border border-zinc-700/50">
+            {/* Persian Date Selector */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-zinc-300 flex items-center gap-1.5 text-xs">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>تاریخ شمسی تسک</span>
+                </label>
+                <span className="text-[11px] font-bold text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded-lg border border-indigo-800/60">
+                  {formatPersianDate(date || todayISO, 'full')}
+                </span>
+              </div>
+
+              {/* Day, Month, Year selects */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-zinc-400 font-semibold block">روز</span>
+                  <select
+                    value={jd}
+                    onChange={(e) => onJalaliChange(jy, jm, Number(e.target.value))}
+                    className="w-full px-2 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-white text-xs outline-hidden cursor-pointer"
+                  >
+                    {Array.from({ length: jm <= 6 ? 31 : jm <= 11 ? 30 : 29 }, (_, i) => i + 1).map((d) => (
+                      <option key={d} value={d}>
+                        {toPersianDigits(d)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] text-zinc-400 font-semibold block">ماه</span>
+                  <select
+                    value={jm}
+                    onChange={(e) => onJalaliChange(jy, Number(e.target.value), jd)}
+                    className="w-full px-2 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-white text-xs outline-hidden cursor-pointer"
+                  >
+                    {PERSIAN_MONTHS.map((m, idx) => (
+                      <option key={idx + 1} value={idx + 1}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] text-zinc-400 font-semibold block">سال</span>
+                  <select
+                    value={jy}
+                    onChange={(e) => onJalaliChange(Number(e.target.value), jm, jd)}
+                    className="w-full px-2 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-white text-xs outline-hidden cursor-pointer"
+                  >
+                    {[1403, 1404, 1405, 1406, 1407].map((y) => (
+                      <option key={y} value={y}>
+                        {toPersianDigits(y)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Quick Date Pills */}
+              <div className="flex gap-1.5 pt-1">
                 <button
                   type="button"
                   onClick={() => setDate(todayISO)}
-                  className={`text-[10px] px-2 py-0.5 rounded-lg border transition-colors cursor-pointer ${
+                  className={`text-[10px] px-2.5 py-1 rounded-xl border transition-colors cursor-pointer ${
                     date === todayISO
                       ? 'bg-white text-zinc-950 font-bold border-transparent'
-                      : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                      : 'bg-zinc-800 text-zinc-400 border-zinc-700/60 hover:text-white'
                   }`}
                 >
-                  امروز
+                  امروز ({formatPersianDate(todayISO, 'dayMonth')})
                 </button>
                 <button
                   type="button"
                   onClick={() => setDate(getTomorrowISO())}
-                  className={`text-[10px] px-2 py-0.5 rounded-lg border transition-colors cursor-pointer ${
+                  className={`text-[10px] px-2.5 py-1 rounded-xl border transition-colors cursor-pointer ${
                     date === getTomorrowISO()
                       ? 'bg-white text-zinc-950 font-bold border-transparent'
-                      : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                      : 'bg-zinc-800 text-zinc-400 border-zinc-700/60 hover:text-white'
                   }`}
                 >
-                  فردا
+                  فردا ({formatPersianDate(getTomorrowISO(), 'dayMonth')})
                 </button>
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="font-bold text-zinc-300 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                ساعت (اختیاری)
-              </label>
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white text-xs font-mono outline-hidden focus:border-zinc-500"
-              />
+            {/* Time (24-hour) */}
+            <div className="space-y-1.5 pt-2 border-t border-zinc-800/80">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-zinc-300 flex items-center gap-1 text-xs">
+                  <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>ساعت انجام (۲۴ ساعته)</span>
+                </label>
+                {time && (
+                  <span className="text-[10px] font-mono text-zinc-400">
+                    {toPersianDigits(time)}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-white text-xs font-mono outline-hidden focus:border-zinc-500"
+                />
+                <div className="flex gap-1 flex-wrap">
+                  {['09:00', '12:00', '16:00', '20:00'].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setTime(preset)}
+                      className={`text-[10px] px-2 py-1 rounded-lg border transition-colors cursor-pointer ${
+                        time === preset
+                          ? 'bg-white text-zinc-950 font-bold border-transparent'
+                          : 'bg-zinc-800/80 text-zinc-400 border-zinc-700/50 hover:text-white'
+                      }`}
+                    >
+                      {toPersianDigits(preset)}
+                    </button>
+                  ))}
+                  {time && (
+                    <button
+                      type="button"
+                      onClick={() => setTime('')}
+                      className="text-[10px] text-zinc-500 hover:text-rose-400 px-1 py-1 cursor-pointer"
+                    >
+                      پاک کردن
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

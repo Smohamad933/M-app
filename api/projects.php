@@ -65,6 +65,9 @@ if ($method === 'PUT') {
 // DELETE /api/projects.php?id=...
 if ($method === 'DELETE') {
     $id = $_GET['id'] ?? '';
+    if (empty($id) && !empty($_SERVER['PATH_INFO'])) {
+        $id = trim($_SERVER['PATH_INFO'], '/');
+    }
     if (empty($id)) {
         jsonResponse(['error' => 'شناسه پروژه الزامی است.'], 400);
     }

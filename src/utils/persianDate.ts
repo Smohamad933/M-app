@@ -106,6 +106,16 @@ export function parseISODate(dateStr: string): Date {
   return new Date(dateStr);
 }
 
+export function isoToJalali(isoStr: string): [number, number, number] {
+  const d = parseISODate(isoStr);
+  return gregorianToJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
+
+export function jalaliToISO(jy: number, jm: number, jd: number): string {
+  const [gy, gm, gd] = jalaliToGregorian(jy, jm, jd);
+  return `${gy}-${String(gm).padStart(2, '0')}-${String(gd).padStart(2, '0')}`;
+}
+
 export function getTodayISO(): string {
   const now = new Date();
   const y = now.getFullYear();

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useTask } from '../context/TaskContext';
+import { useTask, AVAILABLE_FONTS } from '../context/TaskContext';
 import { toPersianDigits, formatPersianDate } from '../utils/persianDate';
+import { sounds } from '../utils/sound';
 import type { User } from '../types';
 import {
   Users,
@@ -13,6 +14,8 @@ import {
   Check,
   Lock,
   User as UserIcon,
+  Type,
+  Sparkles,
 } from 'lucide-react';
 
 export const UserManagementView: React.FC = () => {
@@ -24,7 +27,11 @@ export const UserManagementView: React.FC = () => {
     setSelectedFilterUserId,
     setActiveTab,
     openCreateModal,
+    systemFont,
+    setSystemFont,
   } = useTask();
+
+  const [fontSavedNotice, setFontSavedNotice] = useState(false);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [name, setName] = useState('');
@@ -245,6 +252,74 @@ export const UserManagementView: React.FC = () => {
                   </div>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* System Font Customizer for Super Admin */}
+      <div className="bg-zinc-900/50 rounded-3xl border border-zinc-800 p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800/80">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+              <Type className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-white flex items-center gap-2">
+                تنظیم فونت سراسری سیستم
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
+                  فقط مدیر کل
+                </span>
+              </h3>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                تغییر فونت کل سیستم تسک‌روز، تیترها، جداول، کارت‌های تسک و منوها
+              </p>
+            </div>
+          </div>
+
+          {fontSavedNotice && (
+            <span className="text-xs text-emerald-400 font-bold flex items-center gap-1.5 animate-in fade-in">
+              <Sparkles className="w-4 h-4" />
+              فونت بر کل سیستم اعمال شد
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {AVAILABLE_FONTS.map((font) => {
+            const isCurrent = systemFont === font.id;
+            return (
+              <button
+                key={font.id}
+                type="button"
+                onClick={() => {
+                  setSystemFont(font.id);
+                  sounds.playComplete();
+                  setFontSavedNotice(true);
+                  setTimeout(() => setFontSavedNotice(false), 2500);
+                }}
+                className={`p-3.5 rounded-2xl border text-right transition-all cursor-pointer ${
+                  isCurrent
+                    ? 'bg-zinc-800 border-indigo-500 ring-1 ring-indigo-500/40 shadow-sm'
+                    : 'bg-zinc-900/40 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/30'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-xs text-white truncate">{font.name}</span>
+                  {isCurrent && (
+                    <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500 text-white font-bold">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      فعال
+                    </span>
+                  )}
+                </div>
+                <div
+                  className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60 text-[11px] text-zinc-300 line-clamp-2"
+                  style={{ fontFamily: font.family }}
+                >
+                  برنامه‌ریزی روزانه و پومودورو (۱۲۳۴۵۶۷۸۹۰)
+                </div>
+              </button>
             );
           })}
         </div>

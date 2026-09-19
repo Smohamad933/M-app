@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import type { Task } from '../types';
 import { useTask } from '../context/TaskContext';
-import { toPersianDigits } from '../utils/persianDate';
+import { toPersianDigits, formatPersianDate } from '../utils/persianDate';
 import {
   Check,
+  Calendar,
   Clock,
   Star,
   MoreVertical,
@@ -322,6 +323,14 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
             <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/50">
               <Clock className="w-3 h-3 text-zinc-500" />
               {toPersianDigits(task.time)}
+            </span>
+          )}
+
+          {/* Persian Task Date */}
+          {task.date && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700/50" title="تاریخ انجام تسک">
+              <Calendar className="w-3 h-3 text-zinc-400" />
+              {formatPersianDate(task.date, 'dayMonth')}
             </span>
           )}
 

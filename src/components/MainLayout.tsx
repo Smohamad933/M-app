@@ -14,7 +14,9 @@ import { WeeklyStrip } from './WeeklyStrip';
 import { QuickAddBar } from './QuickAddBar';
 import { TaskModal } from './TaskModal';
 import { ExportShareModal } from './ExportShareModal';
+import { FontSelectorModal } from './FontSelectorModal';
 import { BottomNav } from './BottomNav';
+import { sounds } from '../utils/sound';
 import {
   LayoutDashboard,
   CheckSquare,
@@ -40,6 +42,7 @@ import {
   TrendingUp,
   Menu,
   X,
+  Type,
 } from 'lucide-react';
 
 export const MainLayout: React.FC = () => {
@@ -71,6 +74,7 @@ export const MainLayout: React.FC = () => {
   // Mobile menu / drawer state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [isFontModalOpen, setIsFontModalOpen] = useState(false);
 
   // Live 24-hour clock
   const [liveClock, setLiveClock] = useState('');
@@ -196,6 +200,20 @@ export const MainLayout: React.FC = () => {
 
         {/* Sidebar Footer */}
         <div className="space-y-2 pt-4 border-t border-zinc-800/80 text-xs">
+          {/* Admin Font Switcher */}
+          {isAdmin && (
+            <button
+              onClick={() => {
+                sounds.playPop();
+                setIsFontModalOpen(true);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-medium text-indigo-300 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
+            >
+              <Type className="w-4 h-4 text-indigo-400" />
+              <span>فونت کل سیستم</span>
+            </button>
+          )}
+
           {/* Theme Toggle */}
           <button
             onClick={() => updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })}
@@ -248,15 +266,16 @@ export const MainLayout: React.FC = () => {
               </div>
 
               {/* Greeting & Persian Date & Live 24-Hour Clock */}
-              <div className="min-w-0 flex items-center gap-2 flex-wrap">
+              <div className="min-w-0 flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <span className="text-xs font-black text-white hidden sm:inline truncate">
                   {greeting.text}
                 </span>
-                <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] px-2.5 py-0.5 rounded-full bg-zinc-900 text-zinc-300 border border-zinc-800 font-semibold" title="تاریخ شمسی امروز">
-                  <CalendarDays className="w-3.5 h-3.5 text-zinc-400" />
-                  {formatPersianDate(new Date(), 'full')}
+                <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] px-2.5 py-1 rounded-full bg-zinc-900 text-zinc-300 border border-zinc-800 font-semibold shadow-xs" title="تاریخ شمسی امروز">
+                  <CalendarDays className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
+                  <span className="hidden sm:inline">{formatPersianDate(new Date(), 'full')}</span>
+                  <span className="sm:hidden">{formatPersianDate(new Date(), 'dayMonth')}</span>
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800 font-mono font-bold flex-shrink-0" title="ساعت ۲۴ ساعته">
+                <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] px-2.5 py-1 rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800 font-mono font-bold flex-shrink-0" title="ساعت ۲۴ ساعته">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   {liveClock}
                 </span>
@@ -264,9 +283,48 @@ export const MainLayout: React.FC = () => {
             </div>
 
             {/* Left: Actions & Search */}
-            <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              {/* Day / Night Theme Toggle */}
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' });
+                }}
+                className="px-2 sm:px-2.5 py-1.5 rounded-xl sm:rounded-2xl bg-zinc-800/90 hover:bg-zinc-700/80 text-zinc-200 border border-zinc-700/60 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                title={settings.theme === 'dark' ? 'تغییر به تم روز ☀️' : 'تغییر به تم شب 🌙'}
+                aria-label="تغییر حالت شب و روز"
+              >
+                {settings.theme === 'dark' ? (
+                  <>
+                    <Sun className="w-4 h-4 text-amber-400" />
+                    <span className="text-[11px] font-bold hidden sm:inline text-amber-300">روز</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-4 h-4 text-indigo-400" />
+                    <span className="text-[11px] font-bold hidden sm:inline text-indigo-300">شب</span>
+                  </>
+                )}
+              </button>
+
+              {/* Admin Font Switcher Button */}
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    sounds.playPop();
+                    setIsFontModalOpen(true);
+                  }}
+                  className="px-2 sm:px-2.5 py-1.5 rounded-xl sm:rounded-2xl bg-zinc-800/90 hover:bg-zinc-700/80 text-zinc-200 border border-indigo-500/40 hover:border-indigo-400 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                  title="تغییر فونت کل سیستم (مخصوص مدیر کل)"
+                  aria-label="تغییر فونت کل سیستم"
+                >
+                  <Type className="w-4 h-4 text-indigo-400" />
+                  <span className="text-[11px] font-bold hidden md:inline text-indigo-200">فونت</span>
+                </button>
+              )}
+
               {/* Desktop Search */}
-              <div className="relative hidden md:block w-48 lg:w-64">
+              <div className="relative hidden md:block w-40 lg:w-56">
                 <Search className="w-3.5 h-3.5 absolute right-3 top-2.5 text-zinc-500" />
                 <input
                   type="text"
@@ -291,7 +349,7 @@ export const MainLayout: React.FC = () => {
                 <select
                   value={selectedFilterUserId || ''}
                   onChange={(e) => setSelectedFilterUserId(e.target.value || null)}
-                  className="hidden sm:block px-2.5 py-1.5 rounded-2xl bg-zinc-800 border border-zinc-700/60 text-zinc-200 text-xs outline-hidden cursor-pointer max-w-[130px] truncate"
+                  className="hidden xl:block px-2.5 py-1.5 rounded-2xl bg-zinc-800 border border-zinc-700/60 text-zinc-200 text-xs outline-hidden cursor-pointer max-w-[130px] truncate"
                 >
                   <option value="">همه کاربران</option>
                   {users.map((u) => (
@@ -664,6 +722,19 @@ export const MainLayout: React.FC = () => {
 
             {/* Drawer Footer Actions */}
             <div className="pt-4 border-t border-zinc-800 space-y-2 text-xs">
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsFontModalOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-indigo-300 hover:bg-zinc-800 hover:text-white"
+                >
+                  <Type className="w-4 h-4 text-indigo-400" />
+                  <span>تغییر فونت سیستم</span>
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' });
@@ -705,6 +776,7 @@ export const MainLayout: React.FC = () => {
       {/* Global Modals */}
       <TaskModal />
       <ExportShareModal />
+      <FontSelectorModal isOpen={isFontModalOpen} onClose={() => setIsFontModalOpen(false)} />
     </div>
   );
 };

@@ -10,19 +10,7 @@ const PROJECTS_STORAGE_KEY = 'taskrooz_projects_local';
 function getLocalProjects(): TeamProject[] {
   try {
     const raw = localStorage.getItem(PROJECTS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [
-      {
-        id: 'proj_default_1',
-        name: 'پروژه آلفا (توسعه محصول)',
-        description: 'طراحی رابط کاربری و پیاده‌سازی سیستم مدیریت تسک‌های مدرن',
-        color: '#6366f1',
-        icon: 'FolderKanban',
-        creatorId: 'usr_admin_1',
-        creatorName: 'سید محمدحسین شیخ الاسلامی',
-        memberIds: ['usr_admin_1'],
-        createdAt: '1403/07/01',
-      }
-    ];
+    return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }

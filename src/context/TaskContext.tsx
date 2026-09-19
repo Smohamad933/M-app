@@ -26,6 +26,8 @@ interface TaskContextType {
   selectedProjectId: string | null;
   setSelectedProjectId: (id: string | null) => void;
   settings: AppSettings;
+  systemFont: string;
+  setSystemFont: (fontId: string) => void;
   streak: DailyStreak;
   selectedDate: string;
   activeTab: TabType;
@@ -103,6 +105,52 @@ interface TaskContextType {
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
+export interface SystemFontOption {
+  id: string;
+  name: string;
+  family: string;
+  description: string;
+}
+
+export const AVAILABLE_FONTS: SystemFontOption[] = [
+  {
+    id: 'vazirmatn',
+    name: 'وزیرمتن (پیش‌فرض مدرن)',
+    family: "'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    description: 'استاندارد، مدرن و فوق‌العاده خوانا برای وب و موبایل',
+  },
+  {
+    id: 'cairo',
+    name: 'قاهره (بولد و پویا)',
+    family: "'Cairo', 'Vazirmatn', -apple-system, sans-serif",
+    description: 'فونت هندسی و چشم‌نواز با خطوط قوی و مدرن',
+  },
+  {
+    id: 'rubik',
+    name: 'روبیک (گرد و صمیمی)',
+    family: "'Rubik', 'Vazirmatn', -apple-system, sans-serif",
+    description: 'فونت با گوشه‌های نرم و گرد، صمیمی و زیبا',
+  },
+  {
+    id: 'shabnam',
+    name: 'شبنم (فرهنگی و خوانا)',
+    family: "'Shabnam', 'Vazirmatn', -apple-system, sans-serif",
+    description: 'فونت رسمی، ساختاریافته و با تناسبات دقیق',
+  },
+  {
+    id: 'sahel',
+    name: 'ساحل (هندسی و لطیف)',
+    family: "'Sahel', 'Vazirmatn', -apple-system, sans-serif",
+    description: 'فونت هندسی، ظریف و چشم‌نواز برای متون طولانی',
+  },
+  {
+    id: 'jakarta',
+    name: 'پلاس جاکارتا مدرن',
+    family: "'Plus Jakarta Sans', 'Vazirmatn', sans-serif",
+    description: 'فونت بین‌المللی مینیمال و تمیز',
+  },
+];
+
 export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -112,14 +160,43 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [settings, setSettings] = useState<AppSettings>(() => ({
-    language: 'fa',
-    persianDigits: true,
-    soundEnabled: true,
-    hapticEnabled: true,
-    theme: 'dark',
-    viewMode: 'desktop',
-  }));
+  const [systemFont, setSystemFontState] = useState<string>(() => {
+    try {
+      return localStorage.getItem('taskrooz_system_font') || 'vazirmatn';
+    } catch {
+      return 'vazirmatn';
+    }
+  });
+
+  const setSystemFont = (fontId: string) => {
+    setSystemFontState(fontId);
+    sounds.playPop();
+  };
+
+  useEffect(() => {
+    const found = AVAILABLE_FONTS.find((f) => f.id === systemFont) || AVAILABLE_FONTS[0];
+    document.documentElement.style.setProperty('--font-sans', found.family);
+    try {
+      localStorage.setItem('taskrooz_system_font', found.id);
+    } catch {}
+  }, [systemFont]);
+
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    try {
+      const saved = localStorage.getItem('taskrooz_settings');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch {}
+    return {
+      language: 'fa',
+      persianDigits: true,
+      soundEnabled: true,
+      hapticEnabled: true,
+      theme: 'dark',
+      viewMode: 'desktop',
+    };
+  });
 
   const [streak] = useState<DailyStreak>(() => ({
     currentStreak: 1,
@@ -151,7 +228,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
-  // Sync settings with audio and theme
+  // Sync settings with audio, theme and persistence
   useEffect(() => {
     sounds.enabled = settings.soundEnabled;
     sounds.hapticEnabled = settings.hapticEnabled;
@@ -159,9 +236,15 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isDark = settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     if (isDark) {
       document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
     } else {
       document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
     }
+
+    try {
+      localStorage.setItem('taskrooz_settings', JSON.stringify(settings));
+    } catch {}
   }, [settings]);
 
   // Refresh active room data
@@ -712,6 +795,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       closeTaskModal,
       addCategory,
       updateSettings,
+      systemFont,
+      setSystemFont,
       getDailySummaryText,
     }),
     [
@@ -722,6 +807,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       projects,
       selectedProjectId,
       settings,
+      systemFont,
       streak,
       selectedDate,
       activeTab,

@@ -119,19 +119,7 @@ const INITIAL_DATA: AppData = {
     { id: 'cat-finance', name: 'امور مالی', color: '#8b5cf6', icon: 'CreditCard', isDefault: true },
   ],
   focus_rooms: [],
-  projects: [
-    {
-      id: 'proj_alpha_1',
-      name: 'پروژه آلفا (توسعه تسک‌روز)',
-      description: 'طراحی رابط کاربری مدرن، سیستم تمرکز گروهی پومودورو و مدیریت پروژه‌ها',
-      color: '#6366f1',
-      icon: 'FolderKanban',
-      creatorId: 'usr_admin_mohusyn',
-      creatorName: 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
-      memberIds: ['usr_admin_mohusyn'],
-      createdAt: new Date().toISOString().slice(0, 10),
-    },
-  ],
+  projects: [],
 };
 
 function purgeExpiredDeletedRooms(db: AppData): boolean {
@@ -809,7 +797,9 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
     // Delete team project
     if (method === 'DELETE') {
-      const id = urlObj.searchParams.get('id');
+      const pathParts = urlObj.pathname.split('/').filter(Boolean);
+      const pathId = pathParts.length > 1 && pathParts[pathParts.length - 1] !== 'projects' ? pathParts[pathParts.length - 1] : null;
+      const id = urlObj.searchParams.get('id') || pathId;
       const proj = db.projects.find((p) => p.id === id);
       if (!proj) {
         sendJson(res, { error: 'پروژه پیدا نشد.' }, 404);

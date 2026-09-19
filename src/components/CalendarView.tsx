@@ -67,9 +67,9 @@ export const CalendarView: React.FC = () => {
       {/* Month Selector Bar */}
       <div className="flex items-center justify-between bg-zinc-900/70 p-3.5 rounded-2xl border border-zinc-800">
         <button
-          onClick={handleNextMonth}
+          onClick={handlePrevMonth}
           className="p-1.5 rounded-xl hover:bg-zinc-800 text-zinc-300 transition-colors cursor-pointer"
-          title="ماه بعد"
+          title="ماه قبل"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
@@ -81,9 +81,9 @@ export const CalendarView: React.FC = () => {
         </div>
 
         <button
-          onClick={handlePrevMonth}
+          onClick={handleNextMonth}
           className="p-1.5 rounded-xl hover:bg-zinc-800 text-zinc-300 transition-colors cursor-pointer"
-          title="ماه قبل"
+          title="ماه بعد"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>

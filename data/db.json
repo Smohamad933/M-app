@@ -55,19 +55,5 @@
     }
   ],
   "focus_rooms": [],
-  "projects": [
-    {
-      "id": "proj_alpha_1",
-      "name": "پروژه آلفا (توسعه تسک‌روز)",
-      "description": "طراحی رابط کاربری مدرن، سیستم تمرکز گروهی پومودورو و مدیریت پروژه‌ها",
-      "color": "#6366f1",
-      "icon": "FolderKanban",
-      "creatorId": "usr_admin_mohusyn",
-      "creatorName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "memberIds": [
-        "usr_admin_mohusyn"
-      ],
-      "createdAt": "2026-09-19"
-    }
-  ]
+  "projects": []
 }
