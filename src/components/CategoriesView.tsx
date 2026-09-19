@@ -3,7 +3,7 @@ import { useTask } from '../context/TaskContext';
 import { toPersianDigits } from '../utils/persianDate';
 import {
   Briefcase,
-  User,
+  User as UserIcon,
   BookOpen,
   Activity,
   ShoppingCart,
@@ -14,7 +14,7 @@ import {
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   Briefcase,
-  User,
+  User: UserIcon,
   BookOpen,
   Activity,
   ShoppingCart,
@@ -23,14 +23,14 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
 };
 
 const COLOR_PALETTE = [
-  '#6366f1', // Indigo
-  '#10b981', // Emerald
-  '#f59e0b', // Amber
-  '#f43f5e', // Rose
-  '#0ea5e9', // Sky
-  '#8b5cf6', // Violet
-  '#ec4899', // Pink
-  '#14b8a6', // Teal
+  '#6366f1',
+  '#10b981',
+  '#f59e0b',
+  '#f43f5e',
+  '#0ea5e9',
+  '#8b5cf6',
+  '#ec4899',
+  '#14b8a6',
 ];
 
 export const CategoriesView: React.FC = () => {
@@ -47,10 +47,10 @@ export const CategoriesView: React.FC = () => {
   const [newCatColor, setNewCatColor] = useState(COLOR_PALETTE[0]);
   const [newCatIcon, setNewCatIcon] = useState('Folder');
 
-  const handleCreateCategory = (e: React.FormEvent) => {
+  const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
-    addCategory({
+    await addCategory({
       name: newCatName.trim(),
       color: newCatColor,
       icon: newCatIcon,
@@ -65,29 +65,29 @@ export const CategoriesView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 p-5 pb-24 overflow-y-auto space-y-5">
-      {/* View Header */}
+    <div className="space-y-6 pb-12">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-            دسته‌بندی‌های تسک‌ها
+          <h2 className="text-base font-black text-white">
+            دسته‌بندی‌های کارهای شما
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            سازماندهی هوشمند کارها بر اساس موضوعات مختلف
+          <p className="text-xs text-zinc-400 mt-0.5">
+            سازماندهی هوشمند بر اساس حوزه‌های مختلف کاری و شخصی
           </p>
         </div>
 
         <button
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
         >
           <Plus className="w-3.5 h-3.5" />
           دسته‌بندی جدید
         </button>
       </div>
 
-      {/* Categories Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+      {/* Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {categories.map((cat) => {
           const catTasks = tasks.filter((t) => t.categoryId === cat.id);
           const completedCount = catTasks.filter((t) => t.completed).length;
@@ -99,34 +99,32 @@ export const CategoriesView: React.FC = () => {
             <div
               key={cat.id}
               onClick={() => handleSelectCategory(cat.id)}
-              className="group p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs hover:border-indigo-400 dark:hover:border-indigo-600 transition-all cursor-pointer relative"
+              className="p-4 bg-zinc-900/60 rounded-3xl border border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer space-y-3"
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-xs"
-                    style={{ backgroundColor: cat.color }}
-                  >
-                    <IconComp className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                      {cat.name}
-                    </h3>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {toPersianDigits(totalCount)} تسک ({toPersianDigits(completedCount)} انجام شده)
-                    </p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-xs"
+                  style={{ backgroundColor: `${cat.color}20`, color: cat.color, border: `1px solid ${cat.color}40` }}
+                >
+                  <IconComp className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">
+                    {cat.name}
+                  </h3>
+                  <p className="text-[11px] text-zinc-400">
+                    {toPersianDigits(totalCount)} تسک ({toPersianDigits(completedCount)} انجام شده)
+                  </p>
                 </div>
               </div>
 
-              {/* Category Progress Bar */}
+              {/* Progress bar */}
               <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-slate-500 font-medium">
-                  <span>پیشرفت کلی</span>
+                <div className="flex justify-between text-[10px] text-zinc-400">
+                  <span>پیشرفت</span>
                   <span>{toPersianDigits(percent)}٪</span>
                 </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
@@ -141,35 +139,30 @@ export const CategoriesView: React.FC = () => {
         })}
       </div>
 
-      {/* Add Category Modal */}
+      {/* Modal */}
       {isAdding && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-zinc-900 rounded-3xl p-5 shadow-2xl border border-zinc-800 space-y-4">
+            <h3 className="text-sm font-bold text-white">
               ساخت دسته‌بندی جدید
             </h3>
 
             <form onSubmit={handleCreateCategory} className="space-y-3.5 text-xs">
               <div className="space-y-1.5">
-                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                  نام دسته
-                </label>
+                <label className="font-semibold text-zinc-300">نام دسته</label>
                 <input
                   type="text"
                   required
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
-                  placeholder="مثال: پروژه‌های فریلنسری..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  placeholder="مثال: پروژه‌های ویدیویی..."
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-white outline-hidden focus:border-zinc-500"
                   autoFocus
                 />
               </div>
 
-              {/* Icon & Color picker */}
               <div className="space-y-1.5">
-                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                  آیکون دسته
-                </label>
+                <label className="font-semibold text-zinc-300">آیکون</label>
                 <div className="flex items-center gap-2">
                   {Object.keys(CATEGORY_ICONS).map((iconKey) => {
                     const IconComp = CATEGORY_ICONS[iconKey];
@@ -179,10 +172,10 @@ export const CategoriesView: React.FC = () => {
                         key={iconKey}
                         type="button"
                         onClick={() => setNewCatIcon(iconKey)}
-                        className={`p-2 rounded-xl border transition-all ${
+                        className={`p-2 rounded-xl border transition-all cursor-pointer ${
                           isSelected
-                            ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-500'
+                            ? 'border-white bg-zinc-700 text-white'
+                            : 'border-zinc-800 text-zinc-400'
                         }`}
                       >
                         <IconComp className="w-4 h-4" />
@@ -192,19 +185,16 @@ export const CategoriesView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Color picker */}
               <div className="space-y-1.5">
-                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                  رنگ نشانگر
-                </label>
+                <label className="font-semibold text-zinc-300">رنگ نشانگر</label>
                 <div className="flex items-center gap-2 flex-wrap">
                   {COLOR_PALETTE.map((color) => (
                     <button
                       key={color}
                       type="button"
                       onClick={() => setNewCatColor(color)}
-                      className={`w-7 h-7 rounded-full transition-transform ${
-                        newCatColor === color ? 'scale-125 ring-2 ring-indigo-500 ring-offset-2' : ''
+                      className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
+                        newCatColor === color ? 'scale-125 ring-2 ring-white ring-offset-2 ring-offset-zinc-900' : ''
                       }`}
                       style={{ backgroundColor: color }}
                     />
@@ -212,18 +202,17 @@ export const CategoriesView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Action buttons */}
               <div className="pt-2 flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setIsAdding(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold"
+                  className="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-bold cursor-pointer"
                 >
                   انصراف
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30"
+                  className="flex-1 py-2.5 rounded-xl bg-white text-zinc-950 font-black cursor-pointer shadow-md"
                 >
                   ایجاد دسته
                 </button>

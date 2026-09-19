@@ -35,30 +35,29 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({ isOpen, onClose }) =
   ];
 
   return (
-    <div className="px-4 py-2 space-y-2.5 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60">
-      {/* Live Search Input (conditionally visible or always available) */}
+    <div className="py-2 space-y-2.5">
       {isOpen && (
         <div className="relative">
-          <Search className="w-4 h-4 absolute right-3 top-3 text-slate-400" />
+          <Search className="w-4 h-4 absolute right-3 top-3 text-zinc-500" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="جستجو در عنوان یا توضیحات تسک‌ها..."
-            className="w-full pl-9 pr-9 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/50 transition-all"
+            placeholder="جستجو در تسک‌ها..."
+            className="w-full pl-9 pr-9 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs text-white placeholder-zinc-500 outline-hidden focus:border-zinc-600 transition-all"
             autoFocus
           />
           {searchQuery ? (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute left-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded-full"
+              className="absolute left-3 top-2.5 text-zinc-400 hover:text-white p-0.5 rounded-full cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           ) : (
             <button
               onClick={onClose}
-              className="absolute left-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded-full"
+              className="absolute left-3 top-2.5 text-zinc-400 hover:text-white p-0.5 rounded-full cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -74,17 +73,17 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({ isOpen, onClose }) =
             <button
               key={tab.id}
               onClick={() => setFilterStatus(tab.id)}
-              className={`flex-shrink-0 px-3 py-1 rounded-xl text-xs font-medium transition-all ${
+              className={`flex-shrink-0 px-3 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-indigo-600 text-white shadow-xs shadow-indigo-600/30'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700/60'
+                  ? 'bg-white text-zinc-950 font-bold shadow-xs'
+                  : 'bg-zinc-900 border border-zinc-800/80 text-zinc-400 hover:text-white'
               }`}
             >
               <span>{tab.label}</span>
               {tab.count !== undefined && (
                 <span
                   className={`mr-1 text-[10px] px-1.5 py-0.2 rounded-full ${
-                    isActive ? 'bg-indigo-500/60 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                    isActive ? 'bg-zinc-900 text-white' : 'bg-zinc-800 text-zinc-400'
                   }`}
                 >
                   {toPersianDigits(tab.count)}
@@ -99,10 +98,10 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({ isOpen, onClose }) =
       <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5" style={{ scrollbarWidth: 'none' }}>
         <button
           onClick={() => setFilterCategory(null)}
-          className={`flex-shrink-0 text-[11px] px-2.5 py-0.5 rounded-lg border transition-colors ${
+          className={`flex-shrink-0 text-[11px] px-2.5 py-0.5 rounded-lg border transition-colors cursor-pointer ${
             filterCategory === null
-              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/40 font-semibold'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              ? 'border-white text-white bg-zinc-800 font-semibold'
+              : 'border-transparent text-zinc-500 hover:text-zinc-300'
           }`}
         >
           تمام دسته‌ها
@@ -114,10 +113,10 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({ isOpen, onClose }) =
             <button
               key={cat.id}
               onClick={() => setFilterCategory(isSelected ? null : cat.id)}
-              className={`flex-shrink-0 flex items-center gap-1.5 text-[11px] px-2.5 py-0.5 rounded-lg border transition-all ${
+              className={`flex-shrink-0 flex items-center gap-1.5 text-[11px] px-2.5 py-0.5 rounded-lg border transition-all cursor-pointer ${
                 isSelected
-                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 font-semibold'
-                  : 'border-slate-200/60 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 text-slate-600 dark:text-slate-300'
+                  ? 'border-zinc-500 bg-zinc-800 text-white font-semibold'
+                  : 'border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-zinc-200'
               }`}
             >
               <span

@@ -19,7 +19,7 @@ export const FocusTimer: React.FC = () => {
   const [mode, setMode] = useState<Mode>('focus');
   const [timeLeft, setTimeLeft] = useState(MODE_DURATIONS.focus);
   const [isRunning, setIsRunning] = useState(false);
-  const [completedSessions, setCompletedSessions] = useState(2);
+  const [completedSessions, setCompletedSessions] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   const activeTask = tasks.find((t) => t.id === activeFocusTaskId);
@@ -27,14 +27,12 @@ export const FocusTimer: React.FC = () => {
 
   const timerRef = useRef<number | null>(null);
 
-  // Switch mode
   const handleModeChange = (newMode: Mode) => {
     setIsRunning(false);
     setMode(newMode);
     setTimeLeft(MODE_DURATIONS[newMode]);
   };
 
-  // Timer tick
   useEffect(() => {
     if (isRunning) {
       timerRef.current = window.setInterval(() => {
@@ -70,11 +68,9 @@ export const FocusTimer: React.FC = () => {
       if (activeFocusTaskId) {
         addFocusMinutes(activeFocusTaskId, minutesCompleted);
       }
-      // Offer break
       setMode('shortBreak');
       setTimeLeft(MODE_DURATIONS.shortBreak);
     } else {
-      // Back to focus
       setMode('focus');
       setTimeLeft(MODE_DURATIONS.focus);
     }
@@ -103,51 +99,51 @@ export const FocusTimer: React.FC = () => {
   const strokeDashoffset = circumference - (circumference * progressPercent) / 100;
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-between p-6 pb-24 text-center">
-      {/* Top mode segmented pill */}
-      <div className="w-full max-w-xs flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
+    <div className="flex flex-col items-center justify-center p-6 text-center max-w-sm mx-auto space-y-6">
+      {/* Mode segmented control */}
+      <div className="w-full flex items-center p-1 bg-zinc-900 rounded-2xl border border-zinc-800">
         <button
           onClick={() => handleModeChange('focus')}
-          className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+          className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
             mode === 'focus'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              ? 'bg-white text-zinc-950 shadow-xs'
+              : 'text-zinc-400 hover:text-white'
           }`}
         >
           تمرکز (۲۵ دقیقه)
         </button>
         <button
           onClick={() => handleModeChange('shortBreak')}
-          className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+          className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
             mode === 'shortBreak'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              ? 'bg-white text-zinc-950 shadow-xs'
+              : 'text-zinc-400 hover:text-white'
           }`}
         >
-          استراحت (۵ دقیقه)
+          استراحت کوتاه
         </button>
         <button
           onClick={() => handleModeChange('longBreak')}
-          className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+          className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
             mode === 'longBreak'
-              ? 'bg-sky-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              ? 'bg-white text-zinc-950 shadow-xs'
+              : 'text-zinc-400 hover:text-white'
           }`}
         >
-          استراحت طولانی
+          استراحت بلند
         </button>
       </div>
 
-      {/* Task selector chip */}
-      <div className="w-full max-w-xs mt-3">
-        <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 flex items-center justify-center gap-1">
-          <Target className="w-3.5 h-3.5 text-indigo-500" />
+      {/* Task selector */}
+      <div className="w-full">
+        <label className="text-[11px] font-semibold text-zinc-400 mb-1 flex items-center justify-center gap-1">
+          <Target className="w-3.5 h-3.5 text-zinc-400" />
           تسک در حال تمرکز:
         </label>
         <select
           value={activeFocusTaskId || ''}
           onChange={(e) => setActiveFocusTaskId(e.target.value || null)}
-          className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-medium text-zinc-200 focus:border-zinc-600 outline-hidden"
         >
           <option value="">تمرکز عمومی (بدون اتصال به تسک خاص)</option>
           {pendingTasks.map((t) => (
@@ -157,35 +153,29 @@ export const FocusTimer: React.FC = () => {
           ))}
         </select>
         {activeTask && (
-          <div className="mt-1 text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold truncate">
+          <div className="mt-1 text-[11px] text-zinc-300 font-semibold truncate">
             🎯 {activeTask.title}
           </div>
         )}
       </div>
 
       {/* Big Circular Countdown Display */}
-      <div className="relative my-6 w-64 h-64 flex items-center justify-center">
+      <div className="relative w-64 h-64 flex items-center justify-center">
         <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 260 260">
           <circle
             cx="130"
             cy="130"
             r={circleRadius}
-            className="stroke-slate-100 dark:stroke-slate-800"
-            strokeWidth="10"
+            className="stroke-zinc-850 stroke-zinc-800"
+            strokeWidth="8"
             fill="none"
           />
           <circle
             cx="130"
             cy="130"
             r={circleRadius}
-            className={`transition-all duration-700 ease-linear ${
-              mode === 'focus'
-                ? 'stroke-indigo-600 dark:stroke-indigo-500'
-                : mode === 'shortBreak'
-                ? 'stroke-emerald-500'
-                : 'stroke-sky-500'
-            }`}
-            strokeWidth="10"
+            className="stroke-white transition-all duration-700 ease-linear"
+            strokeWidth="8"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
@@ -194,15 +184,13 @@ export const FocusTimer: React.FC = () => {
         </svg>
 
         <div className="absolute flex flex-col items-center justify-center">
-          <span className="text-5xl font-black text-slate-900 dark:text-white tracking-wider font-mono">
+          <span className="text-5xl font-black text-white tracking-wider font-mono">
             {toPersianDigits(formattedTime)}
           </span>
-          <span className="text-xs font-semibold text-slate-400 dark:text-slate-400 mt-2">
+          <span className="text-xs font-semibold text-zinc-400 mt-2">
             {mode === 'focus'
               ? 'تمرکز عمیق روی کار'
-              : mode === 'shortBreak'
-              ? 'استراحت و کشش بدن'
-              : 'استراحت تجدید قوا'}
+              : 'زمان استراحت'}
           </span>
         </div>
       </div>
@@ -212,7 +200,7 @@ export const FocusTimer: React.FC = () => {
         <button
           onClick={resetTimer}
           aria-label="بازنشانی زمان"
-          className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all hover:scale-105 active:scale-95"
+          className="p-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-all hover:scale-105 active:scale-95 cursor-pointer"
           title="بازنشانی"
         >
           <RotateCcw className="w-5 h-5" />
@@ -220,22 +208,16 @@ export const FocusTimer: React.FC = () => {
 
         <button
           onClick={toggleTimer}
-          className={`px-8 py-3.5 rounded-2xl font-extrabold text-white text-base shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 ${
-            isRunning
-              ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/30'
-              : mode === 'focus'
-              ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
-              : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
-          }`}
+          className="px-8 py-3.5 rounded-2xl font-black text-zinc-950 text-base shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 bg-white hover:bg-zinc-200 cursor-pointer"
         >
           {isRunning ? (
             <>
-              <Pause className="w-5 h-5" />
+              <Pause className="w-5 h-5 fill-zinc-950" />
               توقف
             </>
           ) : (
             <>
-              <Play className="w-5 h-5 fill-white" />
+              <Play className="w-5 h-5 fill-zinc-950" />
               شروع تمرکز
             </>
           )}
@@ -244,10 +226,10 @@ export const FocusTimer: React.FC = () => {
         <button
           onClick={() => setSoundEnabled(!soundEnabled)}
           aria-label="تنظیم صدا"
-          className={`p-3.5 rounded-2xl transition-all hover:scale-105 active:scale-95 ${
+          className={`p-3.5 rounded-2xl border transition-all hover:scale-105 active:scale-95 cursor-pointer ${
             soundEnabled
-              ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+              ? 'bg-zinc-800 border-zinc-700 text-white'
+              : 'bg-zinc-900 border-zinc-800 text-zinc-500'
           }`}
           title={soundEnabled ? 'صدا روشن' : 'صدا خاموش'}
         >
@@ -255,20 +237,20 @@ export const FocusTimer: React.FC = () => {
         </button>
       </div>
 
-      {/* Focus Session summary stats */}
-      <div className="mt-6 w-full max-w-xs p-3.5 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200/60 dark:border-slate-800 flex items-center justify-around">
-        <div className="text-center">
-          <div className="text-base font-extrabold text-indigo-600 dark:text-indigo-400">
+      {/* Summary stats */}
+      <div className="w-full p-3.5 bg-zinc-900/60 rounded-2xl border border-zinc-800 flex items-center justify-around text-xs">
+        <div>
+          <div className="text-base font-black text-white">
             {toPersianDigits(completedSessions)}
           </div>
-          <div className="text-[10px] text-slate-500">پومودوروهای امروز</div>
+          <div className="text-[10px] text-zinc-500">پومودوروهای تکمیل‌شده</div>
         </div>
-        <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-        <div className="text-center">
-          <div className="text-base font-extrabold text-slate-800 dark:text-slate-200">
+        <div className="h-6 w-px bg-zinc-800" />
+        <div>
+          <div className="text-base font-black text-white">
             {toPersianDigits(completedSessions * 25)}
           </div>
-          <div className="text-[10px] text-slate-500">دقیقه تمرکز عمیق</div>
+          <div className="text-[10px] text-zinc-500">دقیقه تمرکز عمیق</div>
         </div>
       </div>
     </div>

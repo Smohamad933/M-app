@@ -65,7 +65,6 @@ export function loadSettingsFromStorage(): AppSettings {
     soundEnabled: true,
     hapticEnabled: true,
     theme: 'dark',
-    viewMode: 'desktop',
   };
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.SETTINGS);

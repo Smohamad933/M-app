@@ -33,8 +33,8 @@ export const BottomNav: React.FC = () => {
   ];
 
   return (
-    <div className="sticky bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 shadow-lg">
-      <div className="relative max-w-lg mx-auto flex items-center justify-between px-3 py-2">
+    <div className="fixed bottom-0 inset-x-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-800 shadow-2xl">
+      <div className="max-w-md mx-auto flex items-center justify-between px-3 py-2">
         {/* Navigation Tabs */}
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -46,14 +46,14 @@ export const BottomNav: React.FC = () => {
               onClick={() => handleTabClick(tab.id)}
               className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all duration-200 cursor-pointer ${
                 isActive
-                  ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
-                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                  ? 'text-white font-bold scale-105'
+                  : 'text-zinc-500 hover:text-zinc-300'
               }`}
             >
               <div className="relative">
                 <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
                 {isActive && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-indigo-600 dark:bg-indigo-400 rounded-full" />
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-white rounded-full" />
                 )}
               </div>
               <span className="text-[10px] mt-1 tracking-tight">{tab.label}</span>
@@ -67,16 +67,16 @@ export const BottomNav: React.FC = () => {
             sounds.playPop();
             openCreateModal(selectedDate);
           }}
-          className="w-11 h-11 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/30 flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer flex-shrink-0 mr-1"
+          className="w-10 h-10 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 shadow-md flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer flex-shrink-0 mr-1"
           title="افزودن تسک جدید"
         >
-          <Plus className="w-6 h-6 stroke-[2.5]" />
+          <Plus className="w-5 h-5 stroke-[2.5]" />
         </button>
       </div>
 
       {/* Mobile Home Bar indicator */}
       <div className="py-1 flex justify-center items-center pointer-events-none">
-        <div className="w-28 h-1 bg-slate-300 dark:bg-slate-700 rounded-full" />
+        <div className="w-24 h-1 bg-zinc-800 rounded-full" />
       </div>
     </div>
   );

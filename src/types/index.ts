@@ -67,5 +67,4 @@ export interface AppSettings {
   soundEnabled: boolean;
   hapticEnabled: boolean;
   theme: 'dark' | 'light' | 'system';
-  viewMode: 'desktop' | 'mobile-frame';
 }
