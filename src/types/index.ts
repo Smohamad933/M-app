@@ -1,4 +1,16 @@
 export type Priority = 'high' | 'medium' | 'low';
+export type UserRole = 'admin' | 'user';
+
+export interface User {
+  id: string;
+  username: string;
+  name: string;
+  role: UserRole;
+  createdAt: string;
+  totalTasks?: number;
+  completedTasks?: number;
+  progressPercent?: number;
+}
 
 export interface SubTask {
   id: string;
@@ -8,6 +20,8 @@ export interface SubTask {
 
 export interface Task {
   id: string;
+  userId: string;
+  userName?: string;
   title: string;
   description?: string;
   date: string; // YYYY-MM-DD
@@ -22,9 +36,10 @@ export interface Task {
   focusMinutesSpent?: number;
   reminder?: boolean;
   repeat?: 'none' | 'daily' | 'weekly';
-  tags?: string[];
   createdAt: string;
 }
+
+export type TaskCreateInput = Omit<Task, 'id' | 'createdAt' | 'userId'> & { userId?: string };
 
 export interface Category {
   id: string;
@@ -34,7 +49,9 @@ export interface Category {
   isDefault?: boolean;
 }
 
-export type TabType = 'tasks' | 'calendar' | 'focus' | 'categories' | 'stats';
+export type TabType = 'dashboard' | 'tasks' | 'calendar' | 'focus' | 'categories' | 'stats' | 'users';
+
+export type TaskViewMode = 'list' | 'kanban' | 'calendar';
 
 export type FilterStatus = 'all' | 'pending' | 'completed' | 'starred' | 'urgent';
 
@@ -50,5 +67,5 @@ export interface AppSettings {
   soundEnabled: boolean;
   hapticEnabled: boolean;
   theme: 'dark' | 'light' | 'system';
-  viewMode: 'mobile-frame' | 'responsive';
+  viewMode: 'desktop' | 'mobile-frame';
 }

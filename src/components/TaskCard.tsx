@@ -46,6 +46,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     categories,
     setActiveFocusTaskId,
     setActiveTab,
+    currentUser,
   } = useTask();
 
   const [expanded, setExpanded] = useState(false);
@@ -274,6 +275,14 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       {/* Bottom row: Badges, Category, Time, Focus Trigger */}
       <div className="mt-3 mr-9 flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-slate-100/80 dark:border-slate-800/60">
         <div className="flex items-center gap-1.5 flex-wrap">
+          {/* User badge for admin view */}
+          {currentUser?.role === 'admin' && task.userName && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/60">
+              <User className="w-3 h-3" />
+              {task.userName}
+            </span>
+          )}
+
           {/* Priority */}
           {getPriorityBadge(task.priority)}
 

@@ -11,121 +11,15 @@ export const DEFAULT_CATEGORIES: Category[] = [
 ];
 
 export function getSampleTasks(): Task[] {
-  const today = getTodayISO();
-  const d = new Date();
-  
-  // Tomorrow
-  const tomorrowDate = new Date(d);
-  tomorrowDate.setDate(d.getDate() + 1);
-  const tomorrow = `${tomorrowDate.getFullYear()}-${String(tomorrowDate.getMonth() + 1).padStart(2, '0')}-${String(tomorrowDate.getDate()).padStart(2, '0')}`;
-
-  return [
-    {
-      id: 'task-1',
-      title: 'بررسی ایمیل‌ها و برنامه‌ریزی هفتگی',
-      description: 'اولویت‌بندی پیام‌های دریافتی، بررسی تقویم قرارها و آماده‌سازی تسک‌های کلیدی',
-      date: today,
-      time: '08:30',
-      durationMinutes: 30,
-      completed: true,
-      completedAt: new Date().toISOString(),
-      priority: 'high',
-      categoryId: 'cat-work',
-      isPinned: true,
-      subtasks: [
-        { id: 'sub-1-1', title: 'مرور صندوق ورودی جیمیل', completed: true },
-        { id: 'sub-1-2', title: 'پاسخ به تیکت‌های پشتیبانی', completed: true },
-        { id: 'sub-1-3', title: 'به‌روزرسانی بورد پروژه', completed: true },
-      ],
-      focusMinutesSpent: 25,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'task-2',
-      title: 'طراحی ساختار جدید داشبورد اپلیکیشن',
-      description: 'طراحی پروتوتایپ کامپوننت‌های تسک‌ها، کارت پیشرفت روزانه و نویگیشن موبایل',
-      date: today,
-      time: '10:00',
-      durationMinutes: 90,
-      completed: false,
-      priority: 'high',
-      categoryId: 'cat-work',
-      isPinned: true,
-      subtasks: [
-        { id: 'sub-2-1', title: 'طراحی رابط کاربری ریسپانسیو', completed: true },
-        { id: 'sub-2-2', title: 'پیاده‌سازی تایمر پومودورو', completed: false },
-        { id: 'sub-2-3', title: 'تست تعامل در موبایل', completed: false },
-      ],
-      focusMinutesSpent: 45,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'task-3',
-      title: 'ورزش عصرگاهی و پیاده‌روی سریع',
-      description: 'حداقل ۳۰ دقیقه دویدن یا نرمش هوازی در پارک یا باشگاه',
-      date: today,
-      time: '17:30',
-      durationMinutes: 45,
-      completed: false,
-      priority: 'medium',
-      categoryId: 'cat-health',
-      subtasks: [
-        { id: 'sub-3-1', title: '۱۰ دقیقه گرم کردن', completed: false },
-        { id: 'sub-3-2', title: '۲۵ دقیقه دویدن', completed: false },
-      ],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'task-4',
-      title: 'مطالعه فصل چهارم کتاب «عادت‌های اتمی»',
-      description: 'یادداشت‌برداری نکات کلیدی در مورد شکل‌گیری سیستم‌های روزانه موفق',
-      date: today,
-      time: '21:00',
-      durationMinutes: 40,
-      completed: false,
-      priority: 'low',
-      categoryId: 'cat-study',
-      subtasks: [
-        { id: 'sub-4-1', title: 'خواندن ۲۵ صفحه', completed: false },
-        { id: 'sub-4-2', title: 'خلاصه‌نویسی در دفترچه', completed: false },
-      ],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'task-5',
-      title: 'خرید هفتگی میوه و اقلام سوپرمارکت',
-      description: 'خرید شیر، نان جو، قهوه، میوه و سبزیجات تازه',
-      date: tomorrow,
-      time: '11:00',
-      durationMinutes: 60,
-      completed: false,
-      priority: 'medium',
-      categoryId: 'cat-shopping',
-      subtasks: [],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'task-6',
-      title: 'بررسی هزینه‌های ماهانه و بودجه‌بندی',
-      description: 'تطبیق تراکنش‌های بانکی، پرداخت قبوض و اختصاص پس‌انداز ماه',
-      date: tomorrow,
-      time: '19:00',
-      durationMinutes: 45,
-      completed: false,
-      priority: 'medium',
-      categoryId: 'cat-finance',
-      subtasks: [],
-      createdAt: new Date().toISOString(),
-    },
-  ];
+  // Clean slate - zero sample tasks as requested!
+  return [];
 }
 
 const STORAGE_KEYS = {
-  TASKS: 'task_app_tasks_v1',
-  CATEGORIES: 'task_app_categories_v1',
-  SETTINGS: 'task_app_settings_v1',
-  STREAK: 'task_app_streak_v1',
-  FOCUS_STATS: 'task_app_focus_v1',
+  TASKS: 'task_app_tasks_v2',
+  CATEGORIES: 'task_app_categories_v2',
+  SETTINGS: 'task_app_settings_v2',
+  STREAK: 'task_app_streak_v2',
 };
 
 export function loadTasksFromStorage(): Task[] {
@@ -135,7 +29,7 @@ export function loadTasksFromStorage(): Task[] {
   } catch (e) {
     console.error('Error loading tasks:', e);
   }
-  return getSampleTasks();
+  return [];
 }
 
 export function saveTasksToStorage(tasks: Task[]): void {
@@ -171,7 +65,7 @@ export function loadSettingsFromStorage(): AppSettings {
     soundEnabled: true,
     hapticEnabled: true,
     theme: 'dark',
-    viewMode: 'mobile-frame',
+    viewMode: 'desktop',
   };
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.SETTINGS);
@@ -192,8 +86,8 @@ export function saveSettingsToStorage(settings: AppSettings): void {
 
 export function loadStreakFromStorage(): DailyStreak {
   const defaultStreak: DailyStreak = {
-    currentStreak: 4,
-    bestStreak: 12,
+    currentStreak: 1,
+    bestStreak: 1,
     lastActiveDate: getTodayISO(),
   };
   try {

@@ -1,0 +1,57 @@
+{
+  "users": [
+    {
+      "id": "usr_admin_1",
+      "username": "admin",
+      "password": "admin",
+      "name": "مدیر سیستم",
+      "role": "admin",
+      "createdAt": "2026-09-19T14:50:15.251Z"
+    }
+  ],
+  "tasks": [],
+  "categories": [
+    {
+      "id": "cat-work",
+      "name": "کاری و شغلی",
+      "color": "#6366f1",
+      "icon": "Briefcase",
+      "isDefault": true
+    },
+    {
+      "id": "cat-personal",
+      "name": "کارهای شخصی",
+      "color": "#10b981",
+      "icon": "User",
+      "isDefault": true
+    },
+    {
+      "id": "cat-study",
+      "name": "مطالعه و یادگیری",
+      "color": "#f59e0b",
+      "icon": "BookOpen",
+      "isDefault": true
+    },
+    {
+      "id": "cat-health",
+      "name": "ورزش و سلامتی",
+      "color": "#f43f5e",
+      "icon": "Activity",
+      "isDefault": true
+    },
+    {
+      "id": "cat-shopping",
+      "name": "خرید و منزل",
+      "color": "#0ea5e9",
+      "icon": "ShoppingCart",
+      "isDefault": true
+    },
+    {
+      "id": "cat-finance",
+      "name": "امور مالی",
+      "color": "#8b5cf6",
+      "icon": "CreditCard",
+      "isDefault": true
+    }
+  ]
+}

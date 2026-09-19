@@ -9,19 +9,19 @@ import { CalendarView } from './CalendarView';
 import { FocusTimer } from './FocusTimer';
 import { CategoriesView } from './CategoriesView';
 import { StatsView } from './StatsView';
+import { UserManagementView } from './UserManagementView';
 import { BottomNav } from './BottomNav';
 import { TaskModal } from './TaskModal';
 import { ExportShareModal } from './ExportShareModal';
 import { toPersianDigits } from '../utils/persianDate';
 import {
-  Smartphone,
-  Maximize2,
+  Monitor,
   Wifi,
   BatteryCharging,
 } from 'lucide-react';
 
 export const MobileShell: React.FC = () => {
-  const { activeTab, settings, updateSettings } = useTask();
+  const { activeTab, updateSettings, currentUser } = useTask();
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [currentTimeStr, setCurrentTimeStr] = useState('');
 
@@ -38,8 +38,6 @@ export const MobileShell: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const isMobileFrame = settings.viewMode === 'mobile-frame';
-
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-start antialiased selection:bg-indigo-500 selection:text-white">
       {/* Top desktop control banner */}
@@ -47,44 +45,29 @@ export const MobileShell: React.FC = () => {
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="font-bold text-white tracking-wide">
-            اپلیکیشن موبایل مدیریت تسک روزانه (تسک‌روز)
+            شبیه‌ساز موبایل تسک‌روز
           </span>
           <span className="text-[11px] text-slate-400 border border-slate-800 px-2 py-0.5 rounded-md">
-            نسخه پیشرفته موبایل PWA
+            نسخه موبایل PWA
           </span>
         </div>
 
-        {/* View Mode Switcher */}
+        {/* View Mode Switcher to Desktop Dashboard */}
         <div className="flex items-center gap-2">
           <button
-            onClick={() => updateSettings({ viewMode: isMobileFrame ? 'responsive' : 'mobile-frame' })}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors font-medium border border-slate-700"
+            onClick={() => updateSettings({ viewMode: 'desktop' })}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-colors font-bold text-xs shadow-xs"
           >
-            {isMobileFrame ? (
-              <>
-                <Maximize2 className="w-3.5 h-3.5 text-indigo-400" />
-                <span>نمای تمام‌صفحه</span>
-              </>
-            ) : (
-              <>
-                <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
-                <span>نمای شبیه‌ساز گوشی موبایل</span>
-              </>
-            )}
+            <Monitor className="w-3.5 h-3.5" />
+            <span>ورود به داشبورد دسکتاپ</span>
           </button>
         </div>
       </div>
 
       {/* Main Container / Phone Mockup Frame */}
-      <div className={`w-full flex-1 flex items-center justify-center ${isMobileFrame ? 'sm:py-6 sm:px-4' : 'p-0'}`}>
-        <div
-          className={`w-full flex flex-col relative overflow-hidden transition-all duration-300 ${
-            isMobileFrame
-              ? 'sm:max-w-[430px] sm:h-[880px] sm:rounded-[50px] sm:border-[10px] sm:border-slate-800 sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] sm:ring-1 sm:ring-slate-700/60 bg-white dark:bg-slate-900'
-              : 'max-w-2xl min-h-screen bg-white dark:bg-slate-900 shadow-xl'
-          }`}
-        >
-          {/* Mobile Top Status Bar & Dynamic Island (Visible in frame mode and mobile) */}
+      <div className="w-full flex-1 flex items-center justify-center sm:py-6 sm:px-4">
+        <div className="w-full flex flex-col relative overflow-hidden transition-all duration-300 sm:max-w-[430px] sm:h-[880px] sm:rounded-[50px] sm:border-[10px] sm:border-slate-800 sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] sm:ring-1 sm:ring-slate-700/60 bg-white dark:bg-slate-900">
+          {/* Mobile Top Status Bar & Dynamic Island */}
           <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-6 pt-3 pb-2 flex items-center justify-between text-xs text-slate-800 dark:text-slate-200 select-none z-30">
             {/* Clock */}
             <span className="font-bold text-xs tracking-tight font-mono">
@@ -92,7 +75,7 @@ export const MobileShell: React.FC = () => {
             </span>
 
             {/* Dynamic Island Pill */}
-            <div className="hidden sm:flex items-center justify-center gap-2 px-3 py-1 bg-black rounded-full text-white text-[10px] shadow-sm">
+            <div className="flex items-center justify-center gap-2 px-3 py-1 bg-black rounded-full text-white text-[10px] shadow-sm">
               <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
               <span className="font-medium text-[10px] tracking-tight">تسک‌روز</span>
             </div>
@@ -119,6 +102,14 @@ export const MobileShell: React.FC = () => {
 
           {/* Active Tab View Body */}
           <main className="flex-1 overflow-y-auto flex flex-col relative bg-slate-50/50 dark:bg-slate-900/50">
+            {activeTab === 'dashboard' && (
+              <>
+                <WeeklyStrip />
+                <QuickAddBar />
+                <TaskList />
+              </>
+            )}
+
             {activeTab === 'tasks' && (
               <>
                 <WeeklyStrip />
@@ -133,16 +124,17 @@ export const MobileShell: React.FC = () => {
 
             {activeTab === 'categories' && <CategoriesView />}
 
+            {activeTab === 'users' && currentUser?.role === 'admin' && (
+              <div className="p-4">
+                <UserManagementView />
+              </div>
+            )}
+
             {activeTab === 'stats' && <StatsView />}
           </main>
 
           {/* Bottom Navigation */}
           <BottomNav />
-
-          {/* Mobile Home Indicator Bar */}
-          <div className="bg-white dark:bg-slate-900 py-1 flex justify-center items-center z-40 pointer-events-none">
-            <div className="w-32 h-1 bg-slate-300 dark:bg-slate-700 rounded-full" />
-          </div>
 
           {/* Modals */}
           <TaskModal />

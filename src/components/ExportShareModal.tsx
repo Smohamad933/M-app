@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTask } from '../context/TaskContext';
-import { X, Copy, Check, Share2, Download, Upload } from 'lucide-react';
+import { X, Copy, Check, Share2, Download } from 'lucide-react';
 import { sounds } from '../utils/sound';
 
 export const ExportShareModal: React.FC = () => {
@@ -9,11 +9,9 @@ export const ExportShareModal: React.FC = () => {
     setIsShareModalOpen,
     getDailySummaryText,
     tasks,
-    importTasksJSON,
   } = useTask();
 
   const [copied, setCopied] = useState(false);
-  const [importStatus, setImportStatus] = useState<string | null>(null);
 
   if (!isShareModalOpen) return null;
 
@@ -53,27 +51,6 @@ export const ExportShareModal: React.FC = () => {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-  };
-
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      const ok = importTasksJSON(content);
-      if (ok) {
-        setImportStatus('تسک‌ها با موفقیت بازیابی شدند!');
-        setTimeout(() => {
-          setImportStatus(null);
-          setIsShareModalOpen(false);
-        }, 1500);
-      } else {
-        setImportStatus('خطا در خواندن فایل پشتیبان.');
-      }
-    };
-    reader.readAsText(file);
   };
 
   return (
@@ -140,36 +117,18 @@ export const ExportShareModal: React.FC = () => {
           </button>
         </div>
 
-        {/* JSON Backup & Restore */}
+        {/* JSON Backup */}
         <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
           <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">
             فایل پشتیبان کامل:
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleExportJSON}
-              className="flex-1 py-2 px-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
-            >
-              <Download className="w-3.5 h-3.5 text-indigo-500" />
-              دانلود نسخه پشتیبان (JSON)
-            </button>
-
-            <label className="flex-1 py-2 px-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors text-center">
-              <Upload className="w-3.5 h-3.5 text-emerald-500" />
-              بازیابی از فایل
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImportFile}
-                className="hidden"
-              />
-            </label>
-          </div>
-          {importStatus && (
-            <p className="text-center text-xs font-bold text-emerald-500 pt-1">
-              {importStatus}
-            </p>
-          )}
+          <button
+            onClick={handleExportJSON}
+            className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-indigo-500" />
+            دانلود فایل پشتیبان داده‌ها (JSON)
+          </button>
         </div>
       </div>
     </div>

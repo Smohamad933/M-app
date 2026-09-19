@@ -10,7 +10,6 @@ import {
   CreditCard,
   Folder,
   Plus,
-  Trash2,
 } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -41,7 +40,6 @@ export const CategoriesView: React.FC = () => {
     setFilterCategory,
     setActiveTab,
     addCategory,
-    deleteCategory,
   } = useTask();
 
   const [isAdding, setIsAdding] = useState(false);
@@ -120,21 +118,6 @@ export const CategoriesView: React.FC = () => {
                     </p>
                   </div>
                 </div>
-
-                {!cat.isDefault && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (window.confirm(`آیا دسته‌بندی "${cat.name}" حذف شود؟`)) {
-                        deleteCategory(cat.id);
-                      }
-                    }}
-                    className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                    title="حذف دسته‌بندی"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
               </div>
 
               {/* Category Progress Bar */}

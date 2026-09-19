@@ -4,7 +4,6 @@ import { getGreeting, formatPersianDate, toPersianDigits, getTodayISO } from '..
 import {
   Flame,
   Share2,
-  RotateCcw,
   Sun,
   Moon,
   CheckCircle2,
@@ -17,7 +16,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }) => {
-  const { tasks, streak, selectedDate, settings, updateSettings, setIsShareModalOpen, resetToSampleData } = useTask();
+  const { tasks, streak, selectedDate, settings, updateSettings, setIsShareModalOpen } = useTask();
 
   const greeting = getGreeting();
   const todayTasks = tasks.filter((t) => t.date === selectedDate);
@@ -81,19 +80,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }
             ) : (
               <Moon className="w-4 h-4 text-indigo-600" />
             )}
-          </button>
-
-          <button
-            onClick={() => {
-              if (window.confirm('آیا می‌خواهید تسک‌ها به نمونه‌های اولیه بازنشانی شوند؟')) {
-                resetToSampleData();
-              }
-            }}
-            aria-label="بازنشانی اطلاعات نمونه"
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
-            title="بازنشانی اطلاعات نمونه"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
