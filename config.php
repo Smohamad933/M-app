@@ -1,9 +1,13 @@
 <?php
 /**
  * TaskRooz - Database Configuration & MySQL Connection
- * Compatible with Windows IIS / Apache / Nginx / Linux on PHP 7.4+ to 8.4+
+ * Compatible with Windows IIS / Apache / Nginx / Linux on PHP 7.4+ to 8.5+
  * Built by Mohusyn (mohusyn.ir)
  */
+
+// Disable deprecation, notices and warnings from corrupting JSON API output
+@error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED & ~E_NOTICE & ~E_WARNING);
+@ini_set('display_errors', '0');
 
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
@@ -30,12 +34,14 @@ function getMySQLPDO() {
 
     try {
         $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
-        $mysqlPdo = new PDO($dsn, DB_USER, DB_PASS, [
+        $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
             PDO::ATTR_TIMEOUT => 4,
-        ]);
+        ];
+        $mysqlPdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        // Execute UTF-8 collation directly (100% compatible across PHP 7.0 - 8.5+ without deprecated constants)
+        $mysqlPdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
         return $mysqlPdo;
     } catch (Exception $e) {
         return null;

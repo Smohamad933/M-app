@@ -4,6 +4,17 @@
  * Compatible with Windows IIS / Apache / Nginx / Linux on PHP 7.4+ to 8.4+
  */
 
+// Suppress deprecations and warnings
+@error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED & ~E_NOTICE & ~E_WARNING);
+@ini_set('display_errors', '0');
+
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    if ($errno === E_DEPRECATED || $errno === E_USER_DEPRECATED || $errno === E_NOTICE || $errno === E_USER_NOTICE || $errno === E_WARNING) {
+        return true; // handled silently without polluting stdout/JSON
+    }
+    return false;
+});
+
 require_once dirname(__DIR__) . '/config.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -15,9 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
-
-error_reporting(E_ALL);
-ini_set('display_errors', '0');
 
 $db = TaskRoozDB::getInstance();
 $pdo = getMySQLPDO();

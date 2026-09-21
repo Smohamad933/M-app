@@ -515,9 +515,29 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const syncRoomTimer = async (action: 'start' | 'pause' | 'reset' | 'setMode', timeLeft?: number, mode?: string) => {
     if (!activeRoomId) return;
+
+    // Instant optimistic update for immediate, lag-free UI responsiveness
+    setActiveRoom((prev) => {
+      if (!prev) return prev;
+      const isRunning = action === 'start' ? true : (action === 'pause' ? false : (action === 'reset' ? false : prev.isRunning));
+      const targetMode = (action === 'setMode' && mode) ? (mode as any) : prev.mode;
+      const targetTime = action === 'reset'
+        ? (targetMode === 'focus' ? prev.focusDuration : prev.breakDuration)
+        : (timeLeft !== undefined ? timeLeft : prev.timeLeft);
+      return {
+        ...prev,
+        isRunning,
+        mode: targetMode,
+        timeLeft: targetTime,
+        lastUpdated: Date.now(),
+      };
+    });
+
     try {
       const updated = await api.syncFocusRoomTimer(activeRoomId, action, timeLeft, mode);
-      setActiveRoom(updated);
+      if (updated) {
+        setActiveRoom(updated);
+      }
     } catch {
       // ignore
     }

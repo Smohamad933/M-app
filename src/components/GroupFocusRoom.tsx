@@ -85,8 +85,18 @@ export const GroupFocusRoom: React.FC = () => {
   const [localTimeLeft, setLocalTimeLeft] = useState(activeRoom?.timeLeft || 1500);
 
   useEffect(() => {
-    if (activeRoom) {
+    if (!activeRoom) return;
+
+    if (!activeRoom.isRunning) {
       setLocalTimeLeft(activeRoom.timeLeft);
+    } else {
+      // When timer is running, preserve smooth local countdown unless drifted by >2s
+      setLocalTimeLeft((prev) => {
+        if (Math.abs(prev - activeRoom.timeLeft) > 2) {
+          return activeRoom.timeLeft;
+        }
+        return prev;
+      });
     }
   }, [activeRoom?.timeLeft, activeRoom?.isRunning, activeRoom?.mode]);
 

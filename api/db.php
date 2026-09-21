@@ -789,6 +789,20 @@ class TaskRoozDB {
                 $stmt->execute([$cleanId]);
                 $r = $stmt->fetch();
                 if ($r) {
+                    $isRunning = !empty($r['is_running']);
+                    $timeLeft = (int)$r['time_left'];
+                    $lastUpdated = isset($r['last_updated']) ? (float)$r['last_updated'] : 0;
+
+                    // If timer is actively running, compute dynamic remaining seconds from elapsed time
+                    if ($isRunning && $lastUpdated > 0) {
+                        $nowMs = microtime(true) * 1000;
+                        $elapsedSec = max(0, (int)floor(($nowMs - $lastUpdated) / 1000));
+                        $timeLeft = max(0, $timeLeft - $elapsedSec);
+                        if ($timeLeft === 0) {
+                            $isRunning = false;
+                        }
+                    }
+
                     return [
                         'id' => $r['id'],
                         'name' => $r['name'],
@@ -797,9 +811,9 @@ class TaskRoozDB {
                         'focusDuration' => (int)$r['focus_duration'],
                         'breakDuration' => (int)$r['break_duration'],
                         'mode' => $r['mode'],
-                        'isRunning' => !empty($r['is_running']),
-                        'timeLeft' => (int)$r['time_left'],
-                        'lastUpdated' => (int)$r['last_updated'],
+                        'isRunning' => $isRunning,
+                        'timeLeft' => $timeLeft,
+                        'lastUpdated' => $lastUpdated,
                         'isDeleted' => !empty($r['is_deleted']),
                         'deletedAt' => (int)$r['deleted_at'],
                         'participants' => !empty($r['participants_json']) ? json_decode($r['participants_json'], true) : [],
@@ -815,7 +829,21 @@ class TaskRoozDB {
         if (!isset($this->data['focus_rooms'])) return null;
         foreach ($this->data['focus_rooms'] as &$r) {
             if ($r['id'] === $cleanId) {
-                return $r;
+                $copy = $r;
+                $isRunning = !empty($copy['isRunning']);
+                $timeLeft = (int)($copy['timeLeft'] ?? 1500);
+                $lastUpdated = isset($copy['lastUpdated']) ? (float)$copy['lastUpdated'] : 0;
+                if ($isRunning && $lastUpdated > 0) {
+                    $nowMs = microtime(true) * 1000;
+                    $elapsedSec = max(0, (int)floor(($nowMs - $lastUpdated) / 1000));
+                    $timeLeft = max(0, $timeLeft - $elapsedSec);
+                    if ($timeLeft === 0) {
+                        $isRunning = false;
+                    }
+                }
+                $copy['isRunning'] = $isRunning;
+                $copy['timeLeft'] = $timeLeft;
+                return $copy;
             }
         }
         return null;
