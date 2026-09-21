@@ -1,7 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { handleApiRequest } from './server/apiHandler.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -13,6 +19,20 @@ export default defineConfig({
       name: 'api-middleware',
       configureServer(server) {
         server.middlewares.use(async (req, res, next) => {
+          const urlPath = (req.url || '').split('?')[0];
+          // In dev mode, always serve index.source.html with dynamic HMR transformation
+          if (urlPath === '/' || urlPath === '/index.html') {
+            try {
+              const template = fs.readFileSync(path.resolve(__dirname, 'index.source.html'), 'utf-8');
+              const transformed = await server.transformIndexHtml(req.url || '/', template);
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'text/html; charset=utf-8');
+              return res.end(transformed);
+            } catch (err) {
+              return next(err);
+            }
+          }
+
           try {
             const handled = await handleApiRequest(req, res);
             if (!handled) {
