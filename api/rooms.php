@@ -60,6 +60,19 @@ if (!$currentUser) {
     }
 }
 
+// POST / GET /api/rooms.php?action=delete_all -> Admin only: delete ALL rooms
+if ($action === 'delete_all' || $action === 'deleteall' || $action === 'wipe') {
+    $isAdmin = ($currentUser['role'] ?? '') === 'admin';
+    if (!$isAdmin) {
+        jsonResponse(['error' => 'دسترسی فقط برای مدیر سیستم مجاز است.'], 403);
+    }
+    $count = $db->deleteAllFocusRooms();
+    jsonResponse([
+        'message' => 'همه اتاق‌های تمرکز با موفقیت حذف شدند.',
+        'deletedCount' => $count,
+    ]);
+}
+
 // POST / GET /api/rooms.php?action=create
 if ($action === 'create' || empty($action) && (isset($_POST['create']) || isset($_GET['name']))) {
     $input = getJsonInput();

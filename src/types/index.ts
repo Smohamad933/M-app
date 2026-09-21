@@ -14,6 +14,7 @@ export interface User {
   username: string;
   name: string;
   role: UserRole;
+  avatar?: string; // data URL (base64) — uploaded profile photo
   phone?: string;
   email?: string;
   province?: string;
@@ -231,4 +232,6 @@ export interface GlobalSystemSettings {
   };
   dailyMantra: string;
   jobCategories?: string[];
+  /** Admin-editable app texts (UI labels & messages). Missing keys fall back to defaults. */
+  texts?: Record<string, string>;
 }

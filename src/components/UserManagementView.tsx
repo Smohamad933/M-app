@@ -3,6 +3,8 @@ import { useTask } from '../context/TaskContext';
 import { api } from '../services/api';
 import { toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
+import { APP_TEXTS, APP_TEXT_SECTIONS } from '../utils/appTexts';
+import { UserAvatar } from './UserAvatar';
 import type { User, GlobalSystemSettings } from '../types';
 import {
   Users,
@@ -51,8 +53,39 @@ export const UserManagementView: React.FC = () => {
   } = useTask();
 
   // Active view tab inside Admin Panel
-  const [adminTab, setAdminTab] = useState<'users' | 'settings'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'settings' | 'texts'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Admin Text Manager — editable app texts (values fall back to built-in defaults)
+  const [textsForm, setTextsForm] = useState<Record<string, string>>(() => ({
+    ...(globalSettings?.texts || {}),
+  }));
+  const [textsSavedNotice, setTextsSavedNotice] = useState(false);
+  const [isSavingTexts, setIsSavingTexts] = useState(false);
+
+  useEffect(() => {
+    setTextsForm({ ...(globalSettings?.texts || {}) });
+  }, [globalSettings?.texts]);
+
+  const handleSaveTexts = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingTexts(true);
+    try {
+      await updateGlobalSettings({ texts: { ...textsForm } });
+      setTextsSavedNotice(true);
+      setTimeout(() => setTextsSavedNotice(false), 3000);
+    } catch (err: any) {
+      alert(err.message || 'خطا در ذخیره متن‌ها');
+    } finally {
+      setIsSavingTexts(false);
+    }
+  };
+
+  const handleResetTexts = () => {
+    if (!window.confirm('با بازنشانی، همه ویرایش‌های شما روی متن‌ها حذف می‌شود و متن‌های پیش‌فرض سامانه استفاده خواهد شد. ادامه می‌دهید؟')) return;
+    setTextsForm({});
+    sounds.playPop();
+  };
 
   // User Comprehensive Report Modal State
   const [reportUser, setReportUser] = useState<User | null>(null);
@@ -246,11 +279,17 @@ export const UserManagementView: React.FC = () => {
       return;
     }
 
-    if (window.confirm(`آیا از حذف حساب کاربری "${user.name}" اطمینان دارید؟ تمامی تسک‌های مربوطه نیز حذف خواهند شد.`)) {
+    if (user.id === 'usr_admin_mohusyn' || (user.username || '').toLowerCase() === 'mohusyn') {
+      alert('حساب مدیر اصلی (Mohusyn) قابل حذف نیست.');
+      return;
+    }
+
+    if (window.confirm(`آیا از حذف حساب کاربری "${user.name}" اطمینان دارید؟ تمامی تسک‌ها، اهداف و داده‌های مربوطه نیز حذف خواهند شد.`)) {
       try {
-        await deleteUser(user.id);
+        await deleteUser(user.id, user.username);
+        alert(`کاربر "${user.name}" و تمامی داده‌های مرتبط با موفقیت حذف شد.`);
       } catch (err: any) {
-        alert(err.message || 'خطا در حذف کاربر.');
+        alert(err.message || 'خطا در حذف کاربر. لطفاً اتصال به سرور را بررسی کنید.');
       }
     }
   };
@@ -356,6 +395,18 @@ export const UserManagementView: React.FC = () => {
           <Sliders className="w-3.5 h-3.5" />
           <span>تنظیمات سراسری سازمان</span>
         </button>
+
+        <button
+          onClick={() => setAdminTab('texts')}
+          className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            adminTab === 'texts'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <Type className="w-3.5 h-3.5" />
+          <span>ویرایش متن‌های سامانه</span>
+        </button>
       </div>
 
       {/* TAB 1: USERS LIST & MONITORING */}
@@ -420,9 +471,7 @@ export const UserManagementView: React.FC = () => {
                   >
                     {/* User info */}
                     <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                      <div className="w-11 h-11 rounded-2xl bg-zinc-800 border border-zinc-700/60 text-white font-bold flex items-center justify-center text-sm flex-shrink-0">
-                        {u.name.slice(0, 1)}
-                      </div>
+                      <UserAvatar name={u.name} avatar={u.avatar} size="w-11 h-11 text-sm" />
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-black text-sm text-white">{u.name}</span>
@@ -873,6 +922,88 @@ export const UserManagementView: React.FC = () => {
         </form>
       )}
 
+      {/* TAB 3: ADMIN TEXT MANAGER (edit every visible app text) */}
+      {adminTab === 'texts' && (
+        <form onSubmit={handleSaveTexts} className="space-y-6 animate-in fade-in">
+          {textsSavedNotice && (
+            <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-800/70 text-emerald-300 text-xs font-bold flex items-center gap-2.5 shadow-md">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+              <span>متن‌های سامانه با موفقیت ذخیره شد و برای همه کاربران اعمال گردید.</span>
+            </div>
+          )}
+
+          <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-5 space-y-3 backdrop-blur-md">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800 flex-wrap gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                  <Type className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">مدیریت متن‌های نمایش‌داده‌شده سامانه</h3>
+                  <p className="text-[11px] text-zinc-400">
+                    هر متنی که خالی بگذارید، به مقدار پیش‌فرض سامانه بازمی‌گردد. تغییرات بلافاصله بعد از ذخیره برای همه کاربران اعمال می‌شود.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleResetTexts}
+                className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-rose-500/20 text-zinc-300 hover:text-rose-400 text-xs font-bold border border-zinc-700/60 hover:border-rose-500/30 transition-colors cursor-pointer"
+              >
+                بازنشانی به پیش‌فرض
+              </button>
+            </div>
+
+            {APP_TEXT_SECTIONS.map((section) => (
+              <div key={section.id} className="space-y-3">
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[11px] font-black text-emerald-400 tracking-wide">▸ {section.label}</span>
+                  <div className="flex-1 h-px bg-zinc-800/80" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {APP_TEXTS.filter((t) => t.section === section.id).map((t) => (
+                    <div key={t.key} className={t.multiline ? 'sm:col-span-2' : ''}>
+                      <label className="block text-xs font-bold text-zinc-300 mb-1">
+                        {t.label}
+                        <span className="mr-2 text-[10px] text-zinc-600 font-mono">{t.key}</span>
+                      </label>
+                      {t.multiline ? (
+                        <textarea
+                          value={textsForm[t.key] ?? ''}
+                          onChange={(e) => setTextsForm({ ...textsForm, [t.key]: e.target.value })}
+                          rows={2}
+                          placeholder={t.default}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-emerald-500 resize-none"
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={textsForm[t.key] ?? ''}
+                          onChange={(e) => setTextsForm({ ...textsForm, [t.key]: e.target.value })}
+                          placeholder={t.default}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-emerald-500"
+                        />
+                      )}
+                      {t.hint && <p className="text-[10px] text-zinc-600 mt-1">{t.hint}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={isSavingTexts}
+              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs transition-all shadow-lg active:scale-95 cursor-pointer disabled:opacity-50"
+            >
+              {isSavingTexts ? 'در حال ذخیره...' : 'ذخیره و اعمال متن‌ها بر کل سیستم ✍️'}
+            </button>
+          </div>
+        </form>
+      )}
+
       {/* MODAL: ADD USER */}
       {isAddModalOpen && (
         <div
@@ -1044,9 +1175,7 @@ export const UserManagementView: React.FC = () => {
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3 pb-4 border-b border-zinc-800">
               <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-300 font-black text-base flex items-center justify-center flex-shrink-0 shadow-inner">
-                  {reportUser.name.slice(0, 1)}
-                </div>
+                <UserAvatar name={reportUser.name} avatar={reportUser.avatar} size="w-12 h-12 text-base" />
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-base sm:text-lg font-black text-white">

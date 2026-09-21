@@ -16,6 +16,7 @@ interface DBUser {
   jobTitle?: string;
   skills?: string[];
   dailyTimeline?: any;
+  avatar?: string; // data URL (base64) profile photo
   createdAt: string;
 }
 
@@ -468,6 +469,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           city: user.city,
           birthDate: user.birthDate,
           jobTitle: user.jobTitle,
+          avatar: user.avatar || null,
           skills: user.skills,
           dailyTimeline: user.dailyTimeline,
           createdAt: user.createdAt,
@@ -489,6 +491,15 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           username: currentUser.username,
           name: currentUser.name,
           role: currentUser.role,
+          phone: currentUser.phone || '',
+          email: currentUser.email || '',
+          province: currentUser.province || '',
+          city: currentUser.city || '',
+          birthDate: currentUser.birthDate || '',
+          jobTitle: currentUser.jobTitle || '',
+          avatar: currentUser.avatar || null,
+          skills: currentUser.skills || [],
+          dailyTimeline: currentUser.dailyTimeline || [],
           createdAt: currentUser.createdAt,
         },
       });
@@ -501,10 +512,111 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
   }
 
-  // 2. Users routes (Admin only)
+  // 2. Users routes (Admin only — except self profile update below)
   if (pathname.startsWith('/api/users')) {
+    // Parse body ONCE (stream can only be read once) and share across branches
+    const parsedBody = method === 'POST' || method === 'PUT' || method === 'PATCH' ? await parseJsonBody(req) : {};
+
+    // ── Self profile update: ANY authenticated user, only their OWN profile ──
+    if ((method === 'PUT' || method === 'POST') && parsedBody.action === 'update_profile') {
+      if (!currentUser) {
+        sendJson(res, { error: 'ابتدا وارد حساب کاربری خود شوید.' }, 401);
+        return true;
+      }
+      if (parsedBody.id && parsedBody.id !== currentUser.id) {
+        sendJson(res, { error: 'فقط می‌توانید پروفایل خودتان را ویرایش کنید.' }, 403);
+        return true;
+      }
+      const self = db.users.find((u) => u.id === currentUser!.id);
+      if (!self) {
+        sendJson(res, { error: 'کاربر پیدا نشد.' }, 404);
+        return true;
+      }
+      const strField = (v: any) => (typeof v === 'string' ? v.trim() : undefined);
+      for (const k of ['name', 'phone', 'email', 'province', 'city', 'birthDate', 'jobTitle'] as const) {
+        const v = strField((parsedBody as any)[k]);
+        if (v !== undefined) (self as any)[k] = v;
+      }
+      if (Array.isArray((parsedBody as any).skills)) {
+        self.skills = ((parsedBody as any).skills as any[]).filter((s) => typeof s === 'string').map((s) => s.trim()).filter(Boolean);
+      }
+      if ((parsedBody as any).dailyTimeline && typeof (parsedBody as any).dailyTimeline === 'object') {
+        self.dailyTimeline = (parsedBody as any).dailyTimeline;
+      }
+      if ('avatar' in (parsedBody as any)) {
+        const av = (parsedBody as any).avatar;
+        if (av === '' || av === null) {
+          self.avatar = undefined;
+        } else if (typeof av === 'string' && av.startsWith('data:image/') && av.length < 600000) {
+          self.avatar = av;
+        } else {
+          sendJson(res, { error: 'عکس پروفایل معتبر نیست (حداکثر ۶۰۰ کیلوبایت).' }, 400);
+          return true;
+        }
+      }
+      if (typeof (parsedBody as any).password === 'string' && (parsedBody as any).password) {
+        self.password = (parsedBody as any).password.trim();
+      }
+      writeDb(db);
+      sendJson(res, {
+        message: 'پروفایل شما با موفقیت به‌روزرسانی شد.',
+        user: {
+          id: self.id,
+          username: self.username,
+          name: self.name,
+          role: self.role,
+          phone: self.phone,
+          email: self.email,
+          province: self.province,
+          city: self.city,
+          birthDate: self.birthDate,
+          jobTitle: self.jobTitle,
+          avatar: self.avatar || null,
+          skills: self.skills,
+          dailyTimeline: self.dailyTimeline,
+        },
+      });
+      return true;
+    }
+
     if (!currentUser || currentUser.role !== 'admin') {
       sendJson(res, { error: 'دسترسی فقط برای مدیر سیستم مجاز است.' }, 403);
+      return true;
+    }
+
+    // Shared user-deletion routine: removes the user AND all their data
+    // (tasks, goals, notes, personality) so nothing is orphaned.
+    const handleUserDelete = (id: string | null) => {
+      if (!id) {
+        sendJson(res, { error: 'شناسه کاربر الزامی است.' }, 400);
+        return;
+      }
+      if (id === currentUser!.id) {
+        sendJson(res, { error: 'امکان حذف حساب کاربری جاری وجود ندارد.' }, 400);
+        return;
+      }
+      if (id === 'usr_admin_mohusyn') {
+        sendJson(res, { error: 'شما نمی‌توانید حساب کاربری مدیر اصلی را حذف کنید.' }, 400);
+        return;
+      }
+      db.users = db.users.filter((u) => u.id !== id);
+      db.tasks = db.tasks.filter((t) => t.userId !== id);
+      db.goals = db.goals.filter((g) => g.userId !== id);
+      db.dailyNotes = db.dailyNotes.filter((n) => n.userId !== id);
+      db.personalityResults = db.personalityResults.filter((p) => p.userId !== id);
+      writeDb(db);
+      sendJson(res, { message: 'کاربر و تمامی تسک‌ها و داده‌های مرتبط با موفقیت حذف شدند.' });
+    };
+
+    const qAction = urlObj.searchParams.get('action') || '';
+
+    // IIS 405 resilience: some servers block the DELETE verb, allow delete via GET/POST ?action=delete
+    if (method === 'GET' && (qAction === 'delete' || qAction === 'delete_user')) {
+      handleUserDelete(urlObj.searchParams.get('id'));
+      return true;
+    }
+    if (method === 'POST' && (qAction === 'delete' || qAction === 'delete_user')) {
+      handleUserDelete(typeof parsedBody.id === 'string' && parsedBody.id ? parsedBody.id : urlObj.searchParams.get('id'));
       return true;
     }
 
@@ -590,6 +702,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           city: u.city,
           birthDate: u.birthDate,
           jobTitle: u.jobTitle,
+          avatar: u.avatar || null,
           skills: u.skills,
           dailyTimeline: u.dailyTimeline,
           createdAt: u.createdAt,
@@ -603,7 +716,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     if (method === 'POST') {
-      const body = await parseJsonBody(req);
+      const body = parsedBody;
       const username = body.username?.trim();
       const password = body.password?.trim();
       const name = body.name?.trim();
@@ -664,7 +777,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     if (method === 'PUT') {
-      const body = await parseJsonBody(req);
+      const body = parsedBody;
       const { id, name, role, password } = body;
       const user = db.users.find((u) => u.id === id);
       if (!user) {
@@ -681,19 +794,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     if (method === 'DELETE') {
-      const id = urlObj.searchParams.get('id');
-      if (!id) {
-        sendJson(res, { error: 'شناسه کاربر الزامی است.' }, 400);
-        return true;
-      }
-      if (id === currentUser.id) {
-        sendJson(res, { error: 'امکان حذف حساب کاربری جاری وجود ندارد.' }, 400);
-        return true;
-      }
-      db.users = db.users.filter((u) => u.id !== id);
-      db.tasks = db.tasks.filter((t) => t.userId !== id);
-      writeDb(db);
-      sendJson(res, { message: 'کاربر و تسک‌های مرتبط با موفقیت حذف شدند.' });
+      handleUserDelete(urlObj.searchParams.get('id'));
       return true;
     }
   }
@@ -706,6 +807,33 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     const action = urlObj.searchParams.get('action') || '';
+
+    // Delete ALL rooms (Admin only) — soft delete with 10-minute message retention
+    if (action === 'delete_all' || action === 'deleteall' || action === 'wipe') {
+      if (currentUser.role !== 'admin') {
+        sendJson(res, { error: 'دسترسی فقط برای مدیر سیستم مجاز است.' }, 403);
+        return true;
+      }
+      const now = Math.floor(Date.now() / 1000);
+      let count = 0;
+      for (const r of db.focus_rooms) {
+        if (r.isDeleted) continue;
+        r.isDeleted = true;
+        r.deletedAt = now;
+        r.isRunning = false;
+        r.messages.push({
+          id: 'msg_delall_' + now + '_' + Math.random().toString(36).substr(2, 4),
+          userId: 'system',
+          userName: 'سیستم',
+          text: `این اتاق توسط مدیر سیستم (${currentUser.name}) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.`,
+          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
+        });
+        count++;
+      }
+      writeDb(db);
+      sendJson(res, { message: 'همه اتاق‌های تمرکز با موفقیت حذف شدند.', deletedCount: count });
+      return true;
+    }
 
     // List active rooms for lobby
     if (method === 'GET' && action === 'list') {

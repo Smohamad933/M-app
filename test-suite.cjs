@@ -645,3 +645,210 @@ test('Admin Global Settings Job Categories & Registration Integration', async ()
   assert(getRes.body.settings.jobCategories.includes('مهندس هوش مصنوعی و یادگیری عمیق'), 'New job category persisted');
 });
 
+// 17. User Deletion: no resurrection, related data cleaned, IIS-405 fallbacks
+test('User Deletion: Permanent Removal, Data Cleanup & IIS-405 Fallbacks', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  // Create two users via admin panel endpoint
+  const u1 = (await request('POST', '/api/users', {
+    username: 'delcheck_verb_' + Date.now(),
+    password: 'Pass123!',
+    name: 'کاربر حذف‌شده ۱',
+    role: 'user',
+  }, adminHeader)).body.user;
+  const u2 = (await request('POST', '/api/users', {
+    username: 'delcheck_fallback_' + Date.now(),
+    password: 'Pass123!',
+    name: 'کاربر حذف‌شده ۲',
+    role: 'user',
+  }, adminHeader)).body.user;
+
+  // Give u1 a task so we can verify cascade cleanup
+  await request('POST', '/api/tasks', {
+    title: 'تسک وابسته به کاربر حذف‌شده',
+    userId: u1.id,
+    date: '2026-09-21',
+    categoryId: 'cat-work',
+  }, adminHeader);
+
+  // Delete u1 via standard DELETE verb
+  const del1 = await request('DELETE', `/api/users?id=${u1.id}`, null, adminHeader);
+  assert(del1.status === 200, `DELETE verb should succeed, got ${del1.status}`);
+
+  // Delete u2 via IIS-405 fallback (GET ?action=delete)
+  const del2 = await request('GET', `/api/users?action=delete&id=${u2.id}`, null, adminHeader);
+  assert(del2.status === 200, `GET ?action=delete fallback should succeed, got ${del2.status}`);
+
+  // Both must be GONE from the server list (and stay gone on re-poll — no resurrection)
+  for (let i = 0; i < 2; i++) {
+    const list = await request('GET', '/api/users', null, adminHeader);
+    const found1 = list.body.users.some((u) => u.id === u1.id || u.username === u1.username);
+    const found2 = list.body.users.some((u) => u.id === u2.id || u.username === u2.username);
+    assert(!found1, 'Deleted user u1 must NOT reappear on poll (no resurrection)');
+    assert(!found2, 'Deleted user u2 must NOT reappear on poll (no resurrection)');
+  }
+
+  // Tasks of the deleted user must be gone too
+  const orphan = await request('GET', `/api/tasks?user_id=${u1.id}`, null, adminHeader);
+  assert(orphan.status === 200 && orphan.body.tasks.length === 0, 'Tasks of deleted user must be cascade-deleted');
+
+  // Super admin Mohusyn is protected from deletion
+  const delMohusyn = await request('DELETE', '/api/users?id=usr_admin_mohusyn', null, adminHeader);
+  assert(delMohusyn.status === 400, `Mohusyn account must be protected from deletion, got ${delMohusyn.status}`);
+});
+
+// 18. Admin "Delete All Rooms" endpoint
+test('Admin Delete All Focus Rooms', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  // Seed: create a room first
+  const roomRes = await request('POST', '/api/rooms', {
+    name: 'اتاق آزمایشی حذف کلی',
+    focusDuration: 1500,
+    breakDuration: 300,
+  }, adminHeader);
+  assert(roomRes.status === 201, 'Room created for delete-all test');
+
+  // Non-admin must be rejected
+  const regRes = await request('POST', '/api/auth/register', {
+    username: 'noadmin_' + Date.now(),
+    password: 'Pass123!',
+    name: 'کاربر بدون دسترسی',
+    phone: '09120009999',
+  });
+  const noAdminHeader = { Authorization: `Bearer ${regRes.body.token}` };
+  const forbidden = await request('POST', '/api/rooms?action=delete_all', {}, noAdminHeader);
+  assert(forbidden.status === 403, `Non-admin delete_all must be 403, got ${forbidden.status}`);
+
+  // Admin wipes ALL rooms
+  const wipe = await request('POST', '/api/rooms?action=delete_all', {}, adminHeader);
+  assert(wipe.status === 200, `Admin delete_all should succeed, got ${wipe.status}`);
+  assert(wipe.body.deletedCount >= 1, 'At least the seeded room must be deleted');
+
+  // Room list must now be empty
+  const list = await request('GET', '/api/rooms?action=list', null, adminHeader);
+  assert(list.status === 200, 'Room list fetched after wipe');
+  assert(Array.isArray(list.body.rooms) && list.body.rooms.length === 0, 'No active rooms may remain after admin wipe');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// New features: self profile update (incl. avatar) + admin text manager
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TINY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+// 19. Self profile update: any user can edit own profile incl. photo + password
+test('Profile Self-Update: Avatar, Contact Fields & Password Rotation', async () => {
+  const regRes = await request('POST', '/api/auth/register', {
+    username: 'profile_test_' + Date.now(),
+    password: 'OldPass123!',
+    name: 'کاربر پروفایل',
+  });
+  assert(regRes.status === 201, `Register should succeed, got ${regRes.status}`);
+  const user = regRes.body.user;
+  const userHeader = { Authorization: `Bearer ${regRes.body.token}` };
+
+  // 1. Update own profile with avatar + fields
+  const upd = await request('PUT', '/api/users', {
+    action: 'update_profile',
+    name: 'کاربر پروفایل ویرایش‌شده',
+    phone: '09123456789',
+    email: 'profile@test.local',
+    province: 'اصفهان',
+    city: 'اصفهان',
+    jobTitle: 'تست‌نویس',
+    skills: ['React', 'PHP'],
+    avatar: TINY_PNG,
+  }, userHeader);
+  assert(upd.status === 200, `Self profile update should succeed, got ${upd.status}`);
+  assert(typeof upd.body.user.avatar === 'string' && upd.body.user.avatar.startsWith('data:image/'), 'Avatar data URL must be returned');
+  assert(upd.body.user.name === 'کاربر پروفایل ویرایش‌شده', 'Name must be updated');
+
+  // 2. Persisted: /me returns avatar
+  const me = await request('GET', '/api/auth?action=me', null, userHeader);
+  assert(me.status === 200 && me.body.authenticated === true, '/me must authenticate');
+  assert(me.body.user.avatar === TINY_PNG, 'Avatar must persist across /me');
+  assert(Array.isArray(me.body.user.skills) && me.body.user.skills.includes('React'), 'Skills must persist');
+
+  // 3. Empty string removes avatar
+  const remove = await request('PUT', '/api/users', { action: 'update_profile', avatar: '' }, userHeader);
+  assert(remove.status === 200, `Avatar removal should succeed, got ${remove.status}`);
+  const me2 = await request('GET', '/api/auth?action=me', null, userHeader);
+  assert(!me2.body.user.avatar, 'Avatar must be removed after empty-string update');
+
+  // 4. Password rotation via self profile update
+  const pw = await request('PUT', '/api/users', { action: 'update_profile', password: 'NewPass99!' }, userHeader);
+  assert(pw.status === 200, `Password change should succeed, got ${pw.status}`);
+  const loginNew = await request('POST', '/api/auth/login', { username: user.username, password: 'NewPass99!' });
+  assert(loginNew.status === 200, `Login with new password must work, got ${loginNew.status}`);
+
+  // 5. Invalid avatar rejected
+  const badAvatar = await request('PUT', '/api/users', { action: 'update_profile', avatar: 'not-a-data-url' }, userHeader);
+  assert(badAvatar.status === 400, `Invalid avatar must be 400, got ${badAvatar.status}`);
+
+  // Cleanup: admin deletes the test user
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+  const del = await request('GET', `/api/users?action=delete&id=${user.id}`, null, adminHeader);
+  assert(del.status === 200, `Cleanup delete should succeed, got ${del.status}`);
+});
+
+// 20. Self profile update is strictly own-account only
+test('Profile Self-Update Security: Cannot Edit Other Users', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  const regRes = await request('POST', '/api/auth/register', {
+    username: 'profile_sec_' + Date.now(),
+    password: 'Pass123!',
+    name: 'کاربر امنیتی',
+  });
+  const user = regRes.body.user;
+  const userHeader = { Authorization: `Bearer ${regRes.body.token}` };
+
+  // Non-admin targets another (admin) user id -> 403
+  const other = await request('PUT', '/api/users', {
+    action: 'update_profile',
+    id: adminLogin.body.user.id,
+    name: 'هاک نام مدیر',
+  }, userHeader);
+  assert(other.status === 403, `Editing another user must be 403, got ${other.status}`);
+
+  // Admin id must not be renamed
+  const list = await request('GET', '/api/users', null, adminHeader);
+  const mohusyn = list.body.users.find((u) => u.username === 'Mohusyn');
+  assert(mohusyn && mohusyn.name !== 'هاک نام مدیر', 'Admin name must be untouched');
+
+  // No authentication -> 401 (dev handler) 
+  const anon = await request('PUT', '/api/users', { action: 'update_profile', name: 'بی‌هویت' });
+  assert([401, 403].includes(anon.status), `Anonymous self-update must be rejected, got ${anon.status}`);
+
+  // Cleanup
+  const del = await request('GET', `/api/users?action=delete&id=${user.id}`, null, adminHeader);
+  assert(del.status === 200, `Cleanup delete should succeed, got ${del.status}`);
+});
+
+// 21. Admin Text Manager: app texts stored in global settings & readable
+test('Admin Text Manager: Editable App Texts in Global Settings', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  // Publish a custom text
+  const put = await request('POST', '/api/settings', {
+    texts: { appName: 'تسک‌روز آزمایشی', footerCredits: 'test-credits-۲۰۲۶' },
+  }, adminHeader);
+  assert(put.status === 200, `Settings save should succeed, got ${put.status}`);
+
+  const got = await request('GET', '/api/settings', null, adminHeader);
+  assert(got.status === 200, 'Settings fetch must succeed');
+  assert(got.body.settings.texts && got.body.settings.texts.appName === 'تسک‌روز آزمایشی', `Custom appName text must round-trip, got: ${JSON.stringify(got.body.settings.texts)}`);
+  assert(got.body.settings.texts.footerCredits === 'test-credits-۲۰۲۶', 'Custom footer text must round-trip');
+
+  // Blank value -> client falls back to built-in default (server keeps empty string)
+  const blank = await request('POST', '/api/settings', { texts: { appName: '' } }, adminHeader);
+  assert(blank.status === 200, 'Blank text save must succeed');
+  const got2 = await request('GET', '/api/settings', null, adminHeader);
+  assert(got2.body.settings.texts.appName === '', 'Blank text must be stored as empty string');
+});

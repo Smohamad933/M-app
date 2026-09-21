@@ -145,7 +145,9 @@ if ($action === 'login' || empty($action) && (isset($_GET['username']) || isset(
             'city' => $user['city'] ?? '',
             'birthDate' => $user['birthDate'] ?? '',
             'jobTitle' => $user['jobTitle'] ?? '',
+            'avatar' => $user['avatar'] ?? null,
             'skills' => $user['skills'] ?? [],
+            'dailyTimeline' => $user['dailyTimeline'] ?? [],
             'createdAt' => $user['createdAt'] ?? date('Y-m-d H:i:s'),
         ],
         'token' => $token
@@ -171,7 +173,9 @@ if ($method === 'GET' && $action === 'me') {
             'city' => $user['city'] ?? '',
             'birthDate' => $user['birthDate'] ?? '',
             'jobTitle' => $user['jobTitle'] ?? '',
+            'avatar' => $user['avatar'] ?? null,
             'skills' => $user['skills'] ?? [],
+            'dailyTimeline' => $user['dailyTimeline'] ?? [],
             'createdAt' => $user['createdAt'] ?? date('Y-m-d H:i:s'),
         ]
     ]);

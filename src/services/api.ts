@@ -31,6 +31,7 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
     allowPublicChat: true,
   },
   dailyMantra: 'تمرکز پیوسته بر کارهای با اولویت بالا و پرهیز از چندوظیفگی',
+  texts: {},
   jobCategories: [
     'برنامه‌نویس و توسعه‌دهنده نرم‌افزار',
     'طراح رابط کاربری و تجربه کاربری (UI/UX)',
@@ -340,10 +341,12 @@ export const api = {
     };
 
     let serverUsers: User[] = [];
+    let serverReachable = false;
     try {
       const data = await request<{ users: User[] }>('api/users.php');
       if (Array.isArray(data.users) && data.users.length > 0) {
         serverUsers = data.users;
+        serverReachable = true;
       }
     } catch {
       // ignore
@@ -352,6 +355,28 @@ export const api = {
     try {
       const raw = localStorage.getItem('taskrooz_registered_users');
       const localList: User[] = raw ? JSON.parse(raw) : [];
+
+      // Self-healing: when the server is reachable it is the source of truth.
+      // Local leftovers of DELETED users are pruned here so deleted users never
+      // "resurrect" in the admin panel on the next refresh/poll.
+      if (serverReachable) {
+        const serverIds = new Set(serverUsers.map((u) => u.id).filter(Boolean));
+        const serverUsernames = new Set(serverUsers.map((u) => (u.username || '').toLowerCase()).filter(Boolean));
+        const before = localList.length;
+        const cleaned = localList.filter(
+          (u) =>
+            serverIds.has(u.id) ||
+            serverUsernames.has((u.username || '').toLowerCase()) ||
+            (u.username || '').toLowerCase() === 'mohusyn'
+        );
+        if (cleaned.length !== before) {
+          try {
+            localStorage.setItem('taskrooz_registered_users', JSON.stringify(cleaned));
+          } catch {
+            // ignore
+          }
+        }
+      }
 
       // Merge server users and local registered users, eliminating duplicates
       const map = new Map<string, User>();
@@ -400,11 +425,98 @@ export const api = {
     broadcastSync('USER_UPDATED', user);
   },
 
-  async deleteUser(id: string): Promise<void> {
-    await request(`api/users.php?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
-    broadcastSync('USER_DELETED', { id });
+  /**
+   * Self-service profile update (any logged-in user, own profile only).
+   * Includes avatar (data URL), contact info, routine and optional password change.
+   * PUT first, with POST fallback for IIS servers that block the PUT verb.
+   */
+  async updateMyProfile(data: {
+    id: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    birthDate?: string;
+    jobTitle?: string;
+    skills?: string[];
+    dailyTimeline?: Record<string, string>;
+    avatar?: string | null;
+    password?: string;
+  }): Promise<User> {
+    const payload = { action: 'update_profile', ...data };
+    let data_: { user: User } | undefined;
+    try {
+      data_ = await request<{ user: User }>('api/users.php', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    } catch (err: any) {
+      // IIS 405 resilience: retry via POST
+      data_ = await request<{ user: User }>('api/users.php', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    }
+    broadcastSync('USER_UPDATED', { id: data.id });
+    return data_.user;
+  },
+
+  /**
+   * Remove a deleted user from the local registered-users mirror in this browser.
+   * Without this, the deleted user "resurrects" in the admin panel because
+   * getUsers() merges the server list with localStorage.
+   */
+  removeLocalUserMirror(id: string, username?: string): void {
+    try {
+      const raw = localStorage.getItem('taskrooz_registered_users');
+      const list: User[] = raw ? JSON.parse(raw) : [];
+      const cleaned = list.filter(
+        (u) => u.id !== id && (username ? (u.username || '').toLowerCase() !== username.toLowerCase() : true)
+      );
+      if (cleaned.length !== list.length) {
+        localStorage.setItem('taskrooz_registered_users', JSON.stringify(cleaned));
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      localStorage.setItem('taskrooz_sync_signal', String(Date.now()));
+    } catch {
+      // ignore
+    }
+  },
+
+  async deleteUser(id: string, username?: string): Promise<void> {
+    const idParam = `id=${encodeURIComponent(id)}`;
+    let lastError: any = null;
+
+    // 1. Standard DELETE verb
+    try {
+      await request(`api/users.php?${idParam}`, { method: 'DELETE' });
+    } catch (err: any) {
+      lastError = err;
+      // 2. IIS 405 resilience: some servers block DELETE, retry via GET ?action=delete
+      try {
+        await request(`api/users.php?action=delete&${idParam}`);
+      } catch (err2: any) {
+        lastError = err2;
+        // 3. Final fallback: POST ?action=delete
+        try {
+          await request(`api/users.php?action=delete&${idParam}`, {
+            method: 'POST',
+            body: JSON.stringify({ id, action: 'delete' }),
+          });
+        } catch (err3: any) {
+          lastError = err3;
+          throw lastError;
+        }
+      }
+    }
+
+    // Deletion succeeded: purge local mirror so the user can never resurrect
+    this.removeLocalUserMirror(id, username);
+    broadcastSync('USER_DELETED', { id, username });
   },
 
   // Global System Settings (Enforced by Admin on Server)
@@ -723,6 +835,22 @@ export const api = {
       body: JSON.stringify({ roomId }),
     });
     broadcastSync('ROOM_SYNC', { roomId });
+  },
+
+  // Admin only: delete ALL focus rooms (soft delete with 10-min message retention)
+  async deleteAllFocusRooms(): Promise<number> {
+    try {
+      const data = await request<{ message?: string; deletedCount?: number }>('api/rooms.php?action=delete_all', {
+        method: 'POST',
+      });
+      broadcastSync('ROOM_SYNC', { roomId: '__all__' });
+      return data.deletedCount ?? 0;
+    } catch (err: any) {
+      // IIS 405 resilience fallback via GET
+      const data = await request<{ message?: string; deletedCount?: number }>('api/rooms.php?action=delete_all');
+      broadcastSync('ROOM_SYNC', { roomId: '__all__' });
+      return data.deletedCount ?? 0;
+    }
   },
 
   async getActiveFocusRooms(): Promise<Array<{ id: string; name: string; hostName: string; participantCount: number; isRunning: boolean }>> {

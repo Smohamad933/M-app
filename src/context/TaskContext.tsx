@@ -21,6 +21,7 @@ import type {
 import { api, DEFAULT_GLOBAL_SETTINGS, onSyncEvent } from '../services/api';
 import { getTodayISO, formatPersianDate, toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
+import { DEFAULT_APP_TEXTS } from '../utils/appTexts';
 import confetti from 'canvas-confetti';
 
 interface TaskContextType {
@@ -77,8 +78,24 @@ interface TaskContextType {
     skills?: string[];
   }) => Promise<User>;
   updateUser: (data: { id: string; name: string; role: 'admin' | 'user'; password?: string }) => Promise<void>;
-  deleteUser: (id: string) => Promise<void>;
+  updateMyProfile: (data: {
+    id: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    birthDate?: string;
+    jobTitle?: string;
+    skills?: string[];
+    dailyTimeline?: Record<string, string>;
+    avatar?: string | null;
+    password?: string;
+  }) => Promise<void>;
+  deleteUser: (id: string, username?: string) => Promise<void>;
   refreshUsers: () => Promise<void>;
+  /** Admin-editable app text with fallback to the built-in default */
+  getText: (key: string) => string;
 
   // Career Goals & Personality
   goals: CareerGoal[];
@@ -108,6 +125,7 @@ interface TaskContextType {
   joinFocusRoom: (roomId: string) => Promise<boolean>;
   leaveFocusRoom: () => Promise<void>;
   deleteFocusRoom: (roomId?: string) => Promise<void>;
+  deleteAllFocusRooms: () => Promise<number>;
   createFocusRoom: (name: string, focusDuration?: number, breakDuration?: number) => Promise<FocusRoom>;
   syncRoomTimer: (action: 'start' | 'pause' | 'reset' | 'setMode', timeLeft?: number, mode?: string) => Promise<void>;
   sendRoomMessage: (text: string) => Promise<void>;
@@ -499,6 +517,21 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const deleteAllFocusRooms = async (): Promise<number> => {
+    const count = await api.deleteAllFocusRooms();
+    // If we are currently inside a room, mark it as deleted too
+    if (activeRoom) {
+      setActiveRoom({
+        ...activeRoom,
+        isDeleted: true,
+        deletedAt: Math.floor(Date.now() / 1000),
+        isRunning: false,
+      });
+    }
+    sounds.playComplete();
+    return count;
+  };
+
   const createFocusRoom = async (name: string, focusDuration = 1500, breakDuration = 300): Promise<FocusRoom> => {
     const room = await api.createFocusRoom(name, focusDuration, breakDuration);
     setActiveRoomId(room.id);
@@ -717,8 +750,18 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Real-time synchronization: BroadcastChannel + periodic polling for Admin
   useEffect(() => {
-    const unsubscribe = onSyncEvent((event) => {
+    const unsubscribe = onSyncEvent((event, payload) => {
       if (event === 'USER_REGISTERED') {
+        if (currentUser?.role === 'admin') {
+          refreshUsers();
+        }
+      } else if (event === 'USER_DELETED') {
+        // Cross-tab: purge local mirror and refresh so deleted users never resurrect
+        const deletedId = (payload as any)?.id as string | undefined;
+        const deletedUsername = (payload as any)?.username as string | undefined;
+        if (deletedId) {
+          api.removeLocalUserMirror(deletedId, deletedUsername);
+        }
         if (currentUser?.role === 'admin') {
           refreshUsers();
         }
@@ -832,6 +875,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = { ...currentUser, dailyTimeline: timeline };
     setCurrentUser(updated);
     sounds.playPop();
+    // Persist to server (self profile update)
+    try {
+      await api.updateMyProfile({ id: currentUser.id, dailyTimeline: timeline as Record<string, string> });
+    } catch {
+      // offline — local state already updated
+    }
   };
 
   const openIncompleteModal = (task: Task) => {
@@ -897,11 +946,56 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sounds.playPop();
   };
 
-  const deleteUser = async (id: string) => {
-    await api.deleteUser(id);
+  /** Self-service profile update (avatar, contact info, routine, password) */
+  const updateMyProfile = async (data: {
+    id: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    birthDate?: string;
+    jobTitle?: string;
+    skills?: string[];
+    dailyTimeline?: Record<string, string>;
+    avatar?: string | null;
+    password?: string;
+  }) => {
+    const updated = await api.updateMyProfile(data);
+    // Merge returned fields into the current user (only fields that were sent)
+    setCurrentUser((prev) => {
+      if (!prev) return prev;
+      const merged = { ...prev };
+      for (const k of Object.keys(updated) as (keyof typeof updated)[]) {
+        if (updated[k] !== null && updated[k] !== undefined && updated[k] !== '') {
+          (merged as any)[k] = updated[k];
+        } else if (k === 'avatar' && data.avatar === null || (k === 'avatar' && data.avatar === '')) {
+          delete (merged as any).avatar;
+        }
+      }
+      return merged;
+    });
+    await refreshUsers();
+    sounds.playComplete();
+  };
+
+  /** Admin-editable app text with fallback to the built-in default */
+  const getText = useCallback(
+    (key: string) => {
+      const custom = globalSettings.texts?.[key];
+      if (typeof custom === 'string' && custom.trim() !== '') return custom;
+      return DEFAULT_APP_TEXTS[key] ?? key;
+    },
+    [globalSettings.texts]
+  );
+
+  const deleteUser = async (id: string, username?: string) => {
+    await api.deleteUser(id, username);
+    // Immediate optimistic removal so the list updates instantly
+    setUsers((prev) => prev.filter((u) => u.id !== id));
     await refreshUsers();
     await refreshTasks();
-    sounds.playPop();
+    sounds.playComplete();
   };
 
   const triggerConfetti = useCallback(() => {
@@ -1120,6 +1214,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logout,
       createUser,
       updateUser,
+      updateMyProfile,
       deleteUser,
       refreshUsers,
       setSelectedDate,
@@ -1136,6 +1231,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       joinFocusRoom,
       leaveFocusRoom,
       deleteFocusRoom,
+      deleteAllFocusRooms,
       createFocusRoom,
       syncRoomTimer,
       sendRoomMessage,
@@ -1172,6 +1268,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       exportUsersCsv,
       globalSettings,
       updateGlobalSettings,
+      getText,
       allAvailableFonts,
       customFonts,
       addCustomFont,

@@ -40,7 +40,7 @@ const BIRTH_YEARS = Array.from({ length: 65 }, (_, i) => String(1395 - i));
 const BIRTH_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 
 export const LoginScreen: React.FC = () => {
-  const { login, register, globalSettings } = useTask();
+  const { login, register, globalSettings, getText } = useTask();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [registerStep, setRegisterStep] = useState<1 | 2>(1);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
@@ -229,10 +229,10 @@ export const LoginScreen: React.FC = () => {
           </div>
           <div>
             <h1 className="text-xl font-black text-white tracking-tight">
-              {mode === 'login' ? 'ورود به تسک‌روز' : 'ایجاد حساب کاربری جدید'}
+              {mode === 'login' ? `ورود به ${getText('appName')}` : 'ایجاد حساب کاربری جدید'}
             </h1>
             <p className="text-[11px] text-zinc-400 mt-1 font-mono tracking-wide">
-              BUILT BY MOHUSYN
+              {getText('loginSubtitle')}
             </p>
           </div>
         </div>
@@ -242,10 +242,10 @@ export const LoginScreen: React.FC = () => {
           <div className="p-3 rounded-2xl bg-indigo-950/40 text-indigo-300 text-xs border border-indigo-800/60 text-center font-bold animate-in fade-in space-y-1">
             <div className="flex items-center justify-center gap-1.5 text-white">
               <Timer className="w-4 h-4 text-indigo-400" />
-              <span>دعوت‌نامه اتاق تمرکز گروهی</span>
+              <span>{getText('inviteBannerTitle')}</span>
             </div>
             <p className="text-[11px] font-normal text-indigo-200">
-              وارد شوید یا حساب بسازید تا مستقیماً به اتاق متصل شوید.
+              {getText('inviteBannerText')}
             </p>
           </div>
         )}

@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `job_title` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `skills_json` text COLLATE utf8mb4_unicode_ci,
   `timeline_json` text COLLATE utf8mb4_unicode_ci,
+  `avatar` longtext COLLATE utf8mb4_unicode_ci,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_username` (`username`)

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
-import { toPersianDigits, getTodayISO, getGreeting, formatPersianDate } from '../utils/persianDate';
+import { toPersianDigits, getTodayISO, formatPersianDate } from '../utils/persianDate';
+import { greetingKeySet } from '../utils/appTexts';
+import { UserAvatar } from './UserAvatar';
+import { ProfileModal } from './ProfileModal';
 import type { TabType } from '../types';
 import { TaskList } from './TaskList';
 import { KanbanBoard } from './KanbanBoard';
@@ -74,15 +77,20 @@ export const MainLayout: React.FC = () => {
     openCreateModal,
     setIsShareModalOpen,
     globalSettings,
+    getText,
   } = useTask();
 
-  const greeting = getGreeting();
   const todayISO = getTodayISO();
+  // Admin-editable greeting (falls back to built-in defaults)
+  const gk = greetingKeySet(new Date().getHours());
+  const greetingText = getText(gk.text);
+  const greetingSub = getText(gk.sub);
 
   // Mobile menu / drawer state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isFontModalOpen, setIsFontModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Live 24-hour clock
   const [liveClock, setLiveClock] = useState('');
@@ -125,12 +133,12 @@ export const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex antialiased selection:bg-zinc-100 selection:text-zinc-900 w-full overflow-x-hidden">
-      {/* 1. Desktop RTL Sidebar (Visible on screens >= 1024px) */}
-      <aside className="hidden lg:flex w-64 bg-zinc-900/60 border-l border-zinc-800/80 backdrop-blur-xl flex-col justify-between p-4.5 z-20 shadow-xs select-none sticky top-0 h-screen flex-shrink-0">
-        <div>
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex antialiased selection:bg-zinc-100 selection:text-zinc-900 w-full overflow-x-clip">
+      {/* 1. Desktop RTL Sidebar (Visible on screens >= 1024px) — sticky: NEVER scrolls with the page */}
+      <aside className="hidden lg:flex w-64 bg-zinc-900/60 border-l border-zinc-800/80 backdrop-blur-xl flex-col justify-between p-4 z-20 shadow-xs select-none sticky top-0 h-screen flex-shrink-0 min-h-0 overflow-hidden">
+        <div className="flex flex-col min-h-0 flex-1">
           {/* Brand Logo & mohusyn.ir signature */}
-          <div className="flex items-center gap-3 px-2 py-3 mb-4">
+          <div className="flex items-center gap-3 px-2 py-2.5 mb-3">
             <div className="w-10 h-10 rounded-2xl bg-white text-zinc-950 flex items-center justify-center font-black shadow-md">
               <CheckSquare className="w-5 h-5 stroke-[2.5]" />
             </div>
@@ -144,13 +152,19 @@ export const MainLayout: React.FC = () => {
             </div>
           </div>
 
-          {/* Active User Card */}
+          {/* Active User Card — click to edit profile */}
           {currentUser && (
-            <div className="p-3 mb-5 rounded-2xl bg-zinc-900 border border-zinc-800/80">
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setIsProfileModalOpen(true);
+              }}
+              className="p-2.5 mb-4 rounded-2xl bg-zinc-900 border border-zinc-800/80 hover:border-indigo-500/40 hover:bg-zinc-800/60 transition-all text-right cursor-pointer w-full"
+              title="ویرایش پروفایل و عکس"
+            >
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700/60 text-white font-bold flex items-center justify-center text-sm shadow-xs">
-                  {currentUser.name.slice(0, 1)}
-                </div>
+                <UserAvatar name={currentUser.name} avatar={currentUser.avatar} size="w-9 h-9 rounded-full text-sm" />
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-xs text-white truncate">
                     {currentUser.name}
@@ -164,14 +178,18 @@ export const MainLayout: React.FC = () => {
                     ) : (
                       <span className="text-[10px] text-zinc-400 font-medium">کاربر عادی</span>
                     )}
+                    <span className="text-[9px] text-indigo-400 mr-auto flex items-center gap-0.5">
+                      ویرایش
+                    </span>
                   </div>
                 </div>
               </div>
-            </div>
+            </button>
           )}
 
-          {/* Navigation Links */}
-          <nav className="space-y-1">
+          {/* Navigation Links — flex-1 with hidden-scrollbar safety net so the sidebar
+              fits 100vh and NEVER shows a visible scrollbar on normal screens */}
+          <nav className="space-y-0.5 flex-1 min-h-0 overflow-y-auto no-scrollbar -mx-1 px-1">
             {navItems.map((item) => {
               if (item.adminOnly && !isAdmin) return null;
               const isActive = activeTab === item.id;
@@ -181,7 +199,7 @@ export const MainLayout: React.FC = () => {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3.5 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                     isActive
                       ? 'bg-white text-zinc-950 shadow-md font-extrabold scale-[1.01]'
                       : 'text-zinc-400 hover:bg-zinc-850 hover:bg-zinc-800/60 hover:text-white'
@@ -210,7 +228,7 @@ export const MainLayout: React.FC = () => {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="space-y-2 pt-4 border-t border-zinc-800/80 text-xs">
+        <div className="space-y-1.5 pt-3 border-t border-zinc-800/80 text-xs flex-shrink-0">
           {/* Admin Font Switcher */}
           {isAdmin && (
             <button
@@ -218,7 +236,7 @@ export const MainLayout: React.FC = () => {
                 sounds.playPop();
                 setIsFontModalOpen(true);
               }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-medium text-indigo-300 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl font-medium text-indigo-300 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
             >
               <Type className="w-4 h-4 text-indigo-400" />
               <span>فونت کل سیستم</span>
@@ -228,7 +246,7 @@ export const MainLayout: React.FC = () => {
           {/* Theme Toggle */}
           <button
             onClick={() => updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-medium text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl font-medium text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
           >
             {settings.theme === 'dark' ? (
               <>
@@ -246,47 +264,47 @@ export const MainLayout: React.FC = () => {
           {/* Logout */}
           <button
             onClick={logout}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-bold text-rose-400 hover:bg-rose-950/30 transition-colors cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl font-bold text-rose-400 hover:bg-rose-950/30 transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             <span>خروج از حساب</span>
           </button>
 
-          {/* Credits footer matching mohusyn.ir */}
-          <div className="pt-2 px-1 text-[10px] text-zinc-400 font-mono">
-            mohusyn.ir • ۲۰۲۶
+          {/* Credits footer (admin-editable text) */}
+          <div className="pt-1.5 px-1 text-[10px] text-zinc-400 font-mono">
+            {getText('footerCredits')}
           </div>
         </div>
       </aside>
 
       {/* 2. Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden min-h-screen">
+      <div className="flex-1 flex flex-col min-w-0 w-full overflow-x-clip min-h-screen">
         {/* Top Header Bar */}
         <header className="bg-zinc-900/70 backdrop-blur-xl border-b border-zinc-800/80 px-3.5 sm:px-6 py-2.5 sm:py-3.5 sticky top-0 z-30">
           <div className="flex items-center justify-between gap-2 max-w-7xl mx-auto w-full">
             {/* Right: Brand (mobile) / Greeting (desktop) */}
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
               {/* Mobile App Icon */}
               <div className="lg:hidden flex items-center gap-2 flex-shrink-0">
                 <div className="w-8 h-8 rounded-xl bg-white text-zinc-950 flex items-center justify-center font-bold shadow-xs">
                   <CheckSquare className="w-4 h-4 stroke-[2.5]" />
                 </div>
-                <span className="font-extrabold text-xs text-white sm:hidden">
+                <span className="font-extrabold text-xs text-white sm:hidden max-[430px]:hidden">
                   تسک‌روز
                 </span>
               </div>
 
               {/* Greeting & Persian Date & Live 24-Hour Clock */}
-              <div className="min-w-0 flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <span className="text-xs font-black text-white hidden sm:inline truncate">
-                  {greeting.text}
+              <div className="min-w-0 flex items-center gap-1 sm:gap-2">
+                <span className="text-xs font-black text-white hidden sm:inline truncate" title={greetingSub}>
+                  {greetingText}
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] px-2.5 py-1 rounded-full bg-zinc-900 text-zinc-300 border border-zinc-800 font-semibold shadow-xs" title="تاریخ شمسی امروز">
+                <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-1 rounded-full bg-zinc-900 text-zinc-300 border border-zinc-800 font-semibold shadow-xs min-w-0 max-w-full" title="تاریخ شمسی امروز">
                   <CalendarDays className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  <span className="hidden sm:inline">{formatPersianDate(new Date(), 'full')}</span>
-                  <span className="sm:hidden">{formatPersianDate(new Date(), 'dayMonth')}</span>
+                  <span className="hidden sm:inline truncate">{formatPersianDate(new Date(), 'full')}</span>
+                  <span className="sm:hidden truncate">{formatPersianDate(new Date(), 'dayMonth')}</span>
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] px-2.5 py-1 rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800 font-mono font-bold flex-shrink-0" title="ساعت ۲۴ ساعته">
+                <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-1 rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800 font-mono font-bold flex-shrink-0 max-[430px]:hidden" title="ساعت ۲۴ ساعته">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   {liveClock}
                 </span>
@@ -294,7 +312,7 @@ export const MainLayout: React.FC = () => {
             </div>
 
             {/* Left: Actions & Search */}
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               {/* Day / Night Theme Toggle */}
               <button
                 onClick={() => {
@@ -341,7 +359,7 @@ export const MainLayout: React.FC = () => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="جستجو در تسک‌ها..."
+                  placeholder={`${getText('searchPlaceholder')}...`}
                   className="w-full pl-3 pr-8.5 py-1.5 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white text-xs outline-hidden focus:border-zinc-500 placeholder:text-zinc-500"
                 />
               </div>
@@ -379,6 +397,21 @@ export const MainLayout: React.FC = () => {
               >
                 <Share2 className="w-4 h-4" />
               </button>
+
+              {/* Profile (photo) button */}
+              {currentUser && (
+                <button
+                  onClick={() => {
+                    sounds.playPop();
+                    setIsProfileModalOpen(true);
+                  }}
+                  className="p-0.5 rounded-full ring-1 ring-transparent hover:ring-indigo-500/60 transition-all cursor-pointer"
+                  title="ویرایش پروفایل و عکس"
+                  aria-label="پروفایل من"
+                >
+                  <UserAvatar name={currentUser.name} avatar={currentUser.avatar} size="w-8 h-8 rounded-full text-xs" />
+                </button>
+              )}
 
               {/* New Task Button */}
               <button
@@ -532,10 +565,10 @@ export const MainLayout: React.FC = () => {
                     <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-400" />
                   </div>
                   <div className="text-xl sm:text-3xl font-black text-white">
-                    {toPersianDigits(streak.currentStreak)} روز
+                    {toPersianDigits(streak.currentStreak)} {getText('streakLabel')}
                   </div>
                   <div className="text-[10px] sm:text-[11px] text-zinc-500 mt-1">
-                    بهترین رکورد: {toPersianDigits(streak.bestStreak)} روز
+                    بهترین رکورد: {toPersianDigits(streak.bestStreak)} {getText('streakLabel')}
                   </div>
                 </div>
               </div>
@@ -721,10 +754,10 @@ export const MainLayout: React.FC = () => {
           onClick={() => setIsMobileMenuOpen(false)}
         >
           <div
-            className="w-72 bg-zinc-900 h-full p-5 border-r border-zinc-800 flex flex-col justify-between shadow-2xl animate-in slide-in-from-right duration-200"
+            className="w-72 bg-zinc-900 h-full p-5 border-r border-zinc-800 flex flex-col shadow-2xl animate-in slide-in-from-right duration-200 min-h-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <div>
+            <div className="flex flex-col flex-1 min-h-0">
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
                 <div className="flex items-center gap-2.5">
@@ -745,13 +778,20 @@ export const MainLayout: React.FC = () => {
                 </button>
               </div>
 
-              {/* User Info Card */}
+              {/* User Info Card — click to edit profile */}
               {currentUser && (
-                <div className="my-4 p-3 rounded-2xl bg-zinc-850 bg-zinc-800/60 border border-zinc-700/60">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    sounds.playPop();
+                    setIsProfileModalOpen(true);
+                  }}
+                  className="my-4 p-3 rounded-2xl bg-zinc-800/60 border border-zinc-700/60 hover:border-indigo-500/40 transition-all text-right cursor-pointer w-full"
+                  title="ویرایش پروفایل و عکس"
+                >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-full bg-zinc-800 text-white font-bold flex items-center justify-center text-sm border border-zinc-600">
-                      {currentUser.name.slice(0, 1)}
-                    </div>
+                    <UserAvatar name={currentUser.name} avatar={currentUser.avatar} size="w-9 h-9 rounded-full text-sm" />
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-xs text-white truncate">
                         {currentUser.name}
@@ -765,14 +805,15 @@ export const MainLayout: React.FC = () => {
                         ) : (
                           <span className="text-[10px] text-zinc-400">کاربر عادی</span>
                         )}
+                        <span className="text-[9px] text-indigo-400 mr-auto">ویرایش پروفایل</span>
                       </div>
                     </div>
                   </div>
-                </div>
+                </button>
               )}
 
-              {/* Navigation Items in Drawer */}
-              <div className="space-y-1">
+              {/* Navigation Items in Drawer — scrollable middle, footer always visible */}
+              <div className="space-y-1 flex-1 min-h-0 overflow-y-auto no-scrollbar -mx-1 px-1 my-1">
                 {navItems.map((item) => {
                   if (item.adminOnly && !isAdmin) return null;
                   const isActive = activeTab === item.id;
@@ -782,7 +823,7 @@ export const MainLayout: React.FC = () => {
                     <button
                       key={item.id}
                       onClick={() => handleMobileTabSelect(item.id)}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                      className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                         isActive
                           ? 'bg-white text-zinc-950 shadow-xs'
                           : 'text-zinc-300 hover:bg-zinc-800'
@@ -804,7 +845,7 @@ export const MainLayout: React.FC = () => {
             </div>
 
             {/* Drawer Footer Actions */}
-            <div className="pt-4 border-t border-zinc-800 space-y-2 text-xs">
+            <div className="pt-3 mt-2 border-t border-zinc-800 space-y-1.5 text-xs flex-shrink-0">
               {isAdmin && (
                 <button
                   onClick={() => {
@@ -845,11 +886,11 @@ export const MainLayout: React.FC = () => {
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-400 hover:bg-rose-950/30 font-bold"
               >
                 <LogOut className="w-4 h-4" />
-                <span>خروج از حساب</span>
+                <span>{getText('logoutLabel')}</span>
               </button>
 
               <div className="text-[10px] text-zinc-500 font-mono text-center pt-2">
-                mohusyn.ir • ۲۰۲۶
+                {getText('footerCredits')}
               </div>
             </div>
           </div>
@@ -861,6 +902,7 @@ export const MainLayout: React.FC = () => {
       <TaskIncompleteModal />
       <ExportShareModal />
       <FontSelectorModal isOpen={isFontModalOpen} onClose={() => setIsFontModalOpen(false)} />
+      {isProfileModalOpen && <ProfileModal onClose={() => setIsProfileModalOpen(false)} />}
     </div>
   );
 };

@@ -5,6 +5,74 @@
 require_once __DIR__ . '/config.php';
 
 $currentUser = getCurrentUser();
+$method = $_SERVER['REQUEST_METHOD'];
+$input = in_array($method, ['POST', 'PUT', 'PATCH']) ? getJsonInput() : [];
+
+/**
+ * ── Self profile update (ANY authenticated user) ──────────────────────────
+ * PUT /api/users.php  { "action": "update_profile", ...profile fields }
+ * A user may only update their OWN profile (name, contact info, photo...).
+ * Admins editing OTHER users keep using the plain PUT below (admin-only).
+ */
+if (in_array($method, ['PUT', 'POST']) && ($input['action'] ?? '') === 'update_profile') {
+    if (!$currentUser) {
+        jsonResponse(['error' => 'ابتدا وارد حساب کاربری خود شوید.'], 401);
+    }
+    if (!empty($input['id']) && $input['id'] !== $currentUser['id']) {
+        jsonResponse(['error' => 'فقط می‌توانید پروفایل خودتان را ویرایش کنید.'], 403);
+    }
+
+    $fields = [];
+    foreach (['name', 'phone', 'email', 'province', 'city', 'birthDate', 'jobTitle'] as $k) {
+        if (array_key_exists($k, $input) && is_string($input[$k])) {
+            $fields[$k] = trim($input[$k]);
+        }
+    }
+    if (array_key_exists('skills', $input) && is_array($input['skills'])) {
+        $fields['skills'] = array_values(array_filter(array_map('strval', $input['skills'])));
+    }
+    if (array_key_exists('dailyTimeline', $input) && is_array($input['dailyTimeline'])) {
+        $fields['dailyTimeline'] = array_map('strval', $input['dailyTimeline']);
+    }
+    if (array_key_exists('avatar', $input)) {
+        // empty => remove photo; otherwise must be a data URL under 600 KB
+        if ($input['avatar'] === '' || $input['avatar'] === null) {
+            $fields['avatar'] = null;
+        } elseif (is_string($input['avatar']) && strpos($input['avatar'], 'data:image/') === 0 && strlen($input['avatar']) < 600000) {
+            $fields['avatar'] = $input['avatar'];
+        } else {
+            jsonResponse(['error' => 'عکس پروفایل معتبر نیست (حداکثر ۶۰۰ کیلوبایت).'], 400);
+        }
+    }
+    if (empty($fields) && empty($input['password'])) {
+        jsonResponse(['error' => 'هیچ اطلاعاتی برای ویرایش ارسال نشده است.'], 400);
+    }
+
+    $ok = $db->updateUserProfile($currentUser['id'], $fields, !empty($input['password']) ? (string)$input['password'] : null);
+    if (!$ok) {
+        jsonResponse(['error' => 'کاربر پیدا نشد.'], 404);
+    }
+
+    jsonResponse([
+        'message' => 'پروفایل شما با موفقیت به‌روزرسانی شد.',
+        'user' => [
+            'id' => $currentUser['id'],
+            'username' => $currentUser['username'],
+            'name' => $fields['name'] ?? $currentUser['name'],
+            'role' => $currentUser['role'],
+            'avatar' => array_key_exists('avatar', $fields) ? $fields['avatar'] : null,
+            'phone' => $fields['phone'] ?? null,
+            'email' => $fields['email'] ?? null,
+            'province' => $fields['province'] ?? null,
+            'city' => $fields['city'] ?? null,
+            'birthDate' => $fields['birthDate'] ?? null,
+            'jobTitle' => $fields['jobTitle'] ?? null,
+            'skills' => $fields['skills'] ?? null,
+            'dailyTimeline' => $fields['dailyTimeline'] ?? null,
+        ],
+    ]);
+}
+
 // Ensure admin access
 $isAdmin = false;
 if ($currentUser && $currentUser['role'] === 'admin') {
@@ -21,11 +89,36 @@ if (!$isAdmin) {
     jsonResponse(['error' => 'دسترسی فقط برای مدیر سیستم مجاز است.'], 403);
 }
 
+/**
+ * Shared user-deletion routine: removes the user and ALL their data
+ * (tasks, goals, notes, personality results) so nothing is orphaned.
+ * Used by DELETE, and by GET/POST ?action=delete (IIS 405 resilience).
+ */
+function performUserDelete($db, $id, $currentUser) {
+    $id = trim((string)$id);
+    if ($id === '') {
+        jsonResponse(['error' => 'شناسه کاربر الزامی است.'], 400);
+    }
+
+    if ($id === ($currentUser['id'] ?? '') || strtolower($id) === 'mohusyn' || $id === 'usr_admin_mohusyn') {
+        jsonResponse(['error' => 'شما نمی‌توانید حساب کاربری مدیر اصلی را حذف کنید.'], 400);
+    }
+
+    $db->deleteUser($id);
+    jsonResponse(['message' => 'کاربر و تمامی تسک‌ها و داده‌های مرتبط با موفقیت حذف شد.']);
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 // GET /api/users -> List all users with stats OR export CSV OR user detailed report
 if ($method === 'GET') {
     $action = $_GET['action'] ?? '';
+
+    // IIS 405 resilience: some servers block the DELETE verb, allow ?action=delete via GET
+    if ($action === 'delete' || $action === 'delete_user') {
+        performUserDelete($db, $_GET['id'] ?? $_GET['user_id'] ?? '', $currentUser);
+    }
+
     if ($action === 'report') {
         $targetId = $_GET['user_id'] ?? $_GET['id'] ?? '';
         if (empty($targetId)) {
@@ -103,9 +196,14 @@ if ($method === 'GET') {
     jsonResponse(['users' => $users]);
 }
 
-// POST /api/users -> Create new user
+// POST /api/users -> Create new user (or delete via ?action=delete for IIS 405 resilience)
 if ($method === 'POST') {
     $input = getJsonInput();
+
+    if (($_GET['action'] ?? '') === 'delete' || ($input['action'] ?? '') === 'delete') {
+        performUserDelete($db, ($input['id'] ?? '') !== '' ? $input['id'] : ($_GET['id'] ?? ''), $currentUser);
+    }
+
     $username = trim($input['username'] ?? '');
     $password = $input['password'] ?? '';
     $name = trim($input['name'] ?? '');
@@ -168,17 +266,7 @@ if ($method === 'PUT') {
 
 // DELETE /api/users -> Delete user
 if ($method === 'DELETE') {
-    $id = $_GET['id'] ?? '';
-    if (empty($id)) {
-        jsonResponse(['error' => 'شناسه کاربر الزامی است.'], 400);
-    }
-
-    if ($id === ($currentUser['id'] ?? '') || strtolower($id) === 'mohusyn' || $id === 'usr_admin_mohusyn') {
-        jsonResponse(['error' => 'شما نمی‌توانید حساب کاربری مدیر اصلی را حذف کنید.'], 400);
-    }
-
-    $db->deleteUser($id);
-    jsonResponse(['message' => 'کاربر با موفقیت حذف شد.']);
+    performUserDelete($db, $_GET['id'] ?? '', $currentUser);
 }
 
 jsonResponse(['error' => 'متد درخواست نامعتبر است.'], 405);

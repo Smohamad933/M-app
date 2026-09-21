@@ -328,7 +328,7 @@ class TaskRoozDB {
                 $stmt = $this->pdo->query("
                     SELECT 
                         u.id, u.username, u.name, u.role, u.phone, u.email, u.province, u.city,
-                        u.birth_date as birthDate, u.job_title as jobTitle, u.skills_json, u.timeline_json,
+                        u.birth_date as birthDate, u.job_title as jobTitle, u.skills_json, u.timeline_json, u.avatar,
                         u.created_at as createdAt,
                         COUNT(t.id) as totalTasks,
                         SUM(CASE WHEN t.completed = 1 THEN 1 ELSE 0 END) as completedTasks
@@ -380,6 +380,7 @@ class TaskRoozDB {
                 'city' => $u['city'] ?? '',
                 'birthDate' => $u['birthDate'] ?? $u['birth_date'] ?? '',
                 'jobTitle' => $u['jobTitle'] ?? $u['job_title'] ?? '',
+                'avatar' => $u['avatar'] ?? null,
                 'skills' => $u['skills'] ?? [],
                 'dailyTimeline' => $u['dailyTimeline'] ?? [],
                 'createdAt' => $u['createdAt'] ?? $u['created_at'] ?? date('Y-m-d H:i:s'),
@@ -425,20 +426,104 @@ class TaskRoozDB {
         return false;
     }
 
-    public function deleteUser($id) {
+    /**
+     * Update a user's own profile fields (name, contact info, avatar, routine...).
+     * $fields contains only whitelisted camelCase keys; optional $password rotates the credential.
+     * Mirrors updateUser() but for self-service profile editing (incl. avatar data URL).
+     */
+    public function updateUserProfile($id, $fields, $password = null) {
         if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $existing = null;
+                $stmt = $this->pdo->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
+                $stmt->execute([$id]);
+                $existing = $stmt->fetch() ?: [];
+
+                $name = $fields['name'] ?? ($existing['name'] ?? '');
+                $phone = $fields['phone'] ?? ($existing['phone'] ?? null);
+                $email = $fields['email'] ?? ($existing['email'] ?? null);
+                $province = $fields['province'] ?? ($existing['province'] ?? null);
+                $city = $fields['city'] ?? ($existing['city'] ?? null);
+                $birthDate = $fields['birthDate'] ?? ($existing['birth_date'] ?? null);
+                $jobTitle = $fields['jobTitle'] ?? ($existing['job_title'] ?? null);
+                $skills = json_encode($fields['skills'] ?? (empty($existing['skills_json']) ? [] : json_decode($existing['skills_json'], true)), JSON_UNESCAPED_UNICODE);
+                $timeline = json_encode($fields['dailyTimeline'] ?? (empty($existing['timeline_json']) ? [] : json_decode($existing['timeline_json'], true)), JSON_UNESCAPED_UNICODE);
+                $avatar = $fields['avatar'] ?? ($existing['avatar'] ?? null);
+
+                try {
+                    $stmt = $this->pdo->prepare("UPDATE users SET name = ?, phone = ?, email = ?, province = ?, city = ?, birth_date = ?, job_title = ?, skills_json = ?, timeline_json = ?, avatar = ? WHERE id = ?");
+                    $stmt->execute([trim((string)$name), $phone, $email, $province, $city, $birthDate, $jobTitle, $skills, $timeline, $avatar, $id]);
+                } catch (Exception $eCol) {
+                    // Older schema without the avatar column — retry without it
+                    $stmt = $this->pdo->prepare("UPDATE users SET name = ?, phone = ?, email = ?, province = ?, city = ?, birth_date = ?, job_title = ?, skills_json = ?, timeline_json = ? WHERE id = ?");
+                    $stmt->execute([trim((string)$name), $phone, $email, $province, $city, $birthDate, $jobTitle, $skills, $timeline, $id]);
+                }
+                if (!empty($password)) {
+                    $hash = password_hash($password, PASSWORD_DEFAULT);
+                    $stmt = $this->pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
+                    $stmt->execute([$hash, $id]);
+                }
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        foreach ($this->data['users'] as &$u) {
+            if ($u['id'] === $id) {
+                if (isset($fields['name'])) $u['name'] = trim($fields['name']);
+                foreach (['phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'avatar'] as $k) {
+                    if (array_key_exists($k, $fields)) $u[$k] = $fields[$k];
+                }
+                if (array_key_exists('skills', $fields)) $u['skills'] = is_array($fields['skills']) ? $fields['skills'] : [];
+                if (array_key_exists('dailyTimeline', $fields)) $u['dailyTimeline'] = is_array($fields['dailyTimeline']) ? $fields['dailyTimeline'] : [];
+                if (!empty($password)) {
+                    $u['password'] = $password;
+                    $u['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
+                }
+                $this->saveJson();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function deleteUser($id) {
+        // Remove ALL data owned by this user so nothing is orphaned
+        // (UI promises "تمامی تسک‌های مربوطه نیز حذف خواهند شد")
+
+        // 1. MySQL cleanup
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                foreach (['tasks', 'career_goals', 'daily_notes', 'personality_results'] as $table) {
+                    $stmt = $this->pdo->prepare("DELETE FROM {$table} WHERE user_id = ?");
+                    $stmt->execute([$id]);
+                }
+            } catch (Exception $e) {}
             try {
                 $stmt = $this->pdo->prepare("DELETE FROM users WHERE id = ? AND LOWER(username) != 'mohusyn'");
                 $stmt->execute([$id]);
             } catch (Exception $e) {}
         }
 
+        // 2. JSON Storage cleanup
         $this->loadJson();
         $this->data['users'] = array_values(array_filter($this->data['users'], function($u) use ($id) {
             if (strtolower($u['username'] ?? '') === 'mohusyn' || $u['id'] === 'usr_admin_mohusyn') {
                 return true;
             }
             return $u['id'] !== $id;
+        }));
+        $this->data['tasks'] = array_values(array_filter($this->data['tasks'] ?? [], function($t) use ($id) {
+            $tUserId = $t['userId'] ?? $t['user_id'] ?? '';
+            return $tUserId !== $id;
+        }));
+        $this->data['goals'] = array_values(array_filter($this->data['goals'] ?? [], function($g) use ($id) {
+            return ($g['userId'] ?? '') !== $id;
+        }));
+        $this->data['dailyNotes'] = array_values(array_filter($this->data['dailyNotes'] ?? [], function($n) use ($id) {
+            return ($n['userId'] ?? '') !== $id;
+        }));
+        $this->data['personalityResults'] = array_values(array_filter($this->data['personalityResults'] ?? [], function($p) use ($id) {
+            return ($p['userId'] ?? '') !== $id;
         }));
         $this->saveJson();
         return true;
@@ -1090,6 +1175,43 @@ class TaskRoozDB {
         }
         $this->saveJson();
         return true;
+    }
+
+    public function deleteAllFocusRooms() {
+        // Admin emergency purge: soft-delete EVERY active room (messages kept 10 min
+        // per system retention policy, then purged automatically by purgeExpiredDeletedRooms)
+        $this->loadJson();
+        if (!isset($this->data['focus_rooms'])) return 0;
+
+        $now = time();
+        $count = 0;
+        foreach ($this->data['focus_rooms'] as &$r) {
+            if (!empty($r['isDeleted']) || !empty($r['is_deleted'])) continue;
+            $r['isDeleted'] = true;
+            $r['is_deleted'] = 1;
+            $r['deletedAt'] = $now;
+            $r['deleted_at'] = $now;
+            $r['isRunning'] = false;
+            $r['messages'][] = [
+                'id' => 'msg_' . $now . '_' . rand(10, 999),
+                'userId' => 'system',
+                'userName' => 'سیستم',
+                'text' => 'این اتاق توسط مدیر سیستم بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.',
+                'timestamp' => date('H:i'),
+            ];
+            $count++;
+        }
+        unset($r);
+
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("UPDATE focus_rooms SET is_deleted = 1, deleted_at = ?, is_running = 0 WHERE is_deleted = 0");
+                $stmt->execute([$now]);
+            } catch (Exception $e) {}
+        }
+
+        $this->saveJson();
+        return $count;
     }
 
     // --- Team Projects ---
