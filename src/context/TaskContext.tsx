@@ -11,6 +11,10 @@ import type {
   TaskCreateInput,
   FocusRoom,
   TeamProject,
+  CareerGoal,
+  PersonalityTestResult,
+  UncompletedCategory,
+  UserTimeline,
 } from '../types';
 import { api } from '../services/api';
 import { getTodayISO, formatPersianDate, toPersianDigits } from '../utils/persianDate';
@@ -44,12 +48,46 @@ interface TaskContextType {
   
   // Auth & User Actions
   login: (username: string, password: string) => Promise<boolean>;
-  register: (data: { username: string; password: string; name: string }) => Promise<boolean>;
+  register: (data: {
+    username: string;
+    password: string;
+    name: string;
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    birthDate?: string;
+    jobTitle?: string;
+    skills?: string[];
+    dailyTimeline?: UserTimeline;
+  }) => Promise<boolean>;
   logout: () => Promise<void>;
   createUser: (data: { username: string; password: string; name: string; role: 'admin' | 'user' }) => Promise<User>;
   updateUser: (data: { id: string; name: string; role: 'admin' | 'user'; password?: string }) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   refreshUsers: () => Promise<void>;
+
+  // Career Goals & Personality
+  goals: CareerGoal[];
+  addGoal: (goal: Omit<CareerGoal, 'id' | 'createdAt' | 'userId'>) => Promise<CareerGoal>;
+  updateGoal: (id: string, updates: Partial<CareerGoal>) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
+  personalityResult: PersonalityTestResult | null;
+  savePersonalityResult: (result: PersonalityTestResult) => Promise<void>;
+  updateUserTimeline: (timeline: UserTimeline) => Promise<void>;
+
+  // Daily Notes
+  dailyNotes: Record<string, string>;
+  saveDailyNote: (date: string, content: string) => Promise<void>;
+
+  // Incomplete Task Reason Modal
+  incompleteModalTask: Task | null;
+  openIncompleteModal: (task: Task) => void;
+  closeIncompleteModal: () => void;
+  setTaskIncompleteReason: (taskId: string, category: UncompletedCategory, reason: string) => Promise<void>;
+
+  // Excel / CSV Export
+  exportUsersCsv: () => void;
 
   // Group Focus Rooms (Pomodoro Rooms)
   activeRoomId: string | null;
@@ -227,6 +265,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  // New features state
+  const [goals, setGoals] = useState<CareerGoal[]>([]);
+  const [personalityResult, setPersonalityResult] = useState<PersonalityTestResult | null>(null);
+  const [dailyNotes, setDailyNotes] = useState<Record<string, string>>({});
+  const [incompleteModalTask, setIncompleteModalTask] = useState<Task | null>(null);
 
   // Sync settings with audio, theme and persistence
   useEffect(() => {
@@ -451,6 +495,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const cats = await api.getCategories();
         setCategories(cats);
         await refreshProjects();
+        const gList = await api.getGoals();
+        setGoals(gList);
+        const pRes = await api.getPersonalityResult();
+        setPersonalityResult(pRes);
+        const notes = await api.getDailyNotes();
+        setDailyNotes(notes);
       } catch (e) {
         console.error('Initialization error:', e);
       } finally {
@@ -458,6 +508,15 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     init();
+  }, []);
+
+  const refreshGoals = useCallback(async () => {
+    try {
+      const gList = await api.getGoals();
+      setGoals(gList);
+    } catch (e) {
+      console.error('Error fetching goals:', e);
+    }
   }, []);
 
   const refreshTasks = useCallback(async () => {
@@ -492,8 +551,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshTasks();
       refreshUsers();
       refreshProjects();
+      refreshGoals();
     }
-  }, [currentUser, refreshTasks, refreshUsers, refreshProjects]);
+  }, [currentUser, refreshTasks, refreshUsers, refreshProjects, refreshGoals]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -507,7 +567,19 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (data: { username: string; password: string; name: string }): Promise<boolean> => {
+  const register = async (data: {
+    username: string;
+    password: string;
+    name: string;
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    birthDate?: string;
+    jobTitle?: string;
+    skills?: string[];
+    dailyTimeline?: UserTimeline;
+  }): Promise<boolean> => {
     try {
       const res = await api.register(data);
       setCurrentUser(res.user);
@@ -517,6 +589,72 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e: any) {
       throw e;
     }
+  };
+
+  const addGoal = async (data: Omit<CareerGoal, 'id' | 'createdAt' | 'userId'>): Promise<CareerGoal> => {
+    const created = await api.createGoal(data);
+    setGoals((prev) => [created, ...prev]);
+    sounds.playComplete();
+    return created;
+  };
+
+  const updateGoal = async (id: string, updates: Partial<CareerGoal>) => {
+    await api.updateGoal(id, updates);
+    setGoals((prev) => prev.map((g) => (g.id === id ? { ...g, ...updates } : g)));
+    sounds.playPop();
+  };
+
+  const deleteGoal = async (id: string) => {
+    await api.deleteGoal(id);
+    setGoals((prev) => prev.filter((g) => g.id !== id));
+    sounds.playPop();
+  };
+
+  const savePersonalityResult = async (result: PersonalityTestResult) => {
+    await api.savePersonalityResult(result);
+    setPersonalityResult(result);
+    sounds.playComplete();
+  };
+
+  const saveDailyNote = async (date: string, content: string) => {
+    await api.saveDailyNote(date, content);
+    setDailyNotes((prev) => ({ ...prev, [date]: content }));
+    sounds.playPop();
+  };
+
+  const updateUserTimeline = async (timeline: UserTimeline) => {
+    if (!currentUser) return;
+    const updated = { ...currentUser, dailyTimeline: timeline };
+    setCurrentUser(updated);
+    sounds.playPop();
+  };
+
+  const openIncompleteModal = (task: Task) => {
+    setIncompleteModalTask(task);
+  };
+
+  const closeIncompleteModal = () => {
+    setIncompleteModalTask(null);
+  };
+
+  const setTaskIncompleteReason = async (taskId: string, category: UncompletedCategory, reason: string) => {
+    const t = tasks.find((item) => item.id === taskId);
+    if (!t) return;
+    const updated: Task = {
+      ...t,
+      completed: false,
+      uncompletedCategory: category,
+      reasonUncompleted: reason,
+      uncompletedAt: new Date().toISOString(),
+    };
+    await updateTask(updated);
+    sounds.playPop();
+    closeIncompleteModal();
+  };
+
+  const exportUsersCsv = () => {
+    api.exportUsersCsv(users);
+    sounds.playComplete();
   };
 
   const logout = async () => {
@@ -798,6 +936,20 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       systemFont,
       setSystemFont,
       getDailySummaryText,
+      goals,
+      addGoal,
+      updateGoal,
+      deleteGoal,
+      personalityResult,
+      savePersonalityResult,
+      updateUserTimeline,
+      dailyNotes,
+      saveDailyNote,
+      incompleteModalTask,
+      openIncompleteModal,
+      closeIncompleteModal,
+      setTaskIncompleteReason,
+      exportUsersCsv,
     }),
     [
       currentUser,
@@ -826,6 +978,10 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshActiveRoom,
       getDailySummaryText,
       refreshProjects,
+      goals,
+      personalityResult,
+      dailyNotes,
+      incompleteModalTask,
     ]
   );
 

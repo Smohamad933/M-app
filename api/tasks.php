@@ -88,6 +88,8 @@ if ($method === 'PUT') {
         'isPinned' => isset($input['isPinned']) ? $input['isPinned'] : null,
         'subtasks' => isset($input['subtasks']) ? $input['subtasks'] : null,
         'completed' => isset($input['completed']) ? $input['completed'] : null,
+        'reasonUncompleted' => array_key_exists('reasonUncompleted', $input) ? $input['reasonUncompleted'] : null,
+        'uncompletedCategory' => array_key_exists('uncompletedCategory', $input) ? $input['uncompletedCategory'] : null,
     ];
 
     $db->updateTask($updateData);

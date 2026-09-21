@@ -35,7 +35,18 @@ if ($method === 'POST' && ($action === 'register' || $action === 'signup')) {
     // Role is strictly user for any new registration
     $role = 'user';
 
-    $created = $db->createUser($username, $password, $name, $role);
+    $extra = [
+        'phone' => trim($input['phone'] ?? ''),
+        'email' => trim($input['email'] ?? ''),
+        'province' => trim($input['province'] ?? ''),
+        'city' => trim($input['city'] ?? ''),
+        'birthDate' => trim($input['birthDate'] ?? ''),
+        'jobTitle' => trim($input['jobTitle'] ?? ''),
+        'skills' => is_array($input['skills'] ?? null) ? $input['skills'] : [],
+        'dailyTimeline' => is_array($input['dailyTimeline'] ?? null) ? $input['dailyTimeline'] : [],
+    ];
+
+    $created = $db->createUser($username, $password, $name, $role, $extra);
 
     // Auto login after registration
     $_SESSION['user_id'] = $created['id'];

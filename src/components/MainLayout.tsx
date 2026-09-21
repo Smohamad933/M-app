@@ -15,6 +15,10 @@ import { QuickAddBar } from './QuickAddBar';
 import { TaskModal } from './TaskModal';
 import { ExportShareModal } from './ExportShareModal';
 import { FontSelectorModal } from './FontSelectorModal';
+import { TaskIncompleteModal } from './TaskIncompleteModal';
+import { HourlyPlannerView } from './HourlyPlannerView';
+import { HabitsAnalyzerView } from './HabitsAnalyzerView';
+import { CareerGoalsView } from './CareerGoalsView';
 import { BottomNav } from './BottomNav';
 import { sounds } from '../utils/sound';
 import {
@@ -43,6 +47,8 @@ import {
   Menu,
   X,
   Type,
+  Brain,
+  Compass,
 } from 'lucide-react';
 
 export const MainLayout: React.FC = () => {
@@ -99,12 +105,15 @@ export const MainLayout: React.FC = () => {
 
   const navItems: Array<{ id: TabType; label: string; icon: React.ElementType; adminOnly?: boolean; badge?: number }> = [
     { id: 'dashboard', label: 'داشبورد و آمار', icon: LayoutDashboard },
+    { id: 'planner', label: 'دیلی پلنر ساعتی', icon: Clock },
+    { id: 'habits', label: 'تحلیلگر عادت‌ها', icon: Brain },
+    { id: 'career', label: 'اهداف و رشد شغلی', icon: Compass },
     { id: 'tasks', label: 'کارهای روزانه', icon: CheckSquare, badge: todayTasks.filter((t) => !t.completed).length },
     { id: 'projects', label: 'پروژه‌های تیمی', icon: FolderKanban, badge: projects.length },
     { id: 'calendar', label: 'تقویم شمسی', icon: CalendarDays },
     { id: 'focus', label: 'تمرکز پومودورو', icon: Timer },
     { id: 'categories', label: 'دسته‌بندی‌ها', icon: LayoutGrid },
-    { id: 'users', label: 'مدیریت کاربران', icon: Users, adminOnly: true, badge: users.length },
+    { id: 'users', label: 'مانیتورینگ کاربران', icon: Users, adminOnly: true, badge: users.length },
     { id: 'stats', label: 'گزارش عملکرد', icon: BarChart3 },
   ];
 
@@ -535,6 +544,27 @@ export const MainLayout: React.FC = () => {
             </div>
           )}
 
+          {/* TAB: HOURLY DAILY PLANNER */}
+          {activeTab === 'planner' && (
+            <div className="w-full min-w-0">
+              <HourlyPlannerView />
+            </div>
+          )}
+
+          {/* TAB: AI HABITS ANALYZER */}
+          {activeTab === 'habits' && (
+            <div className="w-full min-w-0">
+              <HabitsAnalyzerView />
+            </div>
+          )}
+
+          {/* TAB: CAREER GOALS & PERSONALITY */}
+          {activeTab === 'career' && (
+            <div className="w-full min-w-0">
+              <CareerGoalsView />
+            </div>
+          )}
+
           {/* TAB 2: TASKS (List & Kanban) */}
           {activeTab === 'tasks' && (
             <div className="space-y-4 animate-in fade-in w-full min-w-0">
@@ -775,6 +805,7 @@ export const MainLayout: React.FC = () => {
 
       {/* Global Modals */}
       <TaskModal />
+      <TaskIncompleteModal />
       <ExportShareModal />
       <FontSelectorModal isOpen={isFontModalOpen} onClose={() => setIsFontModalOpen(false)} />
     </div>

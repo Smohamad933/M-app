@@ -8,6 +8,14 @@ interface DBUser {
   password: string;
   name: string;
   role: 'admin' | 'user';
+  phone?: string;
+  email?: string;
+  province?: string;
+  city?: string;
+  birthDate?: string;
+  jobTitle?: string;
+  skills?: string[];
+  dailyTimeline?: any;
   createdAt: string;
 }
 
@@ -16,6 +24,7 @@ interface DBTask {
   userId: string;
   projectId?: string | null;
   projectName?: string;
+  goalId?: string;
   title: string;
   description?: string;
   date: string;
@@ -23,6 +32,9 @@ interface DBTask {
   durationMinutes?: number;
   completed: boolean;
   completedAt?: string;
+  reasonUncompleted?: string;
+  uncompletedCategory?: string;
+  uncompletedAt?: string;
   priority: 'high' | 'medium' | 'low';
   categoryId: string;
   isPinned?: boolean;
@@ -232,9 +244,68 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
   // 1. Auth routes
   if (pathname.startsWith('/api/auth')) {
-    const action = urlObj.searchParams.get('action');
+    const action = urlObj.searchParams.get('action') || pathname.replace('/api/auth/', '').replace('/api/auth', '');
 
-    if (method === 'POST' && (action === 'login' || !action)) {
+    if (method === 'POST' && (action === 'register' || pathname.endsWith('/register'))) {
+      const body = await parseJsonBody(req);
+      const username = body.username?.trim();
+      const password = body.password?.trim();
+      const name = body.name?.trim();
+
+      if (!username || !password || !name) {
+        sendJson(res, { error: 'تمامی فیلدها الزامی هستند.' }, 400);
+        return true;
+      }
+
+      if (db.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
+        sendJson(res, { error: 'این نام کاربری قبلاً ثبت شده است.' }, 400);
+        return true;
+      }
+
+      const newUser: DBUser = {
+        id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        username,
+        password,
+        name,
+        role: 'user', // Always user, never admin!
+        phone: body.phone,
+        email: body.email,
+        province: body.province,
+        city: body.city,
+        birthDate: body.birthDate,
+        jobTitle: body.jobTitle,
+        skills: body.skills,
+        dailyTimeline: body.dailyTimeline,
+        createdAt: new Date().toISOString(),
+      };
+
+      db.users.push(newUser);
+      writeDb(db);
+
+      const token = Buffer.from(`${newUser.id}:${Date.now()}`).toString('base64');
+      sendJson(res, {
+        message: 'ثبت‌نام با موفقیت انجام شد.',
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          name: newUser.name,
+          role: newUser.role,
+          phone: newUser.phone,
+          email: newUser.email,
+          province: newUser.province,
+          city: newUser.city,
+          birthDate: newUser.birthDate,
+          jobTitle: newUser.jobTitle,
+          skills: newUser.skills,
+          dailyTimeline: newUser.dailyTimeline,
+          createdAt: newUser.createdAt,
+        },
+        token,
+      }, 201);
+      return true;
+    }
+
+    if (method === 'POST' && (action === 'login' || pathname.endsWith('/login') || !action || action === '')) {
       const body = await parseJsonBody(req);
       const username = body.username?.trim();
       const password = body.password?.trim();
@@ -259,53 +330,18 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           username: user.username,
           name: user.name,
           role: user.role,
+          phone: user.phone,
+          email: user.email,
+          province: user.province,
+          city: user.city,
+          birthDate: user.birthDate,
+          jobTitle: user.jobTitle,
+          skills: user.skills,
+          dailyTimeline: user.dailyTimeline,
           createdAt: user.createdAt,
         },
         token,
       });
-      return true;
-    }
-
-    if (method === 'POST' && action === 'register') {
-      const body = await parseJsonBody(req);
-      const username = body.username?.trim();
-      const password = body.password?.trim();
-      const name = body.name?.trim();
-
-      if (!username || !password || !name) {
-        sendJson(res, { error: 'تمامی فیلدها الزامی هستند.' }, 400);
-        return true;
-      }
-
-      if (db.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
-        sendJson(res, { error: 'این نام کاربری قبلاً ثبت شده است.' }, 400);
-        return true;
-      }
-
-      const newUser: DBUser = {
-        id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-        username,
-        password,
-        name,
-        role: 'user', // Always user, never admin!
-        createdAt: new Date().toISOString(),
-      };
-
-      db.users.push(newUser);
-      writeDb(db);
-
-      const token = Buffer.from(`${newUser.id}:${Date.now()}`).toString('base64');
-      sendJson(res, {
-        message: 'ثبت‌نام با موفقیت انجام شد.',
-        user: {
-          id: newUser.id,
-          username: newUser.username,
-          name: newUser.name,
-          role: newUser.role,
-          createdAt: newUser.createdAt,
-        },
-        token,
-      }, 201);
       return true;
     }
 
@@ -341,6 +377,39 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     if (method === 'GET') {
+      const action = urlObj.searchParams.get('action');
+      if (action === 'export_csv' || pathname.endsWith('/export/csv')) {
+        const rows = [
+          'ردیف,نام و نام خانوادگی,نام کاربری,نقش,شماره تماس,ایمیل,استان,شهر,تاریخ تولد,شغل,کل تسک‌ها,تسک‌های انجام‌شده,درصد پیشرفت,تاریخ عضویت',
+          ...db.users.map((u, i) => {
+            const userTasks = db.tasks.filter((t) => t.userId === u.id);
+            const done = userTasks.filter((t) => t.completed).length;
+            const total = userTasks.length;
+            const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+            return [
+              i + 1,
+              `"${(u.name || '').replace(/"/g, '""')}"`,
+              `"${(u.username || '').replace(/"/g, '""')}"`,
+              u.role === 'admin' ? 'مدیر سیستم' : 'کاربر عادی',
+              `"${(u.phone || '—').replace(/"/g, '""')}"`,
+              `"${(u.email || '—').replace(/"/g, '""')}"`,
+              `"${(u.province || '—').replace(/"/g, '""')}"`,
+              `"${(u.city || '—').replace(/"/g, '""')}"`,
+              `"${(u.birthDate || '—').replace(/"/g, '""')}"`,
+              `"${(u.jobTitle || '—').replace(/"/g, '""')}"`,
+              total,
+              done,
+              `${percent}%`,
+              `"${(u.createdAt || '').slice(0, 10)}"`,
+            ].join(',');
+          }),
+        ];
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="taskrooz-users.csv"');
+        res.end('\uFEFF' + rows.join('\r\n'));
+        return true;
+      }
+
       const result = db.users.map((u) => {
         const userTasks = db.tasks.filter((t) => t.userId === u.id);
         const done = userTasks.filter((t) => t.completed).length;
@@ -350,6 +419,14 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           username: u.username,
           name: u.name,
           role: u.role,
+          phone: u.phone,
+          email: u.email,
+          province: u.province,
+          city: u.city,
+          birthDate: u.birthDate,
+          jobTitle: u.jobTitle,
+          skills: u.skills,
+          dailyTimeline: u.dailyTimeline,
           createdAt: u.createdAt,
           totalTasks: total,
           completedTasks: done,
@@ -383,6 +460,14 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         password,
         name,
         role,
+        phone: body.phone,
+        email: body.email,
+        province: body.province,
+        city: body.city,
+        birthDate: body.birthDate,
+        jobTitle: body.jobTitle,
+        skills: body.skills,
+        dailyTimeline: body.dailyTimeline,
         createdAt: new Date().toISOString(),
       };
 
@@ -396,6 +481,14 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           username: newUser.username,
           name: newUser.name,
           role: newUser.role,
+          phone: newUser.phone,
+          email: newUser.email,
+          province: newUser.province,
+          city: newUser.city,
+          birthDate: newUser.birthDate,
+          jobTitle: newUser.jobTitle,
+          skills: newUser.skills,
+          dailyTimeline: newUser.dailyTimeline,
           createdAt: newUser.createdAt,
           totalTasks: 0,
           completedTasks: 0,

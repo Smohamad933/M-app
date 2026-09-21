@@ -1,11 +1,27 @@
 export type Priority = 'high' | 'medium' | 'low';
 export type UserRole = 'admin' | 'user';
 
+export interface UserTimeline {
+  wakeUp?: string;
+  workStart?: string;
+  lunch?: string;
+  gym?: string;
+  sleep?: string;
+}
+
 export interface User {
   id: string;
   username: string;
   name: string;
   role: UserRole;
+  phone?: string;
+  email?: string;
+  province?: string;
+  city?: string;
+  birthDate?: string;
+  jobTitle?: string;
+  skills?: string[];
+  dailyTimeline?: UserTimeline;
   createdAt: string;
   totalTasks?: number;
   completedTasks?: number;
@@ -18,12 +34,22 @@ export interface SubTask {
   completed: boolean;
 }
 
+export type UncompletedCategory =
+  | 'procrastination'
+  | 'others_priority'
+  | 'time_shortage'
+  | 'low_energy'
+  | 'distraction'
+  | 'external'
+  | 'other';
+
 export interface Task {
   id: string;
   userId: string;
   userName?: string;
   projectId?: string;
   projectName?: string;
+  goalId?: string;
   title: string;
   description?: string;
   date: string; // YYYY-MM-DD
@@ -31,6 +57,9 @@ export interface Task {
   durationMinutes?: number;
   completed: boolean;
   completedAt?: string;
+  reasonUncompleted?: string;
+  uncompletedCategory?: UncompletedCategory;
+  uncompletedAt?: string;
   priority: Priority;
   categoryId: string;
   subtasks: SubTask[];
@@ -66,7 +95,53 @@ export interface TeamProject {
   progressPercent?: number;
 }
 
-export type TabType = 'dashboard' | 'tasks' | 'calendar' | 'focus' | 'projects' | 'categories' | 'stats' | 'users';
+export type GoalPeriod = 'week' | 'month' | 'quarter1' | 'halfYear1' | 'halfYear2' | 'year';
+export type GoalCategory = 'career' | 'skill' | 'personal' | 'project';
+
+export interface CareerGoal {
+  id: string;
+  userId: string;
+  title: string;
+  category: GoalCategory;
+  period: GoalPeriod;
+  progress: number; // 0 to 100
+  targetDate?: string;
+  description?: string;
+  completed: boolean;
+  createdAt: string;
+}
+
+export interface PersonalityTestResult {
+  type: string;
+  title: string;
+  archetype: string;
+  description: string;
+  strengths: string[];
+  growthAreas: string[];
+  recommendations: string[];
+  testedAt: string;
+}
+
+export interface DailyNote {
+  id: string;
+  userId: string;
+  date: string;
+  content: string;
+  updatedAt: string;
+}
+
+export type TabType =
+  | 'dashboard'
+  | 'tasks'
+  | 'planner'
+  | 'habits'
+  | 'career'
+  | 'calendar'
+  | 'focus'
+  | 'projects'
+  | 'categories'
+  | 'stats'
+  | 'users';
 
 export type TaskViewMode = 'list' | 'kanban' | 'calendar';
 

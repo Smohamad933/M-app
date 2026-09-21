@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Runtime data
+data/*.sqlite
+data/*.sqlite3
+data/*.json
+

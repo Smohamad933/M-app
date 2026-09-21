@@ -1,4 +1,4 @@
-import type { Task, User, Category, FocusRoom, TeamProject } from '../types';
+import type { Task, User, Category, FocusRoom, TeamProject, CareerGoal, PersonalityTestResult } from '../types';
 import { DEFAULT_CATEGORIES } from '../utils/storage';
 
 const TOKEN_KEY = 'taskrooz_auth_token';
@@ -6,6 +6,9 @@ const USERS_STORAGE_KEY = 'taskrooz_users_local';
 const TASKS_STORAGE_KEY = 'taskrooz_tasks_local';
 const ROOMS_STORAGE_KEY = 'taskrooz_rooms_local';
 const PROJECTS_STORAGE_KEY = 'taskrooz_projects_local';
+const GOALS_STORAGE_KEY = 'taskrooz_goals_local';
+const NOTES_STORAGE_KEY = 'taskrooz_notes_local';
+const PERSONALITY_STORAGE_KEY = 'taskrooz_personality_local';
 
 function getLocalProjects(): TeamProject[] {
   try {
@@ -148,11 +151,31 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export const api = {
   // Auth: Register
-  async register(data: { username: string; password: string; name: string }): Promise<{ user: User; token: string }> {
+  async register(data: {
+    username: string;
+    password: string;
+    name: string;
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    birthDate?: string;
+    jobTitle?: string;
+    skills?: string[];
+    dailyTimeline?: any;
+  }): Promise<{ user: User; token: string }> {
     const payload = {
       username: data.username.trim(),
       password: data.password.trim(),
       name: data.name.trim(),
+      phone: data.phone?.trim() || '',
+      email: data.email?.trim() || '',
+      province: data.province?.trim() || '',
+      city: data.city?.trim() || '',
+      birthDate: data.birthDate?.trim() || '',
+      jobTitle: data.jobTitle?.trim() || '',
+      skills: Array.isArray(data.skills) ? data.skills : [],
+      dailyTimeline: data.dailyTimeline || {},
     };
 
     try {
@@ -182,6 +205,14 @@ export const api = {
           username: payload.username.toLowerCase(),
           name: payload.name,
           role: 'user', // Always user, never admin
+          phone: payload.phone,
+          email: payload.email,
+          province: payload.province,
+          city: payload.city,
+          birthDate: payload.birthDate,
+          jobTitle: payload.jobTitle,
+          skills: payload.skills,
+          dailyTimeline: payload.dailyTimeline,
           createdAt: new Date().toISOString(),
           totalTasks: 0,
           completedTasks: 0,
@@ -805,5 +836,168 @@ export const api = {
       const filtered = projects.filter((p) => p.id !== id);
       saveLocalProjects(filtered);
     }
+  },
+
+  // Career Goals
+  async getGoals(): Promise<CareerGoal[]> {
+    try {
+      const res = await request<{ goals: CareerGoal[] }>('api/goals.php');
+      return res.goals || [];
+    } catch {
+      try {
+        const raw = localStorage.getItem(GOALS_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    }
+  },
+
+  async createGoal(data: Omit<CareerGoal, 'id' | 'createdAt' | 'userId'>): Promise<CareerGoal> {
+    const newGoal: CareerGoal = {
+      id: 'goal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      userId: 'current',
+      title: data.title,
+      category: data.category,
+      period: data.period,
+      progress: data.progress || 0,
+      targetDate: data.targetDate,
+      description: data.description,
+      completed: !!data.completed,
+      createdAt: new Date().toISOString(),
+    };
+    try {
+      const res = await request<{ goal: CareerGoal }>('api/goals.php', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      return res.goal || newGoal;
+    } catch {
+      const goals = await this.getGoals();
+      goals.unshift(newGoal);
+      try { localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(goals)); } catch {}
+      return newGoal;
+    }
+  },
+
+  async updateGoal(id: string, updates: Partial<CareerGoal>): Promise<void> {
+    try {
+      await request('api/goals.php', {
+        method: 'PUT',
+        body: JSON.stringify({ id, ...updates }),
+      });
+    } catch {
+      const goals = await this.getGoals();
+      const idx = goals.findIndex((g) => g.id === id);
+      if (idx !== -1) {
+        goals[idx] = { ...goals[idx], ...updates };
+        try { localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(goals)); } catch {}
+      }
+    }
+  },
+
+  async deleteGoal(id: string): Promise<void> {
+    try {
+      await request(`api/goals.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch {
+      const goals = await this.getGoals();
+      const filtered = goals.filter((g) => g.id !== id);
+      try { localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(filtered)); } catch {}
+    }
+  },
+
+  // Personality Test
+  async getPersonalityResult(): Promise<PersonalityTestResult | null> {
+    try {
+      const res = await request<{ result: PersonalityTestResult | null }>('api/personality.php');
+      return res.result;
+    } catch {
+      try {
+        const raw = localStorage.getItem(PERSONALITY_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    }
+  },
+
+  async savePersonalityResult(result: PersonalityTestResult): Promise<void> {
+    try {
+      await request('api/personality.php', {
+        method: 'POST',
+        body: JSON.stringify(result),
+      });
+    } catch {}
+    try {
+      localStorage.setItem(PERSONALITY_STORAGE_KEY, JSON.stringify(result));
+    } catch {}
+  },
+
+  // Daily Notes
+  async getDailyNotes(): Promise<Record<string, string>> {
+    try {
+      const raw = localStorage.getItem(NOTES_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  },
+
+  async saveDailyNote(date: string, content: string): Promise<void> {
+    try {
+      const notes = await this.getDailyNotes();
+      notes[date] = content;
+      localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
+    } catch {}
+  },
+
+  // Export Users to Excel/CSV with Persian UTF-8 BOM
+  exportUsersCsv(users: User[]): void {
+    const headers = [
+      'ردیف',
+      'نام و نام خانوادگی',
+      'نام کاربری',
+      'نقش کاربری',
+      'شماره تماس',
+      'ایمیل',
+      'استان',
+      'شهر',
+      'تاریخ تولد',
+      'شغل و تخصص',
+      'مهارت‌ها',
+      'کل تسک‌ها',
+      'تسک‌های انجام‌شده',
+      'درصد پیشرفت',
+      'تاریخ عضویت',
+    ];
+
+    const rows = users.map((u, i) => [
+      i + 1,
+      `"${(u.name || '').replace(/"/g, '""')}"`,
+      `"${(u.username || '').replace(/"/g, '""')}"`,
+      u.role === 'admin' ? 'مدیر سیستم' : 'کاربر عادی',
+      `"${(u.phone || '—').replace(/"/g, '""')}"`,
+      `"${(u.email || '—').replace(/"/g, '""')}"`,
+      `"${(u.province || '—').replace(/"/g, '""')}"`,
+      `"${(u.city || '—').replace(/"/g, '""')}"`,
+      `"${(u.birthDate || '—').replace(/"/g, '""')}"`,
+      `"${(u.jobTitle || '—').replace(/"/g, '""')}"`,
+      `"${(Array.isArray(u.skills) ? u.skills.join(' ، ') : '—').replace(/"/g, '""')}"`,
+      u.totalTasks || 0,
+      u.completedTasks || 0,
+      `${u.progressPercent || 0}%`,
+      `"${(u.createdAt || '').slice(0, 10)}"`,
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `taskrooz-users-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   },
 };

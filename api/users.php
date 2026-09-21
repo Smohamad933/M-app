@@ -7,8 +7,40 @@ require_once __DIR__ . '/config.php';
 $currentUser = requireAdmin();
 $method = $_SERVER['REQUEST_METHOD'];
 
-// GET /api/users -> List all users with stats
+// GET /api/users -> List all users with stats OR export CSV
 if ($method === 'GET') {
+    $action = $_GET['action'] ?? '';
+    if ($action === 'export_csv') {
+        $users = $db->getAllUsers();
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="taskrooz-users-' . date('Y-m-d') . '.csv"');
+        $out = fopen('php://output', 'w');
+        // UTF-8 BOM for Persian Excel support
+        fwrite($out, "\xEF\xBB\xBF");
+        fputcsv($out, ['ردیف', 'نام و نام خانوادگی', 'نام کاربری', 'نقش', 'شماره تماس', 'ایمیل', 'استان', 'شهر', 'تاریخ تولد', 'شغل', 'کل تسک‌ها', 'تسک‌های انجام‌شده', 'درصد پیشرفت', 'تاریخ عضویت']);
+        $i = 1;
+        foreach ($users as $u) {
+            fputcsv($out, [
+                $i++,
+                $u['name'] ?? '',
+                $u['username'] ?? '',
+                ($u['role'] ?? '') === 'admin' ? 'مدیر سیستم' : 'کاربر عادی',
+                $u['phone'] ?? '',
+                $u['email'] ?? '',
+                $u['province'] ?? '',
+                $u['city'] ?? '',
+                $u['birthDate'] ?? '',
+                $u['jobTitle'] ?? '',
+                $u['totalTasks'] ?? 0,
+                $u['completedTasks'] ?? 0,
+                ($u['progressPercent'] ?? 0) . '%',
+                substr($u['createdAt'] ?? '', 0, 10),
+            ]);
+        }
+        fclose($out);
+        exit;
+    }
+
     $users = $db->getAllUsers();
     jsonResponse(['users' => $users]);
 }

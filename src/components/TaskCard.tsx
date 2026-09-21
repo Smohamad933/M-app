@@ -23,6 +23,7 @@ import {
   CreditCard,
   Folder,
   FolderKanban,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface TaskCardProps {
@@ -50,6 +51,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     setActiveFocusTaskId,
     setActiveTab,
     currentUser,
+    openIncompleteModal,
   } = useTask();
 
   const [expanded, setExpanded] = useState(false);
@@ -197,6 +199,18 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                   <Timer className="w-3.5 h-3.5 text-amber-400" />
                   شروع تمرکز
                 </button>
+                {!task.completed && (
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      openIncompleteModal(task);
+                    }}
+                    className="w-full px-3 py-2 text-right flex items-center gap-2 text-amber-300 hover:bg-zinc-800 cursor-pointer"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                    ثبت دلیل عدم انجام
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setShowMenu(false);
@@ -340,6 +354,19 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
               <Timer className="w-3 h-3 text-zinc-400" />
               {toPersianDigits(task.focusMinutesSpent)} دقیقه تمرکز
             </span>
+          )}
+
+          {/* Reason uncompleted badge */}
+          {task.reasonUncompleted && (
+            <button
+              type="button"
+              onClick={() => openIncompleteModal(task)}
+              className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition-colors cursor-pointer"
+              title="ویرایش یا بازبینی دلیل عدم انجام"
+            >
+              <AlertTriangle className="w-3 h-3 text-amber-400" />
+              <span>علت تعویق: {task.reasonUncompleted}</span>
+            </button>
           )}
         </div>
 

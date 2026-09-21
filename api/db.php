@@ -143,16 +143,24 @@ class TaskRoozDB {
         return null;
     }
 
-    public function createUser($username, $password, $name, $role = 'user') {
+    public function createUser($username, $password, $name, $role = 'user', $extra = []) {
         $username = strtolower(trim($username));
         $hash = password_hash($password, PASSWORD_DEFAULT);
         $id = 'usr_' . time() . '_' . substr(bin2hex(random_bytes(4)), 0, 6);
         $now = date('Y-m-d H:i:s');
+        $phone = $extra['phone'] ?? '';
+        $email = $extra['email'] ?? '';
+        $province = $extra['province'] ?? '';
+        $city = $extra['city'] ?? '';
+        $birthDate = $extra['birthDate'] ?? '';
+        $jobTitle = $extra['jobTitle'] ?? '';
+        $skills = $extra['skills'] ?? [];
+        $timeline = $extra['dailyTimeline'] ?? [];
 
         if ($this->mode === 'sqlite') {
             try {
-                $stmt = $this->pdo->prepare("INSERT INTO users (id, username, password_hash, name, role, created_at) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$id, $username, $hash, $name, $role, $now]);
+                $stmt = $this->pdo->prepare("INSERT INTO users (id, username, password_hash, name, role, created_at, phone, email, province, city, birth_date, job_title, skills_json, timeline_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$id, $username, $hash, $name, $role, $now, $phone, $email, $province, $city, $birthDate, $jobTitle, json_encode($skills), json_encode($timeline)]);
             } catch (Exception $e) {}
         }
 
@@ -162,6 +170,14 @@ class TaskRoozDB {
             'password_hash' => $hash,
             'name' => $name,
             'role' => $role,
+            'phone' => $phone,
+            'email' => $email,
+            'province' => $province,
+            'city' => $city,
+            'birthDate' => $birthDate,
+            'jobTitle' => $jobTitle,
+            'skills' => $skills,
+            'dailyTimeline' => $timeline,
             'created_at' => $now,
         ];
         $this->saveJson();
@@ -171,6 +187,14 @@ class TaskRoozDB {
             'username' => $username,
             'name' => $name,
             'role' => $role,
+            'phone' => $phone,
+            'email' => $email,
+            'province' => $province,
+            'city' => $city,
+            'birthDate' => $birthDate,
+            'jobTitle' => $jobTitle,
+            'skills' => $skills,
+            'dailyTimeline' => $timeline,
             'createdAt' => $now,
         ];
     }
@@ -223,6 +247,14 @@ class TaskRoozDB {
                 'username' => $u['username'],
                 'name' => $u['name'],
                 'role' => $u['role'],
+                'phone' => $u['phone'] ?? '',
+                'email' => $u['email'] ?? '',
+                'province' => $u['province'] ?? '',
+                'city' => $u['city'] ?? '',
+                'birthDate' => $u['birthDate'] ?? '',
+                'jobTitle' => $u['jobTitle'] ?? '',
+                'skills' => $u['skills'] ?? [],
+                'dailyTimeline' => $u['dailyTimeline'] ?? [],
                 'createdAt' => $u['created_at'] ?? date('Y-m-d H:i:s'),
                 'totalTasks' => $total,
                 'completedTasks' => $done,
@@ -404,6 +436,8 @@ class TaskRoozDB {
                 if (isset($data['categoryId'])) $t['category_id'] = $data['categoryId'];
                 if (isset($data['isPinned'])) $t['is_pinned'] = $isPinned;
                 if ($subtasksJson !== null) $t['subtasks_json'] = $subtasksJson;
+                if (array_key_exists('reasonUncompleted', $data)) $t['reason_uncompleted'] = $data['reasonUncompleted'];
+                if (array_key_exists('uncompletedCategory', $data)) $t['uncompleted_category'] = $data['uncompletedCategory'];
                 if ($completed !== null) {
                     $t['completed'] = $completed;
                     $t['completed_at'] = $completedAt;
@@ -548,6 +582,8 @@ class TaskRoozDB {
             'categoryId' => $row['category_id'] ?? 'cat-work',
             'isPinned' => (bool)($row['is_pinned'] ?? 0),
             'focusMinutesSpent' => (int)($row['focus_minutes_spent'] ?? 0),
+            'reasonUncompleted' => $row['reason_uncompleted'] ?? null,
+            'uncompletedCategory' => $row['uncompleted_category'] ?? null,
             'subtasks' => $subtasks,
             'createdAt' => $row['created_at'] ?? date('Y-m-d H:i:s'),
         ];
