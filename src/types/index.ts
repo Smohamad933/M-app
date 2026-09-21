@@ -199,3 +199,34 @@ export interface FocusRoom {
   deletedAt?: number; // epoch timestamp in seconds
   createdAt: string;
 }
+
+export interface SystemFontOption {
+  id: string;
+  name: string;
+  family: string;
+  description: string;
+  isCustom?: boolean;
+  fontUrl?: string;
+}
+
+export interface GlobalSystemSettings {
+  broadcastNotice: {
+    enabled: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'warning' | 'urgent' | 'motivational';
+    updatedAt?: string;
+  };
+  enforcedTheme: 'system' | 'dark' | 'light' | 'obsidian';
+  enforcedFont: string;
+  defaultDailyFocusMinutes: number;
+  workHoursPolicy: {
+    start: string;
+    end: string;
+  };
+  roomPolicy: {
+    allowUserRoomCreation: boolean;
+    allowPublicChat: boolean;
+  };
+  dailyMantra: string;
+}

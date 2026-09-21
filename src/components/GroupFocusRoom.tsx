@@ -36,6 +36,7 @@ export const GroupFocusRoom: React.FC = () => {
     deleteFocusRoom,
     syncRoomTimer,
     sendRoomMessage,
+    globalSettings,
   } = useTask();
 
   // Lobby states
@@ -46,6 +47,7 @@ export const GroupFocusRoom: React.FC = () => {
   const [activeRoomsList, setActiveRoomsList] = useState<any[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
 
   // In-room states
@@ -152,14 +154,21 @@ export const GroupFocusRoom: React.FC = () => {
     if (!newRoomName.trim()) return;
     setIsCreating(true);
     try {
-      const room = await createFocusRoom(newRoomName, focusDurationMin * 60, breakDurationMin * 60);
-      if (room) {
-        loadRooms();
-      }
+      await createFocusRoom(newRoomName, focusDurationMin * 60, breakDurationMin * 60);
+      // createFocusRoom automatically enters the room and updates activeRoom state
     } catch (err: any) {
       alert(err.message || 'خطا در ساخت اتاق');
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleJoinDirect = async (roomId: string) => {
+    setJoiningRoomId(roomId);
+    try {
+      await joinFocusRoom(roomId);
+    } finally {
+      setJoiningRoomId(null);
     }
   };
 
@@ -296,58 +305,70 @@ export const GroupFocusRoom: React.FC = () => {
                 <h3 className="text-sm font-bold text-white">ایجاد اتاق تمرکز جدید</h3>
               </div>
 
-              <form onSubmit={handleCreateRoom} className="space-y-3.5 text-xs">
-                <div className="space-y-1">
-                  <label className="font-semibold text-zinc-300">نام اتاق</label>
-                  <input
-                    type="text"
-                    required
-                    value={newRoomName}
-                    onChange={(e) => setNewRoomName(e.target.value)}
-                    placeholder="مثال: تمرکز پروژه خرداد..."
-                    className="w-full px-3.5 py-2 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white text-xs outline-hidden focus:border-zinc-500"
-                  />
+              {globalSettings?.roomPolicy?.allowUserRoomCreation === false && currentUser?.role !== 'admin' ? (
+                <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800 text-zinc-400 text-xs leading-relaxed space-y-2">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>سیاست سازمانی ایجاد اتاق</span>
+                  </div>
+                  <p>
+                    طبق مصوبه مدیر سیستم، ایجاد اتاق تمرکز جدید در اختیار مدیر کل قرار دارد. می‌توانید از فهرست اتاق‌های فعال زیر به جلسات تمرکز ملحق شوید.
+                  </p>
                 </div>
-
-                <div className="grid grid-cols-2 gap-2">
+              ) : (
+                <form onSubmit={handleCreateRoom} className="space-y-3.5 text-xs">
                   <div className="space-y-1">
-                    <label className="font-semibold text-zinc-300">زمان تمرکز</label>
-                    <select
-                      value={focusDurationMin}
-                      onChange={(e) => setFocusDurationMin(Number(e.target.value))}
-                      className="w-full px-2.5 py-2 rounded-xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden cursor-pointer"
-                    >
-                      <option value={20}>۲۰ دقیقه</option>
-                      <option value={25}>۲۵ دقیقه (استاندارد)</option>
-                      <option value={30}>۳۰ دقیقه</option>
-                      <option value={45}>۴۵ دقیقه</option>
-                      <option value={50}>۵۰ دقیقه</option>
-                    </select>
+                    <label className="font-semibold text-zinc-300">نام اتاق</label>
+                    <input
+                      type="text"
+                      required
+                      value={newRoomName}
+                      onChange={(e) => setNewRoomName(e.target.value)}
+                      placeholder="مثال: تمرکز پروژه خرداد..."
+                      className="w-full px-3.5 py-2 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white text-xs outline-hidden focus:border-zinc-500"
+                    />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="font-semibold text-zinc-300">زمان استراحت</label>
-                    <select
-                      value={breakDurationMin}
-                      onChange={(e) => setBreakDurationMin(Number(e.target.value))}
-                      className="w-full px-2.5 py-2 rounded-xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden cursor-pointer"
-                    >
-                      <option value={5}>۵ دقیقه</option>
-                      <option value={10}>۱۰ دقیقه</option>
-                      <option value={15}>۱۵ دقیقه</option>
-                    </select>
-                  </div>
-                </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="font-semibold text-zinc-300">زمان تمرکز</label>
+                      <select
+                        value={focusDurationMin}
+                        onChange={(e) => setFocusDurationMin(Number(e.target.value))}
+                        className="w-full px-2.5 py-2 rounded-xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden cursor-pointer"
+                      >
+                        <option value={20}>۲۰ دقیقه</option>
+                        <option value={25}>۲۵ دقیقه (استاندارد)</option>
+                        <option value={30}>۳۰ دقیقه</option>
+                        <option value={45}>۴۵ دقیقه</option>
+                        <option value={50}>۵۰ دقیقه</option>
+                      </select>
+                    </div>
 
-                <button
-                  type="submit"
-                  disabled={isCreating}
-                  className="w-full py-2.5 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  {isCreating ? 'در حال ایجاد و ورود...' : 'ایجاد اتاق و ورود مستقیم'}
-                </button>
-              </form>
+                    <div className="space-y-1">
+                      <label className="font-semibold text-zinc-300">زمان استراحت</label>
+                      <select
+                        value={breakDurationMin}
+                        onChange={(e) => setBreakDurationMin(Number(e.target.value))}
+                        className="w-full px-2.5 py-2 rounded-xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden cursor-pointer"
+                      >
+                        <option value={5}>۵ دقیقه</option>
+                        <option value={10}>۱۰ دقیقه</option>
+                        <option value={15}>۱۵ دقیقه</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isCreating}
+                    className="w-full py-2.5 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {isCreating ? 'در حال ایجاد و ورود...' : 'ایجاد اتاق و ورود مستقیم'}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
 
@@ -424,11 +445,21 @@ export const GroupFocusRoom: React.FC = () => {
                   </div>
 
                   <button
-                    onClick={() => joinFocusRoom(r.id)}
-                    className="px-3 py-1.5 rounded-xl bg-white text-zinc-950 font-bold text-xs hover:bg-zinc-200 transition-colors flex items-center gap-1 cursor-pointer flex-shrink-0"
+                    onClick={() => handleJoinDirect(r.id)}
+                    disabled={joiningRoomId === r.id}
+                    className="px-3.5 py-1.5 rounded-xl bg-white text-zinc-950 font-black text-xs hover:bg-zinc-200 transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0 disabled:opacity-60 shadow-xs"
                   >
-                    <span>ورود</span>
-                    <ArrowRight className="w-3 h-3 rotate-180" />
+                    {joiningRoomId === r.id ? (
+                      <>
+                        <span className="w-3 h-3 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
+                        <span>در حال ورود...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>ورود مستقیم</span>
+                        <ArrowRight className="w-3 h-3 rotate-180" />
+                      </>
+                    )}
                   </button>
                 </div>
               ))}
@@ -441,7 +472,21 @@ export const GroupFocusRoom: React.FC = () => {
 
   // --- VIEW 2: ACTIVE ROOM VIEW (LIVE FOCUS SESSION) ---
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-5 animate-in fade-in">
+    <div className="w-full max-w-3xl mx-auto space-y-5 animate-in fade-in duration-300">
+      {/* Back to lobby breadcrumb */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={leaveFocusRoom}
+          className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer py-1"
+        >
+          <ArrowRight className="w-4 h-4" />
+          <span>بازگشت به فهرست اتاق‌های تمرکز</span>
+        </button>
+
+        <span className="text-[11px] text-zinc-500 font-mono">
+          شناسه: {activeRoom.id}
+        </span>
+      </div>
       {/* Retention Banner if room is deleted */}
       {activeRoom.isDeleted && (
         <div className="p-4 bg-amber-950/40 border border-amber-800/70 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-200 text-xs backdrop-blur-md">
@@ -753,22 +798,28 @@ export const GroupFocusRoom: React.FC = () => {
 
             {/* Send message form */}
             {!activeRoom.isDeleted ? (
-              <form onSubmit={handleSendMessage} className="pt-2 flex items-center gap-2">
-                <input
-                  type="text"
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  placeholder="پیام یا انگیزه..."
-                  className="flex-1 px-3 py-2 rounded-xl bg-zinc-800 text-white text-xs outline-hidden border border-zinc-700/60 placeholder:text-zinc-500 focus:border-zinc-500"
-                />
-                <button
-                  type="submit"
-                  disabled={!messageText.trim()}
-                  className="p-2.5 rounded-xl bg-white text-zinc-950 font-bold hover:bg-zinc-200 cursor-pointer disabled:opacity-40"
-                >
-                  <Send className="w-3.5 h-3.5 rotate-180" />
-                </button>
-              </form>
+              globalSettings?.roomPolicy?.allowPublicChat === false && currentUser?.role !== 'admin' ? (
+                <div className="pt-2 text-center text-[11px] text-zinc-400 bg-zinc-950/40 py-2 rounded-xl border border-zinc-800">
+                  گفتگوی عمومی طبق سیاست مدیر سازمان موقتاً غیرفعال است.
+                </div>
+              ) : (
+                <form onSubmit={handleSendMessage} className="pt-2 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder="پیام یا انگیزه..."
+                    className="flex-1 px-3 py-2 rounded-xl bg-zinc-800 text-white text-xs outline-hidden border border-zinc-700/60 placeholder:text-zinc-500 focus:border-zinc-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!messageText.trim()}
+                    className="p-2.5 rounded-xl bg-white text-zinc-950 font-bold hover:bg-zinc-200 cursor-pointer disabled:opacity-40"
+                  >
+                    <Send className="w-3.5 h-3.5 rotate-180" />
+                  </button>
+                </form>
+              )
             ) : (
               <div className="pt-2 text-center text-[11px] text-zinc-400 bg-zinc-800/40 p-2 rounded-xl border border-zinc-800">
                 اتاق بسته شده است؛ ارسال پیام غیرفعال است (پیام‌ها تا ۱۰ دقیقه نگه‌داری می‌شوند).

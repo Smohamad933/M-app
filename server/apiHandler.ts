@@ -138,6 +138,7 @@ interface AppData {
   goals: DBCareerGoal[];
   dailyNotes: DBDailyNote[];
   personalityResults: DBPersonalityResult[];
+  globalSettings?: any;
 }
 
 const DB_FILE = path.resolve(process.cwd(), 'data/db.json');
@@ -167,6 +168,27 @@ const INITIAL_DATA: AppData = {
   goals: [],
   dailyNotes: [],
   personalityResults: [],
+  globalSettings: {
+    broadcastNotice: {
+      enabled: true,
+      title: 'خوش‌آمدید به سامانه تسک‌روز',
+      message: 'سامانه متمرکز برنامه‌ریزی روزانه، پومودورو تیمی و پایش بهره‌وری آماده استفاده است.',
+      type: 'info',
+      updatedAt: new Date().toISOString(),
+    },
+    enforcedTheme: 'system',
+    enforcedFont: 'vazirmatn',
+    defaultDailyFocusMinutes: 90,
+    workHoursPolicy: {
+      start: '08:30',
+      end: '17:00',
+    },
+    roomPolicy: {
+      allowUserRoomCreation: true,
+      allowPublicChat: true,
+    },
+    dailyMantra: 'تمرکز پیوسته بر کارهای با اولویت بالا و پرهیز از چندوظیفگی',
+  },
 };
 
 function purgeExpiredDeletedRooms(db: AppData): boolean {
@@ -1362,6 +1384,27 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       }
       writeDb(db);
       sendJson(res, { result: item });
+      return true;
+    }
+  }
+
+  // 11. Global Settings (/api/settings)
+  if (pathname.startsWith('/api/settings')) {
+    const action = urlObj.searchParams.get('action');
+    if (method === 'GET' && (action === 'global' || !action)) {
+      sendJson(res, { settings: db.globalSettings || INITIAL_DATA.globalSettings });
+      return true;
+    }
+
+    if (method === 'POST' && (action === 'global' || !action)) {
+      if (!currentUser || currentUser.role !== 'admin') {
+        sendJson(res, { error: 'تنها مدیر ارشد مجاز به تغییر تنظیمات سراسری سیستم است.' }, 403);
+        return true;
+      }
+      const body = await parseJsonBody(req);
+      db.globalSettings = { ...body, updatedAt: new Date().toISOString() };
+      writeDb(db);
+      sendJson(res, { message: 'تنظیمات سراسری سیستم با موفقیت اعمال گردید.', settings: db.globalSettings });
       return true;
     }
   }

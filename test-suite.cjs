@@ -443,3 +443,54 @@ test('PHP Standalone Files Validation', () => {
     assert(Math.abs(openBraces - closeBraces) < 5, `Brace mismatch suspicious in ${file}`);
   }
 });
+
+// 10. Admin Global Settings Enforcement
+test('Admin Global Settings & Broadcast Banner Enforcement', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  const updateRes = await request('POST', '/api/settings?action=global', {
+    broadcastNotice: {
+      enabled: true,
+      title: 'جلسه اضطراری توسعه فنی',
+      message: 'تمامی اعضا راس ساعت ۱۷ در اتاق تمرکز حضور به هم رسانند.',
+      type: 'urgent',
+    },
+    enforcedFont: 'cairo',
+    defaultDailyFocusMinutes: 120,
+    workHoursPolicy: { start: '08:00', end: '16:30' },
+    roomPolicy: { allowUserRoomCreation: true, allowPublicChat: true },
+    dailyMantra: 'تمرکز تیمی حداکثری و تحقق اهداف فصلی',
+  }, adminHeader);
+  assert(updateRes.status === 200, 'Global settings updated by admin');
+
+  // Any user or guest can fetch global settings
+  const getRes = await request('GET', '/api/settings?action=global');
+  assert(getRes.status === 200, 'Global settings fetched');
+  assert(getRes.body.settings.broadcastNotice.title === 'جلسه اضطراری توسعه فنی', 'Broadcast title matches');
+  assert(getRes.body.settings.enforcedFont === 'cairo', 'Enforced font matches cairo');
+});
+
+// 11. Newly Registered User Instantly Appears in Admin User List
+test('New User Registration Immediately Appears in Admin Users List', async () => {
+  const newUsername = 'live_member_' + Date.now();
+  const regRes = await request('POST', '/api/auth/register', {
+    username: newUsername,
+    password: 'MemberPass123',
+    name: 'عضو تازه پیوسته به سامانه',
+    jobTitle: 'کارشناس تضمین کیفیت (QA)',
+    city: 'شیراز',
+  });
+  assert(regRes.status === 201, 'New user registered');
+
+  // Admin logs in and checks user list
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  const listRes = await request('GET', '/api/users', null, adminHeader);
+  assert(listRes.status === 200, 'Admin users list retrieved');
+  const found = listRes.body.users.find((u) => u.username.toLowerCase() === newUsername.toLowerCase());
+  assert(found, `Newly registered user '${newUsername}' MUST appear in admin user list!`);
+  assert(found.jobTitle === 'کارشناس تضمین کیفیت (QA)', 'Job title matches');
+  assert(found.role === 'user', 'Role is user');
+});

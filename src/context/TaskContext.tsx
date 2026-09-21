@@ -15,8 +15,10 @@ import type {
   PersonalityTestResult,
   UncompletedCategory,
   UserTimeline,
+  GlobalSystemSettings,
+  SystemFontOption,
 } from '../types';
-import { api } from '../services/api';
+import { api, DEFAULT_GLOBAL_SETTINGS } from '../services/api';
 import { getTodayISO, formatPersianDate, toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import confetti from 'canvas-confetti';
@@ -62,7 +64,18 @@ interface TaskContextType {
     dailyTimeline?: UserTimeline;
   }) => Promise<boolean>;
   logout: () => Promise<void>;
-  createUser: (data: { username: string; password: string; name: string; role: 'admin' | 'user' }) => Promise<User>;
+  createUser: (data: {
+    username: string;
+    password: string;
+    name: string;
+    role: 'admin' | 'user';
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    jobTitle?: string;
+    skills?: string[];
+  }) => Promise<User>;
   updateUser: (data: { id: string; name: string; role: 'admin' | 'user'; password?: string }) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   refreshUsers: () => Promise<void>;
@@ -139,16 +152,17 @@ interface TaskContextType {
   // Settings
   updateSettings: (partial: Partial<AppSettings>) => void;
   getDailySummaryText: () => string;
+
+  // Global System Settings & Custom Fonts
+  globalSettings: GlobalSystemSettings;
+  updateGlobalSettings: (partial: Partial<GlobalSystemSettings>) => Promise<void>;
+  allAvailableFonts: SystemFontOption[];
+  customFonts: SystemFontOption[];
+  addCustomFont: (font: { name: string; family: string; fontUrl?: string; description?: string }) => void;
+  deleteCustomFont: (fontId: string) => void;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
-
-export interface SystemFontOption {
-  id: string;
-  name: string;
-  family: string;
-  description: string;
-}
 
 export const AVAILABLE_FONTS: SystemFontOption[] = [
   {
@@ -189,6 +203,32 @@ export const AVAILABLE_FONTS: SystemFontOption[] = [
   },
 ];
 
+function injectFontLink(font: SystemFontOption) {
+  if (!font.fontUrl) return;
+  const elementId = `custom-font-style-${font.id}`;
+  if (document.getElementById(elementId)) return;
+
+  if (font.fontUrl.endsWith('.css') || font.fontUrl.includes('fonts.googleapis') || font.fontUrl.includes('cdn.')) {
+    const link = document.createElement('link');
+    link.id = elementId;
+    link.rel = 'stylesheet';
+    link.href = font.fontUrl;
+    document.head.appendChild(link);
+  } else {
+    const style = document.createElement('style');
+    style.id = elementId;
+    const cleanFamily = font.family.replace(/['"]/g, '').split(',')[0].trim();
+    style.textContent = `
+      @font-face {
+        font-family: '${cleanFamily}';
+        src: url('${font.fontUrl}') format('woff2');
+        font-display: swap;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
+
 export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -197,6 +237,23 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [projects, setProjects] = useState<TeamProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Custom fonts & Global settings
+  const [customFonts, setCustomFonts] = useState<SystemFontOption[]>(() => {
+    return api.getCustomFonts();
+  });
+
+  const [globalSettings, setGlobalSettings] = useState<GlobalSystemSettings>(() => {
+    try {
+      const raw = localStorage.getItem('taskrooz_global_settings');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return DEFAULT_GLOBAL_SETTINGS;
+  });
+
+  const allAvailableFonts = useMemo(() => {
+    return [...AVAILABLE_FONTS, ...customFonts];
+  }, [customFonts]);
 
   const [systemFont, setSystemFontState] = useState<string>(() => {
     try {
@@ -211,13 +268,65 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sounds.playPop();
   };
 
+  const addCustomFont = (fontData: { name: string; family: string; fontUrl?: string; description?: string }) => {
+    const rawFamily = fontData.family.trim().replace(/['"]/g, '');
+    const newFont: SystemFontOption = {
+      id: 'custom_' + Date.now(),
+      name: fontData.name.trim(),
+      family: `'${rawFamily}', 'Vazirmatn', sans-serif`,
+      description: fontData.description?.trim() || 'فونت سفارشی افزوده شده',
+      fontUrl: fontData.fontUrl?.trim() || undefined,
+      isCustom: true,
+    };
+
+    if (newFont.fontUrl) {
+      injectFontLink(newFont);
+    }
+    const updated = [...customFonts, newFont];
+    setCustomFonts(updated);
+    api.saveCustomFonts(updated);
+    setSystemFontState(newFont.id);
+    sounds.playComplete();
+  };
+
+  const deleteCustomFont = (fontId: string) => {
+    const updated = customFonts.filter((f) => f.id !== fontId);
+    setCustomFonts(updated);
+    api.saveCustomFonts(updated);
+    if (systemFont === fontId) {
+      setSystemFontState('vazirmatn');
+    }
+    sounds.playPop();
+  };
+
+  const updateGlobalSettings = async (partial: Partial<GlobalSystemSettings>) => {
+    const updated: GlobalSystemSettings = {
+      ...globalSettings,
+      ...partial,
+      broadcastNotice: {
+        ...globalSettings.broadcastNotice,
+        ...(partial.broadcastNotice || {}),
+        updatedAt: new Date().toISOString(),
+      },
+    };
+    setGlobalSettings(updated);
+    await api.saveGlobalSettings(updated);
+    if (updated.enforcedFont) {
+      setSystemFontState(updated.enforcedFont);
+    }
+    sounds.playComplete();
+  };
+
   useEffect(() => {
-    const found = AVAILABLE_FONTS.find((f) => f.id === systemFont) || AVAILABLE_FONTS[0];
+    const found = allAvailableFonts.find((f) => f.id === systemFont) || allAvailableFonts[0];
+    if (found.fontUrl) {
+      injectFontLink(found);
+    }
     document.documentElement.style.setProperty('--font-sans', found.family);
     try {
       localStorage.setItem('taskrooz_system_font', found.id);
     } catch {}
-  }, [systemFont]);
+  }, [systemFont, allAvailableFonts]);
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
@@ -501,6 +610,15 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPersonalityResult(pRes);
         const notes = await api.getDailyNotes();
         setDailyNotes(notes);
+        const gSettings = await api.getGlobalSettings();
+        setGlobalSettings(gSettings);
+        if (gSettings.enforcedFont) {
+          setSystemFontState(gSettings.enforcedFont);
+        }
+        if (currentUser?.role === 'admin') {
+          const uList = await api.getUsers();
+          setUsers(uList);
+        }
       } catch (e) {
         console.error('Initialization error:', e);
       } finally {
@@ -559,6 +677,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await api.login(username, password);
       setCurrentUser(res.user);
+      if (res.user.role === 'admin') {
+        try {
+          const uList = await api.getUsers();
+          setUsers(uList);
+        } catch {}
+      }
       sounds.playComplete();
       await checkPendingRoomInvite();
       return true;
@@ -583,6 +707,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await api.register(data);
       setCurrentUser(res.user);
+      setUsers((prev) => {
+        if (!prev.some((u) => u.username.toLowerCase() === res.user.username.toLowerCase())) {
+          return [...prev, res.user];
+        }
+        return prev;
+      });
       sounds.playComplete();
       await checkPendingRoomInvite();
       return true;
@@ -664,8 +794,23 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sounds.playPop();
   };
 
-  const createUser = async (data: { username: string; password: string; name: string; role: 'admin' | 'user' }) => {
+  const createUser = async (data: {
+    username: string;
+    password: string;
+    name: string;
+    role: 'admin' | 'user';
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    jobTitle?: string;
+    skills?: string[];
+  }) => {
     const newUser = await api.createUser(data);
+    setUsers((prev) => {
+      const filtered = prev.filter((u) => u.id !== newUser.id && u.username.toLowerCase() !== newUser.username.toLowerCase());
+      return [...filtered, newUser];
+    });
     await refreshUsers();
     sounds.playComplete();
     return newUser;
@@ -950,6 +1095,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       closeIncompleteModal,
       setTaskIncompleteReason,
       exportUsersCsv,
+      globalSettings,
+      updateGlobalSettings,
+      allAvailableFonts,
+      customFonts,
+      addCustomFont,
+      deleteCustomFont,
     }),
     [
       currentUser,
@@ -982,6 +1133,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       personalityResult,
       dailyNotes,
       incompleteModalTask,
+      globalSettings,
+      allAvailableFonts,
+      customFonts,
     ]
   );
 

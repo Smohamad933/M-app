@@ -30,16 +30,17 @@ export const FocusTimer: React.FC = () => {
     setActiveFocusTaskId,
     addFocusMinutes,
     activeRoom,
+    activeRoomId,
   } = useTask();
 
   // Switch between Solo focus and Group focus room
-  const [focusType, setFocusType] = useState<'solo' | 'group'>(activeRoom ? 'group' : 'solo');
+  const [focusType, setFocusType] = useState<'solo' | 'group'>(activeRoom || activeRoomId ? 'group' : 'solo');
 
   useEffect(() => {
-    if (activeRoom) {
+    if (activeRoom || activeRoomId) {
       setFocusType('group');
     }
-  }, [activeRoom]);
+  }, [activeRoom, activeRoomId]);
 
   const [mode, setMode] = useState<Mode>('focus');
   const [timeLeft, setTimeLeft] = useState(MODE_DURATIONS.focus);

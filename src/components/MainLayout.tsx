@@ -49,6 +49,7 @@ import {
   Type,
   Brain,
   Compass,
+  Megaphone,
 } from 'lucide-react';
 
 export const MainLayout: React.FC = () => {
@@ -72,6 +73,7 @@ export const MainLayout: React.FC = () => {
     logout,
     openCreateModal,
     setIsShareModalOpen,
+    globalSettings,
   } = useTask();
 
   const greeting = getGreeting();
@@ -426,6 +428,57 @@ export const MainLayout: React.FC = () => {
 
         {/* Main Body */}
         <main className="flex-1 p-3.5 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 max-w-7xl w-full mx-auto pb-28 lg:pb-12 min-w-0 overflow-x-hidden">
+          {/* Global Announcement Banner from Admin (Mohusyn) */}
+          {globalSettings?.broadcastNotice?.enabled && globalSettings.broadcastNotice.message && (
+            <div
+              className={`p-4 rounded-3xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 backdrop-blur-md shadow-lg animate-in slide-in-from-top-2 duration-300 ${
+                globalSettings.broadcastNotice.type === 'urgent'
+                  ? 'bg-rose-950/40 border-rose-800/70 text-rose-200 shadow-rose-950/20'
+                  : globalSettings.broadcastNotice.type === 'warning'
+                  ? 'bg-amber-950/40 border-amber-800/70 text-amber-200 shadow-amber-950/20'
+                  : globalSettings.broadcastNotice.type === 'motivational'
+                  ? 'bg-emerald-950/40 border-emerald-800/70 text-emerald-200 shadow-emerald-950/20'
+                  : 'bg-indigo-950/40 border-indigo-800/70 text-indigo-200 shadow-indigo-950/20'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={`p-2.5 rounded-2xl flex-shrink-0 mt-0.5 ${
+                    globalSettings.broadcastNotice.type === 'urgent'
+                      ? 'bg-rose-500/20 text-rose-400'
+                      : globalSettings.broadcastNotice.type === 'warning'
+                      ? 'bg-amber-500/20 text-amber-400'
+                      : globalSettings.broadcastNotice.type === 'motivational'
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-indigo-500/20 text-indigo-400'
+                  }`}
+                >
+                  <Megaphone className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-black text-xs text-white">
+                      {globalSettings.broadcastNotice.title}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.2 rounded-full bg-white/10 font-bold">
+                      پیام سراسری سازمان
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
+                    {globalSettings.broadcastNotice.message}
+                  </p>
+                </div>
+              </div>
+
+              {globalSettings.dailyMantra && (
+                <div className="hidden md:flex items-center gap-1.5 text-[11px] font-medium bg-black/30 px-3 py-1.5 rounded-xl border border-white/5 flex-shrink-0">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>تمرکز روز: {globalSettings.dailyMantra}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* TAB 1: DASHBOARD OVERVIEW */}
           {activeTab === 'dashboard' && (
             <div className="space-y-5 sm:space-y-6 animate-in fade-in w-full min-w-0">

@@ -1,5 +1,37 @@
-import type { Task, User, Category, FocusRoom, TeamProject, CareerGoal, PersonalityTestResult } from '../types';
+import type {
+  Task,
+  User,
+  Category,
+  FocusRoom,
+  TeamProject,
+  CareerGoal,
+  PersonalityTestResult,
+  GlobalSystemSettings,
+  SystemFontOption,
+} from '../types';
 import { DEFAULT_CATEGORIES } from '../utils/storage';
+
+export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
+  broadcastNotice: {
+    enabled: true,
+    title: 'خوش‌آمدید به سامانه تسک‌روز',
+    message: 'سامانه متمرکز برنامه‌ریزی روزانه، پومودورو تیمی و پایش بهره‌وری آماده استفاده است.',
+    type: 'info',
+    updatedAt: new Date().toISOString(),
+  },
+  enforcedTheme: 'system',
+  enforcedFont: 'vazirmatn',
+  defaultDailyFocusMinutes: 90,
+  workHoursPolicy: {
+    start: '08:30',
+    end: '17:00',
+  },
+  roomPolicy: {
+    allowUserRoomCreation: true,
+    allowPublicChat: true,
+  },
+  dailyMantra: 'تمرکز پیوسته بر کارهای با اولویت بالا و پرهیز از چندوظیفگی',
+};
 
 const TOKEN_KEY = 'taskrooz_auth_token';
 const USERS_STORAGE_KEY = 'taskrooz_users_local';
@@ -184,6 +216,12 @@ export const api = {
         body: JSON.stringify(payload),
       });
       setAuthToken(res.token);
+      // Immediately cache in local users list so admin always sees them
+      const locals = getLocalUsers();
+      if (!locals.some((u) => u.username.toLowerCase() === res.user.username.toLowerCase())) {
+        locals.push(res.user);
+        saveLocalUsers(locals);
+      }
       return res;
     } catch (e1) {
       try {
@@ -192,6 +230,11 @@ export const api = {
           body: JSON.stringify(payload),
         });
         setAuthToken(res.token);
+        const locals = getLocalUsers();
+        if (!locals.some((u) => u.username.toLowerCase() === res.user.username.toLowerCase())) {
+          locals.push(res.user);
+          saveLocalUsers(locals);
+        }
         return res;
       } catch (e2) {
         // Local offline registration fallback
@@ -306,32 +349,49 @@ export const api = {
 
   // Users (Admin only)
   async getUsers(): Promise<User[]> {
+    const locals = getLocalUsers();
     try {
       const data = await request<{ users: User[] }>('api/users.php');
-      return data.users;
+      if (Array.isArray(data.users)) {
+        // Merge remote with local users to ensure 100% guarantee that newly registered users are visible
+        const userMap = new Map<string, User>();
+        locals.forEach((u) => userMap.set(u.username.toLowerCase(), u));
+        data.users.forEach((u) => {
+          const prev = userMap.get(u.username.toLowerCase());
+          userMap.set(u.username.toLowerCase(), { ...prev, ...u });
+        });
+        const merged = Array.from(userMap.values());
+        saveLocalUsers(merged);
+        return merged;
+      }
     } catch {
-      const locals = getLocalUsers();
-      if (locals.length > 0) return locals;
-      return [
-        {
-          id: 'usr_admin_1',
-          username: 'admin',
-          name: 'مدیر سیستم',
-          role: 'admin',
-          createdAt: new Date().toISOString(),
-          totalTasks: 0,
-          completedTasks: 0,
-        },
-      ];
+      // offline fallback
     }
+    return locals;
   },
 
-  async createUser(user: { username: string; password: string; name: string; role: 'admin' | 'user' }): Promise<User> {
+  async createUser(user: {
+    username: string;
+    password: string;
+    name: string;
+    role: 'admin' | 'user';
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    jobTitle?: string;
+    skills?: string[];
+  }): Promise<User> {
     try {
       const data = await request<{ user: User; message: string }>('api/users.php', {
         method: 'POST',
         body: JSON.stringify(user),
       });
+      const locals = getLocalUsers();
+      if (!locals.some((u) => u.username.toLowerCase() === data.user.username.toLowerCase())) {
+        locals.push(data.user);
+        saveLocalUsers(locals);
+      }
       return data.user;
     } catch {
       // Offline fallback
@@ -341,6 +401,12 @@ export const api = {
         username: user.username.toLowerCase(),
         name: user.name,
         role: user.role,
+        phone: user.phone,
+        email: user.email,
+        province: user.province,
+        city: user.city,
+        jobTitle: user.jobTitle,
+        skills: user.skills,
         createdAt: new Date().toISOString(),
         totalTasks: 0,
         completedTasks: 0,
@@ -369,9 +435,53 @@ export const api = {
         method: 'DELETE',
       });
     } catch {
-      const locals = getLocalUsers().filter((u) => u.id !== id);
-      saveLocalUsers(locals);
+      // ignore
     }
+    const locals = getLocalUsers().filter((u) => u.id !== id);
+    saveLocalUsers(locals);
+  },
+
+  // Global System Settings (Enforced by Admin for all users)
+  async getGlobalSettings(): Promise<GlobalSystemSettings> {
+    try {
+      const data = await request<{ settings: GlobalSystemSettings }>('api/settings.php?action=global');
+      if (data.settings) {
+        localStorage.setItem('taskrooz_global_settings', JSON.stringify(data.settings));
+        return data.settings;
+      }
+    } catch {}
+    try {
+      const raw = localStorage.getItem('taskrooz_global_settings');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return DEFAULT_GLOBAL_SETTINGS;
+  },
+
+  async saveGlobalSettings(settings: GlobalSystemSettings): Promise<void> {
+    try {
+      localStorage.setItem('taskrooz_global_settings', JSON.stringify(settings));
+      await request('api/settings.php?action=global', {
+        method: 'POST',
+        body: JSON.stringify(settings),
+      });
+    } catch {
+      // offline fallback
+    }
+  },
+
+  // Custom Fonts
+  getCustomFonts(): SystemFontOption[] {
+    try {
+      const raw = localStorage.getItem('taskrooz_custom_fonts');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [];
+  },
+
+  saveCustomFonts(fonts: SystemFontOption[]): void {
+    try {
+      localStorage.setItem('taskrooz_custom_fonts', JSON.stringify(fonts));
+    } catch {}
   },
 
   // Tasks

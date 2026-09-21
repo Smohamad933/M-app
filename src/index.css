@@ -180,3 +180,45 @@ html.light ::-webkit-scrollbar-thumb:hover {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Micro-animations and Obsidian Polish */
+@keyframes soft-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(99, 102, 241, 0.25);
+  }
+}
+
+.glow-focus {
+  animation: soft-glow 3s infinite ease-in-out;
+}
+
+.obsidian-card {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s ease;
+}
+
+.obsidian-card:hover {
+  transform: translateY(-1.5px);
+  border-color: rgba(63, 63, 70, 0.8) !important;
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.4);
+}
+
+/* Modal and Backdrop Animations */
+@keyframes modal-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-pop {
+  animation: modal-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
