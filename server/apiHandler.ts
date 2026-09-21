@@ -100,12 +100,44 @@ interface DBTeamProject {
   progressPercent?: number;
 }
 
+interface DBCareerGoal {
+  id: string;
+  userId: string;
+  title: string;
+  period: 'weekly' | 'monthly' | 'quarterly' | 'half_yearly' | 'yearly';
+  progress: number;
+  targetDate?: string;
+  completed?: boolean;
+  createdAt: string;
+}
+
+interface DBDailyNote {
+  id: string;
+  userId: string;
+  date: string;
+  content: string;
+  habitsCompleted: string[];
+  updatedAt: string;
+}
+
+interface DBPersonalityResult {
+  id: string;
+  userId: string;
+  primaryType: string;
+  scores: Record<string, number>;
+  recommendations: string[];
+  completedAt: string;
+}
+
 interface AppData {
   users: DBUser[];
   tasks: DBTask[];
   categories: DBCategory[];
   focus_rooms: DBFocusRoom[];
   projects: DBTeamProject[];
+  goals: DBCareerGoal[];
+  dailyNotes: DBDailyNote[];
+  personalityResults: DBPersonalityResult[];
 }
 
 const DB_FILE = path.resolve(process.cwd(), 'data/db.json');
@@ -132,6 +164,9 @@ const INITIAL_DATA: AppData = {
   ],
   focus_rooms: [],
   projects: [],
+  goals: [],
+  dailyNotes: [],
+  personalityResults: [],
 };
 
 function purgeExpiredDeletedRooms(db: AppData): boolean {
@@ -169,6 +204,9 @@ function readDb(): AppData {
       if (!parsed.tasks) parsed.tasks = [];
       if (!parsed.focus_rooms) parsed.focus_rooms = [];
       if (!parsed.projects) parsed.projects = INITIAL_DATA.projects;
+      if (!parsed.goals) parsed.goals = [];
+      if (!parsed.dailyNotes) parsed.dailyNotes = [];
+      if (!parsed.personalityResults) parsed.personalityResults = [];
 
       if (purgeExpiredDeletedRooms(parsed)) {
         writeDb(parsed);
@@ -587,7 +625,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     // Create room
-    if (method === 'POST' && action === 'create') {
+    if (method === 'POST' && (action === 'create' || !action)) {
       const body = await parseJsonBody(req);
       const name = body.name?.trim() || 'اتاق تمرکز گروهی';
       const focusDuration = Number(body.focusDuration) || 1500;
@@ -668,9 +706,12 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     // Sync timer
-    if (method === 'POST' && action === 'sync') {
+    if (method === 'POST' && (action === 'sync' || action === 'timer')) {
       const body = await parseJsonBody(req);
-      const { roomId, timerAction, timeLeft, mode } = body;
+      const roomId = body.roomId || urlObj.searchParams.get('id') || urlObj.searchParams.get('roomId') || urlObj.searchParams.get('room_id');
+      const timerAction = body.timerAction || body.action || urlObj.searchParams.get('timerAction');
+      const timeLeft = body.timeLeft;
+      const mode = body.mode;
       const room = db.focus_rooms.find((r) => r.id === roomId && !r.isDeleted);
       if (!room) {
         sendJson(res, { error: 'اتاق یافت نشد.' }, 404);
@@ -705,7 +746,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     // Add message
     if (method === 'POST' && action === 'message') {
       const body = await parseJsonBody(req);
-      const { roomId, text } = body;
+      const roomId = body.roomId || urlObj.searchParams.get('id') || urlObj.searchParams.get('roomId') || urlObj.searchParams.get('room_id');
+      const text = body.text;
       if (!roomId || !text?.trim()) {
         sendJson(res, { error: 'متن پیام الزامی است.' }, 400);
         return true;
@@ -762,9 +804,9 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     // Delete room (Hosts & Admins only, with 10-minute message retention!)
-    if (method === 'POST' && (action === 'delete' || action === 'close')) {
-      const body = await parseJsonBody(req);
-      const roomId = body.roomId || urlObj.searchParams.get('room_id');
+    if ((method === 'POST' && (action === 'delete' || action === 'close')) || method === 'DELETE') {
+      const body = method === 'POST' ? await parseJsonBody(req) : {};
+      const roomId = body?.roomId || urlObj.searchParams.get('id') || urlObj.searchParams.get('roomId') || urlObj.searchParams.get('room_id');
       const room = db.focus_rooms.find((r) => r.id === roomId);
       if (!room) {
         sendJson(res, { error: 'اتاق یافت نشد.' }, 404);
@@ -1063,7 +1105,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       }
 
       writeDb(db);
-      sendJson(res, { task });
+      sendJson(res, { completed: task.completed, completedAt: task.completedAt, task });
       return true;
     }
 
@@ -1150,6 +1192,178 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       totalUsers: db.users.length,
     });
     return true;
+  }
+
+  // 8. Career Goals routes (/api/goals)
+  if (pathname.startsWith('/api/goals')) {
+    if (!currentUser) {
+      sendJson(res, { error: 'ابتدا وارد شوید.' }, 401);
+      return true;
+    }
+
+    if (method === 'GET') {
+      const targetUserId = (currentUser.role === 'admin' && urlObj.searchParams.get('user_id')) || currentUser.id;
+      const goals = db.goals.filter((g) => g.userId === targetUserId);
+      sendJson(res, { goals });
+      return true;
+    }
+
+    if (method === 'POST') {
+      const body = await parseJsonBody(req);
+      const title = body.title?.trim();
+      const period = body.period || 'quarterly';
+      if (!title) {
+        sendJson(res, { error: 'عنوان هدف الزامی است.' }, 400);
+        return true;
+      }
+
+      const newGoal: DBCareerGoal = {
+        id: 'goal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        userId: currentUser.id,
+        title,
+        period,
+        progress: Number(body.progress || 0),
+        targetDate: body.targetDate,
+        completed: Boolean(body.completed),
+        createdAt: new Date().toISOString(),
+      };
+      db.goals.push(newGoal);
+      writeDb(db);
+      sendJson(res, { goal: newGoal }, 201);
+      return true;
+    }
+
+    if (method === 'PUT') {
+      const body = await parseJsonBody(req);
+      const id = body.id;
+      const goalIndex = db.goals.findIndex((g) => g.id === id);
+      if (goalIndex === -1) {
+        sendJson(res, { error: 'هدف پیدا نشد.' }, 404);
+        return true;
+      }
+      const existing = db.goals[goalIndex];
+      if (currentUser.role !== 'admin' && existing.userId !== currentUser.id) {
+        sendJson(res, { error: 'عدم دسترسی.' }, 403);
+        return true;
+      }
+      db.goals[goalIndex] = {
+        ...existing,
+        ...body,
+        userId: existing.userId,
+      };
+      writeDb(db);
+      sendJson(res, { goal: db.goals[goalIndex] });
+      return true;
+    }
+
+    if (method === 'DELETE') {
+      const id = urlObj.searchParams.get('id');
+      const goalIndex = db.goals.findIndex((g) => g.id === id);
+      if (goalIndex === -1) {
+        sendJson(res, { error: 'هدف پیدا نشد.' }, 404);
+        return true;
+      }
+      const existing = db.goals[goalIndex];
+      if (currentUser.role !== 'admin' && existing.userId !== currentUser.id) {
+        sendJson(res, { error: 'عدم دسترسی.' }, 403);
+        return true;
+      }
+      db.goals.splice(goalIndex, 1);
+      writeDb(db);
+      sendJson(res, { message: 'هدف با موفقیت حذف شد.' });
+      return true;
+    }
+  }
+
+  // 9. Daily Notes & Habits (/api/notes)
+  if (pathname.startsWith('/api/notes')) {
+    if (!currentUser) {
+      sendJson(res, { error: 'ابتدا وارد شوید.' }, 401);
+      return true;
+    }
+
+    if (method === 'GET') {
+      const date = urlObj.searchParams.get('date') || new Date().toISOString().slice(0, 10);
+      const note = db.dailyNotes.find((n) => n.userId === currentUser.id && n.date === date) || {
+        id: '',
+        userId: currentUser.id,
+        date,
+        content: '',
+        habitsCompleted: [],
+        updatedAt: '',
+      };
+      sendJson(res, { note });
+      return true;
+    }
+
+    if (method === 'POST') {
+      const body = await parseJsonBody(req);
+      const date = body.date || new Date().toISOString().slice(0, 10);
+      const content = body.content || '';
+      const habitsCompleted = Array.isArray(body.habitsCompleted) ? body.habitsCompleted : [];
+
+      let note = db.dailyNotes.find((n) => n.userId === currentUser.id && n.date === date);
+      if (note) {
+        note.content = content;
+        note.habitsCompleted = habitsCompleted;
+        note.updatedAt = new Date().toISOString();
+      } else {
+        note = {
+          id: 'note_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          userId: currentUser.id,
+          date,
+          content,
+          habitsCompleted,
+          updatedAt: new Date().toISOString(),
+        };
+        db.dailyNotes.push(note);
+      }
+      writeDb(db);
+      sendJson(res, { note });
+      return true;
+    }
+  }
+
+  // 10. Personality Assessment (/api/personality)
+  if (pathname.startsWith('/api/personality')) {
+    if (!currentUser) {
+      sendJson(res, { error: 'ابتدا وارد شوید.' }, 401);
+      return true;
+    }
+
+    if (method === 'GET') {
+      const result = db.personalityResults.find((p) => p.userId === currentUser.id) || null;
+      sendJson(res, { result });
+      return true;
+    }
+
+    if (method === 'POST') {
+      const body = await parseJsonBody(req);
+      const primaryType = body.primaryType || 'استراتژیست تحلیلی';
+      const scores = body.scores || {};
+      const recommendations = Array.isArray(body.recommendations) ? body.recommendations : [];
+
+      let item = db.personalityResults.find((p) => p.userId === currentUser.id);
+      if (item) {
+        item.primaryType = primaryType;
+        item.scores = scores;
+        item.recommendations = recommendations;
+        item.completedAt = new Date().toISOString();
+      } else {
+        item = {
+          id: 'pers_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          userId: currentUser.id,
+          primaryType,
+          scores,
+          recommendations,
+          completedAt: new Date().toISOString(),
+        };
+        db.personalityResults.push(item);
+      }
+      writeDb(db);
+      sendJson(res, { result: item });
+      return true;
+    }
   }
 
   sendJson(res, { error: 'آدرس نامعتبر است.' }, 404);

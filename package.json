@@ -7,6 +7,7 @@
     "dev": "cp index.source.html index.html && vite",
     "build": "cp index.source.html index.html && tsc -b && vite build && cp dist/index.html index.html && cp -r dist/assets .",
     "lint": "oxlint",
+    "test": "node test-suite.cjs",
     "preview": "vite preview"
   },
   "dependencies": {
