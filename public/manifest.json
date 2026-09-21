@@ -1,0 +1,17 @@
+{
+  "name": "تسک‌روز - مدیریت کارهای روزانه",
+  "short_name": "تسک‌روز",
+  "description": "اپلیکیشن پیشرفته برنامه‌ریزی و مدیریت تسک‌های روزانه با تقویم شمسی",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

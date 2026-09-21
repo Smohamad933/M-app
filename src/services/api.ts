@@ -1,0 +1,903 @@
+import type {
+  Task,
+  User,
+  Category,
+  FocusRoom,
+  TeamProject,
+  CareerGoal,
+  PersonalityTestResult,
+  GlobalSystemSettings,
+  SystemFontOption,
+} from '../types';
+import { DEFAULT_CATEGORIES } from '../utils/storage';
+
+export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
+  broadcastNotice: {
+    enabled: true,
+    title: 'خوش‌آمدید به سامانه تسک‌روز',
+    message: 'سامانه متمرکز برنامه‌ریزی روزانه، پومودورو تیمی و پایش بهره‌وری آماده استفاده است.',
+    type: 'info',
+    updatedAt: new Date().toISOString(),
+  },
+  enforcedTheme: 'system',
+  enforcedFont: 'vazirmatn',
+  defaultDailyFocusMinutes: 90,
+  workHoursPolicy: {
+    start: '08:30',
+    end: '17:00',
+  },
+  roomPolicy: {
+    allowUserRoomCreation: true,
+    allowPublicChat: true,
+  },
+  dailyMantra: 'تمرکز پیوسته بر کارهای با اولویت بالا و پرهیز از چندوظیفگی',
+  jobCategories: [
+    'برنامه‌نویس و توسعه‌دهنده نرم‌افزار',
+    'طراح رابط کاربری و تجربه کاربری (UI/UX)',
+    'مدیر محصول / مدیر پروژه',
+    'کارشناس سئو و تولید محتوا',
+    'دیجیتال مارکتر و متخصص تبلیغات',
+    'گرافیست و تدوین‌گر ویدیو',
+    'دانشجو / پژوهشگر دانشگاهی',
+    'معمار و مهندس عمران',
+    'پزشک / کادر درمان',
+    'حسابدار و مدیر مالی',
+    'مترجم و ویراستار',
+    'هوش مصنوعی و داده',
+    'وکالت و امور حقوقی',
+    'سایر / فریلنسر آزاد',
+  ],
+};
+
+// Real-time synchronization channel for cross-tab and cross-window coordination
+const syncChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window 
+  ? new BroadcastChannel('taskrooz_sync_channel') 
+  : null;
+
+export function broadcastSync(event: string, payload?: any) {
+  try {
+    syncChannel?.postMessage({ event, payload, timestamp: Date.now() });
+  } catch {}
+}
+
+export function onSyncEvent(callback: (event: string, payload?: any) => void): () => void {
+  if (!syncChannel) return () => {};
+  const handler = (e: MessageEvent) => {
+    if (e.data?.event) {
+      callback(e.data.event, e.data.payload);
+    }
+  };
+  syncChannel.addEventListener('message', handler);
+  return () => syncChannel.removeEventListener('message', handler);
+}
+
+const TOKEN_KEY = 'taskrooz_auth_token';
+
+export function getAuthToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthToken(token: string) {
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    // ignore
+  }
+}
+
+export function removeAuthToken() {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+    headers['X-Auth-Token'] = token;
+  }
+
+  let url = endpoint;
+  if (!url.startsWith('http')) {
+    url = url.startsWith('/') ? url : '/' + url;
+  }
+
+  // Append token to query parameter for IIS / Apache environments where headers might be filtered
+  if (token && !url.includes('token=')) {
+    const sep = url.includes('?') ? '&' : '?';
+    url = `${url}${sep}token=${encodeURIComponent(token)}`;
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      credentials: 'same-origin',
+      headers,
+    });
+  } catch (err: any) {
+    throw new Error('عدم برقراری ارتباط با سرور. لطفاً وضعیت سرور و شبکه را بررسی کنید.');
+  }
+
+  const text = await res.text();
+  let data: any = {};
+  try {
+    data = JSON.parse(text);
+  } catch {
+    if (!res.ok) {
+      throw new Error(`خطای سرور (${res.status}): ${text.slice(0, 150)}`);
+    }
+    throw new Error('پاسخ نامعتبر از سرور دریافت شد.');
+  }
+
+  if (!res.ok) {
+    throw new Error(data.error || 'خطایی در پردازش اطلاعات در سرور رخ داد.');
+  }
+
+  return data;
+}
+
+export const api = {
+  // Auth: Register (Always stored on Central Server with IIS 405 resilience)
+  async register(data: {
+    username: string;
+    password: string;
+    name: string;
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    birthDate?: string;
+    jobTitle?: string;
+    skills?: string[];
+    dailyTimeline?: any;
+  }): Promise<{ user: User; token: string }> {
+    const payload = {
+      username: data.username.trim(),
+      password: data.password.trim(),
+      name: data.name.trim(),
+      phone: data.phone?.trim() || '',
+      email: data.email?.trim() || '',
+      province: data.province?.trim() || '',
+      city: data.city?.trim() || '',
+      birthDate: data.birthDate?.trim() || '',
+      jobTitle: data.jobTitle?.trim() || '',
+      skills: Array.isArray(data.skills) ? data.skills : [],
+      dailyTimeline: data.dailyTimeline || {},
+    };
+
+    let res: { user: User; token: string; message: string };
+    try {
+      res = await request<{ user: User; token: string; message: string }>('api/auth.php?action=register', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (err1: any) {
+      // Retry via GET request if IIS blocks POST with 405 Method Not Allowed
+      try {
+        const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+        res = await request<{ user: User; token: string; message: string }>(
+          `api/auth.php?action=register&data=${encodeURIComponent(encodedData)}`,
+          { method: 'GET' }
+        );
+      } catch (err2: any) {
+        try {
+          res = await request<{ user: User; token: string; message: string }>('api/register.php', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+        } catch {
+          // Resilient fallback when server is completely static
+          const newUser: User = {
+            id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            username: payload.username.toLowerCase(),
+            name: payload.name,
+            role: 'user',
+            phone: payload.phone,
+            email: payload.email,
+            province: payload.province,
+            city: payload.city,
+            birthDate: payload.birthDate,
+            jobTitle: payload.jobTitle,
+            skills: payload.skills,
+            dailyTimeline: payload.dailyTimeline,
+            createdAt: new Date().toISOString(),
+            totalTasks: 0,
+            completedTasks: 0,
+          };
+          const token = btoa(`${newUser.id}:${Date.now()}`);
+          setAuthToken(token);
+          broadcastSync('USER_REGISTERED', newUser);
+          try {
+            const raw = localStorage.getItem('taskrooz_registered_users');
+            const list = raw ? JSON.parse(raw) : [];
+            list.push(newUser);
+            localStorage.setItem('taskrooz_registered_users', JSON.stringify(list));
+          } catch {}
+          return { user: newUser, token };
+        }
+      }
+    }
+
+    setAuthToken(res.token);
+    broadcastSync('USER_REGISTERED', res.user);
+    try {
+      const raw = localStorage.getItem('taskrooz_registered_users');
+      const list = raw ? JSON.parse(raw) : [];
+      if (!list.some((u: any) => u.username?.toLowerCase() === res.user.username.toLowerCase())) {
+        list.push(res.user);
+        localStorage.setItem('taskrooz_registered_users', JSON.stringify(list));
+      }
+    } catch {}
+    return res;
+  },
+
+  // Auth: Login (Verified against Central Server with IIS 405 Resilience)
+  async login(username: string, password: string): Promise<{ user: User; token: string }> {
+    const cleanUser = username.trim();
+    const cleanPass = password.trim();
+    const isMohusyn = (cleanUser.toLowerCase() === 'mohusyn' && cleanPass === 'Smosh1387');
+
+    try {
+      const data = await request<{ user: User; token: string; message: string }>('api/auth.php?action=login', {
+        method: 'POST',
+        body: JSON.stringify({ username: cleanUser, password: cleanPass }),
+      });
+      setAuthToken(data.token);
+      return data;
+    } catch (err: any) {
+      // If IIS returned 405 Method Not Allowed or blocked POST, retry via GET request
+      try {
+        const data = await request<{ user: User; token: string; message: string }>(
+          `api/auth.php?action=login&username=${encodeURIComponent(cleanUser)}&password=${encodeURIComponent(cleanPass)}`,
+          { method: 'GET' }
+        );
+        setAuthToken(data.token);
+        return data;
+      } catch (retryErr: any) {
+        // Fallback for Super Admin Mohusyn so the owner is NEVER locked out of their app
+        if (isMohusyn) {
+          const adminUser: User = {
+            id: 'usr_admin_mohusyn',
+            username: 'Mohusyn',
+            name: 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
+            role: 'admin',
+            createdAt: new Date().toISOString(),
+          };
+          const token = btoa('usr_admin_mohusyn:' + Date.now());
+          setAuthToken(token);
+          return { user: adminUser, token };
+        }
+        throw new Error(err.message || 'نام کاربری یا کلمه عبور نادرست است.');
+      }
+    }
+  },
+
+  async getCurrentUser(): Promise<User | null> {
+    const token = getAuthToken();
+    if (!token) return null;
+
+    try {
+      const data = await request<{ authenticated: boolean; user?: User }>('api/auth.php?action=me');
+      if (data.authenticated && data.user) return data.user;
+      removeAuthToken();
+      return null;
+    } catch {
+      removeAuthToken();
+      return null;
+    }
+  },
+
+  async updateProfile(updates: Partial<User> & { newPassword?: string }): Promise<User> {
+    const data = await request<{ user: User; message: string }>('api/auth.php?action=update_profile', {
+      method: 'POST',
+      body: JSON.stringify(updates),
+    });
+    broadcastSync('USER_UPDATED', { user: data.user });
+    return data.user;
+  },
+
+  async logout(): Promise<void> {
+    try {
+      await request('api/auth.php?action=logout', { method: 'POST' });
+    } catch {
+      // ignore
+    }
+    removeAuthToken();
+  },
+
+  // Users (Admin only - fetched directly from Central Server Database with local mirror)
+  async getUserReport(userId: string): Promise<{
+    user: User;
+    tasks: Task[];
+    goals: any[];
+    notes: Record<string, string>;
+    personality: any;
+    stats: {
+      totalTasks: number;
+      completedTasks: number;
+      pendingTasks: number;
+      incompleteWithReason: number;
+      completionRate: number;
+    };
+  }> {
+    return await request<any>(`api/users.php?action=report&user_id=${encodeURIComponent(userId)}`);
+  },
+
+  async getUsers(): Promise<User[]> {
+    const baseAdmin: User = {
+      id: 'usr_admin_mohusyn',
+      username: 'Mohusyn',
+      name: 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
+      role: 'admin',
+      createdAt: new Date().toISOString(),
+      totalTasks: 0,
+      completedTasks: 0,
+      progressPercent: 0,
+    };
+
+    let serverUsers: User[] = [];
+    try {
+      const data = await request<{ users: User[] }>('api/users.php');
+      if (Array.isArray(data.users) && data.users.length > 0) {
+        serverUsers = data.users;
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      const raw = localStorage.getItem('taskrooz_registered_users');
+      const localList: User[] = raw ? JSON.parse(raw) : [];
+
+      // Merge server users and local registered users, eliminating duplicates
+      const map = new Map<string, User>();
+      map.set('mohusyn', baseAdmin);
+
+      serverUsers.forEach((u) => {
+        if (u.username) map.set(u.username.toLowerCase(), u);
+      });
+      localList.forEach((u) => {
+        if (u.username && !map.has(u.username.toLowerCase())) {
+          map.set(u.username.toLowerCase(), u);
+        }
+      });
+
+      return Array.from(map.values());
+    } catch {
+      return serverUsers.length > 0 ? serverUsers : [baseAdmin];
+    }
+  },
+
+  async createUser(user: {
+    username: string;
+    password: string;
+    name: string;
+    role: 'admin' | 'user';
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    jobTitle?: string;
+    skills?: string[];
+  }): Promise<User> {
+    const data = await request<{ user: User; message: string }>('api/users.php', {
+      method: 'POST',
+      body: JSON.stringify(user),
+    });
+    broadcastSync('USER_REGISTERED', data.user);
+    return data.user;
+  },
+
+  async updateUser(user: { id: string; name: string; role: 'admin' | 'user'; password?: string }): Promise<void> {
+    await request('api/users.php', {
+      method: 'PUT',
+      body: JSON.stringify(user),
+    });
+    broadcastSync('USER_UPDATED', user);
+  },
+
+  async deleteUser(id: string): Promise<void> {
+    await request(`api/users.php?action=delete&id=${encodeURIComponent(id)}`, {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    });
+    broadcastSync('USER_DELETED', { id });
+  },
+
+  // Global System Settings (Enforced by Admin on Server)
+  async getGlobalSettings(): Promise<GlobalSystemSettings> {
+    try {
+      const data = await request<{ settings: GlobalSystemSettings }>('api/settings.php?action=global');
+      if (data.settings && Object.keys(data.settings).length > 0) {
+        return data.settings;
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_GLOBAL_SETTINGS;
+  },
+
+  async saveGlobalSettings(settings: GlobalSystemSettings): Promise<void> {
+    await request('api/settings.php?action=global', {
+      method: 'POST',
+      body: JSON.stringify(settings),
+    });
+    broadcastSync('SETTINGS_UPDATED', settings);
+  },
+
+  // Custom Fonts Hub (Stored on Central Server)
+  getCustomFonts(): SystemFontOption[] {
+    try {
+      const raw = localStorage.getItem('taskrooz_custom_fonts');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveCustomFonts(fonts: SystemFontOption[]): void {
+    try {
+      localStorage.setItem('taskrooz_custom_fonts', JSON.stringify(fonts));
+    } catch {}
+  },
+
+  async fetchCustomFonts(): Promise<SystemFontOption[]> {
+    try {
+      const data = await request<{ fonts: SystemFontOption[] }>('api/fonts.php');
+      const list = Array.isArray(data.fonts) ? data.fonts : [];
+      this.saveCustomFonts(list);
+      return list;
+    } catch {
+      return this.getCustomFonts();
+    }
+  },
+
+  async uploadCustomFont(file: File, name: string, family?: string, description?: string): Promise<SystemFontOption> {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const cleanName = name.trim() || file.name.replace(/\.[^/.]+$/, '');
+    const cleanFamily = (family?.trim() || cleanName).replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    const res = await request<{ message: string; font: SystemFontOption }>('api/fonts.php?action=upload', {
+      method: 'POST',
+      body: JSON.stringify({
+        filename: file.name,
+        dataUrl,
+        name: cleanName,
+        family: cleanFamily,
+        description: description?.trim() || 'فونت سفارشی آپلود شده از سیستم',
+      }),
+    });
+
+    broadcastSync('FONT_UPLOADED', res.font);
+    return res.font;
+  },
+
+  // Tasks (Managed directly on Central Server)
+  async getTasks(filter?: { userId?: string | null; date?: string; categoryId?: string }): Promise<Task[]> {
+    const params = new URLSearchParams();
+    if (filter?.userId) params.append('user_id', filter.userId);
+    if (filter?.date) params.append('date', filter.date);
+    if (filter?.categoryId) params.append('category_id', filter.categoryId);
+
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const data = await request<{ tasks: Task[] }>(`api/tasks.php${qs}`);
+    return Array.isArray(data.tasks) ? data.tasks : [];
+  },
+
+  async createTask(task: Omit<Task, 'id' | 'createdAt'>): Promise<Task> {
+    const data = await request<{ task: Task; message: string }>('api/tasks.php', {
+      method: 'POST',
+      body: JSON.stringify(task),
+    });
+    return data.task;
+  },
+
+  async updateTask(task: Task): Promise<void> {
+    await request('api/tasks.php', {
+      method: 'PUT',
+      body: JSON.stringify(task),
+    });
+  },
+
+  async deleteTask(id: string): Promise<void> {
+    await request(`api/tasks.php?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async toggleTask(id: string): Promise<{ completed: boolean; completedAt?: string }> {
+    return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+    });
+  },
+
+  async addFocusMinutes(id: string, minutes: number): Promise<void> {
+    await request(`api/tasks.php?action=addFocus&id=${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ minutes }),
+    });
+  },
+
+  // Categories (Server Managed)
+  async getCategories(): Promise<Category[]> {
+    try {
+      const data = await request<{ categories: Category[] }>('api/categories.php');
+      if (Array.isArray(data.categories) && data.categories.length > 0) {
+        return data.categories;
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_CATEGORIES;
+  },
+
+  async createCategory(cat: { name: string; color: string; icon: string }): Promise<Category> {
+    const data = await request<{ category: Category }>('api/categories.php', {
+      method: 'POST',
+      body: JSON.stringify(cat),
+    });
+    return data.category;
+  },
+
+  // Stats
+  async getStats(userId?: string | null): Promise<any> {
+    const qs = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
+    return await request(`api/stats.php${qs}`);
+  },
+
+  // Focus Rooms (Unified Group Pomodoro on Central Server)
+  async createFocusRoom(name: string, focusDuration = 1500, breakDuration = 300): Promise<FocusRoom> {
+    let room: FocusRoom;
+    try {
+      const data = await request<{ room: FocusRoom; message: string }>('api/rooms.php?action=create', {
+        method: 'POST',
+        body: JSON.stringify({ name, focusDuration, breakDuration }),
+      });
+      room = data.room;
+    } catch (err: any) {
+      // Retry via GET query parameter if IIS blocks POST with 405
+      try {
+        const data = await request<{ room: FocusRoom; message: string }>(
+          `api/rooms.php?action=create&name=${encodeURIComponent(name)}&focusDuration=${focusDuration}&breakDuration=${breakDuration}`,
+          { method: 'GET' }
+        );
+        room = data.room;
+      } catch {
+        const currentUser = await this.getCurrentUser();
+        room = {
+          id: 'room_' + Math.random().toString(36).substr(2, 6),
+          name: name.trim() || 'اتاق تمرکز و مطالعه مشترک',
+          hostId: currentUser?.id || 'usr_admin_mohusyn',
+          hostName: currentUser?.name || 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
+          focusDuration,
+          breakDuration,
+          mode: 'focus',
+          isRunning: false,
+          timeLeft: focusDuration,
+          lastUpdated: Date.now(),
+          isDeleted: false,
+          participants: [
+            {
+              userId: currentUser?.id || 'usr_admin_mohusyn',
+              name: currentUser?.name || 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
+              username: currentUser?.username || 'Mohusyn',
+              role: currentUser?.role || 'admin',
+              status: 'focusing',
+              joinedAt: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
+              lastPing: Date.now(),
+            }
+          ],
+          messages: [
+            {
+              id: 'msg_' + Date.now(),
+              userId: 'system',
+              userName: 'سیستم',
+              text: 'اتاق «' .concat(name.trim() || 'اتاق تمرکز و مطالعه مشترک', '» ایجاد شد. به تمرکز خوش آمدید! 🎯'),
+              timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
+            }
+          ],
+          createdAt: new Date().toISOString(),
+        };
+      }
+    }
+    broadcastSync('ROOM_SYNC', { roomId: room.id, room });
+    return room;
+  },
+
+  async getFocusRoom(roomId: string): Promise<FocusRoom | null> {
+    try {
+      const data = await request<{ room: FocusRoom }>(`api/rooms.php?action=get&room_id=${encodeURIComponent(roomId)}`);
+      return data.room || null;
+    } catch {
+      return null;
+    }
+  },
+
+  async joinFocusRoom(roomId: string): Promise<FocusRoom> {
+    const cleanId = (roomId || '').replace(/['"]/g, '').trim().split('#')[0].split('&')[0];
+    let room: FocusRoom;
+    try {
+      const data = await request<{ room: FocusRoom; message?: string }>('api/rooms.php?action=join', {
+        method: 'POST',
+        body: JSON.stringify({ roomId: cleanId }),
+      });
+      room = data.room;
+    } catch (err: any) {
+      // Retry via GET query parameter if IIS blocks POST with 405
+      try {
+        const data = await request<{ room: FocusRoom; message?: string }>(`api/rooms.php?action=join&roomId=${encodeURIComponent(cleanId)}`, {
+          method: 'GET',
+        });
+        room = data.room;
+      } catch (retryErr) {
+        // Construct standard synchronized room
+        const currentUser = await this.getCurrentUser();
+        room = {
+          id: cleanId,
+          name: cleanId.startsWith('room_') ? 'اتاق تمرکز و مطالعه مشترک' : cleanId,
+          hostId: currentUser?.id || 'usr_admin_mohusyn',
+          hostName: currentUser?.name || 'مدیر',
+          focusDuration: 1500,
+          breakDuration: 300,
+          mode: 'focus',
+          isRunning: false,
+          timeLeft: 1500,
+          lastUpdated: Date.now(),
+          isDeleted: false,
+          participants: [
+            {
+              userId: currentUser?.id || 'usr_guest',
+              name: currentUser?.name || 'شما',
+              username: currentUser?.username || 'user',
+              role: currentUser?.role || 'user',
+              status: 'focusing',
+              joinedAt: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
+              lastPing: Date.now(),
+            }
+          ],
+          messages: [
+            {
+              id: 'msg_' + Date.now(),
+              userId: 'system',
+              userName: 'سیستم',
+              text: 'به اتاق تمرکز خوش آمدید! 🎯',
+              timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
+            }
+          ],
+          createdAt: new Date().toISOString(),
+        };
+      }
+    }
+
+    broadcastSync('ROOM_SYNC', { roomId: cleanId, room });
+    return room;
+  },
+
+  async syncFocusRoomTimer(
+    roomId: string,
+    timerAction: 'start' | 'pause' | 'reset' | 'setMode',
+    timeLeft?: number,
+    mode?: string
+  ): Promise<FocusRoom> {
+    const data = await request<{ room: FocusRoom }>('api/rooms.php?action=sync', {
+      method: 'POST',
+      body: JSON.stringify({ roomId, timerAction, timeLeft, mode }),
+    });
+    broadcastSync('ROOM_SYNC', { roomId, timerAction });
+    return data.room;
+  },
+
+  async sendFocusRoomMessage(roomId: string, text: string): Promise<FocusRoom> {
+    const data = await request<{ room: FocusRoom }>('api/rooms.php?action=message', {
+      method: 'POST',
+      body: JSON.stringify({ roomId, text }),
+    });
+    broadcastSync('ROOM_SYNC', { roomId });
+    return data.room;
+  },
+
+  async leaveFocusRoom(roomId: string): Promise<void> {
+    try {
+      await request('api/rooms.php?action=leave', {
+        method: 'POST',
+        body: JSON.stringify({ roomId }),
+      });
+    } catch {
+      // ignore
+    }
+    broadcastSync('ROOM_SYNC', { roomId });
+  },
+
+  async deleteFocusRoom(roomId: string): Promise<void> {
+    await request(`api/rooms.php?action=delete&roomId=${encodeURIComponent(roomId)}`, {
+      method: 'POST',
+      body: JSON.stringify({ roomId }),
+    });
+    broadcastSync('ROOM_SYNC', { roomId });
+  },
+
+  async cleanupFocusRooms(): Promise<void> {
+    await request('api/rooms.php?action=cleanup', {
+      method: 'POST',
+    });
+    broadcastSync('ROOM_SYNC', {});
+  },
+
+  async getActiveFocusRooms(): Promise<Array<{ id: string; name: string; hostName: string; participantCount: number; isRunning: boolean }>> {
+    try {
+      const data = await request<{ rooms: any[] }>('api/rooms.php?action=list');
+      return Array.isArray(data.rooms) ? data.rooms : [];
+    } catch {
+      return [];
+    }
+  },
+
+  // Team Projects (Stored on Central Server)
+  async getTeamProjects(): Promise<TeamProject[]> {
+    try {
+      const data = await request<{ projects: TeamProject[] }>('api/projects.php');
+      return Array.isArray(data.projects) ? data.projects : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async createTeamProject(projectData: {
+    name: string;
+    description?: string;
+    color?: string;
+    icon?: string;
+    memberIds?: string[];
+  }): Promise<TeamProject> {
+    const data = await request<{ project: TeamProject; message: string }>('api/projects.php', {
+      method: 'POST',
+      body: JSON.stringify(projectData),
+    });
+    return data.project;
+  },
+
+  async updateTeamProject(id: string, updates: Partial<TeamProject>): Promise<void> {
+    await request('api/projects.php', {
+      method: 'PUT',
+      body: JSON.stringify({ id, ...updates }),
+    });
+  },
+
+  async deleteTeamProject(id: string): Promise<void> {
+    await request(`api/projects.php?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Career Goals (Stored on Central Server)
+  async getGoals(): Promise<CareerGoal[]> {
+    try {
+      const res = await request<{ goals: CareerGoal[] }>('api/goals.php');
+      return Array.isArray(res.goals) ? res.goals : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async createGoal(data: Omit<CareerGoal, 'id' | 'createdAt' | 'userId'>): Promise<CareerGoal> {
+    const res = await request<{ goal: CareerGoal }>('api/goals.php', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return res.goal;
+  },
+
+  async updateGoal(id: string, updates: Partial<CareerGoal>): Promise<void> {
+    await request('api/goals.php', {
+      method: 'PUT',
+      body: JSON.stringify({ id, ...updates }),
+    });
+  },
+
+  async deleteGoal(id: string): Promise<void> {
+    await request(`api/goals.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+
+  // Personality Test (Stored on Central Server)
+  async getPersonalityResult(): Promise<PersonalityTestResult | null> {
+    try {
+      const res = await request<{ result: PersonalityTestResult | null }>('api/personality.php');
+      return res.result || null;
+    } catch {
+      return null;
+    }
+  },
+
+  async savePersonalityResult(result: PersonalityTestResult): Promise<void> {
+    await request('api/personality.php', {
+      method: 'POST',
+      body: JSON.stringify(result),
+    });
+  },
+
+  // Daily Notes (Stored on Central Server)
+  async getDailyNotes(): Promise<Record<string, string>> {
+    try {
+      const res = await request<{ notes: Record<string, string> }>('api/notes.php');
+      return res.notes || {};
+    } catch {
+      return {};
+    }
+  },
+
+  async saveDailyNote(date: string, content: string): Promise<void> {
+    await request('api/notes.php', {
+      method: 'POST',
+      body: JSON.stringify({ date, content }),
+    });
+  },
+
+  // Export Users to Excel/CSV with Persian UTF-8 BOM
+  exportUsersCsv(users: User[]): void {
+    const headers = [
+      'ردیف',
+      'نام و نام خانوادگی',
+      'نام کاربری',
+      'نقش کاربری',
+      'شماره تماس',
+      'ایمیل',
+      'استان',
+      'شهر',
+      'تاریخ تولد',
+      'شغل و تخصص',
+      'مهارت‌ها',
+      'کل تسک‌ها',
+      'تسک‌های انجام‌شده',
+      'درصد پیشرفت',
+      'تاریخ عضویت',
+    ];
+
+    const rows = users.map((u, i) => [
+      i + 1,
+      `"${(u.name || '').replace(/"/g, '""')}"`,
+      `"${(u.username || '').replace(/"/g, '""')}"`,
+      u.role === 'admin' ? 'مدیر سیستم' : 'کاربر عادی',
+      `"${(u.phone || '—').replace(/"/g, '""')}"`,
+      `"${(u.email || '—').replace(/"/g, '""')}"`,
+      `"${(u.province || '—').replace(/"/g, '""')}"`,
+      `"${(u.city || '—').replace(/"/g, '""')}"`,
+      `"${(u.birthDate || '—').replace(/"/g, '""')}"`,
+      `"${(u.jobTitle || '—').replace(/"/g, '""')}"`,
+      `"${(Array.isArray(u.skills) ? u.skills.join(' ، ') : '—').replace(/"/g, '""')}"`,
+      u.totalTasks || 0,
+      u.completedTasks || 0,
+      `${u.progressPercent || 0}%`,
+      `"${(u.createdAt || '').slice(0, 10)}"`,
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `taskrooz-users-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  },
+};
