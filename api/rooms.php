@@ -60,19 +60,19 @@ if (!$currentUser) {
     }
 }
 
-// POST /api/rooms.php?action=create
-if ($method === 'POST' && ($action === 'create' || empty($action) && isset($_POST['create']))) {
+// POST / GET /api/rooms.php?action=create
+if ($action === 'create' || empty($action) && (isset($_POST['create']) || isset($_GET['name']))) {
     $input = getJsonInput();
-    $name = trim($input['name'] ?? 'اتاق تمرکز و مطالعه مشترک');
-    $focusDuration = (int)($input['focusDuration'] ?? 1500);
-    $breakDuration = (int)($input['breakDuration'] ?? 300);
+    $name = trim($input['name'] ?? $_GET['name'] ?? 'اتاق تمرکز و مطالعه مشترک');
+    $focusDuration = (int)($input['focusDuration'] ?? $_GET['focusDuration'] ?? 1500);
+    $breakDuration = (int)($input['breakDuration'] ?? $_GET['breakDuration'] ?? 300);
 
     $room = $db->createFocusRoom($name, $currentUser, $focusDuration, $breakDuration);
     jsonResponse(['message' => 'اتاق با موفقیت ایجاد شد.', 'room' => $room], 201);
 }
 
-// POST /api/rooms.php?action=join
-if ($method === 'POST' && ($action === 'join' || empty($action))) {
+// POST / GET /api/rooms.php?action=join
+if ($action === 'join' || empty($action) && (isset($_GET['roomId']) || isset($_GET['room_id']))) {
     $input = getJsonInput();
     $roomId = $input['roomId'] ?? $input['room_id'] ?? $_GET['room_id'] ?? $_GET['roomId'] ?? $_GET['id'] ?? '';
     if (empty($roomId)) {
@@ -82,13 +82,13 @@ if ($method === 'POST' && ($action === 'join' || empty($action))) {
     jsonResponse(['message' => 'شما به اتاق ملحق شدید.', 'room' => $room]);
 }
 
-// POST /api/rooms.php?action=sync
-if ($method === 'POST' && ($action === 'sync' || $action === 'timer')) {
+// POST / GET /api/rooms.php?action=sync
+if ($action === 'sync' || $action === 'timer') {
     $input = getJsonInput();
-    $roomId = $input['roomId'] ?? $input['room_id'] ?? $_GET['room_id'] ?? '';
-    $timerAction = $input['timerAction'] ?? $input['action'] ?? 'start';
-    $timeLeft = isset($input['timeLeft']) ? (int)$input['timeLeft'] : null;
-    $mode = $input['mode'] ?? null;
+    $roomId = $input['roomId'] ?? $input['room_id'] ?? $_GET['room_id'] ?? $_GET['roomId'] ?? '';
+    $timerAction = $input['timerAction'] ?? $input['action'] ?? $_GET['timerAction'] ?? 'start';
+    $timeLeft = isset($input['timeLeft']) ? (int)$input['timeLeft'] : (isset($_GET['timeLeft']) ? (int)$_GET['timeLeft'] : null);
+    $mode = $input['mode'] ?? $_GET['mode'] ?? null;
 
     if (empty($roomId)) {
         jsonResponse(['error' => 'شناسه اتاق الزامی است.'], 400);
@@ -100,11 +100,11 @@ if ($method === 'POST' && ($action === 'sync' || $action === 'timer')) {
     jsonResponse(['room' => $room]);
 }
 
-// POST /api/rooms.php?action=message
-if ($method === 'POST' && ($action === 'message' || $action === 'send')) {
+// POST / GET /api/rooms.php?action=message
+if ($action === 'message' || $action === 'send') {
     $input = getJsonInput();
-    $roomId = $input['roomId'] ?? $input['room_id'] ?? '';
-    $text = trim($input['text'] ?? $input['message'] ?? '');
+    $roomId = $input['roomId'] ?? $input['room_id'] ?? $_GET['room_id'] ?? $_GET['roomId'] ?? '';
+    $text = trim($input['text'] ?? $input['message'] ?? $_GET['text'] ?? '');
     if (empty($roomId) || empty($text)) {
         jsonResponse(['error' => 'شناسه اتاق و متن پیام الزامی است.'], 400);
     }

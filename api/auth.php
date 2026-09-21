@@ -8,8 +8,16 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
 // REGISTER ACCOUNT
-if ($method === 'POST' && ($action === 'register' || $action === 'signup' || empty($action) && isset($_GET['register']))) {
+if ($action === 'register' || $action === 'signup' || empty($action) && isset($_GET['register'])) {
     $input = getJsonInput();
+    if (empty($input) && !empty($_GET['data'])) {
+        $decoded = @base64_decode($_GET['data']);
+        if ($decoded) $input = json_decode($decoded, true) ?? [];
+    }
+    if (empty($input)) {
+        $input = $_GET;
+    }
+
     $username = trim($input['username'] ?? '');
     $password = $input['password'] ?? '';
     $name = trim($input['name'] ?? '');
@@ -70,10 +78,10 @@ if ($method === 'POST' && ($action === 'register' || $action === 'signup' || emp
 }
 
 // LOGIN ACCOUNT
-if ($method === 'POST' && ($action === 'login' || empty($action))) {
+if ($action === 'login' || empty($action) && (isset($_GET['username']) || isset($_POST['username']))) {
     $input = getJsonInput();
-    $username = trim($input['username'] ?? '');
-    $password = $input['password'] ?? '';
+    $username = trim($input['username'] ?? $_GET['username'] ?? $_POST['username'] ?? '');
+    $password = $input['password'] ?? $_GET['password'] ?? $_POST['password'] ?? '';
 
     if (empty($username) || empty($password)) {
         jsonResponse(['error' => 'نام کاربری و کلمه عبور الزامی است.'], 400);
