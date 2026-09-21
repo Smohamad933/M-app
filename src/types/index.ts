@@ -14,6 +14,7 @@ export interface User {
   username: string;
   name: string;
   role: UserRole;
+  avatar?: string;
   phone?: string;
   email?: string;
   province?: string;
@@ -141,7 +142,8 @@ export type TabType =
   | 'projects'
   | 'categories'
   | 'stats'
-  | 'users';
+  | 'users'
+  | 'profile';
 
 export type TaskViewMode = 'list' | 'kanban' | 'calendar';
 

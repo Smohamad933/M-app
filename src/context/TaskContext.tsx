@@ -152,6 +152,7 @@ interface TaskContextType {
   // Settings
   updateSettings: (partial: Partial<AppSettings>) => void;
   getDailySummaryText: () => string;
+  updateUserProfile: (updates: Partial<User> & { newPassword?: string }) => Promise<void>;
 
   // Global System Settings & Custom Fonts
   globalSettings: GlobalSystemSettings;
@@ -834,6 +835,15 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sounds.playPop();
   };
 
+  const updateUserProfile = async (updates: Partial<User> & { newPassword?: string }) => {
+    const updated = await api.updateProfile(updates);
+    setCurrentUser(updated);
+    sounds.playComplete();
+    if (currentUser?.role === 'admin') {
+      refreshUsers();
+    }
+  };
+
   const openIncompleteModal = (task: Task) => {
     setIncompleteModalTask(task);
   };
@@ -1163,6 +1173,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       personalityResult,
       savePersonalityResult,
       updateUserTimeline,
+      updateUserProfile,
       dailyNotes,
       saveDailyNote,
       incompleteModalTask,

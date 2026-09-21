@@ -166,9 +166,14 @@ if ($method === 'PUT') {
     }
 }
 
-// DELETE /api/users -> Delete user
-if ($method === 'DELETE') {
-    $id = $_GET['id'] ?? '';
+// DELETE or POST ?action=delete -> Delete user
+$isDeleteAction = ($method === 'DELETE') || 
+                  ($method === 'POST' && ($action === 'delete' || ($input['action'] ?? '') === 'delete')) ||
+                  ($method === 'GET' && $action === 'delete');
+
+if ($isDeleteAction) {
+    $input = getJsonInput();
+    $id = $input['id'] ?? $input['userId'] ?? $_GET['id'] ?? $_GET['userId'] ?? '';
     if (empty($id)) {
         jsonResponse(['error' => 'شناسه کاربر الزامی است.'], 400);
     }

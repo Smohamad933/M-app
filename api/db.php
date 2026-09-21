@@ -425,6 +425,64 @@ class TaskRoozDB {
         return false;
     }
 
+    public function updateUserProfile($id, $data) {
+        $user = $this->getUserById($id);
+        if (!$user) return null;
+
+        $name = trim($data['name'] ?? $user['name']);
+        $phone = trim($data['phone'] ?? ($user['phone'] ?? ''));
+        $email = trim($data['email'] ?? ($user['email'] ?? ''));
+        $province = trim($data['province'] ?? ($user['province'] ?? ''));
+        $city = trim($data['city'] ?? ($user['city'] ?? ''));
+        $birthDate = trim($data['birthDate'] ?? ($user['birthDate'] ?? ''));
+        $jobTitle = trim($data['jobTitle'] ?? ($user['jobTitle'] ?? ''));
+        $avatar = array_key_exists('avatar', $data) ? $data['avatar'] : ($user['avatar'] ?? null);
+        $skills = is_array($data['skills'] ?? null) ? $data['skills'] : ($user['skills'] ?? []);
+        $timeline = is_array($data['dailyTimeline'] ?? null) ? $data['dailyTimeline'] : ($user['dailyTimeline'] ?? []);
+        $newPassword = !empty($data['newPassword']) ? trim($data['newPassword']) : null;
+
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                // Ensure avatar column exists
+                try {
+                    $this->pdo->exec("ALTER TABLE users ADD COLUMN avatar mediumtext NULL");
+                } catch (Exception $e) {}
+
+                if ($newPassword) {
+                    $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+                    $stmt = $this->pdo->prepare("UPDATE users SET name = ?, phone = ?, email = ?, province = ?, city = ?, birth_date = ?, job_title = ?, skills_json = ?, timeline_json = ?, avatar = ?, password_hash = ? WHERE id = ?");
+                    $stmt->execute([$name, $phone, $email, $province, $city, $birthDate, $jobTitle, json_encode($skills), json_encode($timeline), $avatar, $hash, $id]);
+                } else {
+                    $stmt = $this->pdo->prepare("UPDATE users SET name = ?, phone = ?, email = ?, province = ?, city = ?, birth_date = ?, job_title = ?, skills_json = ?, timeline_json = ?, avatar = ? WHERE id = ?");
+                    $stmt->execute([$name, $phone, $email, $province, $city, $birthDate, $jobTitle, json_encode($skills), json_encode($timeline), $avatar, $id]);
+                }
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        foreach ($this->data['users'] as &$u) {
+            if ($u['id'] === $id) {
+                $u['name'] = $name;
+                $u['phone'] = $phone;
+                $u['email'] = $email;
+                $u['province'] = $province;
+                $u['city'] = $city;
+                $u['birthDate'] = $birthDate;
+                $u['jobTitle'] = $jobTitle;
+                $u['skills'] = $skills;
+                $u['dailyTimeline'] = $timeline;
+                if (array_key_exists('avatar', $data)) $u['avatar'] = $avatar;
+                if ($newPassword) {
+                    $u['password'] = $newPassword;
+                    $u['password_hash'] = password_hash($newPassword, PASSWORD_DEFAULT);
+                }
+                break;
+            }
+        }
+        $this->saveJson();
+        return $this->getUserById($id);
+    }
+
     public function deleteUser($id) {
         if ($this->mode === 'mysql' && $this->pdo) {
             try {

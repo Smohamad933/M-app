@@ -300,6 +300,15 @@ export const api = {
     }
   },
 
+  async updateProfile(updates: Partial<User> & { newPassword?: string }): Promise<User> {
+    const data = await request<{ user: User; message: string }>('api/auth.php?action=update_profile', {
+      method: 'POST',
+      body: JSON.stringify(updates),
+    });
+    broadcastSync('USER_UPDATED', { user: data.user });
+    return data.user;
+  },
+
   async logout(): Promise<void> {
     try {
       await request('api/auth.php?action=logout', { method: 'POST' });
@@ -401,8 +410,9 @@ export const api = {
   },
 
   async deleteUser(id: string): Promise<void> {
-    await request(`api/users.php?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE',
+    await request(`api/users.php?action=delete&id=${encodeURIComponent(id)}`, {
+      method: 'POST',
+      body: JSON.stringify({ id }),
     });
     broadcastSync('USER_DELETED', { id });
   },
@@ -718,11 +728,18 @@ export const api = {
   },
 
   async deleteFocusRoom(roomId: string): Promise<void> {
-    await request('api/rooms.php?action=delete', {
+    await request(`api/rooms.php?action=delete&roomId=${encodeURIComponent(roomId)}`, {
       method: 'POST',
       body: JSON.stringify({ roomId }),
     });
     broadcastSync('ROOM_SYNC', { roomId });
+  },
+
+  async cleanupFocusRooms(): Promise<void> {
+    await request('api/rooms.php?action=cleanup', {
+      method: 'POST',
+    });
+    broadcastSync('ROOM_SYNC', {});
   },
 
   async getActiveFocusRooms(): Promise<Array<{ id: string; name: string; hostName: string; participantCount: number; isRunning: boolean }>> {

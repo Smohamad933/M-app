@@ -165,6 +165,7 @@ if ($method === 'GET' && $action === 'me') {
             'username' => $user['username'],
             'name' => $user['name'],
             'role' => $user['role'],
+            'avatar' => $user['avatar'] ?? null,
             'phone' => $user['phone'] ?? '',
             'email' => $user['email'] ?? '',
             'province' => $user['province'] ?? '',
@@ -174,6 +175,22 @@ if ($method === 'GET' && $action === 'me') {
             'skills' => $user['skills'] ?? [],
             'createdAt' => $user['createdAt'] ?? date('Y-m-d H:i:s'),
         ]
+    ]);
+}
+
+// UPDATE PROFILE
+if ($action === 'profile' || $action === 'update_profile') {
+    $currentUser = requireAuth();
+    $input = getJsonInput();
+    $updated = $db->updateUserProfile($currentUser['id'], $input);
+    if (!$updated) {
+        jsonResponse(['error' => 'کاربر پیدا نشد یا خطا در ذخیره اطلاعات رخ داد.'], 400);
+    }
+    unset($updated['password']);
+    unset($updated['password_hash']);
+    jsonResponse([
+        'message' => 'اطلاعات پروفایل با موفقیت ذخیره شد.',
+        'user' => $updated,
     ]);
 }
 

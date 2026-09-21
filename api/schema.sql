@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `city` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `birth_date` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `job_title` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `avatar` mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `skills_json` text COLLATE utf8mb4_unicode_ci,
   `timeline_json` text COLLATE utf8mb4_unicode_ci,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,

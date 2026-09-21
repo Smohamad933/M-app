@@ -126,16 +126,32 @@ if ($method === 'POST' && $action === 'leave') {
     jsonResponse(['message' => 'از اتاق خارج شدید.']);
 }
 
-// POST /api/rooms.php?action=delete
-if ($method === 'POST' && ($action === 'delete' || $action === 'close')) {
+// POST / GET / DELETE /api/rooms.php?action=delete
+if ($action === 'delete' || $action === 'close') {
     $input = getJsonInput();
-    $roomId = $input['roomId'] ?? $input['room_id'] ?? $_GET['room_id'] ?? '';
+    $roomId = $input['roomId'] ?? $input['room_id'] ?? $_GET['room_id'] ?? $_GET['roomId'] ?? '';
     if (empty($roomId)) {
         jsonResponse(['error' => 'شناسه اتاق الزامی است.'], 400);
     }
     $isAdmin = ($currentUser['role'] === 'admin');
     $ok = $db->deleteFocusRoom($roomId, $currentUser['id'], $isAdmin);
     jsonResponse(['message' => 'اتاق با موفقیت بسته شد.']);
+}
+
+// Bulk cleanup for admin
+if ($action === 'cleanup') {
+    if ($currentUser['role'] !== 'admin') {
+        jsonResponse(['error' => 'فقط مدیر کل می‌تواند اتاق‌ها را پاکسازی کند.'], 403);
+    }
+    if ($db->mode === 'mysql' && $pdo) {
+        try {
+            $pdo->exec("DELETE FROM focus_rooms");
+        } catch (Exception $e) {}
+    }
+    $db->loadJson();
+    $db->data['focus_rooms'] = [];
+    $db->saveJson();
+    jsonResponse(['message' => 'تمام اتاق‌های تستی با موفقیت پاکسازی شدند.']);
 }
 
 jsonResponse(['error' => 'درخواست نامعتبر است.'], 405);

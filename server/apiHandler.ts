@@ -489,9 +489,44 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           username: currentUser.username,
           name: currentUser.name,
           role: currentUser.role,
+          avatar: (currentUser as any).avatar,
+          phone: currentUser.phone,
+          email: currentUser.email,
+          province: currentUser.province,
+          city: currentUser.city,
+          birthDate: currentUser.birthDate,
+          jobTitle: currentUser.jobTitle,
+          skills: currentUser.skills,
           createdAt: currentUser.createdAt,
         },
       });
+      return true;
+    }
+
+    if (method === 'POST' && (action === 'profile' || action === 'update_profile')) {
+      if (!currentUser) {
+        sendJson(res, { error: 'ابتدا وارد حساب کاربری شوید.' }, 401);
+        return true;
+      }
+      const body = await parseJsonBody(req);
+      const user = db.users.find((u) => u.id === currentUser.id);
+      if (!user) {
+        sendJson(res, { error: 'کاربر پیدا نشد.' }, 404);
+        return true;
+      }
+      if (body.name) user.name = body.name.trim();
+      if (body.phone !== undefined) user.phone = body.phone.trim();
+      if (body.email !== undefined) user.email = body.email.trim();
+      if (body.province !== undefined) user.province = body.province.trim();
+      if (body.city !== undefined) user.city = body.city.trim();
+      if (body.birthDate !== undefined) user.birthDate = body.birthDate.trim();
+      if (body.jobTitle !== undefined) user.jobTitle = body.jobTitle.trim();
+      if (body.skills !== undefined) user.skills = body.skills;
+      if (body.dailyTimeline !== undefined) user.dailyTimeline = body.dailyTimeline;
+      if (body.avatar !== undefined) (user as any).avatar = body.avatar;
+      if (body.newPassword) user.password = body.newPassword.trim();
+      writeDb(db);
+      sendJson(res, { message: 'پروفایل با موفقیت به‌روزرسانی شد.', user });
       return true;
     }
 
@@ -602,6 +637,26 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       return true;
     }
 
+    // Handle DELETE or POST action=delete first
+    if (method === 'DELETE' || (method === 'POST' && urlObj.searchParams.get('action') === 'delete')) {
+      let body: any = {};
+      try { body = await parseJsonBody(req); } catch {}
+      const id = urlObj.searchParams.get('id') || body?.id || body?.userId;
+      if (!id) {
+        sendJson(res, { error: 'شناسه کاربر الزامی است.' }, 400);
+        return true;
+      }
+      if (id === currentUser.id) {
+        sendJson(res, { error: 'امکان حذف حساب کاربری جاری وجود ندارد.' }, 400);
+        return true;
+      }
+      db.users = db.users.filter((u) => u.id !== id);
+      db.tasks = db.tasks.filter((t) => t.userId !== id);
+      writeDb(db);
+      sendJson(res, { message: 'کاربر و تسک‌های مرتبط با موفقیت حذف شدند.' });
+      return true;
+    }
+
     if (method === 'POST') {
       const body = await parseJsonBody(req);
       const username = body.username?.trim();
@@ -677,23 +732,6 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
       writeDb(db);
       sendJson(res, { message: 'کاربر به‌روزرسانی شد.' });
-      return true;
-    }
-
-    if (method === 'DELETE') {
-      const id = urlObj.searchParams.get('id');
-      if (!id) {
-        sendJson(res, { error: 'شناسه کاربر الزامی است.' }, 400);
-        return true;
-      }
-      if (id === currentUser.id) {
-        sendJson(res, { error: 'امکان حذف حساب کاربری جاری وجود ندارد.' }, 400);
-        return true;
-      }
-      db.users = db.users.filter((u) => u.id !== id);
-      db.tasks = db.tasks.filter((t) => t.userId !== id);
-      writeDb(db);
-      sendJson(res, { message: 'کاربر و تسک‌های مرتبط با موفقیت حذف شدند.' });
       return true;
     }
   }
@@ -994,6 +1032,17 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         message: 'اتاق با موفقیت بسته شد. پیام‌ها به مدت ۱۰ دقیقه تا پاکسازی کامل در سرور نگه‌داری می‌شوند.',
         room,
       });
+      return true;
+    }
+
+    if (action === 'cleanup') {
+      if (currentUser.role !== 'admin') {
+        sendJson(res, { error: 'تنها مدیر سیستم مجاز به پاکسازی است.' }, 403);
+        return true;
+      }
+      db.focus_rooms = [];
+      writeDb(db);
+      sendJson(res, { message: 'تمامی اتاق‌ها با موفقیت پاکسازی شدند.' });
       return true;
     }
   }

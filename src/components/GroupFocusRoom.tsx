@@ -49,6 +49,8 @@ export const GroupFocusRoom: React.FC = () => {
   const [isJoining, setIsJoining] = useState(false);
   const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
+  const [isCleaningRooms, setIsCleaningRooms] = useState(false);
+  const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null);
 
   // In-room states
   const [copiedLink, setCopiedLink] = useState(false);
@@ -80,6 +82,36 @@ export const GroupFocusRoom: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [activeRoom]);
+
+  const handleDeleteRoomFromLobby = async (roomId: string, roomName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`آیا از حذف اتاق "${roomName}" مطمئن هستید؟`)) return;
+    try {
+      setDeletingRoomId(roomId);
+      await api.deleteFocusRoom(roomId);
+      sounds.playTrash();
+      setActiveRoomsList((prev) => prev.filter((r) => r.id !== roomId));
+    } catch (err: any) {
+      alert(err?.message || 'خطا در حذف اتاق');
+    } finally {
+      setDeletingRoomId(null);
+    }
+  };
+
+  const handleCleanupRooms = async () => {
+    if (!window.confirm('آیا از پاکسازی تمام اتاق‌های راکد و قدیمی مطمئن هستید؟')) return;
+    try {
+      setIsCleaningRooms(true);
+      const res: any = await api.cleanupFocusRooms();
+      sounds.playTrash();
+      await loadRooms();
+      alert(`پاکسازی انجام شد: ${toPersianDigits(res?.deletedCount || 0)} اتاق راکد حذف گردید.`);
+    } catch (err: any) {
+      alert(err?.message || 'خطا در پاکسازی اتاق‌ها');
+    } finally {
+      setIsCleaningRooms(false);
+    }
+  };
 
   // Handle timer countdown locally when isRunning
   const [localTimeLeft, setLocalTimeLeft] = useState(activeRoom?.timeLeft || 1500);
@@ -429,17 +461,32 @@ export const GroupFocusRoom: React.FC = () => {
 
         {/* Active Public / Team Rooms List */}
         <div className="p-5 bg-zinc-900/40 rounded-3xl border border-zinc-800 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h3 className="text-xs font-bold text-zinc-300 flex items-center gap-2">
               <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
               اتاق‌های در حال اجرا در سامانه
             </h3>
-            <button
-              onClick={loadRooms}
-              className="text-[11px] text-zinc-400 hover:text-white transition-colors cursor-pointer"
-            >
-              {isLoadingRooms ? 'به‌روزرسانی...' : 'بروزرسانی لیست'}
-            </button>
+
+            <div className="flex items-center gap-2">
+              {currentUser?.role === 'admin' && (
+                <button
+                  onClick={handleCleanupRooms}
+                  disabled={isCleaningRooms}
+                  className="text-[11px] px-2.5 py-1 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                  title="پاکسازی تمام اتاق‌های بدون فعالیت"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  <span>{isCleaningRooms ? 'در حال پاکسازی...' : 'پاکسازی اتاق‌های راکد'}</span>
+                </button>
+              )}
+
+              <button
+                onClick={loadRooms}
+                className="text-[11px] text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              >
+                {isLoadingRooms ? 'به‌روزرسانی...' : 'بروزرسانی لیست'}
+              </button>
+            </div>
           </div>
 
           {activeRoomsList.length === 0 ? (
@@ -448,37 +495,60 @@ export const GroupFocusRoom: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {activeRoomsList.map((r) => (
-                <div
-                  key={r.id}
-                  className="p-3.5 rounded-2xl bg-zinc-850 bg-zinc-900/90 border border-zinc-800/80 flex items-center justify-between hover:border-zinc-700 transition-all"
-                >
-                  <div className="min-w-0 pr-2">
-                    <h4 className="text-xs font-bold text-white truncate">{r.name}</h4>
-                    <p className="text-[11px] text-zinc-400 truncate">
-                      میزبان: {r.hostName} • {toPersianDigits(r.participantCount || 1)} نفر
-                    </p>
-                  </div>
+              {activeRoomsList.map((r) => {
+                const canDelete = currentUser?.role === 'admin' || currentUser?.id === r.hostId;
+                const isThisDeleting = deletingRoomId === r.id;
 
-                  <button
-                    onClick={() => handleJoinDirect(r.id)}
-                    disabled={joiningRoomId === r.id}
-                    className="px-3.5 py-1.5 rounded-xl bg-white text-zinc-950 font-black text-xs hover:bg-zinc-200 transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0 disabled:opacity-60 shadow-xs"
+                return (
+                  <div
+                    key={r.id}
+                    className="p-3.5 rounded-2xl bg-zinc-850 bg-zinc-900/90 border border-zinc-800/80 flex items-center justify-between hover:border-zinc-700 transition-all gap-2"
                   >
-                    {joiningRoomId === r.id ? (
-                      <>
-                        <span className="w-3 h-3 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
-                        <span>در حال ورود...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>ورود مستقیم</span>
-                        <ArrowRight className="w-3 h-3 rotate-180" />
-                      </>
-                    )}
-                  </button>
-                </div>
-              ))}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs font-bold text-white truncate">{r.name}</h4>
+                      <p className="text-[11px] text-zinc-400 truncate">
+                        میزبان: {r.hostName} • {toPersianDigits(r.participantCount || 1)} نفر
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {canDelete && (
+                        <button
+                          onClick={(e) => handleDeleteRoomFromLobby(r.id, r.name, e)}
+                          disabled={isThisDeleting}
+                          className="p-1.5 sm:p-2 rounded-xl bg-zinc-800 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-400 border border-zinc-700/60 hover:border-rose-800/60 transition-colors cursor-pointer disabled:opacity-50"
+                          title="حذف اتاق تمرکز"
+                          aria-label="حذف اتاق"
+                        >
+                          {isThisDeleting ? (
+                            <span className="w-3.5 h-3.5 border-2 border-rose-400 border-t-transparent rounded-full animate-spin inline-block" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => handleJoinDirect(r.id)}
+                        disabled={joiningRoomId === r.id || isThisDeleting}
+                        className="px-3 py-1.5 rounded-xl bg-white text-zinc-950 font-black text-xs hover:bg-zinc-200 transition-all flex items-center gap-1 cursor-pointer flex-shrink-0 disabled:opacity-60 shadow-xs"
+                      >
+                        {joiningRoomId === r.id ? (
+                          <>
+                            <span className="w-3 h-3 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
+                            <span>ورود...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>ورود</span>
+                            <ArrowRight className="w-3 h-3 rotate-180" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
