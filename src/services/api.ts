@@ -31,6 +31,22 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
     allowPublicChat: true,
   },
   dailyMantra: 'تمرکز پیوسته بر کارهای با اولویت بالا و پرهیز از چندوظیفگی',
+  jobCategories: [
+    'برنامه‌نویس و توسعه‌دهنده نرم‌افزار',
+    'طراح رابط کاربری و تجربه کاربری (UI/UX)',
+    'مدیر محصول / مدیر پروژه',
+    'کارشناس سئو و تولید محتوا',
+    'دیجیتال مارکتر و متخصص تبلیغات',
+    'گرافیست و تدوین‌گر ویدیو',
+    'دانشجو / پژوهشگر دانشگاهی',
+    'معمار و مهندس عمران',
+    'پزشک / کادر درمان',
+    'حسابدار و مدیر مالی',
+    'مترجم و ویراستار',
+    'هوش مصنوعی و داده',
+    'وکالت و امور حقوقی',
+    'سایر / فریلنسر آزاد',
+  ],
 };
 
 // Real-time synchronization channel for cross-tab and cross-window coordination
@@ -294,6 +310,23 @@ export const api = {
   },
 
   // Users (Admin only - fetched directly from Central Server Database with local mirror)
+  async getUserReport(userId: string): Promise<{
+    user: User;
+    tasks: Task[];
+    goals: any[];
+    notes: Record<string, string>;
+    personality: any;
+    stats: {
+      totalTasks: number;
+      completedTasks: number;
+      pendingTasks: number;
+      incompleteWithReason: number;
+      completionRate: number;
+    };
+  }> {
+    return await request<any>(`api/users.php?action=report&user_id=${encodeURIComponent(userId)}`);
+  },
+
   async getUsers(): Promise<User[]> {
     const baseAdmin: User = {
       id: 'usr_admin_mohusyn',

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
+import { api } from '../services/api';
 import { toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import type { User, GlobalSystemSettings } from '../types';
@@ -23,6 +24,14 @@ import {
   Sliders,
   Clock,
   CheckCircle2,
+  FileText,
+  TrendingUp,
+  AlertTriangle,
+  Calendar,
+  ListTodo,
+  Target,
+  BookOpen,
+  CheckCircle,
 } from 'lucide-react';
 
 export const UserManagementView: React.FC = () => {
@@ -44,6 +53,28 @@ export const UserManagementView: React.FC = () => {
   // Active view tab inside Admin Panel
   const [adminTab, setAdminTab] = useState<'users' | 'settings'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // User Comprehensive Report Modal State
+  const [reportUser, setReportUser] = useState<User | null>(null);
+  const [reportData, setReportData] = useState<{
+    user: User;
+    tasks: any[];
+    goals: any[];
+    notes: Record<string, string>;
+    personality: any;
+    stats: {
+      totalTasks: number;
+      completedTasks: number;
+      pendingTasks: number;
+      incompleteWithReason: number;
+      completionRate: number;
+    };
+  } | null>(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [reportTab, setReportTab] = useState<'overview' | 'tasks' | 'goals' | 'notes' | 'personality'>('overview');
+
+  // Job Categories Management State in Global Settings
+  const [newJobCategory, setNewJobCategory] = useState('');
 
   // Auto-refresh users when admin opens this tab + poll every 3s + storage event sync!
   useEffect(() => {
@@ -86,6 +117,67 @@ export const UserManagementView: React.FC = () => {
   const [city, setCity] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Job categories list from form settings
+  const jobCategoriesList = (formSettings.jobCategories && formSettings.jobCategories.length > 0)
+    ? formSettings.jobCategories
+    : (globalSettings?.jobCategories || [
+        'برنامه‌نویس و توسعه‌دهنده نرم‌افزار',
+        'طراح رابط کاربری و تجربه کاربری (UI/UX)',
+        'مدیر محصول / مدیر پروژه',
+        'کارشناس سئو و تولید محتوا',
+        'دیجیتال مارکتر و متخصص تبلیغات',
+        'گرافیست و تدوین‌گر ویدیو',
+        'دانشجو / پژوهشگر دانشگاهی',
+        'معمار و مهندس عمران',
+        'پزشک / کادر درمان',
+        'حسابدار و مدیر مالی',
+        'مترجم و ویراستار',
+        'هوش مصنوعی و داده',
+        'وکالت و امور حقوقی',
+        'سایر / فریلنسر آزاد',
+      ]);
+
+  const handleAddJobCategory = () => {
+    const val = newJobCategory.trim();
+    if (!val) return;
+    if (jobCategoriesList.includes(val)) {
+      alert('این دسته شغلی از قبل در لیست وجود دارد.');
+      return;
+    }
+    const updated = [...jobCategoriesList, val];
+    setFormSettings({
+      ...formSettings,
+      jobCategories: updated,
+    });
+    setNewJobCategory('');
+    sounds.playPop();
+  };
+
+  const handleRemoveJobCategory = (cat: string) => {
+    const updated = jobCategoriesList.filter((c) => c !== cat);
+    setFormSettings({
+      ...formSettings,
+      jobCategories: updated,
+    });
+    sounds.playPop();
+  };
+
+  const handleOpenReport = async (user: User) => {
+    setReportUser(user);
+    setIsLoadingReport(true);
+    setReportData(null);
+    setReportTab('overview');
+    sounds.playPop();
+    try {
+      const data = await api.getUserReport(user.id);
+      setReportData(data);
+    } catch (err: any) {
+      alert(err.message || 'خطا در بارگذاری گزارش و کارنامه کاربر');
+    } finally {
+      setIsLoadingReport(false);
+    }
+  };
 
   // If not admin, do not render
   if (currentUser?.role !== 'admin') {
@@ -427,7 +519,17 @@ export const UserManagementView: React.FC = () => {
                       </div>
 
                       {/* Action buttons */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* VIEW USER COMPREHENSIVE REPORT */}
+                        <button
+                          onClick={() => handleOpenReport(u)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 hover:text-white border border-indigo-500/30 hover:border-indigo-500/60 transition-all font-bold text-xs cursor-pointer shadow-xs active:scale-95"
+                          title="مشاهده کارنامه، تسک‌ها، دلایل عدم انجام، یادداشت‌ها و اهداف این کاربر"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>کارنامه و گزارش عملکرد</span>
+                        </button>
+
                         <button
                           onClick={() => handleAssignTask(u.id)}
                           className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 transition-colors cursor-pointer"
@@ -439,7 +541,7 @@ export const UserManagementView: React.FC = () => {
                         <button
                           onClick={() => handleViewUserTasks(u.id)}
                           className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 transition-colors cursor-pointer"
-                          title="مشاهده تسک‌های این کاربر"
+                          title="مشاهده تسک‌های این کاربر در تقویم"
                         >
                           <Eye className="w-4 h-4 text-zinc-300" />
                         </button>
@@ -696,6 +798,68 @@ export const UserManagementView: React.FC = () => {
             </div>
           </div>
 
+          {/* 4. Job Categories Management (New Feature) */}
+          <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-5 space-y-4 backdrop-blur-md">
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-purple-400" />
+                <h3 className="text-sm font-bold text-white">مدیریت حوزه‌های کاری و دسته‌بندی مشاغل</h3>
+              </div>
+              <span className="text-xs text-zinc-400 font-mono">
+                {toPersianDigits(jobCategoriesList.length)} دسته‌بندی تعریف‌شده
+              </span>
+            </div>
+
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              دسته‌بندی‌ها و مشاغلی که در اینجا تعریف می‌کنید، بلافاصله در فرم ثبت‌نام کاربران جدید قرار می‌گیرند.
+            </p>
+
+            {/* Existing Categories Badges with Delete button */}
+            <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-3 bg-zinc-950/60 rounded-2xl border border-zinc-800/80">
+              {jobCategoriesList.map((cat) => (
+                <span
+                  key={cat}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800 text-zinc-200 border border-zinc-700/60 text-xs font-bold hover:border-zinc-500 transition-colors"
+                >
+                  <span>{cat}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveJobCategory(cat)}
+                    className="text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer p-0.5"
+                    title={`حذف دسته‌بندی "${cat}"`}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+
+            {/* Add New Category Input */}
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="text"
+                value={newJobCategory}
+                onChange={(e) => setNewJobCategory(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddJobCategory();
+                  }
+                }}
+                placeholder="عنوان حوزه یا شغل جدید (مثلاً: مهندس هوش مصنوعی، مشاور حقوقی)..."
+                className="flex-1 px-4 py-2.5 rounded-2xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-purple-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddJobCategory}
+                className="px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>افزودن دسته</span>
+              </button>
+            </div>
+          </div>
+
           {/* Submit button */}
           <div className="flex justify-end pt-2">
             <button
@@ -863,6 +1027,440 @@ export const UserManagementView: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: COMPREHENSIVE USER PERFORMANCE REPORT */}
+      {reportUser && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
+          onClick={() => setReportUser(null)}
+        >
+          <div
+            className="w-full max-w-3xl bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 animate-in zoom-in-95 max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-3 pb-4 border-b border-zinc-800">
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-300 font-black text-base flex items-center justify-center flex-shrink-0 shadow-inner">
+                  {reportUser.name.slice(0, 1)}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base sm:text-lg font-black text-white">
+                      کارنامه و گزارش عملکرد: {reportUser.name}
+                    </h3>
+                    <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-bold">
+                      @{reportUser.username}
+                    </span>
+                    {reportUser.role === 'admin' ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold">
+                        مدیر سیستم
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700">
+                        کاربر عادی
+                      </span>
+                    )}
+                  </div>
+
+                  {/* User metadata badges */}
+                  <div className="flex items-center gap-3 text-xs text-zinc-400 flex-wrap pt-1.5">
+                    {reportUser.jobTitle && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-zinc-300 bg-zinc-800/80 px-2 py-0.5 rounded-lg border border-zinc-700/50">
+                        <Briefcase className="w-3 h-3 text-zinc-400" />
+                        {reportUser.jobTitle}
+                      </span>
+                    )}
+
+                    {reportUser.phone && (
+                      <a
+                        href={`tel:${reportUser.phone}`}
+                        className="inline-flex items-center gap-1 text-[11px] text-zinc-300 hover:text-indigo-400 font-mono transition-colors"
+                      >
+                        <Phone className="w-3 h-3 text-zinc-500" />
+                        {reportUser.phone}
+                      </a>
+                    )}
+
+                    {reportUser.email && (
+                      <a
+                        href={`mailto:${reportUser.email}`}
+                        className="inline-flex items-center gap-1 text-[11px] text-zinc-300 hover:text-indigo-400 font-mono transition-colors"
+                      >
+                        <Mail className="w-3 h-3 text-zinc-500" />
+                        {reportUser.email}
+                      </a>
+                    )}
+
+                    {(reportUser.province || reportUser.city) && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-zinc-400">
+                        <MapPin className="w-3 h-3 text-zinc-500" />
+                        {reportUser.province} {reportUser.city && `، ${reportUser.city}`}
+                      </span>
+                    )}
+
+                    {reportUser.birthDate && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-zinc-400 font-mono">
+                        <Calendar className="w-3 h-3 text-zinc-500" />
+                        متولد {toPersianDigits(reportUser.birthDate)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setReportUser(null)}
+                className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                title="بستن کارنامه"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Loading Indicator */}
+            {isLoadingReport ? (
+              <div className="py-16 text-center space-y-3">
+                <div className="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs text-zinc-400">در حال دریافت جامع‌ترین گزارش عملکرد کاربر از دیتابیس...</p>
+              </div>
+            ) : reportData ? (
+              <div className="space-y-4">
+                {/* 4 Summary KPI Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="p-3.5 bg-zinc-950/70 rounded-2xl border border-zinc-800/80">
+                    <div className="flex items-center gap-1 text-emerald-400 text-[11px] mb-1 font-bold">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      <span>نرخ موفقیت تسک‌ها</span>
+                    </div>
+                    <div className="text-2xl font-black text-white">
+                      {toPersianDigits(reportData.stats.completionRate)}٪
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-zinc-950/70 rounded-2xl border border-zinc-800/80">
+                    <div className="flex items-center gap-1 text-indigo-400 text-[11px] mb-1 font-bold">
+                      <ListTodo className="w-3.5 h-3.5" />
+                      <span>تسک‌های انجام‌شده</span>
+                    </div>
+                    <div className="text-2xl font-black text-white">
+                      {toPersianDigits(reportData.stats.completedTasks)}{' '}
+                      <span className="text-xs font-normal text-zinc-500">
+                        از {toPersianDigits(reportData.stats.totalTasks)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-zinc-950/70 rounded-2xl border border-zinc-800/80">
+                    <div className="flex items-center gap-1 text-amber-400 text-[11px] mb-1 font-bold">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      <span>دلایل عدم انجام تسک</span>
+                    </div>
+                    <div className="text-2xl font-black text-amber-400">
+                      {toPersianDigits(reportData.stats.incompleteWithReason)}
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-zinc-950/70 rounded-2xl border border-zinc-800/80">
+                    <div className="flex items-center gap-1 text-purple-400 text-[11px] mb-1 font-bold">
+                      <Target className="w-3.5 h-3.5" />
+                      <span>اهداف شغلی ثبت‌شده</span>
+                    </div>
+                    <div className="text-2xl font-black text-white">
+                      {toPersianDigits(reportData.goals?.length || 0)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub-Tabs inside Modal */}
+                <div className="flex items-center gap-1 p-1 bg-zinc-950/80 rounded-2xl border border-zinc-800 overflow-x-auto">
+                  <button
+                    onClick={() => setReportTab('overview')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                      reportTab === 'overview' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    خلاصه وضعیت
+                  </button>
+                  <button
+                    onClick={() => setReportTab('tasks')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                      reportTab === 'tasks' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    فهرست تسک‌ها ({toPersianDigits(reportData.tasks?.length || 0)})
+                  </button>
+                  <button
+                    onClick={() => setReportTab('goals')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                      reportTab === 'goals' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    اهداف و رشد شغلی ({toPersianDigits(reportData.goals?.length || 0)})
+                  </button>
+                  <button
+                    onClick={() => setReportTab('notes')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                      reportTab === 'notes' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    یادداشت‌های روزانه ({toPersianDigits(Object.keys(reportData.notes || {}).length)})
+                  </button>
+                  <button
+                    onClick={() => setReportTab('personality')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                      reportTab === 'personality' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    آزمون شخصیت و روتین
+                  </button>
+                </div>
+
+                {/* TAB CONTENT */}
+                <div className="bg-zinc-950/50 rounded-2xl border border-zinc-800/80 p-4 min-h-[220px] max-h-[46vh] overflow-y-auto space-y-3">
+                  {/* TAB 1: OVERVIEW & INCOMPLETE REASONS */}
+                  {reportTab === 'overview' && (
+                    <div className="space-y-3 animate-in fade-in text-xs">
+                      <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
+                        <span className="font-bold text-zinc-300">تحلیل دلایل عدم انجام تسک‌ها (ثبت در هوش مصنوعی):</span>
+                        <span className="text-[11px] text-zinc-500">
+                          {toPersianDigits(reportData.stats.incompleteWithReason)} تسک با دلیل ثبت‌شده
+                        </span>
+                      </div>
+
+                      {reportData.tasks.filter((t) => t.incompleteReason).length === 0 ? (
+                        <div className="py-8 text-center text-zinc-500 space-y-1">
+                          <CheckCircle2 className="w-8 h-8 text-emerald-500/60 mx-auto" />
+                          <p>این کاربر هیچ تسک نیمه‌کاره با دلیل ثبت‌شده ندارد یا همه کارهایش را انجام داده است.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {reportData.tasks
+                            .filter((t) => t.incompleteReason)
+                            .map((t) => (
+                              <div
+                                key={t.id}
+                                className="p-3 rounded-xl bg-zinc-900 border border-amber-500/20 space-y-1.5"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-bold text-white text-xs">{t.title}</span>
+                                  <span className="text-[10px] text-zinc-400 font-mono">
+                                    {toPersianDigits(t.date)} {t.time && `• ${t.time}`}
+                                  </span>
+                                </div>
+                                <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-200 text-[11px] leading-relaxed flex items-start gap-1.5">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                                  <div>
+                                    <span className="font-bold">علت اعلام‌شده توسط کاربر: </span>
+                                    <span>{t.incompleteReason}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 2: TASKS LIST */}
+                  {reportTab === 'tasks' && (
+                    <div className="space-y-2 animate-in fade-in">
+                      {reportData.tasks.length === 0 ? (
+                        <div className="py-8 text-center text-zinc-500 text-xs">
+                          هنوز هیچ تسکی برای این کاربر ثبت نشده است.
+                        </div>
+                      ) : (
+                        reportData.tasks.map((t) => (
+                          <div
+                            key={t.id}
+                            className="p-3 rounded-xl bg-zinc-900 border border-zinc-800/80 flex items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                {t.completed ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
+                                    <CheckCircle className="w-3 h-3" />
+                                    انجام شده
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700">
+                                    در انتظار
+                                  </span>
+                                )}
+                                <span className={`font-bold text-white ${t.completed ? 'line-through text-zinc-400' : ''}`}>
+                                  {t.title}
+                                </span>
+                              </div>
+                              {t.description && (
+                                <p className="text-[11px] text-zinc-400 truncate">{t.description}</p>
+                              )}
+                              {t.incompleteReason && (
+                                <p className="text-[11px] text-amber-300">
+                                  ⚠️ علت عدم انجام: {t.incompleteReason}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="text-right text-[11px] text-zinc-400 font-mono whitespace-nowrap">
+                              <div>{toPersianDigits(t.date)}</div>
+                              {t.time && <div className="text-zinc-500">{t.time}</div>}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 3: CAREER GOALS */}
+                  {reportTab === 'goals' && (
+                    <div className="space-y-2.5 animate-in fade-in">
+                      {(!reportData.goals || reportData.goals.length === 0) ? (
+                        <div className="py-8 text-center text-zinc-500 text-xs">
+                          این کاربر هنوز هدف شغلی ثبت نکرده است.
+                        </div>
+                      ) : (
+                        reportData.goals.map((g) => (
+                          <div
+                            key={g.id}
+                            className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2 text-xs"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <Target className="w-4 h-4 text-purple-400" />
+                                <span className="font-bold text-white">{g.title}</span>
+                              </div>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                                {g.period === 'week' ? 'هفتگی' : g.period === 'month' ? 'ماهانه' : g.period === 'quarter' ? 'فصلی' : 'سالانه'}
+                              </span>
+                            </div>
+                            {g.description && (
+                              <p className="text-[11px] text-zinc-400 leading-relaxed">{g.description}</p>
+                            )}
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] text-zinc-400">
+                                <span>پیشرفت هدف</span>
+                                <span className="font-mono text-purple-300">{toPersianDigits(g.progress || 0)}٪</span>
+                              </div>
+                              <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className="bg-purple-500 h-full rounded-full transition-all"
+                                  style={{ width: `${g.progress || 0}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 4: DAILY NOTES */}
+                  {reportTab === 'notes' && (
+                    <div className="space-y-2.5 animate-in fade-in text-xs">
+                      {(!reportData.notes || Object.keys(reportData.notes).length === 0) ? (
+                        <div className="py-8 text-center text-zinc-500">
+                          هیچ یادداشت روزانه‌ای توسط این کاربر ثبت نشده است.
+                        </div>
+                      ) : (
+                        Object.entries(reportData.notes).map(([dt, txt]) => (
+                          <div
+                            key={dt}
+                            className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 space-y-1"
+                          >
+                            <div className="flex items-center gap-1.5 text-indigo-400 text-[11px] font-mono">
+                              <BookOpen className="w-3.5 h-3.5" />
+                              <span>تاریخ: {toPersianDigits(dt)}</span>
+                            </div>
+                            <p className="text-zinc-200 text-xs leading-relaxed whitespace-pre-wrap">{txt}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 5: PERSONALITY & TIMELINE */}
+                  {reportTab === 'personality' && (
+                    <div className="space-y-3 animate-in fade-in text-xs">
+                      {reportData.personality ? (
+                        <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-white text-sm">تیپ شخصیتی: {reportData.personality.type}</span>
+                            <span className="text-[11px] text-indigo-400 font-mono">
+                              ثبت‌شده در {toPersianDigits((reportData.personality.createdAt || '').slice(0, 10))}
+                            </span>
+                          </div>
+                          {reportData.personality.description && (
+                            <p className="text-zinc-300 text-xs leading-relaxed">{reportData.personality.description}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="py-4 text-center text-zinc-500">
+                          آزمون شخصیتی ثبت نشده است.
+                        </div>
+                      )}
+
+                      {/* Daily timeline if exists */}
+                      {reportData.user.dailyTimeline && Object.keys(reportData.user.dailyTimeline).length > 0 && (
+                        <div className="space-y-2 pt-2 border-t border-zinc-800">
+                          <span className="font-bold text-zinc-300 block">روتین شبانه‌روزی ۲۴ ساعته:</span>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {Object.entries(reportData.user.dailyTimeline).map(([timeSlot, act]: any) => (
+                              <div key={timeSlot} className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 font-mono text-[11px]">
+                                <span className="text-indigo-400">{timeSlot}: </span>
+                                <span className="text-zinc-300 font-sans">{act}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Footer Actions */}
+                <div className="pt-2 flex items-center justify-between border-t border-zinc-800 flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const targetId = reportUser.id;
+                        setReportUser(null);
+                        handleAssignTask(targetId);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      <span>انتصاب تسک به این کاربر</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        const targetId = reportUser.id;
+                        setReportUser(null);
+                        handleViewUserTasks(targetId);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>مشاهده در تقویم تسک‌ها</span>
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setReportUser(null)}
+                    className="px-5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    بستن کارنامه
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="py-12 text-center text-zinc-400 text-xs">
+                خطا در بارگذاری اطلاعات گزارش.
+              </div>
+            )}
           </div>
         </div>
       )}

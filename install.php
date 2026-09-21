@@ -86,6 +86,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['install_mysql'])) {
                 @file_put_contents($configFile, $conf, LOCK_EX);
             }
 
+            // Also save persistent config.local.php (so future zip updates never wipe out DB credentials)
+            $localConfPath = __DIR__ . '/config.local.php';
+            $escapedPass = addcslashes($pass, "'\\");
+            $localContent = "<?php\n// TaskRooz Persistent MySQL Configuration\ndefine('DB_HOST', '{$host}');\ndefine('DB_PORT', '{$port}');\ndefine('DB_NAME', '{$dbname}');\ndefine('DB_USER', '{$user}');\ndefine('DB_PASS', '{$escapedPass}');\n";
+            @file_put_contents($localConfPath, $localContent, LOCK_EX);
+
             $success = "پایگاه داده MySQL با موفقیت نصب و متصل شد! تمامی جدول‌ها ساخته شدند و حساب مدیر کل (Mohusyn) فعال گردید.";
             $step = 'done';
         } catch (Exception $e) {

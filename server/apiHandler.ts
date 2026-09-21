@@ -510,6 +510,39 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
     if (method === 'GET') {
       const action = urlObj.searchParams.get('action');
+      if (action === 'report') {
+        const targetId = urlObj.searchParams.get('user_id') || urlObj.searchParams.get('id');
+        const targetUser = db.users.find((u) => u.id === targetId || u.username === targetId);
+        if (!targetUser) {
+          sendJson(res, { error: 'کاربر پیدا نشد.' }, 404);
+          return true;
+        }
+        const userTasks = db.tasks.filter((t) => t.userId === targetUser.id);
+        const userGoals = ((db as any).goals || []).filter((g: any) => g.userId === targetUser.id);
+        const userNotes = ((db as any).dailyNotes || {})[targetUser.id] || {};
+        const userPersonality = ((db as any).personalityResults || {})[targetUser.id] || null;
+        const total = userTasks.length;
+        const done = userTasks.filter((t) => t.completed).length;
+        const pending = total - done;
+        const withReason = userTasks.filter((t: any) => t.incompleteReason).length;
+        const rate = total > 0 ? Math.round((done / total) * 100) : 0;
+        sendJson(res, {
+          user: targetUser,
+          tasks: userTasks,
+          goals: userGoals,
+          notes: userNotes,
+          personality: userPersonality,
+          stats: {
+            totalTasks: total,
+            completedTasks: done,
+            pendingTasks: pending,
+            incompleteWithReason: withReason,
+            completionRate: rate,
+          },
+        });
+        return true;
+      }
+
       if (action === 'export_csv' || pathname.endsWith('/export/csv')) {
         const rows = [
           'ردیف,نام و نام خانوادگی,نام کاربری,نقش,شماره تماس,ایمیل,استان,شهر,تاریخ تولد,شغل,کل تسک‌ها,تسک‌های انجام‌شده,درصد پیشرفت,تاریخ عضویت',

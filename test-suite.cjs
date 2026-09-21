@@ -586,3 +586,62 @@ test('Multi-User Room Co-presence: Both Users in Same Room with Unified State', 
   assert(foundReza, 'Reza MUST appear in Admin User Monitoring panel');
 });
 
+// 15. Admin Can Read Comprehensive Performance Report of Other Users
+test('Admin Can Read Comprehensive Performance Report of Other Users', async () => {
+  // 1. Register a user with complete profile
+  const reportUsername = 'student_' + Date.now();
+  const reg = await request('POST', '/api/auth?action=register', {
+    username: reportUsername,
+    password: 'StudentPass123',
+    name: 'سارا احمدی',
+    phone: '09129876543',
+    birthDate: '1381/06/20',
+    jobTitle: 'کارشناس هوش مصنوعی',
+  });
+  assert(reg.status === 201, 'User registered');
+  const studentId = reg.body.user.id;
+  const studentHeader = { Authorization: `Bearer ${reg.body.token}` };
+
+  // 2. Student adds a task with incomplete reason
+  await request('POST', '/api/tasks', {
+    title: 'تکمیل ماژول شبکه عصبی',
+    date: '1405-01-01',
+    time: '14:00',
+    priority: 'high',
+    userId: studentId,
+  }, studentHeader);
+
+  // 3. Admin logs in and requests comprehensive report for this user
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  const reportRes = await request('GET', `/api/users?action=report&user_id=${studentId}`, null, adminHeader);
+  assert(reportRes.status === 200, 'User report fetched successfully');
+  assert(reportRes.body.user.name === 'سارا احمدی', 'Report belongs to student');
+  assert(reportRes.body.user.phone === '09129876543', 'Phone is included in report');
+  assert(Array.isArray(reportRes.body.tasks), 'Tasks list returned in report');
+  assert(reportRes.body.stats.totalTasks >= 1, 'Total tasks counted in report');
+});
+
+// 16. Admin Global Settings Job Categories & Registration Integration
+test('Admin Global Settings Job Categories & Registration Integration', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  // Save new job categories
+  const newCategories = [
+    'مهندس هوش مصنوعی و یادگیری عمیق',
+    'مشاور حقوقی و مالکیت فکری',
+    'متخصص DevOps و کلود',
+  ];
+  const saveRes = await request('POST', '/api/settings?action=global', {
+    jobCategories: newCategories,
+  }, adminHeader);
+  assert(saveRes.status === 200, 'Global settings saved');
+
+  // Fetch settings to verify persistence
+  const getRes = await request('GET', '/api/settings', null, adminHeader);
+  assert(getRes.status === 200, 'Settings retrieved');
+  assert(getRes.body.settings.jobCategories.includes('مهندس هوش مصنوعی و یادگیری عمیق'), 'New job category persisted');
+});
+

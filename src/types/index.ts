@@ -230,4 +230,5 @@ export interface GlobalSystemSettings {
     allowPublicChat: boolean;
   };
   dailyMantra: string;
+  jobCategories?: string[];
 }

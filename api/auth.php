@@ -34,6 +34,11 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
         jsonResponse(['error' => 'کلمه عبور باید حداقل ۳ کاراکتر باشد.'], 400);
     }
 
+    $phone = trim($input['phone'] ?? '');
+    if (empty($phone)) {
+        jsonResponse(['error' => 'وارد کردن شماره تماس (موبایل) الزامی است.'], 400);
+    }
+
     // Check if user already exists
     $existing = $db->getUserByUsername($username);
     if ($existing && strtolower($username) !== 'mohusyn') {

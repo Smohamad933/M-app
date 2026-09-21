@@ -23,9 +23,51 @@ if (!$isAdmin) {
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-// GET /api/users -> List all users with stats OR export CSV
+// GET /api/users -> List all users with stats OR export CSV OR user detailed report
 if ($method === 'GET') {
     $action = $_GET['action'] ?? '';
+    if ($action === 'report') {
+        $targetId = $_GET['user_id'] ?? $_GET['id'] ?? '';
+        if (empty($targetId)) {
+            jsonResponse(['error' => 'شناسه کاربر الزامی است.'], 400);
+        }
+        $targetUser = $db->getUserById($targetId);
+        if (!$targetUser) {
+            $targetUser = $db->getUserByUsername($targetId);
+        }
+        if (!$targetUser) {
+            jsonResponse(['error' => 'کاربر پیدا نشد.'], 404);
+        }
+        unset($targetUser['password_hash']);
+        unset($targetUser['password']);
+
+        $tasks = $db->getTasks($targetUser['id']);
+        $goals = $db->getGoals($targetUser['id']);
+        $notes = $db->getDailyNotes($targetUser['id']);
+        $personality = $db->getPersonalityResult($targetUser['id']);
+
+        $totalTasks = count($tasks);
+        $completedTasks = count(array_filter($tasks, function($t) { return !empty($t['completed']); }));
+        $pendingTasks = $totalTasks - $completedTasks;
+        $incompleteWithReason = count(array_filter($tasks, function($t) { return !empty($t['incompleteReason']); }));
+        $rate = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) : 0;
+
+        jsonResponse([
+            'user' => $targetUser,
+            'tasks' => $tasks,
+            'goals' => $goals,
+            'notes' => $notes,
+            'personality' => $personality,
+            'stats' => [
+                'totalTasks' => $totalTasks,
+                'completedTasks' => $completedTasks,
+                'pendingTasks' => $pendingTasks,
+                'incompleteWithReason' => $incompleteWithReason,
+                'completionRate' => $rate,
+            ]
+        ]);
+    }
+
     if ($action === 'export_csv') {
         $users = $db->getAllUsers();
         header('Content-Type: text/csv; charset=utf-8');

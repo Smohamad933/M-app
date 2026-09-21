@@ -3,6 +3,7 @@ import { useTask } from '../context/TaskContext';
 import { api } from '../services/api';
 import { sounds } from '../utils/sound';
 import { IRAN_PROVINCES, POPULAR_JOBS, SUGGESTED_SKILLS } from '../utils/iranLocations';
+import { toPersianDigits } from '../utils/persianDate';
 import {
   CheckSquare,
   Lock,
@@ -20,8 +21,26 @@ import {
   Plus,
 } from 'lucide-react';
 
+const PERSIAN_MONTHS = [
+  { val: '01', name: 'فروردین' },
+  { val: '02', name: 'اردیبهشت' },
+  { val: '03', name: 'خرداد' },
+  { val: '04', name: 'تیر' },
+  { val: '05', name: 'مرداد' },
+  { val: '06', name: 'شهریور' },
+  { val: '07', name: 'مهر' },
+  { val: '08', name: 'آبان' },
+  { val: '09', name: 'آذر' },
+  { val: '10', name: 'دی' },
+  { val: '11', name: 'بهمن' },
+  { val: '12', name: 'اسفند' },
+];
+
+const BIRTH_YEARS = Array.from({ length: 65 }, (_, i) => String(1395 - i));
+const BIRTH_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+
 export const LoginScreen: React.FC = () => {
-  const { login, register } = useTask();
+  const { login, register, globalSettings } = useTask();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [registerStep, setRegisterStep] = useState<1 | 2>(1);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
@@ -38,13 +57,23 @@ export const LoginScreen: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  // Rich Profile fields (Requirement 4)
+  // Rich Profile fields
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [province, setProvince] = useState('تهران');
   const [city, setCity] = useState('تهران');
-  const [birthDate, setBirthDate] = useState('');
-  const [jobTitle, setJobTitle] = useState('برنامه‌نویس و توسعه‌دهنده نرم‌افزار');
+  
+  // Persian Birth Date Dropdown Selectors
+  const [birthYear, setBirthYear] = useState('1380');
+  const [birthMonth, setBirthMonth] = useState('01');
+  const [birthDay, setBirthDay] = useState('01');
+
+  // Dynamic job categories loaded from global settings or default
+  const jobCategories = (globalSettings?.jobCategories && globalSettings.jobCategories.length > 0)
+    ? globalSettings.jobCategories
+    : POPULAR_JOBS;
+
+  const [jobTitle, setJobTitle] = useState(jobCategories[0] || 'برنامه‌نویس و توسعه‌دهنده نرم‌افزار');
   const [customJob, setCustomJob] = useState('');
   const [selectedSkills, setSelectedSkills] = useState<string[]>(['مدیریت پروژه و تایم منیجمنت']);
   const [customSkillInput, setCustomSkillInput] = useState('');
@@ -86,6 +115,15 @@ export const LoginScreen: React.FC = () => {
         setError('لطفاً نام، نام کاربری و کلمه عبور را تکمیل کنید.');
         return;
       }
+      if (!phone.trim()) {
+        setError('شماره تماس (موبایل) الزامی است.');
+        return;
+      }
+      const cleanPhone = phone.trim().replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString());
+      if (!/^09\d{9}$/.test(cleanPhone)) {
+        setError('شماره موبایل باید ۱۱ رقم بوده و با ۰۹ شروع شود (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).');
+        return;
+      }
       if (username.trim().length < 3) {
         setError('نام کاربری باید حداقل ۳ کاراکتر باشد.');
         return;
@@ -110,17 +148,18 @@ export const LoginScreen: React.FC = () => {
         await login(username.trim(), password);
       } else {
         // Register Mode with all complete details
-        const finalJob = customJob.trim() ? customJob.trim() : jobTitle;
+        const finalJob = (jobTitle === 'custom' ? customJob.trim() : jobTitle) || 'سایر / فریلنسر آزاد';
+        const finalBirthDate = `${birthYear}/${birthMonth}/${birthDay}`;
 
         await register({
           name: name.trim(),
           username: username.trim().toLowerCase(),
           password: password.trim(),
-          phone: phone.trim(),
+          phone: phone.trim().replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString()),
           email: email.trim(),
           province,
           city,
-          birthDate: birthDate.trim(),
+          birthDate: finalBirthDate,
           jobTitle: finalJob,
           skills: selectedSkills,
         });
@@ -134,18 +173,28 @@ export const LoginScreen: React.FC = () => {
 
   const handleRegisterOnly = async () => {
     setError(null);
+    if (!phone.trim()) {
+      setError('شماره تماس (موبایل) الزامی است.');
+      return;
+    }
+    const cleanPhone = phone.trim().replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString());
+    if (!/^09\d{9}$/.test(cleanPhone)) {
+      setError('شماره موبایل باید ۱۱ رقم بوده و با ۰۹ شروع شود (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).');
+      return;
+    }
     setLoading(true);
     try {
-      const finalJob = customJob.trim() ? customJob.trim() : jobTitle;
+      const finalJob = (jobTitle === 'custom' ? customJob.trim() : jobTitle) || 'سایر / فریلنسر آزاد';
+      const finalBirthDate = `${birthYear}/${birthMonth}/${birthDay}`;
       await api.register({
         name: name.trim(),
         username: username.trim().toLowerCase(),
         password: password.trim(),
-        phone: phone.trim(),
+        phone: cleanPhone,
         email: email.trim(),
         province,
         city,
-        birthDate: birthDate.trim(),
+        birthDate: finalBirthDate,
         jobTitle: finalJob,
         skills: selectedSkills,
       });
@@ -348,13 +397,16 @@ export const LoginScreen: React.FC = () => {
               <div className="space-y-1">
                 <label className="font-bold text-zinc-300 flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>شماره تماس (موبایل)</span>
+                  <span>
+                    شماره تماس (موبایل) <span className="text-rose-500">*</span>
+                  </span>
                 </label>
                 <input
                   type="tel"
+                  required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="مثال: ۰۹۱۲۳۴۵۶۷۸۹"
+                  placeholder="مثال: ۰۹۱۲۳۴۵۶۷۸۹ (الزامی)"
                   className="w-full px-3.5 py-2.5 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white font-mono text-xs outline-hidden focus:border-zinc-500"
                 />
               </div>
@@ -413,43 +465,94 @@ export const LoginScreen: React.FC = () => {
                 </div>
               </div>
 
+              {/* JALALI BIRTH DATE 3-DROPDOWN SELECTOR */}
               <div className="space-y-1">
-                <label className="font-bold text-zinc-300 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>تاریخ تولد (شمسی)</span>
+                <label className="font-bold text-zinc-300 flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>تاریخ تولد (شمسی)</span>
+                  </span>
+                  <span className="text-[11px] font-mono text-zinc-400">
+                    {toPersianDigits(birthYear)}/{toPersianDigits(birthMonth)}/{toPersianDigits(birthDay)}
+                  </span>
                 </label>
-                <input
-                  type="text"
-                  value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                  placeholder="مثال: ۱۳۸۰/۰۵/۱۴"
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white font-mono text-xs outline-hidden focus:border-zinc-500"
-                />
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <span className="block text-[10px] text-zinc-400 mb-0.5">روز</span>
+                    <select
+                      value={birthDay}
+                      onChange={(e) => setBirthDay(e.target.value)}
+                      className="w-full px-2 py-2 rounded-2xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden"
+                    >
+                      {BIRTH_DAYS.map((d) => (
+                        <option key={d} value={d}>
+                          {toPersianDigits(parseInt(d, 10))}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <span className="block text-[10px] text-zinc-400 mb-0.5">ماه</span>
+                    <select
+                      value={birthMonth}
+                      onChange={(e) => setBirthMonth(e.target.value)}
+                      className="w-full px-2 py-2 rounded-2xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden"
+                    >
+                      {PERSIAN_MONTHS.map((m) => (
+                        <option key={m.val} value={m.val}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <span className="block text-[10px] text-zinc-400 mb-0.5">سال</span>
+                    <select
+                      value={birthYear}
+                      onChange={(e) => setBirthYear(e.target.value)}
+                      className="w-full px-2 py-2 rounded-2xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden font-mono"
+                    >
+                      {BIRTH_YEARS.map((y) => (
+                        <option key={y} value={y}>
+                          {toPersianDigits(y)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
 
+              {/* DYNAMIC JOB CATEGORIES & CUSTOM INPUT */}
               <div className="space-y-1">
                 <label className="font-bold text-zinc-300 flex items-center gap-1.5">
                   <Briefcase className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>شغل و نوع تخصص</span>
+                  <span>حوزه کاری و نوع تخصص</span>
                 </label>
                 <select
                   value={jobTitle}
                   onChange={(e) => setJobTitle(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-2xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden mb-1.5"
                 >
-                  {POPULAR_JOBS.map((j) => (
+                  {jobCategories.map((j) => (
                     <option key={j} value={j}>
                       {j}
                     </option>
                   ))}
+                  <option value="custom">+ عنوان یا حوزه کاری دیگر (تایپ دستی)...</option>
                 </select>
-                <input
-                  type="text"
-                  value={customJob}
-                  onChange={(e) => setCustomJob(e.target.value)}
-                  placeholder="یا عنوان شغلی دقیق خود را بنویسید (مثلاً: فیلمبردار مستند)"
-                  className="w-full px-3 py-2 rounded-2xl bg-zinc-800/60 border border-zinc-700/40 text-white text-xs outline-hidden placeholder:text-zinc-500"
-                />
+                {jobTitle === 'custom' && (
+                  <input
+                    type="text"
+                    required
+                    value={customJob}
+                    onChange={(e) => setCustomJob(e.target.value)}
+                    placeholder="عنوان شغلی یا حوزه تخصصی خود را بنویسید..."
+                    className="w-full px-3 py-2 rounded-2xl bg-zinc-800/90 border border-indigo-500/60 text-white text-xs outline-hidden placeholder:text-zinc-500 animate-in fade-in"
+                    autoFocus
+                  />
+                )}
               </div>
 
               <div className="space-y-1.5">
