@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "cp index.source.html index.html && vite",
-    "build": "cp index.source.html index.html && tsc -b && vite build && cp dist/index.html index.html && cp -r dist/assets .",
+    "build": "cp index.source.html index.html && tsc -b && vite build && cp -r dist/assets . && cp index.source.html index.html",
     "lint": "oxlint",
     "test": "node test-suite.cjs",
     "preview": "vite preview"

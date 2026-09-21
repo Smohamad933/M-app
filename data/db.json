@@ -344,6 +344,58 @@
       "city": "شیراز",
       "jobTitle": "کارشناس تضمین کیفیت (QA)",
       "createdAt": "2026-09-21T08:05:26.011Z"
+    },
+    {
+      "id": "usr_1789983202782_xiu9",
+      "username": "test_user_1789983202781",
+      "password": "TestPassword123",
+      "name": "تست کننده سیستم",
+      "role": "user",
+      "phone": "09120001122",
+      "email": "tester@taskrooz.local",
+      "province": "اصفهان",
+      "city": "اصفهان",
+      "birthDate": "1375/02/10",
+      "jobTitle": "مهندس ارشد نرم‌افزار",
+      "skills": [
+        "TypeScript",
+        "React",
+        "Docker"
+      ],
+      "dailyTimeline": {
+        "wakeUp": "06:00",
+        "workStart": "08:00",
+        "lunch": "13:00",
+        "gym": "17:30",
+        "sleep": "23:00"
+      },
+      "createdAt": "2026-09-21T09:33:22.782Z"
+    },
+    {
+      "id": "usr_1789983202818_h8gv",
+      "username": "regular_user_1789983202817",
+      "password": "Password123!",
+      "name": "کاربر معمولی بدون دسترسی",
+      "role": "user",
+      "createdAt": "2026-09-21T09:33:22.818Z"
+    },
+    {
+      "id": "usr_1789983202860_0bji",
+      "username": "user_target_1789983202859",
+      "password": "TargetPass123",
+      "name": "کاربر هدف انتصاب تسک",
+      "role": "user",
+      "createdAt": "2026-09-21T09:33:22.860Z"
+    },
+    {
+      "id": "usr_1789983202877_z4km",
+      "username": "live_member_1789983202876",
+      "password": "MemberPass123",
+      "name": "عضو تازه پیوسته به سامانه",
+      "role": "user",
+      "city": "شیراز",
+      "jobTitle": "کارشناس تضمین کیفیت (QA)",
+      "createdAt": "2026-09-21T09:33:22.877Z"
     }
   ],
   "tasks": [],
@@ -393,6 +445,91 @@
   ],
   "focus_rooms": [
     {
+      "id": "room_dynamic_1789983202888",
+      "name": "اتاق تمرکز مشترک",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1789983202889,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۰۹:۳۳",
+          "lastPing": 1789983202890
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1789983202889",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
+          "timestamp": "۰۹:۳۳"
+        },
+        {
+          "id": "msg_join_1789983202890",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
+          "timestamp": "۰۹:۳۳"
+        }
+      ],
+      "createdAt": "2026-09-21T09:33:22.889Z"
+    },
+    {
+      "id": "room_7eq6id",
+      "name": "اتاق تمرکز برنامه‌نویسان ارشد",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1789983202835,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۰۹:۳۳",
+          "lastPing": 1789983202831
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1789983202831",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق تمرکز برنامه‌نویسان ارشد» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
+          "timestamp": "۰۹:۳۳"
+        },
+        {
+          "id": "msg_1789983202834_21s1",
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "text": "سلام به همگی، تمرکز ۲۵ دقیقه‌ای را آغاز می‌کنیم! 🎯",
+          "timestamp": "۰۹:۳۳"
+        },
+        {
+          "id": "msg_del_1789983202837",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط سید محمدحسین شیخ الاسلامی (Mohusyn) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه در سرور محفوظ مانده و سپس به طور کامل پاکسازی خواهند شد.",
+          "timestamp": "۰۹:۳۳"
+        }
+      ],
+      "createdAt": "2026-09-21T09:33:22.831Z",
+      "isDeleted": true,
+      "deletedAt": 1789983202
+    },
+    {
       "id": "room_dynamic_1789977926020",
       "name": "اتاق تمرکز مشترک",
       "hostId": "usr_admin_mohusyn",
@@ -429,53 +566,6 @@
         }
       ],
       "createdAt": "2026-09-21T08:05:26.020Z"
-    },
-    {
-      "id": "room_t5qpy4",
-      "name": "اتاق تمرکز برنامه‌نویسان ارشد",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789977925973,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۸:۰۵",
-          "lastPing": 1789977925970
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789977925970",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز برنامه‌نویسان ارشد» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۰۸:۰۵"
-        },
-        {
-          "id": "msg_1789977925972_4nn4",
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "text": "سلام به همگی، تمرکز ۲۵ دقیقه‌ای را آغاز می‌کنیم! 🎯",
-          "timestamp": "۰۸:۰۵"
-        },
-        {
-          "id": "msg_del_1789977925975",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "این اتاق توسط سید محمدحسین شیخ الاسلامی (Mohusyn) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه در سرور محفوظ مانده و سپس به طور کامل پاکسازی خواهند شد.",
-          "timestamp": "۰۸:۰۵"
-        }
-      ],
-      "createdAt": "2026-09-21T08:05:25.970Z",
-      "isDeleted": true,
-      "deletedAt": 1789977925
     },
     {
       "id": "اتاق_طراحی_محصول",
@@ -592,53 +682,6 @@
       "createdAt": "2026-09-21T08:04:13.403Z"
     },
     {
-      "id": "room_ggl4yz",
-      "name": "اتاق تمرکز برنامه‌نویسان ارشد",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789977853362,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۸:۰۴",
-          "lastPing": 1789977853359
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789977853359",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز برنامه‌نویسان ارشد» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۰۸:۰۴"
-        },
-        {
-          "id": "msg_1789977853360_ywog",
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "text": "سلام به همگی، تمرکز ۲۵ دقیقه‌ای را آغاز می‌کنیم! 🎯",
-          "timestamp": "۰۸:۰۴"
-        },
-        {
-          "id": "msg_del_1789977853363",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "این اتاق توسط سید محمدحسین شیخ الاسلامی (Mohusyn) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه در سرور محفوظ مانده و سپس به طور کامل پاکسازی خواهند شد.",
-          "timestamp": "۰۸:۰۴"
-        }
-      ],
-      "createdAt": "2026-09-21T08:04:13.359Z",
-      "isDeleted": true,
-      "deletedAt": 1789977853
-    },
-    {
       "id": "room_dynamic_1789977824509",
       "name": "اتاق تمرکز مشترک",
       "hostId": "usr_admin_mohusyn",
@@ -693,7 +736,7 @@
           "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
           "isHost": true,
           "joinedAt": "۰۸:۰۳",
-          "lastPing": 1789977926019
+          "lastPing": 1789983202887
         }
       ],
       "messages": [
@@ -713,100 +756,6 @@
         }
       ],
       "createdAt": "2026-09-21T08:03:44.508Z"
-    },
-    {
-      "id": "room_rfjw4n",
-      "name": "اتاق تمرکز برنامه‌نویسان ارشد",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789977824467,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۸:۰۳",
-          "lastPing": 1789977824463
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789977824463",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز برنامه‌نویسان ارشد» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۰۸:۰۳"
-        },
-        {
-          "id": "msg_1789977824465_68ft",
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "text": "سلام به همگی، تمرکز ۲۵ دقیقه‌ای را آغاز می‌کنیم! 🎯",
-          "timestamp": "۰۸:۰۳"
-        },
-        {
-          "id": "msg_del_1789977824468",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "این اتاق توسط سید محمدحسین شیخ الاسلامی (Mohusyn) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه در سرور محفوظ مانده و سپس به طور کامل پاکسازی خواهند شد.",
-          "timestamp": "۰۸:۰۳"
-        }
-      ],
-      "createdAt": "2026-09-21T08:03:44.463Z",
-      "isDeleted": true,
-      "deletedAt": 1789977824
-    },
-    {
-      "id": "room_pgh06k",
-      "name": "اتاق تمرکز برنامه‌نویسان ارشد",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789977815538,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۸:۰۳",
-          "lastPing": 1789977815535
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789977815535",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز برنامه‌نویسان ارشد» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۰۸:۰۳"
-        },
-        {
-          "id": "msg_1789977815536_ixuf",
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "text": "سلام به همگی، تمرکز ۲۵ دقیقه‌ای را آغاز می‌کنیم! 🎯",
-          "timestamp": "۰۸:۰۳"
-        },
-        {
-          "id": "msg_del_1789977815539",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "این اتاق توسط سید محمدحسین شیخ الاسلامی (Mohusyn) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه در سرور محفوظ مانده و سپس به طور کامل پاکسازی خواهند شد.",
-          "timestamp": "۰۸:۰۳"
-        }
-      ],
-      "createdAt": "2026-09-21T08:03:35.535Z",
-      "isDeleted": true,
-      "deletedAt": 1789977815
     },
     {
       "id": "room_pgeesu",
@@ -866,7 +815,7 @@
         "water",
         "workout"
       ],
-      "updatedAt": "2026-09-21T08:05:25.961Z"
+      "updatedAt": "2026-09-21T09:33:22.811Z"
     }
   ],
   "personalityResults": [
@@ -884,7 +833,7 @@
         "اختصاص بلوک‌های تمرکز عمیق ۹۰ دقیقه‌ای در ساعات آغازین صبح",
         "حذف اعلان‌های پیام‌رسان‌ها در زمان کار با کد و طراحی معماری"
       ],
-      "completedAt": "2026-09-21T08:05:26.003Z"
+      "completedAt": "2026-09-21T09:33:22.869Z"
     }
   ],
   "globalSettings": {
@@ -905,7 +854,7 @@
       "allowPublicChat": true
     },
     "dailyMantra": "تمرکز تیمی حداکثری و تحقق اهداف فصلی",
-    "updatedAt": "2026-09-21T08:05:26.008Z"
+    "updatedAt": "2026-09-21T09:33:22.874Z"
   },
   "custom_fonts": [
     {
@@ -927,6 +876,16 @@
       "description": "فونت آپلود شده در تست یکپارچه",
       "isCustom": true,
       "createdAt": "2026-09-21T08:05:26.015Z"
+    },
+    {
+      "id": "font_1789983202882_3l10",
+      "name": "ساحل بولد سفارشی",
+      "family": "SahelBoldCustom",
+      "fontUrl": "/fonts/Sahel-Bold.woff2",
+      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
+      "description": "فونت آپلود شده در تست یکپارچه",
+      "isCustom": true,
+      "createdAt": "2026-09-21T09:33:22.882Z"
     }
   ]
 }

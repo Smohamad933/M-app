@@ -205,30 +205,35 @@ export const AVAILABLE_FONTS: SystemFontOption[] = [
 ];
 
 function injectFontLink(font: SystemFontOption) {
-  const fontSource = font.dataUrl || font.fontUrl;
-  if (!fontSource) return;
-  const elementId = `custom-font-style-${font.id}`;
-  const existing = document.getElementById(elementId);
-  if (existing) existing.remove();
+  try {
+    if (!font) return;
+    const fontSource = font.dataUrl || font.fontUrl;
+    if (!fontSource) return;
+    const elementId = `custom-font-style-${font.id || 'default'}`;
+    const existing = document.getElementById(elementId);
+    if (existing) existing.remove();
 
-  if (fontSource.endsWith('.css') || fontSource.includes('fonts.googleapis') || fontSource.includes('cdn.')) {
-    const link = document.createElement('link');
-    link.id = elementId;
-    link.rel = 'stylesheet';
-    link.href = fontSource;
-    document.head.appendChild(link);
-  } else {
-    const style = document.createElement('style');
-    style.id = elementId;
-    const cleanFamily = font.family.replace(/['"]/g, '').split(',')[0].trim();
-    style.textContent = `
-      @font-face {
-        font-family: '${cleanFamily}';
-        src: url('${fontSource}') format('woff2'), url('${fontSource}') format('truetype'), url('${fontSource}') format('opentype');
-        font-display: swap;
-      }
-    `;
-    document.head.appendChild(style);
+    if (fontSource.endsWith('.css') || fontSource.includes('fonts.googleapis') || fontSource.includes('cdn.')) {
+      const link = document.createElement('link');
+      link.id = elementId;
+      link.rel = 'stylesheet';
+      link.href = fontSource;
+      document.head.appendChild(link);
+    } else {
+      const style = document.createElement('style');
+      style.id = elementId;
+      const cleanFamily = (font.family || font.name || 'CustomFont').replace(/['"]/g, '').split(',')[0].trim();
+      style.textContent = `
+        @font-face {
+          font-family: '${cleanFamily}';
+          src: url('${fontSource}') format('woff2'), url('${fontSource}') format('truetype'), url('${fontSource}') format('opentype');
+          font-display: swap;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  } catch (e) {
+    console.warn('Could not inject font link:', e);
   }
 }
 
@@ -331,14 +336,18 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const found = allAvailableFonts.find((f) => f.id === systemFont) || allAvailableFonts[0];
-    if (found.fontUrl) {
-      injectFontLink(found);
+    const found = allAvailableFonts.find((f) => f.id === systemFont) || allAvailableFonts[0] || AVAILABLE_FONTS[0];
+    if (found) {
+      if (found.fontUrl || found.dataUrl) {
+        injectFontLink(found);
+      }
+      if (found.family) {
+        document.documentElement.style.setProperty('--font-sans', found.family);
+      }
+      try {
+        localStorage.setItem('taskrooz_system_font', found.id);
+      } catch {}
     }
-    document.documentElement.style.setProperty('--font-sans', found.family);
-    try {
-      localStorage.setItem('taskrooz_system_font', found.id);
-    } catch {}
   }, [systemFont, allAvailableFonts]);
 
   const [settings, setSettings] = useState<AppSettings>(() => {
