@@ -33,6 +33,28 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
   dailyMantra: 'تمرکز پیوسته بر کارهای با اولویت بالا و پرهیز از چندوظیفگی',
 };
 
+// Real-time synchronization channel for cross-tab and cross-window coordination
+const syncChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window 
+  ? new BroadcastChannel('taskrooz_sync_channel') 
+  : null;
+
+export function broadcastSync(event: string, payload?: any) {
+  try {
+    syncChannel?.postMessage({ event, payload, timestamp: Date.now() });
+  } catch {}
+}
+
+export function onSyncEvent(callback: (event: string, payload?: any) => void): () => void {
+  if (!syncChannel) return () => {};
+  const handler = (e: MessageEvent) => {
+    if (e.data?.event) {
+      callback(e.data.event, e.data.payload);
+    }
+  };
+  syncChannel.addEventListener('message', handler);
+  return () => syncChannel.removeEventListener('message', handler);
+}
+
 const TOKEN_KEY = 'taskrooz_auth_token';
 const USERS_STORAGE_KEY = 'taskrooz_users_local';
 const TASKS_STORAGE_KEY = 'taskrooz_tasks_local';
@@ -152,7 +174,13 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers['X-Auth-Token'] = token;
   }
 
-  const url = endpoint.startsWith('/') || endpoint.startsWith('http') ? endpoint : '/' + endpoint;
+  let url = endpoint.startsWith('/') || endpoint.startsWith('http') ? endpoint : '/' + endpoint;
+
+  // Append token to query parameter as backup for IIS which may strip Authorization header
+  if (token && !url.includes('token=')) {
+    const sep = url.includes('?') ? '&' : '?';
+    url = `${url}${sep}token=${encodeURIComponent(token)}`;
+  }
 
   let res: Response;
   try {
@@ -224,6 +252,7 @@ export const api = {
         locals.push(res.user);
         saveLocalUsers(locals);
       }
+      broadcastSync('USER_REGISTERED', res.user);
       return res;
     } catch (e1) {
       try {
@@ -237,6 +266,7 @@ export const api = {
           locals.push(res.user);
           saveLocalUsers(locals);
         }
+        broadcastSync('USER_REGISTERED', res.user);
         return res;
       } catch (e2) {
         // Local offline registration fallback
@@ -268,6 +298,7 @@ export const api = {
 
         const token = btoa(`${newUser.id}:${Date.now()}`);
         setAuthToken(token);
+        broadcastSync('USER_REGISTERED', newUser);
         return { user: newUser, token };
       }
     }
@@ -699,13 +730,14 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ name, focusDuration, breakDuration }),
       });
+      broadcastSync('ROOM_SYNC', { roomId: data.room.id });
       return data.room;
     } catch {
       const rooms = getLocalRooms();
       const currentUser = await this.getCurrentUser();
       const newRoom: FocusRoom = {
         id: 'room_' + Math.random().toString(36).substr(2, 6),
-        name: name.trim() || 'اتاق تمرکز گروهی',
+        name: name.trim() || 'اتاق تمرکز و مطالعه مشترک',
         hostId: currentUser?.id || 'usr_admin_1',
         hostName: currentUser?.name || 'شما',
         focusDuration,
@@ -738,6 +770,7 @@ export const api = {
       };
       rooms.unshift(newRoom);
       saveLocalRooms(rooms);
+      broadcastSync('ROOM_SYNC', { roomId: newRoom.id });
       return newRoom;
     }
   },
@@ -760,6 +793,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ roomId: cleanId }),
       });
+      broadcastSync('ROOM_SYNC', { roomId: cleanId });
       return data.room;
     } catch {
       const rooms = getLocalRooms();
@@ -769,7 +803,7 @@ export const api = {
         // Create auto room if not existing locally
         room = {
           id: cleanId,
-          name: cleanId.startsWith('room_') ? 'اتاق تمرکز مشترک' : cleanId,
+          name: cleanId.startsWith('room_') ? 'اتاق تمرکز و مطالعه مشترک' : cleanId,
           hostId: currentUser?.id || 'usr_admin_1',
           hostName: currentUser?.name || 'کاربر',
           focusDuration: 1500,
@@ -807,6 +841,7 @@ export const api = {
         });
       }
       saveLocalRooms(rooms);
+      broadcastSync('ROOM_SYNC', { roomId: cleanId });
       return room;
     }
   },
@@ -822,6 +857,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ roomId, timerAction, timeLeft, mode }),
       });
+      broadcastSync('ROOM_SYNC', { roomId, timerAction });
       return data.room;
     } catch {
       const rooms = getLocalRooms();
@@ -847,6 +883,7 @@ export const api = {
           room.lastUpdated = Date.now();
         }
         saveLocalRooms(rooms);
+        broadcastSync('ROOM_SYNC', { roomId, timerAction });
         return room;
       }
       throw new Error('اتاق یافت نشد.');
@@ -859,6 +896,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ roomId, text }),
       });
+      broadcastSync('ROOM_SYNC', { roomId });
       return data.room;
     } catch {
       const rooms = getLocalRooms();
@@ -873,6 +911,7 @@ export const api = {
           timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
         });
         saveLocalRooms(rooms);
+        broadcastSync('ROOM_SYNC', { roomId });
         return room;
       }
       throw new Error('اتاق یافت نشد.');
@@ -894,6 +933,7 @@ export const api = {
         saveLocalRooms(rooms);
       }
     }
+    broadcastSync('ROOM_SYNC', { roomId });
   },
 
   async deleteFocusRoom(roomId: string): Promise<void> {
@@ -911,6 +951,7 @@ export const api = {
         saveLocalRooms(rooms);
       }
     }
+    broadcastSync('ROOM_SYNC', { roomId });
   },
 
   async getActiveFocusRooms(): Promise<Array<{ id: string; name: string; hostName: string; participantCount: number; isRunning: boolean }>> {

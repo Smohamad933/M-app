@@ -540,3 +540,49 @@ test('Direct Focus Room Join & Dynamic Auto-Provisioning (Never Fails)', async (
   assert(joinDynamic.body.room.id === customRoomCode, 'Dynamic room was auto-created and joined');
   assert(joinDynamic.body.room.participants.length > 0, 'User is registered as participant in dynamic room');
 });
+
+// 14. Co-presence in Same Room: Mohusyn creates, Reza joins, both in participants (count = 2)
+test('Multi-User Room Co-presence: Both Users in Same Room with Unified State', async () => {
+  // 1. Register Reza
+  const rezaUsername = 'reza_test_' + Date.now();
+  const rezaReg = await request('POST', '/api/auth?action=register', {
+    username: rezaUsername,
+    password: 'RezaPassword123',
+    name: 'رضا',
+  });
+  assert(rezaReg.status === 201, 'Reza registered successfully');
+  const rezaHeader = { Authorization: `Bearer ${rezaReg.body.token}` };
+
+  // 2. Mohusyn creates a room
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  const createRes = await request('POST', '/api/rooms?action=create', {
+    name: 'اتاق تمرکز و مطالعه مشترک',
+    focusDuration: 1500,
+    breakDuration: 300,
+  }, adminHeader);
+  assert(createRes.status === 201, 'Admin created room');
+  const roomId = createRes.body.room.id;
+
+  // 3. Reza joins the exact same room
+  const joinRes = await request('POST', '/api/rooms?action=join', {
+    roomId: roomId,
+  }, rezaHeader);
+  assert(joinRes.status === 200, 'Reza joined Mohusyn room');
+  assert(!joinRes.body.room.isDeleted, 'Room must NOT be deleted');
+
+  // 4. Check that BOTH Mohusyn and Reza are in room.participants
+  const getRoom = await request('GET', `/api/rooms?action=get&room_id=${roomId}`, null, adminHeader);
+  assert(getRoom.status === 200, 'Room fetched');
+  const participantNames = getRoom.body.room.participants.map((p) => p.userName || p.name);
+  assert(participantNames.includes('رضا'), 'Reza must be in room participants list');
+  assert(getRoom.body.room.participants.length >= 2, 'Room must have at least 2 participants');
+
+  // 5. Check Admin User Monitoring shows Reza
+  const usersRes = await request('GET', '/api/users', null, adminHeader);
+  assert(usersRes.status === 200, 'Admin users list fetched');
+  const foundReza = usersRes.body.users.find((u) => u.username.toLowerCase() === rezaUsername.toLowerCase());
+  assert(foundReza, 'Reza MUST appear in Admin User Monitoring panel');
+});
+

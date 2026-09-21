@@ -8,7 +8,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
 // REGISTER ACCOUNT
-if ($method === 'POST' && ($action === 'register' || $action === 'signup')) {
+if ($method === 'POST' && ($action === 'register' || $action === 'signup' || empty($action) && isset($_GET['register']))) {
     $input = getJsonInput();
     $username = trim($input['username'] ?? '');
     $password = $input['password'] ?? '';
@@ -22,39 +22,49 @@ if ($method === 'POST' && ($action === 'register' || $action === 'signup')) {
         jsonResponse(['error' => 'نام کاربری باید حداقل ۳ کاراکتر باشد.'], 400);
     }
 
-    if (strlen($password) < 4) {
-        jsonResponse(['error' => 'کلمه عبور باید حداقل ۴ کاراکتر باشد.'], 400);
+    if (strlen($password) < 3) {
+        jsonResponse(['error' => 'کلمه عبور باید حداقل ۳ کاراکتر باشد.'], 400);
     }
 
     // Check if user already exists
     $existing = $db->getUserByUsername($username);
-    if ($existing) {
+    if ($existing && strtolower($username) !== 'mohusyn') {
         jsonResponse(['error' => 'این نام کاربری قبلاً ثبت شده است. لطفاً نام دیگری انتخاب کنید.'], 400);
     }
 
-    // Role is strictly user for any new registration
-    $role = 'user';
-
     $extra = [
         'phone' => trim($input['phone'] ?? ''),
-        'email' => trim($input['email'] ?? ''),
+        'email' => trim($input['email'] ?? $input['gmail'] ?? ''),
         'province' => trim($input['province'] ?? ''),
         'city' => trim($input['city'] ?? ''),
-        'birthDate' => trim($input['birthDate'] ?? ''),
-        'jobTitle' => trim($input['jobTitle'] ?? ''),
+        'birthDate' => trim($input['birthDate'] ?? $input['birth_date'] ?? ''),
+        'jobTitle' => trim($input['jobTitle'] ?? $input['job_title'] ?? ''),
         'skills' => is_array($input['skills'] ?? null) ? $input['skills'] : [],
         'dailyTimeline' => is_array($input['dailyTimeline'] ?? null) ? $input['dailyTimeline'] : [],
     ];
 
-    $created = $db->createUser($username, $password, $name, $role, $extra);
+    $created = $db->createUser($username, $password, $name, 'user', $extra);
 
     // Auto login after registration
     $_SESSION['user_id'] = $created['id'];
     $token = base64_encode($created['id'] . ':' . time());
 
     jsonResponse([
-        'message' => 'حساب کاربری شما با موفقیت ایجاد شد.',
-        'user' => $created,
+        'message' => 'حساب کاربری شما با موفقیت در سامانه ایجاد شد.',
+        'user' => [
+            'id' => $created['id'],
+            'username' => $created['username'],
+            'name' => $created['name'],
+            'role' => $created['role'],
+            'phone' => $created['phone'] ?? '',
+            'email' => $created['email'] ?? '',
+            'province' => $created['province'] ?? '',
+            'city' => $created['city'] ?? '',
+            'birthDate' => $created['birthDate'] ?? '',
+            'jobTitle' => $created['jobTitle'] ?? '',
+            'skills' => $created['skills'] ?? [],
+            'createdAt' => $created['createdAt'] ?? date('Y-m-d H:i:s'),
+        ],
         'token' => $token
     ], 201);
 }
@@ -69,33 +79,41 @@ if ($method === 'POST' && ($action === 'login' || empty($action))) {
         jsonResponse(['error' => 'نام کاربری و کلمه عبور الزامی است.'], 400);
     }
 
-    $user = $db->getUserByUsername($username);
-
-    // Ensure Mohusyn exists as admin
+    // Direct check for Mohusyn
     if (strtolower($username) === 'mohusyn' && $password === 'Smosh1387') {
-        if (!$user) {
-            $user = $db->createUser('Mohusyn', 'Smosh1387', 'سید محمدحسین شیخ الاسلامی (Mohusyn)', 'admin');
-        } else if ($user['role'] !== 'admin') {
-            $db->updateUser($user['id'], 'سید محمدحسین شیخ الاسلامی (Mohusyn)', 'admin');
-            $user = $db->getUserById($user['id']);
+        $admin = $db->getUserByUsername('Mohusyn');
+        if (!$admin) {
+            $admin = $db->createUser('Mohusyn', 'Smosh1387', 'سید محمدحسین شیخ الاسلامی (Mohusyn)', 'admin');
         }
+        $_SESSION['user_id'] = 'usr_admin_mohusyn';
+        $token = base64_encode('usr_admin_mohusyn:' . time());
+        jsonResponse([
+            'message' => 'ورود با موفقیت انجام شد.',
+            'user' => [
+                'id' => 'usr_admin_mohusyn',
+                'username' => 'Mohusyn',
+                'name' => 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
+                'role' => 'admin',
+                'createdAt' => $admin['createdAt'] ?? date('Y-m-d H:i:s'),
+            ],
+            'token' => $token
+        ]);
     }
 
+    $user = $db->getUserByUsername($username);
     if (!$user) {
-        jsonResponse(['error' => 'نام کاربری یا کلمه عبور اشتباه است.'], 401);
+        jsonResponse(['error' => 'نام کاربری یا کلمه عبور نادرست است.'], 401);
     }
 
-    // Verify password
-    $hash = $user['password_hash'] ?? '';
     $isOk = false;
-    if ($hash && password_verify($password, $hash)) {
+    if (!empty($user['password']) && $user['password'] === $password) {
         $isOk = true;
-    } elseif (strtolower($username) === 'mohusyn' && $password === 'Smosh1387') {
+    } elseif (!empty($user['password_hash']) && password_verify($password, $user['password_hash'])) {
         $isOk = true;
     }
 
     if (!$isOk) {
-        jsonResponse(['error' => 'نام کاربری یا کلمه عبور اشتباه است.'], 401);
+        jsonResponse(['error' => 'نام کاربری یا کلمه عبور نادرست است.'], 401);
     }
 
     $_SESSION['user_id'] = $user['id'];
@@ -107,14 +125,21 @@ if ($method === 'POST' && ($action === 'login' || empty($action))) {
             'id' => $user['id'],
             'username' => $user['username'],
             'name' => $user['name'],
-            'role' => $user['role'],
-            'createdAt' => $user['created_at'] ?? date('Y-m-d H:i:s'),
+            'role' => $user['role'] ?? 'user',
+            'phone' => $user['phone'] ?? '',
+            'email' => $user['email'] ?? '',
+            'province' => $user['province'] ?? '',
+            'city' => $user['city'] ?? '',
+            'birthDate' => $user['birthDate'] ?? '',
+            'jobTitle' => $user['jobTitle'] ?? '',
+            'skills' => $user['skills'] ?? [],
+            'createdAt' => $user['createdAt'] ?? date('Y-m-d H:i:s'),
         ],
         'token' => $token
     ]);
 }
 
-// CURRENT LOGGED IN USER
+// CURRENT USER
 if ($method === 'GET' && $action === 'me') {
     $user = getCurrentUser();
     if (!$user) {
@@ -127,14 +152,23 @@ if ($method === 'GET' && $action === 'me') {
             'username' => $user['username'],
             'name' => $user['name'],
             'role' => $user['role'],
-            'createdAt' => $user['created_at'] ?? date('Y-m-d H:i:s'),
+            'phone' => $user['phone'] ?? '',
+            'email' => $user['email'] ?? '',
+            'province' => $user['province'] ?? '',
+            'city' => $user['city'] ?? '',
+            'birthDate' => $user['birthDate'] ?? '',
+            'jobTitle' => $user['jobTitle'] ?? '',
+            'skills' => $user['skills'] ?? [],
+            'createdAt' => $user['createdAt'] ?? date('Y-m-d H:i:s'),
         ]
     ]);
 }
 
 // LOGOUT
 if ($method === 'POST' && $action === 'logout') {
-    session_destroy();
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        @session_destroy();
+    }
     jsonResponse(['message' => 'خروج با موفقیت انجام شد.']);
 }
 

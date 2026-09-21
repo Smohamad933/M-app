@@ -18,7 +18,7 @@ import type {
   GlobalSystemSettings,
   SystemFontOption,
 } from '../types';
-import { api, DEFAULT_GLOBAL_SETTINGS } from '../services/api';
+import { api, DEFAULT_GLOBAL_SETTINGS, onSyncEvent } from '../services/api';
 import { getTodayISO, formatPersianDate, toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import confetti from 'canvas-confetti';
@@ -694,6 +694,29 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
   }, [currentUser]);
+
+  // Real-time synchronization: BroadcastChannel + periodic polling for Admin
+  useEffect(() => {
+    const unsubscribe = onSyncEvent((event) => {
+      if (event === 'USER_REGISTERED') {
+        if (currentUser?.role === 'admin') {
+          refreshUsers();
+        }
+      } else if (event === 'ROOM_SYNC') {
+        refreshActiveRoom();
+      }
+    });
+
+    let pollInterval: any = null;
+    if (currentUser?.role === 'admin') {
+      pollInterval = setInterval(refreshUsers, 3000);
+    }
+
+    return () => {
+      unsubscribe();
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [currentUser?.role, refreshUsers, refreshActiveRoom]);
 
   useEffect(() => {
     if (currentUser) {
