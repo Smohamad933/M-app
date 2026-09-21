@@ -152,9 +152,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers['X-Auth-Token'] = token;
   }
 
+  const url = endpoint.startsWith('/') || endpoint.startsWith('http') ? endpoint : '/' + endpoint;
+
   let res: Response;
   try {
-    res = await fetch(endpoint, {
+    res = await fetch(url, {
       ...options,
       credentials: 'same-origin',
       headers,
@@ -351,18 +353,10 @@ export const api = {
   async getUsers(): Promise<User[]> {
     const locals = getLocalUsers();
     try {
-      const data = await request<{ users: User[] }>('api/users.php');
+      const data = await request<{ users: User[] }>('/api/users.php');
       if (Array.isArray(data.users)) {
-        // Merge remote with local users to ensure 100% guarantee that newly registered users are visible
-        const userMap = new Map<string, User>();
-        locals.forEach((u) => userMap.set(u.username.toLowerCase(), u));
-        data.users.forEach((u) => {
-          const prev = userMap.get(u.username.toLowerCase());
-          userMap.set(u.username.toLowerCase(), { ...prev, ...u });
-        });
-        const merged = Array.from(userMap.values());
-        saveLocalUsers(merged);
-        return merged;
+        saveLocalUsers(data.users);
+        return data.users;
       }
     } catch {
       // offline fallback
@@ -469,7 +463,7 @@ export const api = {
     }
   },
 
-  // Custom Fonts
+  // Custom Fonts Hub
   getCustomFonts(): SystemFontOption[] {
     try {
       const raw = localStorage.getItem('taskrooz_custom_fonts');
@@ -482,6 +476,66 @@ export const api = {
     try {
       localStorage.setItem('taskrooz_custom_fonts', JSON.stringify(fonts));
     } catch {}
+  },
+
+  async fetchCustomFonts(): Promise<SystemFontOption[]> {
+    try {
+      const data = await request<{ fonts: SystemFontOption[] }>('/api/fonts');
+      if (Array.isArray(data.fonts)) {
+        this.saveCustomFonts(data.fonts);
+        return data.fonts;
+      }
+    } catch {}
+    return this.getCustomFonts();
+  },
+
+  async uploadCustomFont(file: File, name: string, family?: string, description?: string): Promise<SystemFontOption> {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const cleanName = name.trim() || file.name.replace(/\.[^/.]+$/, '');
+    const cleanFamily = (family?.trim() || cleanName).replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    try {
+      const res = await request<{ message: string; font: SystemFontOption }>('/api/fonts?action=upload', {
+        method: 'POST',
+        body: JSON.stringify({
+          filename: file.name,
+          dataUrl,
+          name: cleanName,
+          family: cleanFamily,
+          description: description?.trim() || 'فونت سفارشی آپلود شده از سیستم',
+        }),
+      });
+
+      const fonts = this.getCustomFonts();
+      const existingIdx = fonts.findIndex((f) => f.id === res.font.id || f.name.toLowerCase() === res.font.name.toLowerCase());
+      if (existingIdx >= 0) {
+        fonts[existingIdx] = res.font;
+      } else {
+        fonts.push(res.font);
+      }
+      this.saveCustomFonts(fonts);
+      return res.font;
+    } catch {
+      // Fallback: save dataUrl directly in local fonts
+      const localFont: SystemFontOption = {
+        id: 'font_' + Date.now(),
+        name: cleanName,
+        family: cleanFamily,
+        fontUrl: dataUrl,
+        description: description?.trim() || 'فونت بارگذاری شده محلی',
+        isCustom: true,
+      };
+      const fonts = this.getCustomFonts();
+      fonts.push(localFont);
+      this.saveCustomFonts(fonts);
+      return localFont;
+    }
   },
 
   // Tasks
@@ -700,21 +754,22 @@ export const api = {
   },
 
   async joinFocusRoom(roomId: string): Promise<FocusRoom> {
+    const cleanId = (roomId || '').replace(/['"]/g, '').trim().split('#')[0].split('&')[0];
     try {
-      const data = await request<{ room: FocusRoom }>(`api/rooms.php?action=join`, {
+      const data = await request<{ room: FocusRoom }>(`/api/rooms.php?action=join`, {
         method: 'POST',
-        body: JSON.stringify({ roomId }),
+        body: JSON.stringify({ roomId: cleanId }),
       });
       return data.room;
     } catch {
       const rooms = getLocalRooms();
       const currentUser = await this.getCurrentUser();
-      let room = rooms.find((r) => r.id === roomId);
+      let room = rooms.find((r) => r.id === cleanId);
       if (!room) {
         // Create auto room if not existing locally
         room = {
-          id: roomId,
-          name: 'اتاق تمرکز مشترک',
+          id: cleanId,
+          name: cleanId.startsWith('room_') ? 'اتاق تمرکز مشترک' : cleanId,
           hostId: currentUser?.id || 'usr_admin_1',
           hostName: currentUser?.name || 'کاربر',
           focusDuration: 1500,

@@ -494,3 +494,49 @@ test('New User Registration Immediately Appears in Admin Users List', async () =
   assert(found.jobTitle === 'کارشناس تضمین کیفیت (QA)', 'Job title matches');
   assert(found.role === 'user', 'Role is user');
 });
+
+// 12. Font Upload and Custom Fonts Hub
+test('Font Upload Endpoint & Custom Fonts Storage', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  const fakeWoff2 = 'd09GMgABAAAAAAYAAwAAAAAADeAA...';
+  const uploadRes = await request('POST', '/api/fonts?action=upload', {
+    filename: 'Sahel-Bold.woff2',
+    dataUrl: 'data:font/woff2;base64,' + Buffer.from(fakeWoff2).toString('base64'),
+    name: 'ساحل بولد سفارشی',
+    family: 'SahelBoldCustom',
+    description: 'فونت آپلود شده در تست یکپارچه',
+  }, adminHeader);
+
+  assert(uploadRes.status === 201, 'Font upload returned 201 Created');
+  assert(uploadRes.body.font.name === 'ساحل بولد سفارشی', 'Font name matches');
+  assert(uploadRes.body.font.fontUrl.includes('Sahel-Bold.woff2'), 'Font URL points to uploaded file');
+
+  const getFontsRes = await request('GET', '/api/fonts');
+  assert(getFontsRes.status === 200, 'Custom fonts list fetched');
+  const foundFont = getFontsRes.body.fonts.find((f) => f.name === 'ساحل بولد سفارشی');
+  assert(foundFont, 'Uploaded font appears in custom fonts list');
+});
+
+// 13. Direct Focus Room Join and Auto-Provisioning
+test('Direct Focus Room Join & Dynamic Auto-Provisioning (Never Fails)', async () => {
+  const userLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const userHeader = { Authorization: `Bearer ${userLogin.body.token}` };
+
+  // Join pre-seeded room
+  const joinPreseeded = await request('POST', '/api/rooms?action=join', {
+    roomId: 'room_deepwork',
+  }, userHeader);
+  assert(joinPreseeded.status === 200, 'Joined pre-seeded room successfully');
+  assert(joinPreseeded.body.room.id === 'room_deepwork', 'Room id is room_deepwork');
+
+  // Join non-existing custom room code (e.g. "team-alpha-meeting") -> auto provisions on the fly!
+  const customRoomCode = 'room_dynamic_' + Date.now();
+  const joinDynamic = await request('POST', '/api/rooms?action=join', {
+    roomId: customRoomCode,
+  }, userHeader);
+  assert(joinDynamic.status === 200, 'Dynamic room join auto-provisions with 200 OK');
+  assert(joinDynamic.body.room.id === customRoomCode, 'Dynamic room was auto-created and joined');
+  assert(joinDynamic.body.room.participants.length > 0, 'User is registered as participant in dynamic room');
+});

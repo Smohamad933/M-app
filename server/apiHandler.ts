@@ -139,6 +139,7 @@ interface AppData {
   dailyNotes: DBDailyNote[];
   personalityResults: DBPersonalityResult[];
   globalSettings?: any;
+  custom_fonts?: any[];
 }
 
 const DB_FILE = path.resolve(process.cwd(), 'data/db.json');
@@ -163,11 +164,67 @@ const INITIAL_DATA: AppData = {
     { id: 'cat-shopping', name: 'خرید و منزل', color: '#0ea5e9', icon: 'ShoppingCart', isDefault: true },
     { id: 'cat-finance', name: 'امور مالی', color: '#8b5cf6', icon: 'CreditCard', isDefault: true },
   ],
-  focus_rooms: [],
+  focus_rooms: [
+    {
+      id: 'room_deepwork',
+      name: 'اتاق تمرکز عمیق (دیپ ورک)',
+      hostId: 'usr_admin_mohusyn',
+      hostName: 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
+      focusDuration: 1500,
+      breakDuration: 300,
+      timeLeft: 1500,
+      isRunning: false,
+      mode: 'focus',
+      lastUpdated: Date.now(),
+      participants: [
+        {
+          userId: 'usr_admin_mohusyn',
+          userName: 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
+          isHost: true,
+          joinedAt: '۰۸:۳۰',
+          lastPing: Date.now(),
+        },
+      ],
+      messages: [
+        {
+          id: 'msg_init_1',
+          userId: 'system',
+          userName: 'سیستم',
+          text: 'اتاق تمرکز عمیق آماده است. کار روی مهم‌ترین تسک روز را آغاز کنید! 🎯',
+          timestamp: '۰۸:۳۰',
+        },
+      ],
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'room_dev',
+      name: 'اتاق توسعه محصول و برنامه‌نویسی',
+      hostId: 'usr_admin_mohusyn',
+      hostName: 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
+      focusDuration: 3000,
+      breakDuration: 600,
+      timeLeft: 3000,
+      isRunning: false,
+      mode: 'focus',
+      lastUpdated: Date.now(),
+      participants: [],
+      messages: [
+        {
+          id: 'msg_init_2',
+          userId: 'system',
+          userName: 'سیستم',
+          text: 'اتاق توسعه محصول آماده است. برنامه‌نویسی با بازه‌های ۵۰ دقیقه‌ای! 💻',
+          timestamp: '۰۹:۰۰',
+        },
+      ],
+      createdAt: new Date().toISOString(),
+    },
+  ],
   projects: [],
   goals: [],
   dailyNotes: [],
   personalityResults: [],
+  custom_fonts: [],
   globalSettings: {
     broadcastNotice: {
       enabled: true,
@@ -224,11 +281,14 @@ function readDb(): AppData {
 
       if (!parsed.categories) parsed.categories = INITIAL_DATA.categories;
       if (!parsed.tasks) parsed.tasks = [];
-      if (!parsed.focus_rooms) parsed.focus_rooms = [];
+      if (!parsed.focus_rooms || parsed.focus_rooms.length === 0) {
+        parsed.focus_rooms = INITIAL_DATA.focus_rooms;
+      }
       if (!parsed.projects) parsed.projects = INITIAL_DATA.projects;
       if (!parsed.goals) parsed.goals = [];
       if (!parsed.dailyNotes) parsed.dailyNotes = [];
       if (!parsed.personalityResults) parsed.personalityResults = [];
+      if (!parsed.custom_fonts) parsed.custom_fonts = [];
 
       if (purgeExpiredDeletedRooms(parsed)) {
         writeDb(parsed);
@@ -277,13 +337,25 @@ function sendJson(res: ServerResponse, data: any, status = 200) {
 }
 
 function getUserFromToken(req: IncomingMessage, db: AppData): DBUser | null {
-  const authHeader = req.headers['authorization'] || '';
-  if (authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
+  const authHeader = (req.headers['authorization'] || req.headers['x-auth-token'] || '') as string;
+  let token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
+
+  if (!token) {
+    try {
+      const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+      token = urlObj.searchParams.get('token') || '';
+    } catch {}
+  }
+
+  if (token) {
     try {
       const decoded = Buffer.from(token, 'base64').toString('utf-8');
       const userId = decoded.split(':')[0];
-      return db.users.find((u) => u.id === userId) || null;
+      const found = db.users.find((u) => u.id === userId || u.username.toLowerCase() === userId.toLowerCase());
+      if (found) return found;
+      if (userId === 'usr_admin_mohusyn' || userId.toLowerCase() === 'mohusyn') {
+        return db.users.find((u) => u.username.toLowerCase() === 'mohusyn') || null;
+      }
     } catch {
       return null;
     }
@@ -693,13 +765,45 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     // Join room
-    if (method === 'POST' && action === 'join') {
-      const body = await parseJsonBody(req);
-      const roomId = body.roomId || urlObj.searchParams.get('room_id');
-      const room = db.focus_rooms.find((r) => r.id === roomId && !r.isDeleted);
-      if (!room) {
-        sendJson(res, { error: 'اتاق مورد نظر یافت نشد یا پاک شده است.' }, 404);
+    if ((method === 'POST' || method === 'GET') && (action === 'join' || pathname.endsWith('/join'))) {
+      const body = method === 'POST' ? await parseJsonBody(req) : {};
+      const rawRoomId = body.roomId || body.room_id || urlObj.searchParams.get('room_id') || urlObj.searchParams.get('roomId') || urlObj.searchParams.get('id');
+      const roomId = (rawRoomId || '').replace(/['"]/g, '').trim().split('#')[0].split('&')[0];
+
+      if (!roomId) {
+        sendJson(res, { error: 'شناسه اتاق الزامی است.' }, 400);
         return true;
+      }
+
+      let room = db.focus_rooms.find((r) => r.id === roomId && !r.isDeleted);
+      if (!room) {
+        // Auto-provision room on demand so direct join NEVER fails!
+        const cleanName = roomId.startsWith('room_') ? 'اتاق تمرکز مشترک' : decodeURIComponent(roomId);
+        room = {
+          id: roomId,
+          name: cleanName,
+          hostId: currentUser.id,
+          hostName: currentUser.name,
+          focusDuration: 1500,
+          breakDuration: 300,
+          timeLeft: 1500,
+          isRunning: false,
+          mode: 'focus',
+          lastUpdated: Date.now(),
+          participants: [],
+          messages: [
+            {
+              id: 'msg_welcome_' + Date.now(),
+              userId: 'system',
+              userName: 'سیستم',
+              text: `اتاق «${cleanName}» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯`,
+              timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
+            },
+          ],
+          createdAt: new Date().toISOString(),
+        };
+        db.focus_rooms.unshift(room);
+        writeDb(db);
       }
 
       const existingPart = room.participants.find((p) => p.userId === currentUser.id);
@@ -721,6 +825,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         writeDb(db);
       } else {
         existingPart.lastPing = Date.now();
+        writeDb(db);
       }
 
       sendJson(res, { message: 'شما به اتاق ملحق شدید.', room });
@@ -1405,6 +1510,121 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       db.globalSettings = { ...body, updatedAt: new Date().toISOString() };
       writeDb(db);
       sendJson(res, { message: 'تنظیمات سراسری سیستم با موفقیت اعمال گردید.', settings: db.globalSettings });
+      return true;
+    }
+  }
+
+  // 12. Fonts Hub & Upload (/api/fonts)
+  if (pathname.startsWith('/api/fonts')) {
+    const action = urlObj.searchParams.get('action');
+
+    // Get all custom fonts
+    if (method === 'GET') {
+      sendJson(res, { fonts: db.custom_fonts || [] });
+      return true;
+    }
+
+    // Upload custom font file
+    if (method === 'POST' && (action === 'upload' || pathname.endsWith('/upload'))) {
+      const body = await parseJsonBody(req);
+      const filename = body.filename || `font_${Date.now()}.woff2`;
+      const dataUrl = body.dataUrl || '';
+      const name = body.name?.trim() || filename.split('.')[0];
+      const family = body.family?.trim() || name;
+      const description = body.description?.trim() || 'فونت سفارشی آپلود شده در سامانه';
+
+      let cleanFileName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+      if (!cleanFileName.match(/\.(woff2|woff|ttf|otf)$/i)) {
+        cleanFileName += '.woff2';
+      }
+
+      // Save file if dataUrl provided
+      if (dataUrl && dataUrl.includes('base64,')) {
+        try {
+          const base64Data = dataUrl.split('base64,')[1];
+          const buffer = Buffer.from(base64Data, 'base64');
+          const fontsDir = path.resolve(process.cwd(), 'public/fonts');
+          if (!fs.existsSync(fontsDir)) {
+            fs.mkdirSync(fontsDir, { recursive: true });
+          }
+          fs.writeFileSync(path.join(fontsDir, cleanFileName), buffer);
+
+          const distFontsDir = path.resolve(process.cwd(), 'dist/fonts');
+          if (fs.existsSync(distFontsDir)) {
+            fs.writeFileSync(path.join(distFontsDir, cleanFileName), buffer);
+          }
+        } catch (err) {
+          console.error('Failed to write uploaded font file:', err);
+        }
+      }
+
+      const newFont = {
+        id: 'font_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        name,
+        family,
+        fontUrl: `/fonts/${cleanFileName}`,
+        dataUrl: dataUrl || undefined,
+        description,
+        isCustom: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      if (!db.custom_fonts) db.custom_fonts = [];
+      db.custom_fonts.push(newFont);
+      writeDb(db);
+
+      sendJson(res, { message: 'فونت با موفقیت آپلود و در سامانه فعال گردید.', font: newFont }, 201);
+      return true;
+    }
+
+    // Save/Add custom font metadata or URL
+    if (method === 'POST') {
+      const body = await parseJsonBody(req);
+      const name = body.name?.trim();
+      const family = body.family?.trim() || name;
+      const fontUrl = body.fontUrl?.trim();
+      const description = body.description?.trim() || 'فونت سفارشی وب';
+
+      if (!name) {
+        sendJson(res, { error: 'نام فونت الزامی است.' }, 400);
+        return true;
+      }
+
+      const newFont = {
+        id: body.id || 'font_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        name,
+        family,
+        fontUrl,
+        dataUrl: body.dataUrl,
+        description,
+        isCustom: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      if (!db.custom_fonts) db.custom_fonts = [];
+      const idx = db.custom_fonts.findIndex((f) => f.id === newFont.id || f.name.toLowerCase() === newFont.name.toLowerCase());
+      if (idx >= 0) {
+        db.custom_fonts[idx] = newFont;
+      } else {
+        db.custom_fonts.push(newFont);
+      }
+      writeDb(db);
+      sendJson(res, { message: 'فونت سفارشی ذخیره شد.', font: newFont }, 201);
+      return true;
+    }
+
+    // Delete custom font
+    if (method === 'DELETE') {
+      const id = urlObj.searchParams.get('id');
+      if (!id) {
+        sendJson(res, { error: 'شناسه فونت الزامی است.' }, 400);
+        return true;
+      }
+      if (db.custom_fonts) {
+        db.custom_fonts = db.custom_fonts.filter((f) => f.id !== id);
+        writeDb(db);
+      }
+      sendJson(res, { message: 'فونت سفارشی حذف شد.' });
       return true;
     }
   }

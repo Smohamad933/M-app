@@ -18,10 +18,10 @@ class TaskRoozDB {
             @mkdir($dbDir, 0777, true);
         }
 
-        // Always initialize JSON file path and data so fallback is ALWAYS functional
-        $jsonPath = $dbDir . '/taskrooz_data.json';
+        // Unified single source of truth database: data/db.json
+        $jsonPath = $dbDir . '/db.json';
         if (!is_writable($dbDir) && !file_exists($jsonPath)) {
-            $jsonPath = sys_get_temp_dir() . '/taskrooz_data.json';
+            $jsonPath = sys_get_temp_dir() . '/taskrooz_db.json';
         }
         $this->jsonFile = $jsonPath;
         $this->loadJson();
@@ -167,6 +167,7 @@ class TaskRoozDB {
         $this->data['users'][] = [
             'id' => $id,
             'username' => $username,
+            'password' => $password,
             'password_hash' => $hash,
             'name' => $name,
             'role' => $role,
@@ -178,6 +179,7 @@ class TaskRoozDB {
             'jobTitle' => $jobTitle,
             'skills' => $skills,
             'dailyTimeline' => $timeline,
+            'createdAt' => $now,
             'created_at' => $now,
         ];
         $this->saveJson();

@@ -45,9 +45,24 @@ export const UserManagementView: React.FC = () => {
   const [adminTab, setAdminTab] = useState<'users' | 'settings'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Auto-refresh users when admin opens this tab!
+  // Auto-refresh users when admin opens this tab + poll every 3s + storage event sync!
   useEffect(() => {
     refreshUsers();
+    const interval = setInterval(() => {
+      refreshUsers();
+    }, 3000);
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'taskrooz_sync_signal' || e.key === 'taskrooz_users_local') {
+        refreshUsers();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, [refreshUsers]);
 
   // Global Settings Form state

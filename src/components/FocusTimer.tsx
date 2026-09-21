@@ -34,10 +34,18 @@ export const FocusTimer: React.FC = () => {
   } = useTask();
 
   // Switch between Solo focus and Group focus room
-  const [focusType, setFocusType] = useState<'solo' | 'group'>(activeRoom || activeRoomId ? 'group' : 'solo');
+  const [focusType, setFocusType] = useState<'solo' | 'group'>(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      return activeRoom || activeRoomId || urlParams.has('room') || urlParams.has('room_id') ? 'group' : 'solo';
+    } catch {
+      return activeRoom || activeRoomId ? 'group' : 'solo';
+    }
+  });
 
   useEffect(() => {
-    if (activeRoom || activeRoomId) {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (activeRoom || activeRoomId || urlParams.has('room') || urlParams.has('room_id')) {
       setFocusType('group');
     }
   }, [activeRoom, activeRoomId]);

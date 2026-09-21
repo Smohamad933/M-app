@@ -182,10 +182,16 @@ export const GroupFocusRoom: React.FC = () => {
     } else if (id.includes('room_id=')) {
       id = id.split('room_id=')[1].split('&')[0];
     }
+    id = id.replace(/['"]/g, '').trim().split('#')[0].split('&')[0];
 
     setIsJoining(true);
     try {
-      await joinFocusRoom(id);
+      const ok = await joinFocusRoom(id);
+      if (ok) {
+        setRoomInput('');
+      }
+    } catch (err: any) {
+      alert(err.message || 'خطا در پیوستن به اتاق.');
     } finally {
       setIsJoining(false);
     }

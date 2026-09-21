@@ -159,6 +159,7 @@ interface TaskContextType {
   allAvailableFonts: SystemFontOption[];
   customFonts: SystemFontOption[];
   addCustomFont: (font: { name: string; family: string; fontUrl?: string; description?: string }) => void;
+  uploadCustomFont: (file: File, name: string, family?: string, description?: string) => Promise<SystemFontOption>;
   deleteCustomFont: (fontId: string) => void;
 }
 
@@ -204,15 +205,17 @@ export const AVAILABLE_FONTS: SystemFontOption[] = [
 ];
 
 function injectFontLink(font: SystemFontOption) {
-  if (!font.fontUrl) return;
+  const fontSource = font.dataUrl || font.fontUrl;
+  if (!fontSource) return;
   const elementId = `custom-font-style-${font.id}`;
-  if (document.getElementById(elementId)) return;
+  const existing = document.getElementById(elementId);
+  if (existing) existing.remove();
 
-  if (font.fontUrl.endsWith('.css') || font.fontUrl.includes('fonts.googleapis') || font.fontUrl.includes('cdn.')) {
+  if (fontSource.endsWith('.css') || fontSource.includes('fonts.googleapis') || fontSource.includes('cdn.')) {
     const link = document.createElement('link');
     link.id = elementId;
     link.rel = 'stylesheet';
-    link.href = font.fontUrl;
+    link.href = fontSource;
     document.head.appendChild(link);
   } else {
     const style = document.createElement('style');
@@ -221,7 +224,7 @@ function injectFontLink(font: SystemFontOption) {
     style.textContent = `
       @font-face {
         font-family: '${cleanFamily}';
-        src: url('${font.fontUrl}') format('woff2');
+        src: url('${fontSource}') format('woff2'), url('${fontSource}') format('truetype'), url('${fontSource}') format('opentype');
         font-display: swap;
       }
     `;
@@ -287,6 +290,16 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     api.saveCustomFonts(updated);
     setSystemFontState(newFont.id);
     sounds.playComplete();
+  };
+
+  const uploadCustomFont = async (file: File, name: string, family?: string, description?: string): Promise<SystemFontOption> => {
+    const font = await api.uploadCustomFont(file, name, family, description);
+    injectFontLink(font);
+    const updated = [...customFonts.filter((f) => f.id !== font.id && f.name.toLowerCase() !== font.name.toLowerCase()), font];
+    setCustomFonts(updated);
+    setSystemFontState(font.id);
+    sounds.playComplete();
+    return font;
   };
 
   const deleteCustomFont = (fontId: string) => {
@@ -422,8 +435,10 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [activeRoomId, refreshActiveRoom]);
 
   const joinFocusRoom = async (roomId: string): Promise<boolean> => {
+    const cleanId = (roomId || '').replace(/['"]/g, '').trim().split('#')[0].split('&')[0];
+    if (!cleanId) return false;
     try {
-      const room = await api.joinFocusRoom(roomId);
+      const room = await api.joinFocusRoom(cleanId);
       setActiveRoomId(room.id);
       setActiveRoom(room);
       setActiveTab('focus');
@@ -615,10 +630,17 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (gSettings.enforcedFont) {
           setSystemFontState(gSettings.enforcedFont);
         }
-        if (currentUser?.role === 'admin') {
-          const uList = await api.getUsers();
-          setUsers(uList);
+        if (user?.role === 'admin') {
+          try {
+            const uList = await api.getUsers();
+            setUsers(uList);
+          } catch {}
         }
+        try {
+          const remoteFonts = await api.fetchCustomFonts();
+          setCustomFonts(remoteFonts);
+          remoteFonts.forEach(injectFontLink);
+        } catch {}
       } catch (e) {
         console.error('Initialization error:', e);
       } finally {
@@ -708,11 +730,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await api.register(data);
       setCurrentUser(res.user);
       setUsers((prev) => {
-        if (!prev.some((u) => u.username.toLowerCase() === res.user.username.toLowerCase())) {
-          return [...prev, res.user];
-        }
-        return prev;
+        const filtered = prev.filter((u) => u.username.toLowerCase() !== res.user.username.toLowerCase());
+        return [...filtered, res.user];
       });
+      try {
+        localStorage.setItem('taskrooz_sync_signal', String(Date.now()));
+      } catch {}
       sounds.playComplete();
       await checkPendingRoomInvite();
       return true;
@@ -1100,6 +1123,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       allAvailableFonts,
       customFonts,
       addCustomFont,
+      uploadCustomFont,
       deleteCustomFont,
     }),
     [

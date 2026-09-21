@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useTask } from '../context/TaskContext';
+import { api } from '../services/api';
+import { sounds } from '../utils/sound';
 import { IRAN_PROVINCES, POPULAR_JOBS, SUGGESTED_SKILLS } from '../utils/iranLocations';
 import {
   CheckSquare,
@@ -22,6 +24,7 @@ export const LoginScreen: React.FC = () => {
   const { login, register } = useTask();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [registerStep, setRegisterStep] = useState<1 | 2>(1);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   // Detect if user is joining via room invite link
   const inviteRoom = typeof window !== 'undefined' 
@@ -129,10 +132,41 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
+  const handleRegisterOnly = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const finalJob = customJob.trim() ? customJob.trim() : jobTitle;
+      await api.register({
+        name: name.trim(),
+        username: username.trim().toLowerCase(),
+        password: password.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        province,
+        city,
+        birthDate: birthDate.trim(),
+        jobTitle: finalJob,
+        skills: selectedSkills,
+      });
+      // Clear session token so admin or user can log in freshly
+      await api.logout();
+      setMode('login');
+      setRegisterStep(1);
+      setSuccessNotice(`✅ کاربر «${name.trim()}» با موفقیت ثبت شد! اکنون می‌توانید با اکانت مدیر (Mohusyn) وارد شوید و نام او را در پنل «مانیتورینگ کاربران» مشاهده کنید.`);
+      sounds.playComplete();
+    } catch (err: any) {
+      setError(err.message || 'خطا در ایجاد حساب کاربری.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const switchMode = (newMode: 'login' | 'register') => {
     setMode(newMode);
     setRegisterStep(1);
     setError(null);
+    setSuccessNotice(null);
   };
 
   return (
@@ -210,6 +244,13 @@ export const LoginScreen: React.FC = () => {
               </span>
               <span>شغل، شهر و مهارت‌ها</span>
             </div>
+          </div>
+        )}
+
+        {successNotice && (
+          <div className="p-3.5 rounded-2xl bg-emerald-950/50 text-emerald-300 text-xs border border-emerald-800/80 leading-relaxed font-bold animate-in fade-in flex items-center gap-2">
+            <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+            <span>{successNotice}</span>
           </div>
         )}
 
@@ -459,21 +500,33 @@ export const LoginScreen: React.FC = () => {
           {/* Form Actions */}
           <div className="pt-2">
             {mode === 'register' && registerStep === 2 ? (
-              <div className="flex items-center gap-2">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRegisterStep(1)}
+                    className="px-4 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold transition-all text-xs cursor-pointer"
+                  >
+                    بازگشت
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 py-3 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {loading ? 'در حال ایجاد حساب...' : 'تکمیل ثبت‌نام و ورود مستقیم'}
+                    <Check className="w-4 h-4 stroke-[3]" />
+                  </button>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => setRegisterStep(1)}
-                  className="px-4 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold transition-all text-xs cursor-pointer"
-                >
-                  بازگشت
-                </button>
-                <button
-                  type="submit"
+                  onClick={handleRegisterOnly}
                   disabled={loading}
-                  className="flex-1 py-3 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="w-full py-2.5 rounded-2xl bg-zinc-850 hover:bg-zinc-800 text-indigo-300 border border-indigo-500/30 font-bold text-[11px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  {loading ? 'در حال ایجاد حساب...' : 'تکمیل ثبت‌نام و ورود'}
-                  <Check className="w-4 h-4 stroke-[3]" />
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>ثبت‌نام و بازگشت به صفحه ورود (جهت ورود با ادمین Mohusyn)</span>
                 </button>
               </div>
             ) : (

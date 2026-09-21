@@ -207,6 +207,7 @@ export interface SystemFontOption {
   description: string;
   isCustom?: boolean;
   fontUrl?: string;
+  dataUrl?: string;
 }
 
 export interface GlobalSystemSettings {
