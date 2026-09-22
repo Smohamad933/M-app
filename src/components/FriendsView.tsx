@@ -53,27 +53,7 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ onStartChat, onOpenCha
       const saved = localStorage.getItem(`taskrooz_friends_${myId}`);
       if (saved) return JSON.parse(saved);
     } catch {}
-    // Seed initial demo friends so the user immediately has teammates to interact with
-    return [
-      {
-        id: 'usr_michie',
-        name: 'Michie (مایکی)',
-        username: 'michie_ui',
-        jobTitle: 'طراح رابط و تجربه کاربری (UI/UX)',
-        avatar: null,
-        online: true,
-        addedAt: new Date().toISOString(),
-      },
-      {
-        id: 'usr_kim',
-        name: 'Kim So Men',
-        username: 'kim_dev',
-        jobTitle: 'توسعه‌دهنده فرانت‌اند ارشد',
-        avatar: null,
-        online: true,
-        addedAt: new Date().toISOString(),
-      },
-    ];
+    return [];
   });
 
   // Load incoming friend requests
@@ -82,17 +62,7 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ onStartChat, onOpenCha
       const saved = localStorage.getItem(`taskrooz_requests_${myId}`);
       if (saved) return JSON.parse(saved);
     } catch {}
-    return [
-      {
-        id: 'req-1',
-        fromUserId: 'usr_demo_reza',
-        fromName: 'رضا محمدی',
-        fromUsername: 'reza_m',
-        fromAvatar: null,
-        toUserId: myId,
-        createdAt: '۱۰ دقیقه پیش',
-      },
-    ];
+    return [];
   });
 
   const [sentNotice, setSentNotice] = useState<string | null>(null);

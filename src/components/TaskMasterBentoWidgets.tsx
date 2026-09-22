@@ -64,40 +64,8 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
   // Displayed tasks: team first, then personal
   const displayTasks = useMemo(() => {
     const list = teamTasks.length > 0 ? [...teamTasks, ...personalTasks] : personalTasks;
-    if (list.length > 0) return list.slice(0, 2);
-
-    // If completely empty, show 2 template tasks so dashboard is always populated and interactive
-    return [
-      {
-        id: 'tmpl-1',
-        title: 'کیت اپلیکیشن تیمی (Delivery App Kit)',
-        description: 'طراحی رابط کاربری و فلوهای سفارش‌دهی پروژه تیمی...',
-        completed: false,
-        priority: 'high' as const,
-        date: activeDate,
-        projectId: 'delivery-app',
-        projectName: 'Delivery App',
-        subtasks: [
-          { id: 'st-1', title: 'وایرفریم', completed: true },
-          { id: 'st-2', title: 'طراحی UI', completed: false },
-        ],
-      },
-      {
-        id: 'tmpl-2',
-        title: 'طراحی شات دریبل داشبورد (Dribbble Shot)',
-        description: 'پیاده‌سازی استایل مینیمال، مدرن و هماهنگ داشبورد...',
-        completed: true,
-        priority: 'medium' as const,
-        date: activeDate,
-        projectId: undefined,
-        projectName: undefined,
-        subtasks: [
-          { id: 'st-3', title: 'تایپوگرافی', completed: true },
-          { id: 'st-4', title: 'ویجت‌ها', completed: true },
-        ],
-      },
-    ];
-  }, [teamTasks, personalTasks, activeDate]);
+    return list.slice(0, 4);
+  }, [teamTasks, personalTasks]);
 
   const totalTasksCount = activeDayTasks.length;
   const completedTasksCount = activeDayTasks.filter((t) => t.completed).length;
@@ -223,92 +191,100 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
           </div>
         </div>
 
-        {/* 2 Side-by-Side Task Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          {displayTasks.map((task, i) => {
-            const isCompleted = task.completed;
-            const subCount = task.subtasks?.length || 0;
-            const subDone = task.subtasks?.filter((s) => s.completed).length || 0;
-            const progress = isCompleted ? 100 : subCount > 0 ? Math.round((subDone / subCount) * 100) : (i === 0 ? 65 : 80);
+        {/* Task Cards or Clean Empty State */}
+        {displayTasks.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {displayTasks.map((task, i) => {
+              const isCompleted = task.completed;
+              const subCount = task.subtasks?.length || 0;
+              const subDone = task.subtasks?.filter((s) => s.completed).length || 0;
+              const progress = isCompleted ? 100 : subCount > 0 ? Math.round((subDone / subCount) * 100) : (i === 0 ? 65 : 80);
 
-            return (
-              <div
-                key={task.id}
-                onClick={() => {
-                  sounds.playPop();
-                  toggleTaskComplete(task.id);
-                }}
-                className={`bg-[#f8fafc] border rounded-2xl p-4 flex flex-col justify-between space-y-3 transition-all cursor-pointer shadow-2xs ${
-                  isCompleted
-                    ? 'border-emerald-200 bg-emerald-50/20'
-                    : 'border-slate-200/80 hover:border-slate-300 hover:bg-white'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      {task.projectId && (
-                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-indigo-100 text-indigo-700 flex items-center gap-0.5">
-                          <FolderKanban className="w-2.5 h-2.5" />
-                          تیمی
-                        </span>
-                      )}
-                      <h4
-                        className={`font-black text-xs sm:text-sm leading-snug line-clamp-1 ${
-                          isCompleted ? 'line-through text-slate-400' : 'text-slate-900'
-                        }`}
-                      >
-                        {task.title}
-                      </h4>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      sounds.playPop();
-                      toggleTaskComplete(task.id);
-                    }}
-                    className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-colors flex-shrink-0 ${
-                      isCompleted ? 'bg-[#00b884] border-[#00b884] text-white' : 'border-slate-300 bg-white'
-                    }`}
-                  >
-                    {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                  </button>
-                </div>
-
-                <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2 font-medium">
-                  {task.description || 'تسک تعریف‌شده برای امروز'}
-                </p>
-
-                <div className="space-y-2 pt-1">
-                  {/* Avatars + % */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center -space-x-2 space-x-reverse">
-                      <AvatarMichie size={24} className="border-2 border-white shadow-xs" />
-                      <AvatarDesigner size={24} className="border-2 border-white shadow-xs" />
-                      <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-600 flex items-center justify-center">
-                        {toPersianDigits(i + 1)}+
+              return (
+                <div
+                  key={task.id}
+                  onClick={() => {
+                    sounds.playPop();
+                    toggleTaskComplete(task.id);
+                  }}
+                  className={`bg-[#f8fafc] border rounded-2xl p-4 flex flex-col justify-between space-y-3 transition-all cursor-pointer shadow-2xs ${
+                    isCompleted
+                      ? 'border-emerald-200 bg-emerald-50/20'
+                      : 'border-slate-200/80 hover:border-slate-300 hover:bg-white'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        {task.projectId && (
+                          <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-indigo-100 text-indigo-700 flex items-center gap-0.5">
+                            <FolderKanban className="w-2.5 h-2.5" />
+                            تیمی
+                          </span>
+                        )}
+                        <h4
+                          className={`font-black text-xs sm:text-sm leading-snug line-clamp-1 ${
+                            isCompleted ? 'line-through text-slate-400' : 'text-slate-900'
+                          }`}
+                        >
+                          {task.title}
+                        </h4>
                       </div>
                     </div>
-                    <span className="text-[11px] font-black text-slate-700 font-mono">
-                      {toPersianDigits(progress)}٪
-                    </span>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        sounds.playPop();
+                        toggleTaskComplete(task.id);
+                      }}
+                      className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-colors flex-shrink-0 ${
+                        isCompleted ? 'bg-[#00b884] border-[#00b884] text-white' : 'border-slate-300 bg-white'
+                      }`}
+                    >
+                      {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    </button>
                   </div>
 
-                  {/* Progress Bar (Mint Green) */}
-                  <div className="w-full bg-slate-200/70 h-2 rounded-full overflow-hidden">
-                    <div
-                      className="bg-[#00b884] h-full rounded-full transition-all duration-500"
-                      style={{ width: `${progress}%` }}
-                    />
+                  <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2 font-medium">
+                    {task.description || 'تسک تعریف‌شده برای امروز'}
+                  </p>
+
+                  <div className="space-y-2 pt-1">
+                    {/* Avatars + % */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center -space-x-2 space-x-reverse">
+                        <AvatarMichie size={24} className="border-2 border-white shadow-xs" />
+                        <AvatarDesigner size={24} className="border-2 border-white shadow-xs" />
+                        <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-600 flex items-center justify-center">
+                          {toPersianDigits(i + 1)}+
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-black text-slate-700 font-mono">
+                        {toPersianDigits(progress)}٪
+                      </span>
+                    </div>
+
+                    {/* Progress Bar (Mint Green) */}
+                    <div className="w-full bg-slate-200/70 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-[#00b884] h-full rounded-full transition-all duration-500"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="py-8 px-4 text-center bg-[#f8fafc] rounded-2xl border border-dashed border-slate-200 space-y-2">
+            <CheckSquare className="w-8 h-8 text-slate-300 mx-auto" />
+            <p className="text-xs font-black text-slate-700">هنوز تسکی برای امروز ثبت نشده است</p>
+            <p className="text-[11px] text-slate-400">برای شروع روز، اولین تسک خود را با دستیار هوشمند ثبت کنید.</p>
+          </div>
+        )}
 
         {/* Dynamic Confidence & Motivational Banner */}
         {showTodayBanner && (
@@ -578,29 +554,11 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
               );
             })
           ) : (
-            <>
-              {/* Default roadmap phases when no timed tasks exist */}
-              <div className="flex items-center">
-                <div className="bg-[#f95738] text-white text-xs font-black px-5 py-2.5 rounded-full shadow-xs w-48">
-                  مصاحبه و ارزیابی (Interview)
-                </div>
-              </div>
-              <div className="flex items-center pr-12">
-                <div className="bg-[#00b884] text-white text-xs font-black px-6 py-2.5 rounded-full shadow-xs w-52">
-                  ایده‌پردازی و کانسپت (Ideate)
-                </div>
-              </div>
-              <div className="flex items-center pr-28">
-                <div className="bg-[#6366f1] text-white text-xs font-black px-6 py-2.5 rounded-full shadow-xs w-48">
-                  طراحی وایرفریم (Wireframe)
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="bg-[#121212] text-white text-xs font-black px-6 py-2.5 rounded-full shadow-xs w-48">
-                  ارزیابی و تست (Evaluate)
-                </div>
-              </div>
-            </>
+            <div className="h-32 flex flex-col items-center justify-center text-center p-4 rounded-2xl border border-dashed border-slate-200/80 bg-[#f8fafc] space-y-1">
+              <Clock className="w-6 h-6 text-slate-300" />
+              <span className="text-xs font-black text-slate-700">تسک ساعت‌داری برای امروز ثبت نشده است</span>
+              <span className="text-[10px] text-slate-400">کارهای ساعت‌دار به صورت خودکار در این نوار گانت زمان‌بندی می‌شوند.</span>
+            </div>
           )}
 
           {/* X-axis time marks */}

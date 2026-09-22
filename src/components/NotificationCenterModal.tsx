@@ -34,30 +34,12 @@ interface NotificationCenterModalProps {
 
 const DEFAULT_NOTIFICATIONS: AppNotification[] = [
   {
-    id: 'notif-1',
-    title: 'پیام از طرف Michie ✌️',
-    message: '«امروز وارد فاز طراحی وایرفریم داشبورد تسک‌روز می‌شیم...»',
-    type: 'friend',
-    timestamp: '۱۲:۴۹',
+    id: 'notif-welcome',
+    title: 'خوش‌آمدید به تسک‌روز 👋',
+    message: 'سامانه مدیریت تسک، تایم‌لاین ساعتی و تمرکز آماده استفاده است. اولین تسک خود را با دستیار هوشمند ثبت کنید!',
+    type: 'info',
+    timestamp: 'الان',
     read: false,
-    userId: 'michie-lead',
-    userName: 'Michie ✌️',
-  },
-  {
-    id: 'notif-2',
-    title: 'تسک با اولویت بالا',
-    message: 'کیت اپلیکیشن تیمی (Delivery App Kit) تا ساعت ۱۶:۰۰ زمان‌بندی شده است.',
-    type: 'task',
-    timestamp: '۱۰:۳۰',
-    read: false,
-  },
-  {
-    id: 'notif-3',
-    title: 'پیام سراسری سازمان',
-    message: '«هدف این هفته: بهینه‌سازی جریان کار، تکمیل تعهدات اسپرینت و بازخورد سریع به تیم.»',
-    type: 'broadcast',
-    timestamp: 'دیروز',
-    read: true,
   },
 ];
 
