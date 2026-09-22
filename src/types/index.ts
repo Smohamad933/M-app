@@ -142,7 +142,8 @@ export type TabType =
   | 'projects'
   | 'categories'
   | 'stats'
-  | 'users';
+  | 'users'
+  | 'friends';
 
 export type TaskViewMode = 'list' | 'kanban' | 'calendar';
 

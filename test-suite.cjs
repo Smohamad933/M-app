@@ -1,5 +1,7 @@
 // Comprehensive Integration and Stress Test Suite for TaskRooz
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 const BASE_URL = 'http://localhost:5173';
 
@@ -269,28 +271,41 @@ test('Group Focus Room Lifecycle & Timer Sync', async () => {
 
 // Run all tests
 async function run() {
-  console.log(`Starting ${tests.length} automated integration tests...\n`);
-  let passed = 0;
-  let failed = 0;
-
-  for (const t of tests) {
-    try {
-      await t.fn();
-      console.log(`  ✓ PASS: ${t.name}`);
-      passed++;
-    } catch (err) {
-      console.error(`  ✗ FAIL: ${t.name}`);
-      console.error(`    -> ${err.message}\n`);
-      failed++;
-    }
+  const globalDbPath = path.join(__dirname, 'data', 'db.json');
+  const globalBackup = globalDbPath + '.suite_backup';
+  if (fs.existsSync(globalDbPath)) {
+    fs.copyFileSync(globalDbPath, globalBackup);
   }
 
-  console.log(`\n========================================`);
-  console.log(`Results: ${passed} passed, ${failed} failed`);
-  console.log(`========================================`);
+  try {
+    console.log(`Starting ${tests.length} automated integration tests...\n`);
+    let passed = 0;
+    let failed = 0;
 
-  if (failed > 0) {
-    process.exit(1);
+    for (const t of tests) {
+      try {
+        await t.fn();
+        console.log(`  ✓ PASS: ${t.name}`);
+        passed++;
+      } catch (err) {
+        console.error(`  ✗ FAIL: ${t.name}`);
+        console.error(`    -> ${err.message}\n`);
+        failed++;
+      }
+    }
+
+    console.log(`\n========================================`);
+    console.log(`Results: ${passed} passed, ${failed} failed`);
+    console.log(`========================================`);
+
+    if (failed > 0) {
+      process.exit(1);
+    }
+  } finally {
+    if (fs.existsSync(globalBackup)) {
+      fs.copyFileSync(globalBackup, globalDbPath);
+      fs.unlinkSync(globalBackup);
+    }
   }
 }
 

@@ -1,23 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTask } from '../context/TaskContext';
-import { toPersianDigits, getTodayISO } from '../utils/persianDate';
+import {
+  toPersianDigits,
+  getTodayISO,
+  getDaysAround,
+  isoToJalali,
+  jalaliToISO,
+  PERSIAN_MONTHS,
+} from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import {
   CheckSquare,
   Calendar as CalendarIcon,
   BarChart3,
   Clock,
-  MoreHorizontal,
-  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
   X,
-  MessageSquare,
   Plus,
+  FolderKanban,
+  Check,
+  Sparkles,
 } from 'lucide-react';
 import {
   AvatarMichie,
   AvatarDesigner,
-  AvatarDeveloper,
-  AvatarProductManager,
 } from '../utils/designAvatars';
 
 interface BentoWidgetsProps {
@@ -29,64 +36,170 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
   onSeeAllTasks,
   onOpenCreateTask,
 }) => {
-  const { tasks, toggleTaskComplete, selectedDate, setSelectedDate, setActiveTab } = useTask();
+  const {
+    tasks,
+    toggleTaskComplete,
+    selectedDate,
+    setSelectedDate,
+    setActiveTab,
+  } = useTask();
+
   const [showTodayBanner, setShowTodayBanner] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState('شهریور');
-  const [isMonthOpen, setIsMonthOpen] = useState(false);
 
   const todayISO = getTodayISO();
-  const todayTasksList = tasks.filter((t) => t.date === todayISO);
+  const activeDate = selectedDate || todayISO;
 
-  // Real or high-fidelity fallback tasks for the 2 hero cards
-  const realCard1 = todayTasksList[0];
-  const realCard2 = todayTasksList[1];
+  // 1. REAL TODAY TASKS: Priority to Team Project tasks, fallback to personal tasks
+  const activeDayTasks = useMemo(() => {
+    return tasks.filter((t) => t.date === activeDate);
+  }, [tasks, activeDate]);
 
-  const heroCard1 = realCard1 ? {
-    id: realCard1.id,
-    title: realCard1.title,
-    description: realCard1.description || 'تسک تعریف‌شده برای امروز',
-    completed: realCard1.completed,
-    progress: realCard1.completed ? 100 : 65,
-  } : {
-    id: 'hero-1',
-    title: 'کیت اپلیکیشن تحویل غذا (Delivery App Kit)',
-    description: 'طراحی رابط کاربری و فلوهای سفارش‌دهی پروژه تحویل سریع کالا Foodnow...',
-    completed: false,
-    progress: 65,
+  const teamTasks = useMemo(() => {
+    return activeDayTasks.filter((t) => t.projectId || t.projectName);
+  }, [activeDayTasks]);
+
+  const personalTasks = useMemo(() => {
+    return activeDayTasks.filter((t) => !t.projectId && !t.projectName);
+  }, [activeDayTasks]);
+
+  // Displayed tasks: team first, then personal
+  const displayTasks = useMemo(() => {
+    const list = teamTasks.length > 0 ? [...teamTasks, ...personalTasks] : personalTasks;
+    if (list.length > 0) return list.slice(0, 2);
+
+    // If completely empty, show 2 template tasks so dashboard is always populated and interactive
+    return [
+      {
+        id: 'tmpl-1',
+        title: 'کیت اپلیکیشن تیمی (Delivery App Kit)',
+        description: 'طراحی رابط کاربری و فلوهای سفارش‌دهی پروژه تیمی...',
+        completed: false,
+        priority: 'high' as const,
+        date: activeDate,
+        projectId: 'delivery-app',
+        projectName: 'Delivery App',
+        subtasks: [
+          { id: 'st-1', title: 'وایرفریم', completed: true },
+          { id: 'st-2', title: 'طراحی UI', completed: false },
+        ],
+      },
+      {
+        id: 'tmpl-2',
+        title: 'طراحی شات دریبل داشبورد (Dribbble Shot)',
+        description: 'پیاده‌سازی استایل مینیمال، مدرن و هماهنگ داشبورد...',
+        completed: true,
+        priority: 'medium' as const,
+        date: activeDate,
+        projectId: undefined,
+        projectName: undefined,
+        subtasks: [
+          { id: 'st-3', title: 'تایپوگرافی', completed: true },
+          { id: 'st-4', title: 'ویجت‌ها', completed: true },
+        ],
+      },
+    ];
+  }, [teamTasks, personalTasks, activeDate]);
+
+  const totalTasksCount = activeDayTasks.length;
+  const completedTasksCount = activeDayTasks.filter((t) => t.completed).length;
+  const pendingTasksCount = totalTasksCount - completedTasksCount;
+  const todayRate = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
+
+  // Dynamic Confidence-Boosting Message
+  const motivationalMessage = useMemo(() => {
+    if (totalTasksCount === 0) {
+      return '🚀 برنامه‌ی امروزت سبکه؛ زمان طلایی برای تفکر خلاق، استراحت یا شروع یک کار جدید!';
+    }
+    if (pendingTasksCount === 0) {
+      return '🏆 فوق‌العاده بود! تمام کارهای امروز را با موفقیت انجام دادی؛ به پشتکار خودت افتخار کن!';
+    }
+    if (completedTasksCount > 0) {
+      return `💪 عالی پیش رفتی! ${toPersianDigits(completedTasksCount)} تسک رو تمام کردی، فقط ${toPersianDigits(pendingTasksCount)} تای دیگه مونده، تو از پسش برمی‌آیی!`;
+    }
+    return `✨ امروز ${toPersianDigits(pendingTasksCount)} تسک در پیش داری؛ با اولین قدم شروع کن، قدرت اراده تو از هر مانعی بزرگتره! 💪`;
+  }, [totalTasksCount, completedTasksCount, pendingTasksCount]);
+
+  // 2. REAL CALENDAR LOGIC: Jalali Month calculation
+  const [activeJy, activeJm] = useMemo(() => {
+    const [y, m] = isoToJalali(activeDate);
+    return [y, m];
+  }, [activeDate]);
+  const [calMonth, setCalMonth] = useState<number>(activeJm);
+  const [calYear, setCalYear] = useState<number>(activeJy);
+
+  const monthName = PERSIAN_MONTHS[calMonth - 1] || 'شهریور';
+  const daysInMonth = calMonth <= 6 ? 31 : calMonth <= 11 ? 30 : 29;
+
+  const navigateMonth = (delta: number) => {
+    sounds.playPop();
+    let nextM = calMonth + delta;
+    let nextY = calYear;
+    if (nextM > 12) {
+      nextM = 1;
+      nextY += 1;
+    } else if (nextM < 1) {
+      nextM = 12;
+      nextY -= 1;
+    }
+    setCalMonth(nextM);
+    setCalYear(nextY);
   };
 
-  const heroCard2 = realCard2 ? {
-    id: realCard2.id,
-    title: realCard2.title,
-    description: realCard2.description || 'تسک در حال انجام امروز',
-    completed: realCard2.completed,
-    progress: realCard2.completed ? 100 : 80,
-  } : {
-    id: 'hero-2',
-    title: 'شات دریبل داشبورد تسک‌مستر (Dribbble Shot)',
-    description: 'پیاده‌سازی استایل مینیمال، مدرن و هماهنگ داشبورد مدیریت پروژه...',
-    completed: true,
-    progress: 80,
-  };
+  // 3. REAL TASK PROGRESS: Real week completion rates
+  const weekDays = useMemo(() => {
+    return getDaysAround(todayISO, 3, 3); // 7 days (3 past, today, 3 future)
+  }, [todayISO]);
 
-  // Calendar dates mock setup matching Dribbble visual
-  const greenDays = [2, 5, 6, 8, 14, 20, 23, 24, 28];
-  const darkDays = [10, 25];
-  const coralDay = 16; // Current highlight day in Dribbble reference
+  const progressStats = useMemo(() => {
+    return weekDays.map((wd) => {
+      const dTasks = tasks.filter((t) => t.date === wd.iso);
+      const total = dTasks.length;
+      const done = dTasks.filter((t) => t.completed).length;
+      const rate = total > 0 ? Math.round((done / total) * 100) : 0;
+      return {
+        iso: wd.iso,
+        dayNum: wd.jalaliDay,
+        rate,
+        total,
+        isToday: wd.iso === todayISO,
+      };
+    });
+  }, [weekDays, tasks, todayISO]);
+
+  // 4. REAL TASK TIMELINE: Map real timed tasks or active tasks
+  const timedTasks = useMemo(() => {
+    const list = activeDayTasks.filter((t) => t.time);
+    if (list.length > 0) {
+      return list.sort((a, b) => a.time!.localeCompare(b.time!)).slice(0, 4);
+    }
+    // Fallback to active tasks
+    return activeDayTasks.slice(0, 4);
+  }, [activeDayTasks]);
+
+  // Current real hour (0 to 24)
+  const currentHour = new Date().getHours();
+  // Marker position percentage across 12:00 to 18:00 window (or day)
+  const markerHour = Math.max(12, Math.min(18, currentHour));
+  const markerPercent = Math.round(((markerHour - 12) / 6) * 100);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 w-full">
-      {/* 1. TOP-LEFT: TODAY TASKS */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-100 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
+      {/* 1. TOP-LEFT: TODAY TASKS (Team & Personal with Confidence Message) */}
+      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center shadow-2xs">
               <CheckSquare className="w-4 h-4 stroke-[2.5]" />
             </div>
-            <h3 className="font-extrabold text-base text-slate-900 tracking-tight">
-              کارهای امروز (Today Tasks)
-            </h3>
+            <div>
+              <h3 className="font-black text-base text-slate-900 tracking-tight">
+                کارهای امروز (Today Tasks)
+              </h3>
+              <span className="text-[10px] text-slate-400 font-bold">
+                {teamTasks.length > 0 ? 'شامل پروژه‌های تیمی و کارهای فردی' : 'کارهای فردی شما'}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -103,7 +216,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
             <button
               type="button"
               onClick={onSeeAllTasks || (() => setActiveTab('tasks'))}
-              className="text-xs font-bold text-slate-400 hover:text-slate-800 transition-colors flex items-center gap-1 cursor-pointer"
+              className="text-xs font-black text-slate-400 hover:text-slate-800 transition-colors flex items-center gap-1 cursor-pointer"
             >
               <span>مشاهده همه</span>
               <span className="text-[10px]">‹</span>
@@ -113,116 +226,100 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
 
         {/* 2 Side-by-Side Task Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          {/* Card 1 */}
-          <div
-            onClick={() => {
-              if (realCard1) toggleTaskComplete(realCard1.id);
-            }}
-            className="bg-[#f8fafc] border border-slate-100/90 rounded-2xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-200 transition-all cursor-pointer"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <h4 className={`font-bold text-xs sm:text-sm leading-snug line-clamp-1 ${heroCard1.completed ? 'line-through text-slate-400' : 'text-slate-900'}`}>
-                {heroCard1.title}
-              </h4>
-              <button
-                type="button"
-                className="text-slate-400 hover:text-slate-700 p-0.5 rounded-md hover:bg-slate-200/50"
-                title="گزینه‌ها"
+          {displayTasks.map((task, i) => {
+            const isCompleted = task.completed;
+            const subCount = task.subtasks?.length || 0;
+            const subDone = task.subtasks?.filter((s) => s.completed).length || 0;
+            const progress = isCompleted ? 100 : subCount > 0 ? Math.round((subDone / subCount) * 100) : (i === 0 ? 65 : 80);
+
+            return (
+              <div
+                key={task.id}
+                onClick={() => {
+                  sounds.playPop();
+                  toggleTaskComplete(task.id);
+                }}
+                className={`bg-[#f8fafc] border rounded-2xl p-4 flex flex-col justify-between space-y-3 transition-all cursor-pointer shadow-2xs ${
+                  isCompleted
+                    ? 'border-emerald-200 bg-emerald-50/20'
+                    : 'border-slate-200/80 hover:border-slate-300 hover:bg-white'
+                }`}
               >
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-            </div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      {task.projectId && (
+                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-indigo-100 text-indigo-700 flex items-center gap-0.5">
+                          <FolderKanban className="w-2.5 h-2.5" />
+                          تیمی
+                        </span>
+                      )}
+                      <h4
+                        className={`font-black text-xs sm:text-sm leading-snug line-clamp-1 ${
+                          isCompleted ? 'line-through text-slate-400' : 'text-slate-900'
+                        }`}
+                      >
+                        {task.title}
+                      </h4>
+                    </div>
+                  </div>
 
-            <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">
-              {heroCard1.description}
-            </p>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      sounds.playPop();
+                      toggleTaskComplete(task.id);
+                    }}
+                    className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-colors flex-shrink-0 ${
+                      isCompleted ? 'bg-[#00b884] border-[#00b884] text-white' : 'border-slate-300 bg-white'
+                    }`}
+                  >
+                    {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  </button>
+                </div>
 
-            <div className="space-y-2 pt-1">
-              {/* Avatars + % */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center -space-x-2 space-x-reverse">
-                  <AvatarMichie size={24} className="border-2 border-white shadow-xs" />
-                  <AvatarDesigner size={24} className="border-2 border-white shadow-xs" />
-                  <AvatarDeveloper size={24} className="border-2 border-white shadow-xs" />
-                  <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white text-[9px] font-bold text-slate-600 flex items-center justify-center">
-                    ۲+
+                <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2 font-medium">
+                  {task.description || 'تسک تعریف‌شده برای امروز'}
+                </p>
+
+                <div className="space-y-2 pt-1">
+                  {/* Avatars + % */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center -space-x-2 space-x-reverse">
+                      <AvatarMichie size={24} className="border-2 border-white shadow-xs" />
+                      <AvatarDesigner size={24} className="border-2 border-white shadow-xs" />
+                      <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-600 flex items-center justify-center">
+                        {toPersianDigits(i + 1)}+
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-black text-slate-700 font-mono">
+                      {toPersianDigits(progress)}٪
+                    </span>
+                  </div>
+
+                  {/* Progress Bar (Mint Green) */}
+                  <div className="w-full bg-slate-200/70 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-[#00b884] h-full rounded-full transition-all duration-500"
+                      style={{ width: `${progress}%` }}
+                    />
                   </div>
                 </div>
-                <span className="text-[11px] font-black text-slate-700 font-mono">
-                  {toPersianDigits(heroCard1.progress)}٪
-                </span>
               </div>
-
-              {/* Progress Bar (Mint Green) */}
-              <div className="w-full bg-slate-200/70 h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-[#00b884] h-full rounded-full transition-all duration-300"
-                  style={{ width: `${heroCard1.progress}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Card 2 */}
-          <div
-            onClick={() => {
-              if (realCard2) toggleTaskComplete(realCard2.id);
-            }}
-            className="bg-[#f8fafc] border border-slate-100/90 rounded-2xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-200 transition-all cursor-pointer"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <h4 className={`font-bold text-xs sm:text-sm leading-snug line-clamp-1 ${heroCard2.completed ? 'line-through text-slate-400' : 'text-slate-900'}`}>
-                {heroCard2.title}
-              </h4>
-              <button
-                type="button"
-                className="text-slate-400 hover:text-slate-700 p-0.5 rounded-md hover:bg-slate-200/50"
-                title="گزینه‌ها"
-              >
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">
-              {heroCard2.description}
-            </p>
-
-            <div className="space-y-2 pt-1">
-              {/* Avatars + % */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center -space-x-2 space-x-reverse">
-                  <AvatarProductManager size={24} className="border-2 border-white shadow-xs" />
-                  <AvatarMichie size={24} className="border-2 border-white shadow-xs" />
-                  <AvatarDeveloper size={24} className="border-2 border-white shadow-xs" />
-                  <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white text-[9px] font-bold text-slate-600 flex items-center justify-center">
-                    ۱+
-                  </div>
-                </div>
-                <span className="text-[11px] font-black text-slate-700 font-mono">
-                  {toPersianDigits(heroCard2.progress)}٪
-                </span>
-              </div>
-
-              {/* Progress Bar (Mint Green) */}
-              <div className="w-full bg-slate-200/70 h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-[#00b884] h-full rounded-full transition-all duration-300"
-                  style={{ width: `${heroCard2.progress}%` }}
-                />
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
 
-        {/* Black Pill Motivation Banner */}
+        {/* Dynamic Confidence & Motivational Banner */}
         {showTodayBanner && (
-          <div className="bg-[#121212] text-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-md">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-[#00b884]/20 text-[#00b884] flex items-center justify-center flex-shrink-0">
-                <MessageSquare className="w-3.5 h-3.5 fill-current" />
+          <div className="bg-[#121212] text-white rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-md animate-in fade-in">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-[#00b884]/20 text-[#00b884] flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-4 h-4 fill-current" />
               </div>
-              <span className="text-xs font-bold leading-tight">
-                امروز {toPersianDigits(todayTasksList.length || 5)} تسک داری. پرقدرت ادامه بده! 💪
+              <span className="text-xs font-black leading-snug truncate">
+                {motivationalMessage}
               </span>
             </div>
 
@@ -232,7 +329,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
                 sounds.playPop();
                 setShowTodayBanner(false);
               }}
-              className="w-6 h-6 rounded-full bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer"
+              className="w-6 h-6 rounded-full bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer mr-2"
               title="بستن"
             >
               <X className="w-3.5 h-3.5" />
@@ -241,51 +338,51 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
         )}
       </div>
 
-      {/* 2. TOP-RIGHT: CALENDAR */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-100 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
-        {/* Header with Month Selector */}
+      {/* 2. TOP-RIGHT: INTERACTIVE CALENDAR */}
+      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
+        {/* Header with Month Navigator */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center shadow-2xs">
               <CalendarIcon className="w-4 h-4" />
             </div>
-            <h3 className="font-extrabold text-base text-slate-900 tracking-tight">
-              تقویم (Calendar)
-            </h3>
+            <div>
+              <h3 className="font-black text-base text-slate-900 tracking-tight">
+                تقویم (Calendar)
+              </h3>
+              <span className="text-[10px] text-slate-400 font-bold">
+                کلیک روی هر روز برای مشاهده کارهای آن روز
+              </span>
+            </div>
           </div>
 
-          <div className="relative">
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
             <button
               type="button"
-              onClick={() => setIsMonthOpen(!isMonthOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:border-slate-300 transition-colors bg-white shadow-2xs"
+              onClick={() => navigateMonth(1)}
+              className="p-1 hover:bg-white rounded-lg text-slate-600 transition-colors"
+              title="ماه بعد"
             >
-              <span>{selectedMonth}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              <ChevronRight className="w-4 h-4" />
             </button>
 
-            {isMonthOpen && (
-              <div className="absolute left-0 mt-1 w-28 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-20 text-xs font-semibold text-slate-700">
-                {['فروردین', 'اردیبهشت', 'تیر', 'مرداد', 'شهریور', 'مهر', 'بهمن', 'اسفند'].map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => {
-                      setSelectedMonth(m);
-                      setIsMonthOpen(false);
-                    }}
-                    className="w-full text-right px-3 py-1.5 hover:bg-slate-50 transition-colors"
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-            )}
+            <span className="text-xs font-black text-slate-800 px-2">
+              {monthName} {toPersianDigits(calYear)}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => navigateMonth(-1)}
+              className="p-1 hover:bg-white rounded-lg text-slate-600 transition-colors"
+              title="ماه قبل"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
         {/* Days Header */}
-        <div className="grid grid-cols-7 text-center text-xs font-bold text-slate-400">
+        <div className="grid grid-cols-7 text-center text-xs font-black text-slate-400">
           <span>ش</span>
           <span>ی</span>
           <span>د</span>
@@ -295,220 +392,227 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
           <span>ج</span>
         </div>
 
-        {/* Calendar Grid */}
+        {/* Calendar Grid: Real month days with real task count indicators */}
         <div className="grid grid-cols-7 gap-y-2 text-center text-xs font-bold">
-          {/* Previous month days: diagonal hatched pattern boxes */}
-          <div className="h-8 rounded-xl pattern-hatched opacity-60 m-0.5" />
-          <div className="h-8 rounded-xl pattern-hatched opacity-60 m-0.5" />
+          {/* Previous month filler */}
           <div className="h-8 rounded-xl pattern-hatched opacity-60 m-0.5" />
           <div className="h-8 rounded-xl pattern-hatched opacity-60 m-0.5" />
           <div className="h-8 rounded-xl pattern-hatched opacity-60 m-0.5" />
 
-          {/* Days 1 to 29 */}
-          {Array.from({ length: 29 }, (_, i) => {
-            const day = i + 1;
-            const isGreen = greenDays.includes(day);
-            const isCoral = day === coralDay;
-            const isDark = darkDays.includes(day);
+          {/* Days 1 to daysInMonth */}
+          {Array.from({ length: daysInMonth }, (_, i) => {
+            const dayNum = i + 1;
+            const dayISO = jalaliToISO(calYear, calMonth, dayNum);
+            const isSelected = dayISO === activeDate;
+            const isToday = dayISO === todayISO;
+
+            // Check real tasks on this date
+            const dayTasksList = tasks.filter((t) => t.date === dayISO);
+            const hasTasks = dayTasksList.length > 0;
+            const allDone = hasTasks && dayTasksList.every((t) => t.completed);
 
             let style = 'text-slate-800 hover:bg-slate-100';
-            if (isGreen) {
-              style = 'bg-[#00b884] text-white shadow-xs';
-            } else if (isCoral) {
-              style = 'bg-[#f95738] text-white shadow-sm ring-2 ring-[#f95738]/20';
-            } else if (isDark) {
-              style = 'bg-[#121212] text-white shadow-xs';
+            if (isSelected) {
+              style = 'bg-[#f95738] text-white shadow-md ring-2 ring-[#f95738]/20 font-black';
+            } else if (allDone) {
+              style = 'bg-[#00b884] text-white shadow-xs font-bold';
+            } else if (hasTasks) {
+              style = 'bg-[#121212] text-white shadow-xs font-bold';
+            } else if (isToday) {
+              style = 'border-2 border-slate-900 text-slate-900 font-black';
             }
 
             return (
-              <div key={day} className="flex items-center justify-center">
+              <div key={dayNum} className="flex items-center justify-center">
                 <button
                   type="button"
                   onClick={() => {
                     sounds.playPop();
-                    if (selectedDate) setSelectedDate(selectedDate);
+                    setSelectedDate(dayISO);
                   }}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${style}`}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${style}`}
+                  title={`${toPersianDigits(dayNum)} ${monthName} (${hasTasks ? `${dayTasksList.length} تسک` : 'بدون تسک'})`}
                 >
-                  {toPersianDigits(day)}
+                  {toPersianDigits(dayNum)}
+                  {hasTasks && !isSelected && !allDone && (
+                    <span className="w-1 h-1 rounded-full bg-[#f95738] absolute bottom-0.5 left-1/2 -translate-x-1/2" />
+                  )}
                 </button>
               </div>
             );
           })}
 
-          {/* Trailing next month days: hatched */}
+          {/* Trailing padding days */}
           <div className="h-8 rounded-xl pattern-hatched opacity-60 m-0.5" />
           <div className="h-8 rounded-xl pattern-hatched opacity-60 m-0.5" />
         </div>
       </div>
 
-      {/* 3. BOTTOM-LEFT: TASK PROGRESS */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-100 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
+      {/* 3. BOTTOM-LEFT: REAL TASK PROGRESS */}
+      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center shadow-2xs">
               <BarChart3 className="w-4 h-4" />
             </div>
-            <h3 className="font-extrabold text-base text-slate-900 tracking-tight">
-              پیشرفت تسک‌ها (Task Progress)
-            </h3>
-          </div>
-
-          <button
-            type="button"
-            className="text-slate-400 hover:text-slate-700 p-1 rounded-md"
-            title="گزینه‌ها"
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Visual Bar Chart with Hatched Columns & 65% Black Pillar */}
-        <div className="h-48 flex items-end justify-between px-2 pt-6 pb-1">
-          {/* Column 12 */}
-          <div className="flex flex-col items-center gap-2">
-            <span className="bg-[#00b884] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
-              +۸٪
-            </span>
-            <div className="w-10 sm:w-11 h-24 rounded-2xl pattern-hatched border border-slate-200/50" />
-            <span className="text-xs font-bold text-slate-400">۱۲</span>
-          </div>
-
-          {/* Column 13 */}
-          <div className="flex flex-col items-center gap-2">
-            <span className="bg-[#121212] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
-              +۲٪
-            </span>
-            <div className="w-10 sm:w-11 h-16 rounded-2xl pattern-hatched border border-slate-200/50" />
-            <span className="text-xs font-bold text-slate-400">۱۳</span>
-          </div>
-
-          {/* Column 14 */}
-          <div className="flex flex-col items-center gap-2">
-            <span className="bg-[#f95738] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
-              +۱۲٪
-            </span>
-            <div className="w-10 sm:w-11 h-28 rounded-2xl pattern-hatched border border-slate-200/50" />
-            <span className="text-xs font-bold text-slate-400">۱۴</span>
-          </div>
-
-          {/* Column 15 */}
-          <div className="flex flex-col items-center gap-2">
-            <span className="bg-[#00b884] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
-              +۵٪
-            </span>
-            <div className="w-10 sm:w-11 h-20 rounded-2xl pattern-hatched border border-slate-200/50" />
-            <span className="text-xs font-bold text-slate-400">۱۵</span>
-          </div>
-
-          {/* Column 16: SOLID JET BLACK PILLAR */}
-          <div className="flex flex-col items-center gap-1.5 -mt-6">
-            <span className="bg-[#121212] text-white text-xs font-black px-2.5 py-1 rounded-full shadow-sm">
-              ۶۵٪
-            </span>
-            <div className="w-11 sm:w-12 h-36 bg-[#121212] rounded-2xl flex flex-col items-center justify-center p-1 shadow-md relative">
-              <span className="bg-[#f95738] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
-                +۸٪
+            <div>
+              <h3 className="font-black text-base text-slate-900 tracking-tight">
+                پیشرفت واقعی تسک‌ها (Task Progress)
+              </h3>
+              <span className="text-[10px] text-slate-400 font-bold">
+                محاسبه بلادرنگ درصد کارهای تکمیل‌شده روزها
               </span>
             </div>
-            <span className="text-xs font-black text-slate-900">۱۶</span>
           </div>
 
-          {/* Column 17 */}
-          <div className="flex flex-col items-center gap-2">
-            <span className="bg-[#00b884] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
-              +۶٪
-            </span>
-            <div className="w-10 sm:w-11 h-24 rounded-2xl pattern-hatched border border-slate-200/50" />
-            <span className="text-xs font-bold text-slate-400">۱۷</span>
-          </div>
+          <span className="text-xs font-mono font-black text-slate-800 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200">
+            امروز: {toPersianDigits(todayRate)}٪
+          </span>
+        </div>
 
-          {/* Column 18 */}
-          <div className="flex flex-col items-center gap-2">
-            <span className="bg-[#f95738] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
-              +۱۰٪
-            </span>
-            <div className="w-10 sm:w-11 h-18 rounded-2xl pattern-hatched border border-slate-200/50" />
-            <span className="text-xs font-bold text-slate-400">۱۸</span>
-          </div>
+        {/* Visual Bar Chart with Real Daily Completion Rates */}
+        <div className="h-48 flex items-end justify-between px-2 pt-6 pb-1">
+          {progressStats.map((stat) => {
+            const isToday = stat.isToday;
+            const rate = stat.rate;
+
+            if (isToday) {
+              return (
+                <div key={stat.iso} className="flex flex-col items-center gap-1.5 -mt-6">
+                  <span className="bg-[#121212] text-white text-xs font-black px-2.5 py-1 rounded-full shadow-sm">
+                    {toPersianDigits(rate)}٪
+                  </span>
+                  <div className="w-11 sm:w-12 h-36 bg-[#121212] rounded-2xl flex flex-col items-center justify-center p-1 shadow-md relative">
+                    <span className="bg-[#f95738] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
+                      امروز
+                    </span>
+                  </div>
+                  <span className="text-xs font-black text-slate-900">{toPersianDigits(stat.dayNum)}</span>
+                </div>
+              );
+            }
+
+            const pillBg = rate >= 70 ? 'bg-[#00b884]' : rate > 0 ? 'bg-[#f95738]' : 'bg-slate-300';
+            const heightClass = rate > 75 ? 'h-28' : rate > 40 ? 'h-24' : rate > 0 ? 'h-18' : 'h-14';
+
+            return (
+              <div key={stat.iso} className="flex flex-col items-center gap-2">
+                <span className={`${pillBg} text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs`}>
+                  +{toPersianDigits(rate)}٪
+                </span>
+                <div className={`w-10 sm:w-11 ${heightClass} rounded-2xl pattern-hatched border border-slate-200/70`} />
+                <span className="text-xs font-bold text-slate-400">{toPersianDigits(stat.dayNum)}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* 4. BOTTOM-RIGHT: TASK TIMELINE (GANTT) */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-100 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
+      {/* 4. BOTTOM-RIGHT: REAL TASK TIMELINE (GANTT) */}
+      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center shadow-2xs">
               <Clock className="w-4 h-4" />
             </div>
-            <h3 className="font-extrabold text-base text-slate-900 tracking-tight">
-              زمان‌بندی تسک‌ها (Task Timeline)
-            </h3>
+            <div>
+              <h3 className="font-black text-base text-slate-900 tracking-tight">
+                زمان‌بندی واقعی تسک‌ها (Task Timeline)
+              </h3>
+              <span className="text-[10px] text-slate-400 font-bold">
+                نمودار گانت کارهای ساعت‌دار امروز • نشانگر نارنجی: ساعت جاری ({toPersianDigits(currentHour)}:۰۰)
+              </span>
+            </div>
           </div>
 
           <button
             type="button"
-            className="text-slate-400 hover:text-slate-700 p-1 rounded-md"
-            title="گزینه‌ها"
+            onClick={() => setActiveTab('planner')}
+            className="text-xs font-black text-slate-400 hover:text-black transition-colors"
           >
-            <MoreHorizontal className="w-4 h-4" />
+            پلنر ۲۴ ساعته ←
           </button>
         </div>
 
-        {/* Horizontal Gantt Bars with Vertical Marker */}
+        {/* Real Horizontal Gantt Bars with Live Time Indicator */}
         <div className="relative h-48 flex flex-col justify-between py-2">
-          {/* Vertical marker line at point 16 */}
+          {/* Real Live Vertical Hour Marker Line */}
           <div
-            className="absolute top-0 bottom-6 w-[2px] bg-[#f95738] z-10 flex flex-col items-center pointer-events-none"
-            style={{ right: '62%' }}
+            className="absolute top-0 bottom-6 w-[2px] bg-[#f95738] z-10 flex flex-col items-center pointer-events-none transition-all duration-500"
+            style={{ right: `${markerPercent}%` }}
           >
-            <div className="w-3 h-3 rounded-full border-2 border-[#f95738] bg-white -mt-1 shadow-2xs" />
+            <div className="w-3 h-3 rounded-full border-2 border-[#f95738] bg-white -mt-1 shadow-xs" />
           </div>
 
-          {/* Background hatched zones for right side */}
-          <div
-            className="absolute top-2 bottom-8 left-4 w-32 pattern-hatched rounded-xl opacity-60 pointer-events-none"
-          />
+          {/* Background hatched zones for visual texture */}
+          <div className="absolute top-2 bottom-8 left-4 w-28 pattern-hatched rounded-xl opacity-60 pointer-events-none" />
 
-          {/* Row 1: Interview (Coral Orange) */}
-          <div className="flex items-center">
-            <div className="bg-[#f95738] text-white text-xs font-extrabold px-5 py-2.5 rounded-full shadow-xs w-44">
-              مصاحبه (Interview)
-            </div>
-          </div>
+          {/* Real or structured timed task bars */}
+          {timedTasks.length > 0 ? (
+            timedTasks.map((t, idx) => {
+              const colors = [
+                'bg-[#f95738]',
+                'bg-[#00b884]',
+                'bg-[#6366f1]',
+                'bg-[#121212]',
+              ];
+              const barColor = colors[idx % colors.length];
+              const indentClasses = ['', 'pr-12', 'pr-24', 'pr-8'];
 
-          {/* Row 2: Ideate (Mint Green) */}
-          <div className="flex items-center pr-12">
-            <div className="bg-[#00b884] text-white text-xs font-extrabold px-6 py-2.5 rounded-full shadow-xs w-52">
-              ایده‌پردازی (Ideate)
-            </div>
-          </div>
-
-          {/* Row 3: Wireframe (Periwinkle Blue) */}
-          <div className="flex items-center pr-28">
-            <div className="bg-[#6366f1] text-white text-xs font-extrabold px-6 py-2.5 rounded-full shadow-xs w-48">
-              وایرفریم (Wireframe)
-            </div>
-          </div>
-
-          {/* Row 4: Evaluate (Jet Black) */}
-          <div className="flex items-center">
-            <div className="bg-[#121212] text-white text-xs font-extrabold px-6 py-2.5 rounded-full shadow-xs w-48">
-              ارزیابی (Evaluate)
-            </div>
-          </div>
+              return (
+                <div key={t.id} className={`flex items-center ${indentClasses[idx] || ''}`}>
+                  <div
+                    onClick={() => {
+                      sounds.playPop();
+                      toggleTaskComplete(t.id);
+                    }}
+                    className={`${barColor} text-white text-xs font-black px-5 py-2.5 rounded-full shadow-xs cursor-pointer hover:opacity-90 transition-opacity truncate max-w-[280px] flex items-center gap-1.5`}
+                    title={t.title}
+                  >
+                    <span>{t.time ? toPersianDigits(t.time) : ''}</span>
+                    <span className="truncate">{t.title}</span>
+                    {t.completed && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <>
+              {/* Default roadmap phases when no timed tasks exist */}
+              <div className="flex items-center">
+                <div className="bg-[#f95738] text-white text-xs font-black px-5 py-2.5 rounded-full shadow-xs w-48">
+                  مصاحبه و ارزیابی (Interview)
+                </div>
+              </div>
+              <div className="flex items-center pr-12">
+                <div className="bg-[#00b884] text-white text-xs font-black px-6 py-2.5 rounded-full shadow-xs w-52">
+                  ایده‌پردازی و کانسپت (Ideate)
+                </div>
+              </div>
+              <div className="flex items-center pr-28">
+                <div className="bg-[#6366f1] text-white text-xs font-black px-6 py-2.5 rounded-full shadow-xs w-48">
+                  طراحی وایرفریم (Wireframe)
+                </div>
+              </div>
+              <div className="flex items-center">
+                <div className="bg-[#121212] text-white text-xs font-black px-6 py-2.5 rounded-full shadow-xs w-48">
+                  ارزیابی و تست (Evaluate)
+                </div>
+              </div>
+            </>
+          )}
 
           {/* X-axis time marks */}
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400 pt-2 border-t border-slate-100">
-            <span>۱۲</span>
-            <span>۱۳</span>
-            <span>۱۴</span>
-            <span>۱۵</span>
-            <span className="text-slate-900 font-black">۱۶</span>
-            <span>۱۷</span>
-            <span>۱۸</span>
+          <div className="flex items-center justify-between text-xs font-black text-slate-400 pt-2 border-t border-slate-100">
+            <span>۱۲:۰۰</span>
+            <span>۱۳:۰۰</span>
+            <span>۱۴:۰۰</span>
+            <span>۱۵:۰۰</span>
+            <span className={currentHour === 16 ? 'text-[#f95738] font-black' : ''}>۱۶:۰۰</span>
+            <span>۱۷:۰۰</span>
+            <span>۱۸:۰۰</span>
           </div>
         </div>
       </div>

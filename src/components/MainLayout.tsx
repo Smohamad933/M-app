@@ -31,6 +31,10 @@ import { TaskIncompleteModal } from './TaskIncompleteModal';
 import { HourlyPlannerView } from './HourlyPlannerView';
 import { HabitsAnalyzerView } from './HabitsAnalyzerView';
 import { CareerGoalsView } from './CareerGoalsView';
+import { FriendsView } from './FriendsView';
+import { AiTaskAgentModal } from './AiTaskAgentModal';
+import { DirectChatModal } from './DirectChatModal';
+import { NotificationCenterModal } from './NotificationCenterModal';
 import { BottomNav } from './BottomNav';
 import { sounds } from '../utils/sound';
 import {
@@ -67,7 +71,6 @@ import {
   Bell,
   Settings,
   ChevronDown,
-  MoreHorizontal,
   CheckCheck,
 } from 'lucide-react';
 
@@ -97,23 +100,34 @@ export const MainLayout: React.FC = () => {
   } = useTask();
 
   const todayISO = getTodayISO();
-  // Admin-editable greeting (falls back to built-in defaults)
   const gk = greetingKeySet(new Date().getHours());
   const greetingText = getText(gk.text);
   const greetingSub = getText(gk.sub);
 
-  // Admin-editable app branding (name, logo, default profile photo)
   const appBranding = globalSettings?.appBranding;
   const appName = (appBranding?.appName || '').trim() || 'تسک‌روز';
   const appLogo = typeof appBranding?.logoDataUrl === 'string' ? appBranding.logoDataUrl : null;
   const defaultAvatar = typeof appBranding?.defaultAvatarDataUrl === 'string' ? appBranding.defaultAvatarDataUrl : null;
   const firstName = (currentUser?.name || '').split(' ')[0];
 
-  // Mobile menu / drawer state
+  // Mobile & Modal state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isFontModalOpen, setIsFontModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  // New interactive states
+  const [isAiAgentModalOpen, setIsAiAgentModalOpen] = useState(false);
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState<number>(3);
+  const [directChatUser, setDirectChatUser] = useState<{
+    id: string;
+    name: string;
+    username?: string;
+    avatar?: string;
+    status?: 'online' | 'offline';
+    role?: string;
+  } | null>(null);
 
   // Live 24-hour clock
   const [liveClock, setLiveClock] = useState('');
@@ -127,6 +141,13 @@ export const MainLayout: React.FC = () => {
     return () => clearInterval(id);
   }, []);
 
+  // Listen for mobile bottom nav custom events
+  useEffect(() => {
+    const handler = () => setIsAiAgentModalOpen(true);
+    window.addEventListener('open-ai-agent-modal', handler);
+    return () => window.removeEventListener('open-ai-agent-modal', handler);
+  }, []);
+
   const isAdmin = currentUser?.role === 'admin';
 
   // Metrics for Dashboard overview
@@ -135,7 +156,6 @@ export const MainLayout: React.FC = () => {
   const todayTotal = todayTasks.length;
   const todayRate = todayTotal > 0 ? Math.round((todayCompleted / todayTotal) * 100) : 0;
   const totalFocusMinutes = tasks.reduce((sum, t) => sum + (t.focusMinutesSpent || 0), 0);
-
   const pendingTodayCount = todayTasks.filter((t) => !t.completed).length;
 
   const navItems: Array<{ id: TabType; label: string; icon: React.ElementType; adminOnly?: boolean; badge?: number }> = [
@@ -143,12 +163,13 @@ export const MainLayout: React.FC = () => {
     { id: 'planner', label: 'دیلی پلنر ساعتی', icon: Clock },
     { id: 'habits', label: 'تحلیلگر عادت‌ها', icon: Brain },
     { id: 'career', label: 'اهداف و رشد شغلی', icon: Compass },
-    { id: 'tasks', label: 'کارهای من (My Tasks)', icon: CheckSquare, badge: pendingTodayCount > 0 ? pendingTodayCount : 6 },
+    { id: 'tasks', label: 'کارهای من (My Tasks)', icon: CheckSquare, badge: pendingTodayCount > 0 ? pendingTodayCount : 4 },
     { id: 'projects', label: 'پروژه‌های تیمی', icon: FolderKanban, badge: projects.length },
-    { id: 'calendar', label: 'تقویم (Calendar)', icon: CalendarDays, badge: 2 },
+    { id: 'friends', label: 'همکاران و دوستان', icon: Users, badge: 2 },
+    { id: 'calendar', label: 'تقویم (Calendar)', icon: CalendarDays },
     { id: 'focus', label: 'تمرکز پومودورو', icon: Timer },
     { id: 'categories', label: 'دسته‌بندی‌ها', icon: LayoutGrid },
-    { id: 'users', label: 'مانیتورینگ کاربران', icon: Users, adminOnly: true, badge: users.length },
+    { id: 'users', label: 'مانیتورینگ کاربران', icon: ShieldCheck, adminOnly: true, badge: users.length },
     { id: 'stats', label: 'گزارش عملکرد', icon: BarChart3 },
   ];
 
@@ -159,11 +180,11 @@ export const MainLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#edf0f4] text-slate-900 p-2 sm:p-5 lg:p-6 flex items-stretch justify-center antialiased selection:bg-[#121212] selection:text-white w-full overflow-x-hidden font-sans">
-      {/* Floating Main Application Shell matching Dribbble reference */}
-      <div className="bg-white rounded-[32px] sm:rounded-[36px] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.06)] border border-slate-200/70 w-full max-w-[1600px] flex flex-col lg:flex-row overflow-hidden min-h-[92vh] relative">
+      {/* Floating Main Application Shell */}
+      <div className="bg-white rounded-[32px] sm:rounded-[36px] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.06)] border border-slate-200/90 w-full max-w-[1600px] flex flex-col lg:flex-row overflow-hidden min-h-[92vh] relative">
         
-        {/* 1. DESKTOP SIDEBAR (RTL: on the right side) */}
-        <aside className="hidden lg:flex w-72 bg-white border-l border-slate-100 flex-col justify-between p-6 z-20 select-none sticky top-0 h-[92vh] flex-shrink-0 min-h-0 overflow-y-auto no-scrollbar">
+        {/* 1. DESKTOP SIDEBAR */}
+        <aside className="hidden lg:flex w-72 bg-white border-l border-slate-200/80 flex-col justify-between p-6 z-20 select-none sticky top-0 h-[92vh] flex-shrink-0 min-h-0 overflow-y-auto no-scrollbar">
           <div className="flex flex-col min-h-0 flex-1">
             {/* Brand Logo & App Name */}
             <div className="flex items-center gap-3">
@@ -191,7 +212,7 @@ export const MainLayout: React.FC = () => {
               MENU
             </div>
 
-            {/* Navigation Links (Active = Solid Jet Black Pill with ↗ Arrow) */}
+            {/* Navigation Links */}
             <nav className="space-y-1 flex-1 min-h-0 overflow-y-auto no-scrollbar -mx-1 px-1">
               {navItems.map((item) => {
                 if (item.adminOnly && !isAdmin) return null;
@@ -225,8 +246,12 @@ export const MainLayout: React.FC = () => {
               })}
             </nav>
 
-            {/* Team Avatars Strip */}
-            <div className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between">
+            {/* Team Avatars Strip - Click opens FriendsView */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('friends')}
+              className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between hover:bg-slate-50 p-2 rounded-2xl transition-colors text-right cursor-pointer"
+            >
               <div className="flex items-center -space-x-2 space-x-reverse">
                 <AvatarMichie size={28} className="border-2 border-white shadow-xs" />
                 <AvatarDesigner size={28} className="border-2 border-white shadow-xs" />
@@ -236,23 +261,36 @@ export const MainLayout: React.FC = () => {
                   ۱۰+
                 </div>
               </div>
-              <span className="text-[10px] font-bold text-slate-400">همکاران آنلاین</span>
-            </div>
+              <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+                <span>همکاران</span>
+                <span className="text-slate-400">‹</span>
+              </span>
+            </button>
 
-            {/* Quick Chat Card ("Michie ✌️" widget) */}
-            <div className="mt-4 p-3.5 bg-[#f8fafc] border border-slate-100 rounded-2xl space-y-2.5 text-right">
+            {/* Quick Chat Card ("Michie ✌️" widget) - Interactive click opens live chat! */}
+            <div
+              onClick={() => {
+                sounds.playPop();
+                setDirectChatUser({
+                  id: 'michie-lead',
+                  name: 'Michie ✌️',
+                  username: 'michie',
+                  role: 'Product Lead',
+                  status: 'online',
+                });
+              }}
+              className="mt-4 p-3.5 bg-[#f8fafc] border border-slate-200/80 hover:border-slate-300 rounded-2xl space-y-2.5 text-right cursor-pointer transition-all hover:shadow-xs group"
+              title="کلیک برای چت مستقیم با Michie"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800">
+                  <AvatarMichie size={22} className="rounded-full shadow-xs" />
                   <span>Michie ✌️</span>
-                  <span className="text-[10px] text-slate-400 font-normal">۲+</span>
+                  <span className="w-2 h-2 rounded-full bg-[#00b884]" />
                 </div>
-                <button
-                  type="button"
-                  className="text-slate-400 hover:text-slate-700"
-                  title="گزینه‌ها"
-                >
-                  <MoreHorizontal className="w-3.5 h-3.5" />
-                </button>
+                <div className="text-[10px] text-slate-400 group-hover:text-slate-800 font-bold">
+                  گفتگو 💬
+                </div>
               </div>
 
               {/* Chat Bubble 1 (Incoming) */}
@@ -278,7 +316,6 @@ export const MainLayout: React.FC = () => {
 
           {/* Sidebar Footer */}
           <div className="space-y-1.5 pt-4 mt-2 border-t border-slate-100 text-xs flex-shrink-0">
-            {/* Admin Font Switcher */}
             {isAdmin && (
               <button
                 type="button"
@@ -293,7 +330,6 @@ export const MainLayout: React.FC = () => {
               </button>
             )}
 
-            {/* Theme Toggle */}
             <button
               type="button"
               onClick={() => updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })}
@@ -312,7 +348,6 @@ export const MainLayout: React.FC = () => {
               )}
             </button>
 
-            {/* Logout */}
             <button
               type="button"
               onClick={logout}
@@ -322,7 +357,6 @@ export const MainLayout: React.FC = () => {
               <span>خروج از حساب</span>
             </button>
 
-            {/* Credits footer */}
             <div className="pt-1.5 px-1 text-[10px] text-slate-400 font-mono">
               {getText('footerCredits')}
             </div>
@@ -331,12 +365,12 @@ export const MainLayout: React.FC = () => {
 
         {/* 2. MAIN CONTENT AREA */}
         <div className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden min-h-full">
-          {/* Top Header Bar matching Dribbble reference */}
-          <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 sm:px-8 py-3.5 sticky top-0 z-30 flex flex-col gap-2">
+          {/* Top Header Bar */}
+          <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 sm:px-8 py-3.5 sticky top-0 z-30 flex flex-col gap-2">
             <div className="flex items-center justify-between gap-3">
-              {/* Right: Search Pill Input (Dribbble style) */}
+              {/* Search Bar */}
               <div className="flex-1 max-w-md min-w-0">
-                <div className="relative flex items-center bg-[#f4f6f8] border border-slate-200/60 rounded-full px-4 py-2 hover:border-slate-300 focus-within:border-slate-400 transition-all">
+                <div className="relative flex items-center bg-[#f4f6f8] border border-slate-200/80 rounded-full px-4 py-2 hover:border-slate-300 focus-within:border-slate-400 transition-all">
                   <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
                   <input
                     type="text"
@@ -356,8 +390,8 @@ export const MainLayout: React.FC = () => {
                 </div>
               </div>
 
-              {/* Left: Actions, Profile & Quick Add */}
-              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              {/* Header Right Actions */}
+              <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
                 {/* Admin User Filter Dropdown */}
                 {isAdmin && users.length > 1 && (
                   <select
@@ -378,20 +412,20 @@ export const MainLayout: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsShareModalOpen(true)}
-                  className="w-9 h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs hidden sm:flex"
+                  className="w-9 h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs hidden sm:flex cursor-pointer"
                   title="اشتراک‌گذاری گزارش"
                 >
                   <Share2 className="w-4 h-4" />
                 </button>
 
-                {/* Theme Toggle (circular border button) */}
+                {/* Theme Toggle */}
                 <button
                   type="button"
                   onClick={() => {
                     sounds.playPop();
                     updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' });
                   }}
-                  className="w-9 h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs"
+                  className="w-9 h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs cursor-pointer"
                   title={settings.theme === 'dark' ? 'تغییر به تم روز ☀️' : 'تغییر به تم شب 🌙'}
                 >
                   {settings.theme === 'dark' ? (
@@ -401,15 +435,21 @@ export const MainLayout: React.FC = () => {
                   )}
                 </button>
 
-                {/* Notification Bell with Coral Dot */}
+                {/* Notification Bell with interactive Modal */}
                 <button
                   type="button"
-                  onClick={() => sounds.playPop()}
-                  className="w-9 h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs relative"
-                  title="اعلان‌ها"
+                  onClick={() => {
+                    sounds.playPop();
+                    setIsNotificationCenterOpen(true);
+                    setUnreadNotifCount(0);
+                  }}
+                  className="w-9 h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs relative cursor-pointer"
+                  title="مرکز اعلان‌ها"
                 >
                   <Bell className="w-4 h-4" />
-                  <span className="w-2 h-2 rounded-full bg-[#f95738] absolute top-2 right-2 ring-2 ring-white" />
+                  {unreadNotifCount > 0 && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#f95738] absolute top-1.5 right-1.5 ring-2 ring-white animate-pulse" />
+                  )}
                 </button>
 
                 {/* Settings Cogwheel */}
@@ -423,7 +463,7 @@ export const MainLayout: React.FC = () => {
                       setIsProfileModalOpen(true);
                     }
                   }}
-                  className="w-9 h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs"
+                  className="w-9 h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs cursor-pointer"
                   title="تنظیمات"
                 >
                   <Settings className="w-4 h-4" />
@@ -459,14 +499,29 @@ export const MainLayout: React.FC = () => {
                   </button>
                 )}
 
-                {/* Create Task Button (Jet Black Pill) */}
+                {/* AI Task Agent Button (Smart Natural Language & Voice) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setIsAiAgentModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-2xl bg-[#00b884] hover:bg-[#00a375] text-white font-extrabold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
+                  title="ثبت هوشمند کارهای روز با صدای خود یا متن محاوره‌ای"
+                >
+                  <Sparkles className="w-4 h-4 stroke-[2.5]" />
+                  <span className="hidden sm:inline">دستیار هوشمند (AI)</span>
+                </button>
+
+                {/* Manual Add Task Button */}
                 <button
                   type="button"
                   onClick={() => openCreateModal(selectedDate)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#121212] hover:bg-black text-white font-extrabold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-2xl bg-[#121212] hover:bg-black text-white font-extrabold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
+                  title="افزودن دستی تسک"
                 >
                   <Plus className="w-4 h-4 stroke-[2.5]" />
-                  <span className="hidden md:inline">تسک جدید</span>
+                  <span className="hidden md:inline">افزودن دستی</span>
                 </button>
 
                 {/* Mobile Menu Button */}
@@ -481,8 +536,8 @@ export const MainLayout: React.FC = () => {
               </div>
             </div>
 
-            {/* Sub-header info bar: Greeting, Jalali Date & Clock */}
-            <div className="flex items-center justify-between text-xs pt-1 px-1 border-t border-slate-50">
+            {/* Sub-header info bar */}
+            <div className="flex items-center justify-between text-xs pt-1 px-1 border-t border-slate-100">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="font-extrabold text-slate-800 truncate" title={greetingSub}>
                   {greetingText}
@@ -562,10 +617,10 @@ export const MainLayout: React.FC = () => {
               </div>
             )}
 
-            {/* TAB 1: DASHBOARD (TASKMASTER DRIBBLE BENTO) */}
+            {/* TAB 1: DASHBOARD */}
             {activeTab === 'dashboard' && (
               <div className="space-y-6 animate-in fade-in w-full min-w-0">
-                {/* 4 Dribbble Signature Widgets (Today Tasks, Calendar, Task Progress, Task Timeline) */}
+                {/* 4 Dribbble Signature Widgets */}
                 <TaskMasterBentoWidgets
                   onSeeAllTasks={() => setActiveTab('tasks')}
                   onOpenCreateTask={() => openCreateModal(selectedDate)}
@@ -573,7 +628,7 @@ export const MainLayout: React.FC = () => {
 
                 {/* 4 KPI Summary Cards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
-                  <div className="p-4 sm:p-5 bg-[#f8fafc] rounded-2xl sm:rounded-3xl border border-slate-100 shadow-2xs">
+                  <div className="p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)]">
                     <div className="flex items-center justify-between text-slate-500 mb-1.5">
                       <span className="text-xs font-bold">تسک‌های امروز</span>
                       <CheckSquare className="w-4 h-4 text-slate-400" />
@@ -586,7 +641,7 @@ export const MainLayout: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="p-4 sm:p-5 bg-[#f8fafc] rounded-2xl sm:rounded-3xl border border-slate-100 shadow-2xs">
+                  <div className="p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)]">
                     <div className="flex items-center justify-between text-slate-500 mb-1.5">
                       <span className="text-xs font-bold">نرخ پیشرفت</span>
                       <TrendingUp className="w-4 h-4 text-[#00b884]" />
@@ -602,7 +657,7 @@ export const MainLayout: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="p-4 sm:p-5 bg-[#f8fafc] rounded-2xl sm:rounded-3xl border border-slate-100 shadow-2xs">
+                  <div className="p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)]">
                     <div className="flex items-center justify-between text-slate-500 mb-1.5">
                       <span className="text-xs font-bold">تمرکز عمیق</span>
                       <Clock className="w-4 h-4 text-amber-500" />
@@ -615,7 +670,7 @@ export const MainLayout: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="p-4 sm:p-5 bg-[#f8fafc] rounded-2xl sm:rounded-3xl border border-slate-100 shadow-2xs">
+                  <div className="p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)]">
                     <div className="flex items-center justify-between text-slate-500 mb-1.5">
                       <span className="text-xs font-bold">زنجیره استریک</span>
                       <Flame className="w-4 h-4 text-[#f95738]" />
@@ -629,9 +684,9 @@ export const MainLayout: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Upcoming Tasks Section (Pinned first, then date ascending) */}
+                {/* Upcoming Tasks Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0">
-                  <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 p-5 shadow-sm space-y-4 min-w-0 w-full">
+                  <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/90 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-4 min-w-0 w-full">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div>
                         <h3 className="text-sm font-black text-slate-900">
@@ -657,7 +712,7 @@ export const MainLayout: React.FC = () => {
 
                   {/* Right side helper cards */}
                   <div className="space-y-6 min-w-0 w-full">
-                    <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm space-y-3 min-w-0 w-full">
+                    <div className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-3 min-w-0 w-full">
                       <h3 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4 text-slate-400" />
                         تقویم روزهای هفته
@@ -667,7 +722,7 @@ export const MainLayout: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm space-y-3">
+                    <div className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-3">
                       <h3 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4 text-[#00b884]" />
                         تکنیک بهره‌وری روز
@@ -709,10 +764,10 @@ export const MainLayout: React.FC = () => {
               </div>
             )}
 
-            {/* TAB 2: TASKS (List & Kanban) */}
+            {/* TAB: TASKS (List & Kanban) */}
             {activeTab === 'tasks' && (
               <div className="space-y-4 animate-in fade-in w-full min-w-0">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm min-w-0 w-full overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] min-w-0 w-full overflow-hidden">
                   <div className="w-full min-w-0 overflow-hidden">
                     <WeeklyStrip />
                   </div>
@@ -746,7 +801,7 @@ export const MainLayout: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-100 shadow-sm">
+                <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)]">
                   <QuickAddBar />
                 </div>
 
@@ -758,6 +813,13 @@ export const MainLayout: React.FC = () => {
             {activeTab === 'projects' && (
               <div className="w-full min-w-0">
                 <TeamProjectsView />
+              </div>
+            )}
+
+            {/* TAB: FRIENDS & DIRECT CHAT */}
+            {activeTab === 'friends' && (
+              <div className="w-full min-w-0">
+                <FriendsView onStartChat={(user) => setDirectChatUser(user as any)} />
               </div>
             )}
 
@@ -934,6 +996,37 @@ export const MainLayout: React.FC = () => {
       <ExportShareModal />
       <FontSelectorModal isOpen={isFontModalOpen} onClose={() => setIsFontModalOpen(false)} />
       {isProfileModalOpen && <ProfileModal onClose={() => setIsProfileModalOpen(false)} />}
+
+      {/* AI Task Agent Modal (Voice + Natural Persian Language parsing) */}
+      <AiTaskAgentModal
+        isOpen={isAiAgentModalOpen}
+        onClose={() => setIsAiAgentModalOpen(false)}
+        onSwitchToManual={() => {
+          setIsAiAgentModalOpen(false);
+          openCreateModal(selectedDate);
+        }}
+      />
+
+      {/* Notification Center Modal */}
+      <NotificationCenterModal
+        isOpen={isNotificationCenterOpen}
+        onClose={() => setIsNotificationCenterOpen(false)}
+        onOpenTask={(_taskId) => {
+          setActiveTab('tasks');
+        }}
+        onOpenChat={(userId, userName) => {
+          setDirectChatUser({ id: userId, name: userName, status: 'online' });
+        }}
+      />
+
+      {/* Direct Interactive Chat Modal */}
+      {directChatUser && (
+        <DirectChatModal
+          isOpen={Boolean(directChatUser)}
+          onClose={() => setDirectChatUser(null)}
+          peerUser={directChatUser}
+        />
+      )}
     </div>
   );
 };

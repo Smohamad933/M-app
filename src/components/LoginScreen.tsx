@@ -117,13 +117,12 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
-  // Searchable skill picker state
+  // Searchable skill picker state - user constraint: do not display all skills, find via search
   const [skillSearchOpen, setSkillSearchOpen] = useState(false);
   const matchingSkills = (() => {
     const q = customSkillInput.trim();
-    const pool = q
-      ? SUGGESTED_SKILLS.filter((s) => s.includes(q))
-      : SUGGESTED_SKILLS;
+    if (!q) return [];
+    const pool = SUGGESTED_SKILLS.filter((s) => s.includes(q));
     return pool.filter((s) => !selectedSkills.includes(s)).slice(0, 8);
   })();
 
@@ -356,7 +355,7 @@ export const LoginScreen: React.FC = () => {
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="نام کاربری شما (مثلاً Mohusyn)"
+                    placeholder="نام کاربری شما"
                     className="w-full pl-3 pr-10 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 text-xs font-mono outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
                     autoFocus
                   />
