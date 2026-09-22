@@ -59,11 +59,15 @@ export const TaskModal: React.FC = () => {
   const [time, setTime] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [categoryId, setCategoryId] = useState(categories[0]?.id || 'cat-work');
-  const [projectId, setProjectId] = useState<string | null>(null);
-  const [assignedUserId, setAssignedUserId] = useState(currentUser?.id || 'usr_admin_1');
+  const [projectId, setProjectId] = useState<string | null>(selectedProjectId);
   const [isPinned, setIsPinned] = useState(false);
   const [subtasks, setSubtasks] = useState<SubTask[]>([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+
+  // Admin user assignment
+  const [assignedUserId, setAssignedUserId] = useState<string>(currentUser?.id || '');
+
+  const todayISO = getTodayISO();
 
   useEffect(() => {
     if (editingTask) {
@@ -74,23 +78,22 @@ export const TaskModal: React.FC = () => {
       setPriority(editingTask.priority);
       setCategoryId(editingTask.categoryId);
       setProjectId(editingTask.projectId || null);
-      setAssignedUserId(editingTask.userId || currentUser?.id || 'usr_admin_1');
-      setIsPinned(!!editingTask.isPinned);
+      setIsPinned(editingTask.isPinned || false);
       setSubtasks(editingTask.subtasks || []);
+      setAssignedUserId(editingTask.userId || currentUser?.id || '');
     } else {
       setTitle('');
       setDescription('');
-      setDate(selectedDate || getTodayISO());
+      setDate(selectedDate || todayISO);
       setTime('');
       setPriority('medium');
       setCategoryId(categories[0]?.id || 'cat-work');
       setProjectId(selectedProjectId || null);
-      setAssignedUserId(currentUser?.id || 'usr_admin_1');
       setIsPinned(false);
       setSubtasks([]);
+      setAssignedUserId(currentUser?.id || '');
     }
-    setNewSubtaskTitle('');
-  }, [editingTask, isTaskModalOpen, selectedDate, categories, currentUser, selectedProjectId]);
+  }, [editingTask, isTaskModalOpen, selectedDate, selectedProjectId, categories, currentUser, todayISO]);
 
   if (!isTaskModalOpen) return null;
 
@@ -100,7 +103,7 @@ export const TaskModal: React.FC = () => {
     setSubtasks([
       ...subtasks,
       {
-        id: 'sub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        id: 'st-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
         title: newSubtaskTitle.trim(),
         completed: false,
       },
@@ -108,54 +111,48 @@ export const TaskModal: React.FC = () => {
     setNewSubtaskTitle('');
   };
 
-  const handleRemoveSubtask = (subId: string) => {
-    setSubtasks(subtasks.filter((s) => s.id !== subId));
+  const handleRemoveSubtask = (id: string) => {
+    setSubtasks(subtasks.filter((s) => s.id !== id));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
     if (editingTask) {
-      await updateTask({
+      updateTask({
         ...editingTask,
-        userId: assignedUserId,
-        projectId: projectId || undefined,
         title: title.trim(),
         description: description.trim() || undefined,
         date,
         time: time || undefined,
         priority,
         categoryId,
+        projectId: projectId || undefined,
         isPinned,
         subtasks,
+        ...(currentUser?.role === 'admin' ? { userId: assignedUserId } : {}),
       });
     } else {
-      await addTask({
-        userId: assignedUserId,
-        projectId: projectId || undefined,
+      addTask({
         title: title.trim(),
         description: description.trim() || undefined,
         date,
         time: time || undefined,
-        completed: false,
         priority,
         categoryId,
+        projectId: projectId || undefined,
+        completed: false,
         isPinned,
         subtasks,
+        ...(currentUser?.role === 'admin' ? { userId: assignedUserId } : {}),
       });
     }
 
     closeTaskModal();
   };
 
-  const todayISO = getTodayISO();
-  const getTomorrowISO = () => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
-
+  // Jalali selector parts
   const [jy, jm, jd] = isoToJalali(date || todayISO);
 
   const onJalaliChange = (newJy: number, newJm: number, newJd: number) => {
@@ -165,37 +162,37 @@ export const TaskModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs transition-opacity animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in">
       <div
-        className="w-full max-w-md bg-zinc-900 rounded-3xl shadow-2xl border border-zinc-800 max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95"
+        className="w-full max-w-md bg-white rounded-[32px] shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-800">
-          <h2 className="text-sm font-extrabold text-white">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
+          <h2 className="text-base font-black text-slate-900">
             {editingTask ? 'ویرایش تسک' : 'افزودن تسک جدید'}
           </h2>
           <button
             onClick={closeTaskModal}
-            className="p-1.5 rounded-full text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-full text-slate-400 hover:text-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Scrollable Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
           {/* Admin User Assignment Selector */}
           {currentUser?.role === 'admin' && users.length > 1 && (
-            <div className="space-y-1.5 p-3 rounded-2xl bg-zinc-800/60 border border-zinc-700/60">
-              <label className="font-bold text-zinc-200 flex items-center gap-1.5">
-                <UserCheck className="w-3.5 h-3.5 text-zinc-400" />
+            <div className="space-y-1.5 p-3.5 rounded-2xl bg-[#f8fafc] border border-slate-200">
+              <label className="font-extrabold text-slate-700 flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-slate-500" />
                 تخصیص تسک به کاربر:
               </label>
               <select
                 value={assignedUserId}
                 onChange={(e) => setAssignedUserId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-bold text-white outline-hidden"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 outline-none"
               >
                 {users.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -208,7 +205,7 @@ export const TaskModal: React.FC = () => {
 
           {/* Title */}
           <div className="space-y-1.5">
-            <label className="font-bold text-zinc-300">
+            <label className="font-extrabold text-slate-700">
               عنوان تسک <span className="text-rose-500">*</span>
             </label>
             <input
@@ -217,14 +214,14 @@ export const TaskModal: React.FC = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="مثال: نهایی‌سازی پروژه..."
-              className="w-full px-3.5 py-2.5 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white placeholder-zinc-500 text-xs outline-hidden focus:border-zinc-500 font-medium"
+              className="w-full px-4 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 placeholder-slate-400 text-xs outline-none focus:border-slate-400 focus:bg-white font-bold transition-all"
               autoFocus
             />
           </div>
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="font-bold text-zinc-300">
+            <label className="font-extrabold text-slate-700">
               توضیحات یا یادداشت (اختیاری)
             </label>
             <textarea
@@ -232,20 +229,20 @@ export const TaskModal: React.FC = () => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="جزئیات و نکات کلیدی..."
-              className="w-full px-3.5 py-2 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white placeholder-zinc-500 text-xs outline-hidden focus:border-zinc-500 resize-none"
+              className="w-full px-4 py-2.5 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 placeholder-slate-400 text-xs outline-none focus:border-slate-400 focus:bg-white resize-none transition-all"
             />
           </div>
 
           {/* Persian Date & 24-Hour Time Picker */}
-          <div className="space-y-3 p-3.5 bg-zinc-800/40 rounded-2xl border border-zinc-700/50">
+          <div className="space-y-3 p-4 bg-[#f8fafc] rounded-2xl border border-slate-200">
             {/* Persian Date Selector */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="font-bold text-zinc-300 flex items-center gap-1.5 text-xs">
-                  <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                <label className="font-extrabold text-slate-700 flex items-center gap-1.5 text-xs">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-600" />
                   <span>تاریخ شمسی تسک</span>
                 </label>
-                <span className="text-[11px] font-bold text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded-lg border border-indigo-800/60">
+                <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200">
                   {formatPersianDate(date || todayISO, 'full')}
                 </span>
               </div>
@@ -253,11 +250,11 @@ export const TaskModal: React.FC = () => {
               {/* Day, Month, Year selects */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
-                  <span className="text-[10px] text-zinc-400 font-semibold block">روز</span>
+                  <span className="text-[10px] text-slate-500 font-bold block">روز</span>
                   <select
                     value={jd}
                     onChange={(e) => onJalaliChange(jy, jm, Number(e.target.value))}
-                    className="w-full px-2 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-white text-xs outline-hidden cursor-pointer"
+                    className="w-full px-2 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs outline-none cursor-pointer"
                   >
                     {Array.from({ length: jm <= 6 ? 31 : jm <= 11 ? 30 : 29 }, (_, i) => i + 1).map((d) => (
                       <option key={d} value={d}>
@@ -268,11 +265,11 @@ export const TaskModal: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <span className="text-[10px] text-zinc-400 font-semibold block">ماه</span>
+                  <span className="text-[10px] text-slate-500 font-bold block">ماه</span>
                   <select
                     value={jm}
                     onChange={(e) => onJalaliChange(jy, Number(e.target.value), jd)}
-                    className="w-full px-2 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-white text-xs outline-hidden cursor-pointer"
+                    className="w-full px-2 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs outline-none cursor-pointer"
                   >
                     {PERSIAN_MONTHS.map((m, idx) => (
                       <option key={idx + 1} value={idx + 1}>
@@ -283,13 +280,13 @@ export const TaskModal: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <span className="text-[10px] text-zinc-400 font-semibold block">سال</span>
+                  <span className="text-[10px] text-slate-500 font-bold block">سال</span>
                   <select
                     value={jy}
                     onChange={(e) => onJalaliChange(Number(e.target.value), jm, jd)}
-                    className="w-full px-2 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-white text-xs outline-hidden cursor-pointer"
+                    className="w-full px-2 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs outline-none font-mono cursor-pointer"
                   >
-                    {[1403, 1404, 1405, 1406, 1407].map((y) => (
+                    {[1404, 1405, 1406].map((y) => (
                       <option key={y} value={y}>
                         {toPersianDigits(y)}
                       </option>
@@ -297,64 +294,39 @@ export const TaskModal: React.FC = () => {
                   </select>
                 </div>
               </div>
-
-              {/* Quick Date Pills */}
-              <div className="flex gap-1.5 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setDate(todayISO)}
-                  className={`text-[10px] px-2.5 py-1 rounded-xl border transition-colors cursor-pointer ${
-                    date === todayISO
-                      ? 'bg-white text-zinc-950 font-bold border-transparent'
-                      : 'bg-zinc-800 text-zinc-400 border-zinc-700/60 hover:text-white'
-                  }`}
-                >
-                  امروز ({formatPersianDate(todayISO, 'dayMonth')})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDate(getTomorrowISO())}
-                  className={`text-[10px] px-2.5 py-1 rounded-xl border transition-colors cursor-pointer ${
-                    date === getTomorrowISO()
-                      ? 'bg-white text-zinc-950 font-bold border-transparent'
-                      : 'bg-zinc-800 text-zinc-400 border-zinc-700/60 hover:text-white'
-                  }`}
-                >
-                  فردا ({formatPersianDate(getTomorrowISO(), 'dayMonth')})
-                </button>
-              </div>
             </div>
 
-            {/* Time (24-hour) */}
-            <div className="space-y-1.5 pt-2 border-t border-zinc-800/80">
-              <div className="flex items-center justify-between">
-                <label className="font-bold text-zinc-300 flex items-center gap-1 text-xs">
-                  <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>ساعت انجام (۲۴ ساعته)</span>
-                </label>
-                {time && (
-                  <span className="text-[10px] font-mono text-zinc-400">
-                    {toPersianDigits(time)}
-                  </span>
-                )}
-              </div>
+            {/* 24-Hour Time Picker */}
+            <div className="space-y-1.5 pt-2 border-t border-slate-200">
+              <label className="font-extrabold text-slate-700 flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-500" />
+                  <span>ساعت اجرا (۲۴ ساعته)</span>
+                </span>
+                <span className="text-[11px] font-normal text-slate-400">
+                  جهت نمایش در دیلی پلنر ساعتی
+                </span>
+              </label>
+
               <div className="flex items-center gap-2">
                 <input
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-white text-xs font-mono outline-hidden focus:border-zinc-500"
+                  className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs font-mono outline-none cursor-pointer focus:border-slate-400"
                 />
-                <div className="flex gap-1 flex-wrap">
-                  {['09:00', '12:00', '16:00', '20:00'].map((preset) => (
+
+                {/* Quick hour buttons */}
+                <div className="flex flex-wrap gap-1">
+                  {['09:00', '12:00', '15:00', '18:00'].map((preset) => (
                     <button
                       key={preset}
                       type="button"
                       onClick={() => setTime(preset)}
                       className={`text-[10px] px-2 py-1 rounded-lg border transition-colors cursor-pointer ${
                         time === preset
-                          ? 'bg-white text-zinc-950 font-bold border-transparent'
-                          : 'bg-zinc-800/80 text-zinc-400 border-zinc-700/50 hover:text-white'
+                          ? 'bg-[#121212] text-white font-bold border-black'
+                          : 'bg-white text-slate-600 border-slate-200 hover:text-black'
                       }`}
                     >
                       {toPersianDigits(preset)}
@@ -364,7 +336,7 @@ export const TaskModal: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setTime('')}
-                      className="text-[10px] text-zinc-500 hover:text-rose-400 px-1 py-1 cursor-pointer"
+                      className="text-[10px] text-slate-400 hover:text-rose-500 px-1 py-1 cursor-pointer font-bold"
                     >
                       پاک کردن
                     </button>
@@ -376,7 +348,7 @@ export const TaskModal: React.FC = () => {
 
           {/* Priority */}
           <div className="space-y-1.5">
-            <label className="font-bold text-zinc-300">
+            <label className="font-extrabold text-slate-700">
               اولویت
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -385,8 +357,8 @@ export const TaskModal: React.FC = () => {
                 onClick={() => setPriority('high')}
                 className={`py-2 px-2 rounded-2xl text-center font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
                   priority === 'high'
-                    ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
-                    : 'bg-zinc-800/80 text-zinc-400 border-transparent hover:text-white'
+                    ? 'bg-rose-50 text-rose-600 border-rose-200 shadow-xs'
+                    : 'bg-[#f8fafc] text-slate-500 border-slate-200 hover:text-slate-900'
                 }`}
               >
                 <AlertCircle className="w-3.5 h-3.5" />
@@ -398,8 +370,8 @@ export const TaskModal: React.FC = () => {
                 onClick={() => setPriority('medium')}
                 className={`py-2 px-2 rounded-2xl text-center font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
                   priority === 'medium'
-                    ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                    : 'bg-zinc-800/80 text-zinc-400 border-transparent hover:text-white'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200 shadow-xs'
+                    : 'bg-[#f8fafc] text-slate-500 border-slate-200 hover:text-slate-900'
                 }`}
               >
                 <span>⚡</span>
@@ -411,8 +383,8 @@ export const TaskModal: React.FC = () => {
                 onClick={() => setPriority('low')}
                 className={`py-2 px-2 rounded-2xl text-center font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
                   priority === 'low'
-                    ? 'bg-white text-zinc-950 border-white shadow-sm font-black'
-                    : 'bg-zinc-800/80 text-zinc-400 border-transparent hover:text-white'
+                    ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-xs font-black'
+                    : 'bg-[#f8fafc] text-slate-500 border-slate-200 hover:text-slate-900'
                 }`}
               >
                 <span>🌱</span>
@@ -423,7 +395,7 @@ export const TaskModal: React.FC = () => {
 
           {/* Category selection */}
           <div className="space-y-1.5">
-            <label className="font-bold text-zinc-300">
+            <label className="font-extrabold text-slate-700">
               دسته‌بندی
             </label>
             <div className="flex flex-wrap gap-2">
@@ -437,8 +409,8 @@ export const TaskModal: React.FC = () => {
                     onClick={() => setCategoryId(cat.id)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all text-xs cursor-pointer ${
                       isSelected
-                        ? 'border-white bg-zinc-800 text-white font-bold'
-                        : 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-white'
+                        ? 'border-slate-800 bg-[#121212] text-white font-bold'
+                        : 'border-slate-200 bg-[#f8fafc] text-slate-600 hover:text-black'
                     }`}
                   >
                     <IconComponent
@@ -455,8 +427,8 @@ export const TaskModal: React.FC = () => {
           {/* Team Project selection */}
           {projects.length > 0 && (
             <div className="space-y-1.5">
-              <label className="font-bold text-zinc-300 flex items-center gap-1.5">
-                <FolderKanban className="w-3.5 h-3.5 text-indigo-400" />
+              <label className="font-extrabold text-slate-700 flex items-center gap-1.5">
+                <FolderKanban className="w-3.5 h-3.5 text-indigo-600" />
                 پروژه تیمی (اختیاری)
               </label>
               <div className="flex flex-wrap gap-2">
@@ -465,8 +437,8 @@ export const TaskModal: React.FC = () => {
                   onClick={() => setProjectId(null)}
                   className={`px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer ${
                     projectId === null
-                      ? 'border-white bg-zinc-800 text-white font-bold'
-                      : 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-white'
+                      ? 'border-slate-800 bg-[#121212] text-white font-bold'
+                      : 'border-slate-200 bg-[#f8fafc] text-slate-600 hover:text-black'
                   }`}
                 >
                   بدون پروژه (شخصی)
@@ -480,8 +452,8 @@ export const TaskModal: React.FC = () => {
                       onClick={() => setProjectId(p.id)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer ${
                         isSelected
-                          ? 'border-white bg-zinc-800 text-white font-bold shadow-xs'
-                          : 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-white'
+                          ? 'border-slate-800 bg-[#121212] text-white font-bold shadow-xs'
+                          : 'border-slate-200 bg-[#f8fafc] text-slate-600 hover:text-black'
                       }`}
                     >
                       <span
@@ -497,10 +469,10 @@ export const TaskModal: React.FC = () => {
           )}
 
           {/* Subtasks (Checklist) */}
-          <div className="space-y-2 pt-2 border-t border-zinc-800">
-            <label className="font-bold text-zinc-300 flex items-center justify-between">
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <label className="font-extrabold text-slate-700 flex items-center justify-between">
               <span>چک‌لیست زیرتسک‌ها</span>
-              <span className="text-[11px] font-normal text-zinc-500">
+              <span className="text-[11px] font-normal text-slate-400">
                 ({subtasks.length} مورد)
               </span>
             </label>
@@ -511,7 +483,7 @@ export const TaskModal: React.FC = () => {
                 value={newSubtaskTitle}
                 onChange={(e) => setNewSubtaskTitle(e.target.value)}
                 placeholder="افزودن گام یا ریزتسک..."
-                className="flex-1 px-3 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/60 text-white placeholder-zinc-500 text-xs outline-hidden focus:border-zinc-500"
+                className="flex-1 px-3 py-2 rounded-xl bg-[#f8fafc] border border-slate-200 text-slate-900 placeholder-slate-400 text-xs outline-none focus:border-slate-400"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -522,7 +494,7 @@ export const TaskModal: React.FC = () => {
               <button
                 type="button"
                 onClick={handleAddSubtask}
-                className="px-3 py-2 bg-white hover:bg-zinc-200 text-zinc-950 rounded-xl transition-colors font-bold flex items-center justify-center cursor-pointer"
+                className="px-3.5 py-2 bg-[#121212] hover:bg-black text-white rounded-xl transition-colors font-bold flex items-center justify-center cursor-pointer shadow-xs"
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -533,15 +505,15 @@ export const TaskModal: React.FC = () => {
                 {subtasks.map((st) => (
                   <div
                     key={st.id}
-                    className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/40 rounded-xl border border-zinc-800"
+                    className="flex items-center justify-between px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200/80"
                   >
-                    <span className="text-xs text-zinc-200">
+                    <span className="text-xs text-slate-700">
                       {st.title}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleRemoveSubtask(st.id)}
-                      className="text-zinc-500 hover:text-rose-400 p-1 cursor-pointer"
+                      className="text-slate-400 hover:text-rose-500 p-1 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -558,10 +530,10 @@ export const TaskModal: React.FC = () => {
                 type="checkbox"
                 checked={isPinned}
                 onChange={(e) => setIsPinned(e.target.checked)}
-                className="w-4 h-4 rounded text-white focus:ring-0 bg-zinc-800 border-zinc-700"
+                className="w-4 h-4 rounded text-slate-900 focus:ring-0 border-slate-300"
               />
-              <span className="text-xs font-semibold text-zinc-300 flex items-center gap-1">
-                <Star className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                <Star className="w-3.5 h-3.5 text-[#f95738]" />
                 سنجاق به بالای لیست کارهای روزانه
               </span>
             </label>
@@ -572,16 +544,16 @@ export const TaskModal: React.FC = () => {
             <button
               type="button"
               onClick={closeTaskModal}
-              className="flex-1 py-3 rounded-2xl bg-zinc-800 text-zinc-300 font-bold hover:bg-zinc-700 transition-colors cursor-pointer"
+              className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors cursor-pointer"
             >
               انصراف
             </button>
             <button
               type="submit"
-              className="flex-2 py-3 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="flex-1 py-3 rounded-2xl bg-[#121212] hover:bg-black text-white font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
             >
-              <Check className="w-4 h-4" />
-              {editingTask ? 'ذخیره تغییرات' : 'ثبت تسک'}
+              <Check className="w-4 h-4 stroke-[2.5]" />
+              <span>{editingTask ? 'ذخیره تغییرات' : 'افزودن تسک'}</span>
             </button>
           </div>
         </form>

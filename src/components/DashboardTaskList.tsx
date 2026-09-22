@@ -40,20 +40,20 @@ export const DashboardTaskList: React.FC = () => {
 
   if (sorted.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center min-h-[260px]">
+      <div className="flex flex-col items-center justify-center p-8 text-center min-h-[220px]">
         <div className="space-y-4">
-          <div className="w-14 h-14 rounded-3xl bg-zinc-800 text-zinc-200 border border-zinc-700/60 flex items-center justify-center mx-auto shadow-xs">
-            <Sparkles className="w-7 h-7" />
+          <div className="w-14 h-14 rounded-3xl bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center mx-auto shadow-xs">
+            <Sparkles className="w-7 h-7 text-[#00b884]" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-sm font-bold text-white">هنوز تسک در انتظاری نداری</h3>
-            <p className="text-xs text-zinc-400 max-w-xs mx-auto leading-relaxed">
+            <h3 className="text-sm font-extrabold text-slate-900">هنوز تسک در انتظاری نداری</h3>
+            <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
               اولین تسک را اضافه کن تا به ترتیب روز و با پین‌شده‌ها در صدر، اینجا برنامه‌ی تو شکل بگیرد.
             </p>
           </div>
           <button
             onClick={() => openCreateModal(selectedDate)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#121212] hover:bg-black text-white text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
           >
             <Plus className="w-4 h-4" />
             افزودن تسک
@@ -69,9 +69,9 @@ export const DashboardTaskList: React.FC = () => {
       {pinnedTasks.length > 0 && (
         <div className="space-y-2.5">
           <div className="flex items-center gap-1.5 px-1">
-            <MapPin className="w-3.5 h-3.5 text-rose-400" />
-            <span className="text-xs font-bold text-rose-300">پین‌شده — در صدر لیست</span>
-            <span className="text-[10px] px-2 py-0.2 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/30 font-bold">
+            <MapPin className="w-3.5 h-3.5 text-[#f95738]" />
+            <span className="text-xs font-extrabold text-[#f95738]">پین‌شده — در صدر لیست</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#f95738]/10 text-[#f95738] border border-[#f95738]/30 font-bold">
               {toPersianDigits(pinnedTasks.length)}
             </span>
           </div>
@@ -87,13 +87,13 @@ export const DashboardTaskList: React.FC = () => {
       {dayTasks.length > 0 && (
         <div className="space-y-2.5">
           <div className="flex items-center gap-1.5 px-1 flex-wrap">
-            <CalendarClock className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="text-xs font-bold text-zinc-400">به ترتیب روز — زودترها اول</span>
-            <span className="text-[10px] px-2 py-0.2 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700/60">
+            <CalendarClock className="w-3.5 h-3.5 text-indigo-600" />
+            <span className="text-xs font-extrabold text-slate-600">به ترتیب روز — زودترها اول</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-bold">
               {toPersianDigits(dayTasks.length)}
             </span>
             {overdueCount > 0 && (
-              <span className="text-[10px] px-2 py-0.2 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold">
                 {toPersianDigits(overdueCount)} سررسید گذشته
               </span>
             )}
