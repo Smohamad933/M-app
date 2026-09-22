@@ -221,7 +221,7 @@ export const LoginScreen: React.FC = () => {
       await api.logout();
       setMode('login');
       setRegisterStep(1);
-      setSuccessNotice(`✅ کاربر «${name.trim()}» با موفقیت ثبت شد! اکنون می‌توانید با اکانت مدیر (Mohusyn) وارد شوید و نام او را در پنل «مانیتورینگ کاربران» مشاهده کنید.`);
+      setSuccessNotice(`✅ کاربر «${name.trim()}» با موفقیت ثبت شد. حالا می‌توانید وارد حساب او شوید.`);
       sounds.playComplete();
     } catch (err: any) {
       setError(err.message || 'خطا در ایجاد حساب کاربری.');
@@ -679,7 +679,7 @@ export const LoginScreen: React.FC = () => {
                   className="w-full py-2.5 rounded-2xl bg-zinc-850 hover:bg-zinc-800 text-indigo-300 border border-indigo-500/30 font-bold text-[11px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
-                  <span>ثبت‌نام و بازگشت به صفحه ورود (جهت ورود با ادمین Mohusyn)</span>
+                  <span>ثبت‌نام و بازگشت به صفحه ورود</span>
                 </button>
               </div>
             ) : (

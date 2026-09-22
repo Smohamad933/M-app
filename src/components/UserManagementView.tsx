@@ -34,7 +34,114 @@ import {
   Target,
   BookOpen,
   CheckCircle,
+  Image as ImageIcon,
+  ImagePlus,
+  Smartphone,
 } from 'lucide-react';
+
+/**
+ * Read an image file, center-crop to a square and downscale to max `max` px.
+ */
+function processSquareImage(file: File, max: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        const scale = Math.min(1, max / side);
+        const size = Math.max(1, Math.round(side * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('canvas'));
+          return;
+        }
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => reject(new Error('image load failed'));
+      img.src = String(reader.result);
+    };
+    reader.onerror = () => reject(new Error('read failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Admin branding image field: preview + upload + remove */
+const BrandImageField: React.FC<{
+  label: string;
+  description: string;
+  value: string | null | undefined;
+  onChange: (dataUrl: string | null) => void;
+  maxSide?: number;
+}> = ({ label, description, value, onChange, maxSide = 512 }) => {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('فقط فایل تصویری مجاز است (PNG / JPG / WebP).');
+      return;
+    }
+    try {
+      const dataUrl = await processSquareImage(file, maxSide);
+      onChange(dataUrl);
+    } catch {
+      alert('خواندن تصویر ناموفق بود.');
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-bold text-zinc-300">{label}</label>
+      <div className="flex items-center gap-3">
+        <div className="w-16 h-16 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+          {value ? (
+            <img src={value} alt={label} className="w-full h-full object-cover" />
+          ) : (
+            <ImageIcon className="w-6 h-6 text-zinc-600" />
+          )}
+        </div>
+        <div className="space-y-1.5 min-w-0">
+          <p className="text-[10px] text-zinc-500 leading-relaxed">{description}</p>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <ImagePlus className="w-3.5 h-3.5" />
+              <span>{value ? 'تغییر عکس' : 'بارگذاری عکس'}</span>
+            </button>
+            {value && (
+              <button
+                type="button"
+                onClick={() => onChange(null)}
+                className="p-1.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 transition-colors cursor-pointer"
+                title="حذف عکس"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          handleFile(e.target.files?.[0]);
+          if (inputRef.current) inputRef.current.value = '';
+        }}
+      />
+    </div>
+  );
+};
 
 export const UserManagementView: React.FC = () => {
   const {
@@ -369,6 +476,13 @@ export const UserManagementView: React.FC = () => {
       setIsSavingSettings(false);
     }
   };
+
+  // Branding helper (kept inside formSettings so the main save button persists it)
+  const setBranding = (patch: Partial<NonNullable<GlobalSystemSettings['appBranding']>>) => {
+    const base = { appName: 'تسک‌روز', logoDataUrl: null, defaultAvatarDataUrl: null, pwaIconDataUrl: null };
+    setFormSettings({ ...formSettings, appBranding: { ...base, ...formSettings.appBranding, ...patch } });
+  };
+  const branding = formSettings.appBranding || {};
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-300">
@@ -914,7 +1028,57 @@ export const UserManagementView: React.FC = () => {
             </div>
           </div>
 
+          {/* 2b. App Identity & Images (admin-editable branding) */}
+          <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-5 space-y-4 backdrop-blur-md">
+            <div className="flex items-center gap-2 pb-2 border-b border-zinc-800 flex-wrap">
+              <Smartphone className="w-4 h-4 text-sky-400" />
+              <h3 className="text-sm font-bold text-white">هویت و عکس‌های اپ</h3>
+              <span className="text-[10px] text-zinc-500">با دکمه «ذخیره تغییرات تنظیمات» اعمال می‌شود</span>
+            </div>
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              نام و لوگوی اپ در هدر و سایدبار، عکس پیش‌فرض پروفایل برای کاربرانی که هنوز عکس نفرستاده‌اند، و
+              آیکون و نام اپ در لیست اپ‌های نصب‌شده روی گوشی (PWA) از همین‌جا تغییر می‌کند.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-zinc-300">نام اپلیکیشن</label>
+                <input
+                  type="text"
+                  value={branding.appName || ''}
+                  onChange={(e) => setBranding({ appName: e.target.value })}
+                  placeholder="تسک‌روز"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-sky-500"
+                />
+                <p className="text-[10px] text-zinc-500 leading-relaxed">
+                  در هدر بالای صفحه، سایدبار و کنار آیکون اپ در گوشی نمایش داده می‌شود.
+                </p>
+              </div>
+              <BrandImageField
+                label="لوگوی اپ"
+                description="جایگزین آیکون پیش‌فرض تسک‌روز در هدر و سایدبار."
+                value={branding.logoDataUrl}
+                onChange={(v) => setBranding({ logoDataUrl: v })}
+                maxSide={256}
+              />
+              <BrandImageField
+                label="عکس پیش‌فرض پروفایل"
+                description="برای کاربرانی که هنوز عکسی برای خودشان نگذاشته‌اند نمایش داده می‌شود."
+                value={branding.defaultAvatarDataUrl}
+                onChange={(v) => setBranding({ defaultAvatarDataUrl: v })}
+                maxSide={256}
+              />
+              <BrandImageField
+                label="آیکون اپ در موبایل (PWA)"
+                description="همین عکس در لیست اپ‌های نصب‌شده گوشی و صفحه اصلی نمایش داده می‌شود."
+                value={branding.pwaIconDataUrl}
+                onChange={(v) => setBranding({ pwaIconDataUrl: v })}
+                maxSide={512}
+              />
+            </div>
+          </div>
+
           {/* 3. Focus Room Permissions & Daily Mantra */}
+
           <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-5 space-y-4 backdrop-blur-md">
             <div className="flex items-center gap-2 pb-2 border-b border-zinc-800">
               <Sparkles className="w-4 h-4 text-emerald-400" />

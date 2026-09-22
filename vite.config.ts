@@ -47,6 +47,24 @@ export default defineConfig({
         });
       },
     },
+    {
+      // Vite hashes unknown .php URLs in index.html; restore the dynamic
+      // PWA manifest / app-icon endpoints after the bundle is generated.
+      name: 'fix-dynamic-php-urls',
+      enforce: 'post',
+      generateBundle(_options: any, bundle: any) {
+        // Drop the phantom .php asset copies Vite creates for these URLs
+        Object.keys(bundle).forEach((k) => {
+          if (k.startsWith('assets/') && k.endsWith('.php')) delete bundle[k];
+        });
+        const htmlAsset = bundle['index.html'];
+        if (htmlAsset && htmlAsset.type === 'asset' && typeof htmlAsset.source === 'string') {
+          htmlAsset.source = htmlAsset.source
+            .replace(/\.\/assets\/app-icon-[A-Za-z0-9_-]+\.php/g, '/app-icon.php')
+            .replace(/\.\/assets\/manifest-[A-Za-z0-9_-]+\.php/g, '/manifest.php');
+        }
+      },
+    },
   ],
   server: {
     host: '0.0.0.0',

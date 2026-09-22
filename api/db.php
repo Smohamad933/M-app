@@ -14,6 +14,7 @@ class TaskRoozDB {
     private $pdo = null;
     private $jsonFile = null;
     public $data = [];
+    public $installed = false; // true only when a real db.json file was found on disk
 
     private function __construct() {
         // Attempt MySQL connection if available
@@ -38,36 +39,9 @@ class TaskRoozDB {
     }
 
     // --- JSON Storage Helpers ---
-    public function loadJson() {
-        $candidatePaths = [
-            dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json',
-            __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json',
-            __DIR__ . DIRECTORY_SEPARATOR . 'db.json',
-            sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'taskrooz_db.json'
-        ];
-
-        $content = null;
-        $foundPath = null;
-        foreach ($candidatePaths as $p) {
-            if (file_exists($p) && filesize($p) > 10) {
-                $raw = @file_get_contents($p);
-                if (!empty($raw)) {
-                    $parsed = @json_decode($raw, true);
-                    if (is_array($parsed) && isset($parsed['users'])) {
-                        $content = $parsed;
-                        $foundPath = $p;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if ($content) {
-            $this->data = $content;
-            $this->jsonFile = $foundPath;
-        } else {
-            // Default seed
-            $this->data = [
+    /** Default seed data (used by forceInstall) */
+    public function defaultSeed() {
+        return [
                 'users' => [
                     [
                         'id' => 'usr_admin_mohusyn',
@@ -107,9 +81,59 @@ class TaskRoozDB {
                     'dailyMantra' => 'تمرکز پیوسته بر کارهای با اولویت بالا و پرهیز از چندوظیفگی',
                 ],
                 'custom_fonts' => [],
-            ];
+            ];;
+    }
+
+    /** True when a valid database file exists on disk */
+    public function isInstalled() {
+        return $this->installed;
+    }
+
+    /** One-click install: write the default database file to disk */
+    public function forceInstall() {
+        $this->data = $this->defaultSeed();
+        if (empty($this->jsonFile)) {
+            $this->jsonFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json';
+        }
+        $this->saveJson();
+        $this->installed = true;
+        return true;
+    }
+
+    public function loadJson() {
+        $candidatePaths = [
+            dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json',
+            __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json',
+            __DIR__ . DIRECTORY_SEPARATOR . 'db.json',
+            sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'taskrooz_db.json'
+        ];
+
+        $content = null;
+        $foundPath = null;
+        foreach ($candidatePaths as $p) {
+            if (file_exists($p) && filesize($p) > 10) {
+                $raw = @file_get_contents($p);
+                if (!empty($raw)) {
+                    $parsed = @json_decode($raw, true);
+                    if (is_array($parsed) && isset($parsed['users'])) {
+                        $content = $parsed;
+                        $foundPath = $p;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($content) {
+            $this->data = $content;
+            $this->jsonFile = $foundPath;
+            $this->installed = true;
+        } else {
+            // In-memory default seed ONLY. The file is NOT created silently:
+            // the app shows a clear "database not installed" panel and the
+            // admin can trigger api/install.php (one-click install) instead.
+            $this->data = $this->defaultSeed();
             $this->jsonFile = $candidatePaths[0];
-            $this->saveJson();
         }
 
         // Ensure all top-level keys exist

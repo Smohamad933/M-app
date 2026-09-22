@@ -36,7 +36,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   // API calls must always hit the live server — never cache, never block
-  if (url.pathname.indexOf('/api/') !== -1 || url.search.indexOf('action=') !== -1) {
+  if (url.pathname.indexOf('/api/') !== -1 || url.search.indexOf('action=') !== -1 || url.pathname === '/manifest.php' || url.pathname === '/app-icon.php') {
     return;
   }
 

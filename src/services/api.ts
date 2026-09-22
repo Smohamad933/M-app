@@ -32,6 +32,12 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
   },
   dailyMantra: 'تمرکز پیوسته بر کارهای با اولویت بالا و پرهیز از چندوظیفگی',
   texts: {},
+  appBranding: {
+    appName: 'تسک‌روز',
+    logoDataUrl: null,
+    defaultAvatarDataUrl: null,
+    pwaIconDataUrl: null,
+  },
   jobCategories: [
     'برنامه‌نویس و توسعه‌دهنده نرم‌افزار',
     'طراح رابط کاربری و تجربه کاربری (UI/UX)',
@@ -150,7 +156,24 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   return data;
 }
 
+
 export const api = {
+  /** Check whether the database is installed (file data/db.json present & valid) */
+  checkDatabase: async (): Promise<{ installed: boolean }> => {
+    try {
+      const data = await request<any>('/api/install.php', { method: 'GET' });
+      return { installed: data.installed !== false };
+    } catch (e: any) {
+      if (/DB_NOT_INSTALLED/.test(e?.message || '')) return { installed: false };
+      return { installed: true }; // network/server error != missing db
+    }
+  },
+
+  /** One-click database installation (seeds the default data file) */
+  installDatabase: async (): Promise<{ message: string }> => {
+    const data = await request<any>('/api/install.php', { method: 'POST' });
+    return { message: data.message || 'پایگاه داده نصب شد.' };
+  },
   // Auth: Register (Always stored on Central Server with IIS 405 resilience)
   async register(data: {
     username: string;

@@ -87,6 +87,13 @@ export const MainLayout: React.FC = () => {
   const greetingText = getText(gk.text);
   const greetingSub = getText(gk.sub);
 
+  // Admin-editable app branding (name, logo, default profile photo)
+  const appBranding = globalSettings?.appBranding;
+  const appName = (appBranding?.appName || '').trim() || 'تسک‌روز';
+  const appLogo = typeof appBranding?.logoDataUrl === 'string' ? appBranding.logoDataUrl : null;
+  const defaultAvatar = typeof appBranding?.defaultAvatarDataUrl === 'string' ? appBranding.defaultAvatarDataUrl : null;
+  const firstName = (currentUser?.name || '').split(' ')[0];
+
   // Mobile menu / drawer state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
@@ -140,12 +147,16 @@ export const MainLayout: React.FC = () => {
         <div className="flex flex-col min-h-0 flex-1">
           {/* Brand Logo & mohusyn.ir signature */}
           <div className="flex items-center gap-3 px-2 py-2.5 mb-3">
-            <div className="w-10 h-10 rounded-2xl bg-white text-zinc-950 flex items-center justify-center font-black shadow-md">
-              <CheckSquare className="w-5 h-5 stroke-[2.5]" />
+            <div className="w-10 h-10 rounded-2xl bg-white text-zinc-950 flex items-center justify-center font-black shadow-md overflow-hidden">
+              {appLogo ? (
+                <img src={appLogo} alt={appName} className="w-full h-full object-cover" />
+              ) : (
+                <CheckSquare className="w-5 h-5 stroke-[2.5]" />
+              )}
             </div>
             <div>
               <h1 className="font-black text-sm text-white tracking-tight flex items-center gap-1.5">
-                تسک‌روز
+                {appName}
               </h1>
               <p className="text-[10px] text-zinc-400 font-mono tracking-wide">
                 BUILT BY MOHUSYN
@@ -165,7 +176,7 @@ export const MainLayout: React.FC = () => {
               title="ویرایش پروفایل و عکس"
             >
               <div className="flex items-center gap-2.5">
-                <UserAvatar name={currentUser.name} avatar={currentUser.avatar} size="w-9 h-9 rounded-full text-sm" />
+                <UserAvatar name={currentUser.name} avatar={currentUser.avatar} fallbackImage={defaultAvatar} size="w-9 h-9 rounded-full text-sm" />
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-xs text-white truncate">
                     {currentUser.name}
@@ -287,11 +298,15 @@ export const MainLayout: React.FC = () => {
             <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
               {/* Mobile App Icon */}
               <div className="lg:hidden flex items-center gap-2 flex-shrink-0">
-                <div className="w-8 h-8 rounded-xl bg-white text-zinc-950 flex items-center justify-center font-bold shadow-xs">
-                  <CheckSquare className="w-4 h-4 stroke-[2.5]" />
+                <div className="w-8 h-8 rounded-xl bg-white text-zinc-950 flex items-center justify-center font-bold shadow-xs overflow-hidden">
+                  {appLogo ? (
+                    <img src={appLogo} alt={appName} className="w-full h-full object-cover" />
+                  ) : (
+                    <CheckSquare className="w-4 h-4 stroke-[2.5]" />
+                  )}
                 </div>
                 <span className="font-extrabold text-xs text-white sm:hidden max-[430px]:hidden">
-                  تسک‌روز
+                  {appName}
                 </span>
               </div>
 
@@ -299,6 +314,7 @@ export const MainLayout: React.FC = () => {
               <div className="min-w-0 flex items-center gap-1 sm:gap-2">
                 <span className="text-xs font-black text-white hidden sm:inline truncate" title={greetingSub}>
                   {greetingText}
+                  {firstName ? <span className="text-indigo-300">، {firstName}</span> : null}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-1 rounded-full bg-zinc-900 text-zinc-300 border border-zinc-800 font-semibold shadow-xs min-w-0 max-w-full" title="تاریخ شمسی امروز">
                   <CalendarDays className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
@@ -410,7 +426,7 @@ export const MainLayout: React.FC = () => {
                   title="ویرایش پروفایل و عکس"
                   aria-label="پروفایل من"
                 >
-                  <UserAvatar name={currentUser.name} avatar={currentUser.avatar} size="w-8 h-8 rounded-full text-xs" />
+                  <UserAvatar name={currentUser.name} avatar={currentUser.avatar} fallbackImage={defaultAvatar} size="w-8 h-8 rounded-full text-xs" />
                 </button>
               )}
 
@@ -792,7 +808,7 @@ export const MainLayout: React.FC = () => {
                   title="ویرایش پروفایل و عکس"
                 >
                   <div className="flex items-center gap-2.5">
-                    <UserAvatar name={currentUser.name} avatar={currentUser.avatar} size="w-9 h-9 rounded-full text-sm" />
+                    <UserAvatar name={currentUser.name} avatar={currentUser.avatar} fallbackImage={defaultAvatar} size="w-9 h-9 rounded-full text-sm" />
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-xs text-white truncate">
                         {currentUser.name}

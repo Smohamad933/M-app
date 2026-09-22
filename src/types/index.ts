@@ -234,4 +234,11 @@ export interface GlobalSystemSettings {
   jobCategories?: string[];
   /** Admin-editable app texts (UI labels & messages). Missing keys fall back to defaults. */
   texts?: Record<string, string>;
+  /** Admin-editable app identity: name, logo, default profile photo, PWA icon (data URLs) */
+  appBranding?: {
+    appName?: string;
+    logoDataUrl?: string | null;
+    defaultAvatarDataUrl?: string | null;
+    pwaIconDataUrl?: string | null;
+  };
 }

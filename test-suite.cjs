@@ -942,3 +942,52 @@ test('Admin Bulk Delete: Multi-select Wipe with Protections', async () => {
   }, adminHeader);
   assert(cleanup.status === 200 && cleanup.body.deletedCount === 2, 'Cleanup bulk delete must succeed');
 });
+
+// 28. Database install guard: 503 when data/db.json is missing + one-click install
+test('Database Install Guard: 503 When Missing + One-Click Install', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const dbPath = path.resolve(process.cwd(), 'data/db.json');
+  const backup = dbPath + '.test28_backup';
+  fs.copyFileSync(dbPath, backup);
+  try {
+    fs.unlinkSync(dbPath);
+
+    // Any API route must now answer 503 DB_NOT_INSTALLED (no silent auto-seed)
+    const blocked = await request('GET', '/api/tasks.php');
+    assert(blocked.status === 503, `Missing db must give 503, got ${blocked.status}`);
+    assert(blocked.body.code === 'DB_NOT_INSTALLED', `code must be DB_NOT_INSTALLED, got ${blocked.body.code}`);
+
+    // PWA manifest must keep working before installation
+    const manifest = await new Promise((resolve) => {
+      http.get(BASE_URL + '/manifest.php', (res) => {
+        let d = '';
+        res.on('data', (c) => (d += c));
+        res.on('end', () => resolve({ status: res.statusCode, body: d }));
+      }).on('error', () => resolve({ status: 0, body: '' }));
+    });
+    assert(manifest.status === 200, `manifest.php must work before install, got ${manifest.status}`);
+    assert(/"name":/.test(manifest.body), 'manifest must contain an app name');
+
+    // Health check reports not-installed
+    const health = await request('GET', '/api/install.php');
+    assert(health.status === 200, `install health must be 200, got ${health.status}`);
+    assert(health.body.installed === false, 'db must report installed=false before install');
+
+    // One-click install seeds the database file
+    const install = await request('POST', '/api/install.php');
+    assert(install.status === 200, `install must succeed, got ${install.status}`);
+    assert(install.body.installed === true, 'installed flag must be true after install');
+    assert(fs.existsSync(dbPath), 'db.json must be created by the install endpoint');
+
+    // API is fully operational again
+    const after = await request('GET', '/api/install.php');
+    assert(after.body.installed === true, 'db must report installed=true after install');
+    const login = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+    assert(login.status === 200, `login must work after fresh install, got ${login.status}`);
+  } finally {
+    // Restore the original development database
+    fs.copyFileSync(backup, dbPath);
+    fs.unlinkSync(backup);
+  }
+});

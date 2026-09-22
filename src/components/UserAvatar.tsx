@@ -3,6 +3,8 @@ import React from 'react';
 interface UserAvatarProps {
   name?: string;
   avatar?: string | null;
+  /** Admin-set default profile image, shown when the user has no personal photo */
+  fallbackImage?: string | null;
   /** tailwind size classes, e.g. 'w-11 h-11 text-sm' */
   size?: string;
   className?: string;
@@ -12,7 +14,7 @@ interface UserAvatarProps {
  * عکس پروفایل کاربر: اگر عکس آپلود شده باشد نمایشش می‌دهد،
  * در غیر این صورت حرف اول نام داخل قاب رنگی.
  */
-export const UserAvatar: React.FC<UserAvatarProps> = ({ name, avatar, size = 'w-11 h-11 text-sm', className = '' }) => {
+export const UserAvatar: React.FC<UserAvatarProps> = ({ name, avatar, fallbackImage, size = 'w-11 h-11 text-sm', className = '' }) => {
   const firstChar = (name || '?').trim().charAt(0);
   if (avatar && typeof avatar === 'string' && avatar.startsWith('data:image/')) {
     return (
@@ -20,6 +22,15 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({ name, avatar, size = 'w-
         src={avatar}
         alt={name || 'عکس پروفایل'}
         className={`${size} rounded-2xl object-cover border border-zinc-700/60 flex-shrink-0 ${className}`}
+      />
+    );
+  }
+  if (fallbackImage && typeof fallbackImage === 'string' && fallbackImage.startsWith('data:image/')) {
+    return (
+      <img
+        src={fallbackImage}
+        alt={name || 'عکس پیش‌فرض'}
+        className={`${size} rounded-2xl object-cover border border-zinc-700/60 flex-shrink-0 opacity-90 ${className}`}
       />
     );
   }

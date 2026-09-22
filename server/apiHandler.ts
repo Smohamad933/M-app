@@ -299,6 +299,7 @@ function readDb(): AppData {
   } catch (e) {
     console.error('Error reading db.json:', e);
   }
+  // File missing or unreadable — re-seed defaults (normal flow is blocked by the install guard)
   writeDb(INITIAL_DATA);
   return INITIAL_DATA;
 }
@@ -313,6 +314,20 @@ function writeDb(data: AppData) {
   } catch (e) {
     console.error('Error writing db.json:', e);
   }
+}
+
+function isDbInstalled(): boolean {
+  try {
+    return fs.existsSync(DB_FILE) && fs.statSync(DB_FILE).size > 10;
+  } catch {
+    return false;
+  }
+}
+
+/** Read the DB only if it already exists (never auto-seeds). Used by PWA manifest/icon routes. */
+function readDbSafe(): AppData | null {
+  if (!isDbInstalled()) return null;
+  return readDb();
 }
 
 function parseJsonBody(req: IncomingMessage): Promise<any> {
@@ -365,13 +380,93 @@ function getUserFromToken(req: IncomingMessage, db: AppData): DBUser | null {
 }
 
 export async function handleApiRequest(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  const urlObj = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+  const pathname = urlObj.pathname;
+  const method = req.method?.toUpperCase();
+
+  // --- Dynamic PWA manifest (admin-editable name) ---
+  if (pathname === '/manifest.php') {
+    const db = readDbSafe();
+    const branding = db?.globalSettings?.appBranding || {};
+    const name = (branding.appName || '').trim() || 'تسک‌روز';
+    const manifest = {
+      name,
+      short_name: name,
+      start_url: './',
+      scope: './',
+      display: 'standalone',
+      dir: 'rtl',
+      lang: 'fa',
+      background_color: '#09090b',
+      theme_color: '#4f46e5',
+      description: 'سامانه برنامه‌ریزی روزانه و بهره‌وری تیمی',
+      icons: [
+        { src: 'app-icon.php?size=192', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: 'app-icon.php?size=512', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: 'app-icon.php?size=512', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      ],
+    };
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.end(JSON.stringify(manifest));
+    return true;
+  }
+
+  // --- Dynamic PWA icon (admin-editable, falls back to static icons) ---
+  if (pathname === '/app-icon.php') {
+    const db = readDbSafe();
+    const dataUrl = db?.globalSettings?.appBranding?.pwaIconDataUrl;
+    if (typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+      const m = dataUrl.match(/^data:(image\/[a-z0-9+.-]+);base64,(.*)$/i);
+      if (m) {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', m[1]);
+        res.setHeader('Cache-Control', 'no-cache');
+        res.end(Buffer.from(m[2], 'base64'));
+        return true;
+      }
+    }
+    const size = parseInt(urlObj.searchParams.get('size') || '512', 10) || 512;
+    const file = path.resolve(process.cwd(), size >= 384 ? 'icon-512.png' : 'icon-192.png');
+    if (fs.existsSync(file)) {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'image/png');
+      res.end(fs.readFileSync(file));
+    } else {
+      res.statusCode = 404;
+      res.end('not found');
+    }
+    return true;
+  }
+
   if (!req.url?.startsWith('/api')) {
     return false;
   }
 
-  const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const pathname = urlObj.pathname;
-  const method = req.method?.toUpperCase();
+  // --- Database installation guard (mirrors PHP: no silent auto-seed) ---
+  if (!pathname.startsWith('/api/install')) {
+    if (!isDbInstalled()) {
+      sendJson(res, { code: 'DB_NOT_INSTALLED', error: 'پایگاه داده نصب نیست — فایل data/db.json روی سرور یافت نشد.' }, 503);
+      return true;
+    }
+  }
+
+  // --- Install / health endpoint (works even before installation) ---
+  if (pathname.startsWith('/api/install')) {
+    if (method === 'GET') {
+      sendJson(res, { installed: isDbInstalled(), app: 'TaskRooz' });
+      return true;
+    }
+    if (method === 'POST') {
+      if (!isDbInstalled()) writeDb(INITIAL_DATA);
+      sendJson(res, { installed: true, message: 'پایگاه داده با موفقیت نصب شد.' });
+      return true;
+    }
+    sendJson(res, { error: 'متد نامعتبر است.' }, 405);
+    return true;
+  }
+
   const db = readDb();
   const currentUser = getUserFromToken(req, db);
 

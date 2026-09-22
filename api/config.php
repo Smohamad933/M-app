@@ -30,6 +30,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $db = TaskRoozDB::getInstance();
 $pdo = getMySQLPDO();
 
+// --- Database installation guard ---
+// If data/db.json was never shipped/installed, refuse to serve the app
+// silently. The frontend shows a clear "database not installed" panel.
+$_tr_script = basename($_SERVER['SCRIPT_NAME'] ?? '');
+$_tr_diagnostics_allowed = in_array($_tr_script, ['install.php', 'health.php'], true);
+if (!$db->isInstalled() && !$_tr_diagnostics_allowed) {
+    jsonResponse(['code' => 'DB_NOT_INSTALLED', 'error' => 'پایگاه داده نصب نیست — فایل data/db.json روی سرور یافت نشد.'], 503);
+}
+
 function jsonResponse($data, $status = 200) {
     http_response_code($status);
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
