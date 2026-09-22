@@ -50,11 +50,17 @@ export const UserManagementView: React.FC = () => {
     exportUsersCsv,
     globalSettings,
     updateGlobalSettings,
+    deleteUsersBulk,
   } = useTask();
 
   // Active view tab inside Admin Panel
   const [adminTab, setAdminTab] = useState<'users' | 'settings' | 'texts'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Bulk selection & actions (multi-select users)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Admin Text Manager — editable app texts (values fall back to built-in defaults)
   const [textsForm, setTextsForm] = useState<Record<string, string>>(() => ({
@@ -85,6 +91,53 @@ export const UserManagementView: React.FC = () => {
     if (!window.confirm('با بازنشانی، همه ویرایش‌های شما روی متن‌ها حذف می‌شود و متن‌های پیش‌فرض سامانه استفاده خواهد شد. ادامه می‌دهید؟')) return;
     setTextsForm({});
     sounds.playPop();
+  };
+
+  // ── Bulk selection helpers ────────────────────────────────────────────
+  const isUserLocked = (u: User) =>
+    u.id === 'usr_admin_mohusyn' || (u.username || '').toLowerCase() === 'mohusyn' || u.id === currentUser?.id;
+
+  const selectableUsers = users.filter((u) => !isUserLocked(u));
+  const allSelectableSelected = selectableUsers.length > 0 && selectableUsers.every((u) => selectedIds.has(u.id));
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    sounds.playPop();
+  };
+
+  const toggleSelectAll = () => {
+    if (allSelectableSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectableUsers.map((u) => u.id)));
+    }
+    sounds.playPop();
+  };
+
+  const selectedUserNames = users.filter((u) => selectedIds.has(u.id)).map((u) => u.name);
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setIsBulkDeleting(true);
+    try {
+      const result = await deleteUsersBulk([...selectedIds]);
+      setIsBulkDeleteModalOpen(false);
+      setSelectedIds(new Set());
+      let msg = `${result.deletedCount} کاربر به همراه تمامی تسک‌ها و داده‌هایشان حذف شدند.`;
+      if (result.skipped && result.skipped.length > 0) {
+        msg += `\n\n${result.skipped.length} کاربر حذف نشد: ${result.skipped.map((sk) => sk.reason).join('، ')}`;
+      }
+      alert(msg);
+    } catch (err: any) {
+      alert(err.message || 'خطا در حذف گروهی کاربران.');
+    } finally {
+      setIsBulkDeleting(false);
+    }
   };
 
   // User Comprehensive Report Modal State
@@ -352,7 +405,7 @@ export const UserManagementView: React.FC = () => {
           </button>
 
           <button
-            onClick={exportUsersCsv}
+            onClick={() => exportUsersCsv()}
             className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
             title="خروجی فایل اکسل با انکودینگ UTF-8 BOM"
           >
@@ -445,12 +498,73 @@ export const UserManagementView: React.FC = () => {
             </div>
           </div>
 
+          {/* BULK ACTION BAR — appears when one or more users are selected */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center justify-between gap-3 p-3.5 rounded-3xl bg-gradient-to-r from-rose-950/60 to-zinc-900 border border-rose-500/30 animate-in fade-in flex-wrap">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-300 flex items-center justify-center font-black text-sm">
+                  {toPersianDigits(selectedIds.size)}
+                </div>
+                <div>
+                  <div className="text-xs font-black text-white">
+                    {toPersianDigits(selectedIds.size)} کاربر انتخاب شده است
+                  </div>
+                  <div className="text-[10px] text-rose-200/70">
+                    عملیات گروهی روی کاربران انتخاب‌شده اعمال می‌شود
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => {
+                    setIsBulkDeleteModalOpen(true);
+                    sounds.playPop();
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs transition-all cursor-pointer shadow-md active:scale-95"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>حذف گروهی ({toPersianDigits(selectedIds.size)})</span>
+                </button>
+                <button
+                  onClick={() => exportUsersCsv([...selectedIds])}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-emerald-600/80 hover:bg-emerald-500 text-white font-bold text-xs transition-all cursor-pointer active:scale-95"
+                  title="خروجی اکسل فقط از کاربران انتخاب‌شده"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>خروجی اکسل انتخاب‌شده‌ها</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedIds(new Set());
+                    sounds.playPop();
+                  }}
+                  className="px-3.5 py-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-xs border border-zinc-700/60 transition-colors cursor-pointer"
+                >
+                  لغو انتخاب
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Users List Table/Cards */}
           <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 overflow-hidden shadow-sm">
             <div className="px-5 py-3.5 border-b border-zinc-800/80 flex items-center justify-between">
-              <span className="text-xs font-bold text-zinc-300">
-                فهرست کامل اعضای سیستم ({toPersianDigits(users.length)})
-              </span>
+              <div className="flex items-center gap-2.5">
+                {/* Select all (locked users excluded) */}
+                <input
+                  type="checkbox"
+                  checked={allSelectableSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = selectedIds.size > 0 && !allSelectableSelected;
+                  }}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 accent-rose-600 rounded cursor-pointer"
+                  title="انتخاب همه کاربران قابل انتخاب"
+                />
+                              <span className="text-xs font-bold text-zinc-300">
+                                فهرست کامل اعضای سیستم ({toPersianDigits(users.length)})
+                              </span>
+              </div>
               <span className="text-[11px] text-zinc-400">
                 مشاهده لحظه‌ای عملکرد و انتصاب مستقیم تسک
               </span>
@@ -471,6 +585,17 @@ export const UserManagementView: React.FC = () => {
                   >
                     {/* User info */}
                     <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                      {/* Bulk-select checkbox */}
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(u.id)}
+                        disabled={isUserLocked(u)}
+                        onChange={() => toggleSelect(u.id)}
+                        className={`mt-1 w-4 h-4 rounded cursor-pointer accent-rose-600 ${
+                          isUserLocked(u) ? 'opacity-30 cursor-not-allowed' : ''
+                        }`}
+                        title={isUserLocked(u) ? 'حساب مدیر اصلی/جاری قابل انتخاب نیست' : 'انتخاب برای عملیات گروهی'}
+                      />
                       <UserAvatar name={u.name} avatar={u.avatar} size="w-11 h-11 text-sm" />
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1590,6 +1715,76 @@ export const UserManagementView: React.FC = () => {
                 خطا در بارگذاری اطلاعات گزارش.
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {/* MODAL: BULK DELETE CONFIRMATION */}
+      {isBulkDeleteModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
+          onClick={() => !isBulkDeleting && setIsBulkDeleteModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-zinc-900 border border-rose-500/30 rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-400 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white">
+                  حذف گروهی {toPersianDigits(selectedIds.size)} کاربر
+                </h3>
+                <p className="text-[11px] text-rose-300/80 mt-0.5">
+                  این عملیات قطعی و برگشت‌ناپذیر است
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-rose-950/30 border border-rose-500/25 text-xs text-rose-200 leading-relaxed">
+              <p className="font-bold mb-1">هشدار:</p>
+              <p>
+                با حذف گروهی، علاوه بر خودِ حساب‌ها، <span className="font-black">تمامی تسک‌ها، اهداف، یادداشت‌های روزانه و نتایج شخصیت‌شناسی</span> هر کاربر انتخاب‌شده نیز برای همیشه حذف می‌شود.
+              </p>
+            </div>
+
+            {/* Selected names preview */}
+            <div className="p-3 rounded-2xl bg-zinc-950/60 border border-zinc-800 max-h-36 overflow-y-auto space-y-1">
+              <div className="text-[10px] text-zinc-500 font-bold mb-1.5">
+                کاربران مورد نظر ({toPersianDigits(selectedUserNames.length)}):
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedUserNames.slice(0, 12).map((n, idx) => (
+                  <span key={idx} className="text-[10px] px-2 py-0.5 rounded-lg bg-zinc-800 text-zinc-200 border border-zinc-700/60 font-bold">
+                    {n}
+                  </span>
+                ))}
+                {selectedUserNames.length > 12 && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-lg bg-zinc-800/60 text-zinc-400 font-mono">
+                    +{toPersianDigits(selectedUserNames.length - 12)} کاربر دیگر
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                onClick={() => setIsBulkDeleteModalOpen(false)}
+                disabled={isBulkDeleting}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                انصراف
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={isBulkDeleting}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs transition-all shadow-lg active:scale-95 cursor-pointer disabled:opacity-60 flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                {isBulkDeleting ? 'در حال حذف گروهی...' : 'بله، حذف قطعی همه انتخاب‌شده‌ها'}
+              </button>
+            </div>
           </div>
         </div>
       )}

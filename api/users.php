@@ -108,6 +108,50 @@ function performUserDelete($db, $id, $currentUser) {
     jsonResponse(['message' => 'کاربر و تمامی تسک‌ها و داده‌های مرتبط با موفقیت حذف شد.']);
 }
 
+/**
+ * Bulk user deletion (admin only): deletes many users + all their data in one call.
+ * The protected admin (Mohusyn) and the admin's own account are skipped, never deleted.
+ */
+function performBulkDelete($db, $rawIds, $currentUser) {
+    if (is_string($rawIds)) {
+        $rawIds = array_filter(explode(',', $rawIds));
+    }
+    if (!is_array($rawIds) || count($rawIds) === 0) {
+        jsonResponse(['error' => 'لیست شناسه کاربران خالی است.'], 400);
+    }
+
+    $deleted = [];
+    $skipped = [];
+    $seen = [];
+    foreach (array_map('trim', $rawIds) as $uid) {
+        if ($uid === '' || in_array($uid, $seen, true)) continue;
+        $seen[] = $uid;
+
+        $target = $db->getUserById($uid);
+        if (!$target) {
+            $skipped[] = ['id' => $uid, 'reason' => 'کاربر پیدا نشد'];
+            continue;
+        }
+        if (strtolower($target['username'] ?? '') === 'mohusyn' || $target['id'] === 'usr_admin_mohusyn') {
+            $skipped[] = ['id' => $uid, 'reason' => 'مدیر اصلی محافظت‌شده است'];
+            continue;
+        }
+        if ($target['id'] === ($currentUser['id'] ?? '')) {
+            $skipped[] = ['id' => $uid, 'reason' => 'حذف حساب جاری شما مجاز نیست'];
+            continue;
+        }
+        $db->deleteUser($uid);
+        $deleted[] = $uid;
+    }
+
+    jsonResponse([
+        'message' => count($deleted) . ' کاربر به همراه تمامی داده‌هایشان حذف شدند.',
+        'deletedCount' => count($deleted),
+        'deleted' => $deleted,
+        'skipped' => $skipped,
+    ]);
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 // GET /api/users -> List all users with stats OR export CSV OR user detailed report
@@ -117,6 +161,11 @@ if ($method === 'GET') {
     // IIS 405 resilience: some servers block the DELETE verb, allow ?action=delete via GET
     if ($action === 'delete' || $action === 'delete_user') {
         performUserDelete($db, $_GET['id'] ?? $_GET['user_id'] ?? '', $currentUser);
+    }
+
+    // Bulk delete (admin): ?action=delete_many&ids=a,b,c
+    if ($action === 'delete_many' || $action === 'delete_multiple' || $action === 'bulk_delete') {
+        performBulkDelete($db, $_GET['ids'] ?? '', $currentUser);
     }
 
     if ($action === 'report') {
@@ -202,6 +251,11 @@ if ($method === 'POST') {
 
     if (($_GET['action'] ?? '') === 'delete' || ($input['action'] ?? '') === 'delete') {
         performUserDelete($db, ($input['id'] ?? '') !== '' ? $input['id'] : ($_GET['id'] ?? ''), $currentUser);
+    }
+
+    // Bulk delete (admin) — POST is the primary IIS-safe path
+    if (($input['action'] ?? '') === 'delete_many' || ($input['action'] ?? '') === 'delete_multiple' || ($input['action'] ?? '') === 'bulk_delete' || ($_GET['action'] ?? '') === 'delete_many') {
+        performBulkDelete($db, $input['ids'] ?? ($_GET['ids'] ?? ''), $currentUser);
     }
 
     // IIS 405 resilience: admin user-update fallback for servers that block the PUT verb

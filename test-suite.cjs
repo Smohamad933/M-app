@@ -886,3 +886,59 @@ test('PWA Assets: Service Worker, Manifest & Icons Served', async () => {
     assert(r === 200, `${icon} must be served, got ${r}`);
   }
 });
+
+// 23. Admin bulk delete: multi-select wipe with protections
+test('Admin Bulk Delete: Multi-select Wipe with Protections', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+  const adminId = adminLogin.body.user.id;
+
+  // Seed 3 disposable users
+  const ids = [];
+  for (let i = 0; i < 3; i++) {
+    const r = await request('POST', '/api/auth/register', {
+      username: 'bulk_' + i + '_' + Date.now(),
+      password: 'Pass123!',
+      name: 'کاربر گروهی ' + i,
+    });
+    assert(r.status === 201, `Seed user ${i} must register, got ${r.status}`);
+    ids.push(r.body.user.id);
+  }
+
+  // Non-admin bulk delete must be 403
+  const regRes = await request('POST', '/api/auth/register', {
+    username: 'bulk_no_' + Date.now(),
+    password: 'Pass123!',
+    name: 'کاربر بدون دسترسی',
+  });
+  const noAdminHeader = { Authorization: `Bearer ${regRes.body.token}` };
+  const forbidden = await request('POST', '/api/users?action=delete_many', { action: 'delete_many', ids }, noAdminHeader);
+  assert(forbidden.status === 403, `Non-admin bulk delete must be 403, got ${forbidden.status}`);
+
+  // Admin bulk: delete 2 of 3, plus own id (skipped) + unknown id (skipped)
+  const res = await request('POST', '/api/users?action=delete_many', {
+    action: 'delete_many',
+    ids: [ids[0], ids[1], adminId, 'nonexistent_user_999'],
+  }, adminHeader);
+  assert(res.status === 200, `Bulk delete should succeed, got ${res.status}`);
+  assert(res.body.deletedCount === 2, `Exactly 2 users must be deleted, got ${res.body.deletedCount}`);
+  assert(res.body.deleted.includes(ids[0]) && res.body.deleted.includes(ids[1]), 'The two seeded users must be in deleted list');
+  assert(res.body.skipped.length === 2, `Own admin + unknown id must be skipped, got ${res.body.skipped.length}`);
+
+  // Third user survives; deleted ones are gone
+  const list = await request('GET', '/api/users', null, adminHeader);
+  assert(list.body.users.some((u) => u.id === ids[2]), 'Third user must survive bulk delete');
+  assert(!list.body.users.some((u) => u.id === ids[0]), 'First user must be gone');
+  assert(!list.body.users.some((u) => u.id === ids[1]), 'Second user must be gone');
+
+  // Empty ids list -> 400
+  const empty = await request('POST', '/api/users?action=delete_many', { action: 'delete_many', ids: [] }, adminHeader);
+  assert(empty.status === 400, `Empty ids must be 400, got ${empty.status}`);
+
+  // Cleanup: remove the surviving user + the non-admin probe
+  const cleanup = await request('POST', '/api/users?action=delete_many', {
+    action: 'delete_many',
+    ids: [ids[2], regRes.body.user.id],
+  }, adminHeader);
+  assert(cleanup.status === 200 && cleanup.body.deletedCount === 2, 'Cleanup bulk delete must succeed');
+});

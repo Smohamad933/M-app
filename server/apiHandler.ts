@@ -584,6 +584,18 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       return true;
     }
 
+    // Shared user-data purge (no response) — used by single AND bulk delete
+    const removeUserData = (id: string) => {
+      db.users = db.users.filter((u) => u.id !== id);
+      db.tasks = db.tasks.filter((t) => t.userId !== id);
+      db.goals = db.goals.filter((g) => g.userId !== id);
+      db.dailyNotes = db.dailyNotes.filter((n) => n.userId !== id);
+      db.personalityResults = db.personalityResults.filter((x) => x.userId !== id);
+    };
+
+    const isProtectedUser = (u: DBUser) =>
+      u.id === 'usr_admin_mohusyn' || (u.username || '').toLowerCase() === 'mohusyn';
+
     // Shared user-deletion routine: removes the user AND all their data
     // (tasks, goals, notes, personality) so nothing is orphaned.
     const handleUserDelete = (id: string | null) => {
@@ -591,19 +603,16 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         sendJson(res, { error: 'شناسه کاربر الزامی است.' }, 400);
         return;
       }
+      const target = db.users.find((u) => u.id === id);
+      if (target && isProtectedUser(target)) {
+        sendJson(res, { error: 'شما نمی‌توانید حساب کاربری مدیر اصلی را حذف کنید.' }, 400);
+        return;
+      }
       if (id === currentUser!.id) {
         sendJson(res, { error: 'امکان حذف حساب کاربری جاری وجود ندارد.' }, 400);
         return;
       }
-      if (id === 'usr_admin_mohusyn') {
-        sendJson(res, { error: 'شما نمی‌توانید حساب کاربری مدیر اصلی را حذف کنید.' }, 400);
-        return;
-      }
-      db.users = db.users.filter((u) => u.id !== id);
-      db.tasks = db.tasks.filter((t) => t.userId !== id);
-      db.goals = db.goals.filter((g) => g.userId !== id);
-      db.dailyNotes = db.dailyNotes.filter((n) => n.userId !== id);
-      db.personalityResults = db.personalityResults.filter((p) => p.userId !== id);
+      removeUserData(id);
       writeDb(db);
       sendJson(res, { message: 'کاربر و تمامی تسک‌ها و داده‌های مرتبط با موفقیت حذف شدند.' });
     };
@@ -617,6 +626,47 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
     if (method === 'POST' && (qAction === 'delete' || qAction === 'delete_user')) {
       handleUserDelete(typeof parsedBody.id === 'string' && parsedBody.id ? parsedBody.id : urlObj.searchParams.get('id'));
+      return true;
+    }
+
+    // Bulk delete (admin): wipe many users (and all their data) in one call.
+    // Mohusyn + the admin's own account are skipped, never deleted.
+    if ((method === 'POST' || method === 'GET') && (qAction === 'delete_many' || qAction === 'delete_multiple' || qAction === 'bulk_delete')) {
+      const rawIds: unknown = method === 'POST' ? parsedBody.ids : urlObj.searchParams.get('ids');
+      const idList = Array.isArray(rawIds)
+        ? rawIds.map((x) => String(x))
+        : String(rawIds || '').split(',');
+      const ids = [...new Set(idList.map((x) => x.trim()).filter(Boolean))];
+      if (ids.length === 0) {
+        sendJson(res, { error: 'لیست شناسه کاربران خالی است.' }, 400);
+        return true;
+      }
+      const deleted: string[] = [];
+      const skipped: { id: string; reason: string }[] = [];
+      for (const id of ids) {
+        const target = db.users.find((u) => u.id === id);
+        if (!target) {
+          skipped.push({ id, reason: 'کاربر پیدا نشد' });
+          continue;
+        }
+        if (isProtectedUser(target)) {
+          skipped.push({ id, reason: 'مدیر اصلی محافظت‌شده است' });
+          continue;
+        }
+        if (target.id === currentUser!.id) {
+          skipped.push({ id, reason: 'حذف حساب جاری شما مجاز نیست' });
+          continue;
+        }
+        removeUserData(id);
+        deleted.push(id);
+      }
+      writeDb(db);
+      sendJson(res, {
+        message: deleted.length + ' کاربر به همراه تمامی داده‌هایشان حذف شدند.',
+        deletedCount: deleted.length,
+        deleted,
+        skipped,
+      });
       return true;
     }
 

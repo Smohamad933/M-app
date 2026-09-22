@@ -527,6 +527,25 @@ export const api = {
     broadcastSync('USER_DELETED', { id, username });
   },
 
+  /**
+   * Bulk user deletion (admin only): many users + all their data in one POST.
+   * Mohusyn and the calling admin's own account are skipped on the server side.
+   */
+  async deleteUsersBulk(ids: string[]): Promise<{
+    deletedCount: number;
+    deleted: string[];
+    skipped: { id: string; reason: string }[];
+  }> {
+    const data = await request<{ deletedCount: number; deleted: string[]; skipped: { id: string; reason: string }[] }>(
+      'api/users.php?action=delete_many',
+      {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete_many', ids }),
+      }
+    );
+    return data;
+  },
+
   // Global System Settings (Enforced by Admin on Server)
   async getGlobalSettings(): Promise<GlobalSystemSettings> {
     try {

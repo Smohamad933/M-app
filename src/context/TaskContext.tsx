@@ -93,6 +93,11 @@ interface TaskContextType {
     password?: string;
   }) => Promise<void>;
   deleteUser: (id: string, username?: string) => Promise<void>;
+  deleteUsersBulk: (ids: string[]) => Promise<{
+    deletedCount: number;
+    deleted: string[];
+    skipped: { id: string; reason: string }[];
+  }>;
   refreshUsers: () => Promise<void>;
   /** Admin-editable app text with fallback to the built-in default */
   getText: (key: string) => string;
@@ -117,7 +122,7 @@ interface TaskContextType {
   setTaskIncompleteReason: (taskId: string, category: UncompletedCategory, reason: string) => Promise<void>;
 
   // Excel / CSV Export
-  exportUsersCsv: () => void;
+  exportUsersCsv: (ids?: string[]) => void;
 
   // Group Focus Rooms (Pomodoro Rooms)
   activeRoomId: string | null;
@@ -906,8 +911,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     closeIncompleteModal();
   };
 
-  const exportUsersCsv = () => {
-    api.exportUsersCsv(users);
+  const exportUsersCsv = (ids?: string[]) => {
+    const list = ids && ids.length > 0 ? users.filter((u) => ids.includes(u.id)) : users;
+    api.exportUsersCsv(list);
     sounds.playComplete();
   };
 
@@ -996,6 +1002,19 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await refreshUsers();
     await refreshTasks();
     sounds.playComplete();
+  };
+
+  /** Bulk deletion of many users (admin) — one server call, protected accounts skipped */
+  const deleteUsersBulk = async (ids: string[]) => {
+    const result = await api.deleteUsersBulk(ids);
+    const deletedSet = new Set(result.deleted || []);
+    setUsers((prev) => prev.filter((u) => !deletedSet.has(u.id)));
+    // Purge local mirrors so deleted users can never resurrect
+    (result.deleted || []).forEach((id) => api.removeLocalUserMirror(id));
+    await refreshUsers();
+    await refreshTasks();
+    sounds.playComplete();
+    return result;
   };
 
   const triggerConfetti = useCallback(() => {
@@ -1216,6 +1235,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateUser,
       updateMyProfile,
       deleteUser,
+      deleteUsersBulk,
       refreshUsers,
       setSelectedDate,
       setActiveTab,
