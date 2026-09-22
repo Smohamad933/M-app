@@ -179,12 +179,12 @@ export const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#edf0f4] text-slate-900 p-2 sm:p-5 lg:p-6 flex items-stretch justify-center antialiased selection:bg-[#121212] selection:text-white w-full overflow-x-hidden font-sans">
-      {/* Floating Main Application Shell */}
-      <div className="bg-white rounded-[32px] sm:rounded-[36px] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.06)] border border-slate-200/90 w-full max-w-[1600px] flex flex-col lg:flex-row overflow-hidden min-h-[92vh] relative">
+    <div className="min-h-screen bg-[#e4e9f2] text-slate-900 p-0 sm:p-4 lg:p-6 flex items-stretch justify-center antialiased selection:bg-[#121212] selection:text-white w-full overflow-x-hidden font-sans">
+      {/* Floating Main Application Shell with high contrast */}
+      <div className="bg-[#f1f4f8] rounded-none sm:rounded-[36px] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.08)] border-0 sm:border border-slate-300/80 w-full max-w-[1600px] flex flex-col lg:flex-row overflow-hidden min-h-screen sm:min-h-[92vh] relative">
         
         {/* 1. DESKTOP SIDEBAR */}
-        <aside className="hidden lg:flex w-72 bg-white border-l border-slate-200/80 flex-col justify-between p-6 z-20 select-none sticky top-0 h-[92vh] flex-shrink-0 min-h-0 overflow-y-auto no-scrollbar">
+        <aside className="hidden lg:flex w-72 bg-white border-l border-slate-200/90 flex-col justify-between p-6 z-20 select-none sticky top-0 h-[92vh] flex-shrink-0 min-h-0 overflow-y-auto no-scrollbar shadow-xs">
           <div className="flex flex-col min-h-0 flex-1">
             {/* Brand Logo & App Name */}
             <div className="flex items-center gap-3">
@@ -499,29 +499,32 @@ export const MainLayout: React.FC = () => {
                   </button>
                 )}
 
-                {/* AI Task Agent Button (Smart Natural Language & Voice) */}
+                {/* PRIMARY: AI Task Agent Button */}
                 <button
                   type="button"
                   onClick={() => {
                     sounds.playPop();
                     setIsAiAgentModalOpen(true);
                   }}
-                  className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-2xl bg-[#00b884] hover:bg-[#00a375] text-white font-extrabold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
-                  title="ثبت هوشمند کارهای روز با صدای خود یا متن محاوره‌ای"
+                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-2xl bg-[#121212] hover:bg-black text-white font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer"
+                  title="ثبت هوشمند کارهای روز با دستیار صوتی و متنی هوش مصنوعی"
                 >
-                  <Sparkles className="w-4 h-4 stroke-[2.5]" />
-                  <span className="hidden sm:inline">دستیار هوشمند (AI)</span>
+                  <Sparkles className="w-4 h-4 text-[#00b884] stroke-[2.5]" />
+                  <span>تسک جدید (AI)</span>
                 </button>
 
-                {/* Manual Add Task Button */}
+                {/* SECONDARY: Manual Add Task Button */}
                 <button
                   type="button"
-                  onClick={() => openCreateModal(selectedDate)}
-                  className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-2xl bg-[#121212] hover:bg-black text-white font-extrabold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
-                  title="افزودن دستی تسک"
+                  onClick={() => {
+                    sounds.playPop();
+                    openCreateModal(selectedDate);
+                  }}
+                  className="hidden sm:flex items-center gap-1 px-3 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs transition-colors cursor-pointer border border-slate-200/80 shadow-2xs"
+                  title="افزودن دستی تسک با فرم سنتی"
                 >
-                  <Plus className="w-4 h-4 stroke-[2.5]" />
-                  <span className="hidden md:inline">افزودن دستی</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>دستی</span>
                 </button>
 
                 {/* Mobile Menu Button */}
@@ -623,7 +626,7 @@ export const MainLayout: React.FC = () => {
                 {/* 4 Dribbble Signature Widgets */}
                 <TaskMasterBentoWidgets
                   onSeeAllTasks={() => setActiveTab('tasks')}
-                  onOpenCreateTask={() => openCreateModal(selectedDate)}
+                  onOpenCreateTask={() => setIsAiAgentModalOpen(true)}
                 />
 
                 {/* 4 KPI Summary Cards */}

@@ -131,9 +131,12 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-end sm:p-6 p-3 pt-16 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-end sm:p-6 p-3 pt-16 bg-slate-900/40 backdrop-blur-xs animate-in fade-in cursor-pointer"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-sm bg-white rounded-[28px] shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[85vh] animate-in slide-in-from-top-4 duration-200"
+        className="w-full max-w-sm bg-white rounded-[28px] shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[85vh] animate-in slide-in-from-top-4 duration-200 cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

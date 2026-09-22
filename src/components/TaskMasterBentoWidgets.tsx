@@ -17,7 +17,6 @@ import {
   ChevronRight,
   ChevronLeft,
   X,
-  Plus,
   FolderKanban,
   Check,
   Sparkles,
@@ -207,10 +206,10 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
               <button
                 type="button"
                 onClick={onOpenCreateTask}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-                title="تسک جدید"
+                className="p-1.5 rounded-xl text-slate-500 hover:text-black hover:bg-slate-100 transition-colors flex items-center gap-1 cursor-pointer"
+                title="ثبت سریع تسک با دستیار هوشمند (AI)"
               >
-                <Plus className="w-4 h-4" />
+                <Sparkles className="w-4 h-4 text-[#00b884]" />
               </button>
             )}
             <button

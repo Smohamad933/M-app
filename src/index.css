@@ -18,7 +18,7 @@
   }
 
   html.light, html:not(.dark) {
-    background-color: #edf0f4;
+    background-color: #e4e9f2;
     color: #0f172a;
     color-scheme: light;
   }
@@ -37,7 +37,7 @@
   }
 
   html.light body, html:not(.dark) body {
-    background-color: #edf0f4;
+    background-color: #e4e9f2;
     color: #0f172a;
   }
 
