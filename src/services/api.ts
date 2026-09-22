@@ -418,17 +418,25 @@ export const api = {
   },
 
   async updateUser(user: { id: string; name: string; role: 'admin' | 'user'; password?: string }): Promise<void> {
-    await request('api/users.php', {
-      method: 'PUT',
-      body: JSON.stringify(user),
-    });
+    try {
+      await request('api/users.php', {
+        method: 'PUT',
+        body: JSON.stringify(user),
+      });
+    } catch (err: any) {
+      // IIS 405 resilience: some servers block PUT, retry via POST ?action=update_user
+      await request('api/users.php', {
+        method: 'POST',
+        body: JSON.stringify({ ...user, action: 'update_user' }),
+      });
+    }
     broadcastSync('USER_UPDATED', user);
   },
 
   /**
    * Self-service profile update (any logged-in user, own profile only).
    * Includes avatar (data URL), contact info, routine and optional password change.
-   * PUT first, with POST fallback for IIS servers that block the PUT verb.
+   * POST first (universally allowed, even on IIS), with PUT fallback.
    */
   async updateMyProfile(data: {
     id: string;
@@ -448,13 +456,13 @@ export const api = {
     let data_: { user: User } | undefined;
     try {
       data_ = await request<{ user: User }>('api/users.php', {
-        method: 'PUT',
+        method: 'POST',
         body: JSON.stringify(payload),
       });
     } catch (err: any) {
-      // IIS 405 resilience: retry via POST
+      // Fallback for servers where POST is filtered: try the PUT verb
       data_ = await request<{ user: User }>('api/users.php', {
-        method: 'POST',
+        method: 'PUT',
         body: JSON.stringify(payload),
       });
     }

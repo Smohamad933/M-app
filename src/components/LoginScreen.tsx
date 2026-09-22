@@ -18,7 +18,8 @@ import {
   Briefcase,
   Calendar,
   Check,
-  Plus,
+  Search,
+  X,
 } from 'lucide-react';
 
 const PERSIAN_MONTHS = [
@@ -103,6 +104,24 @@ export const LoginScreen: React.FC = () => {
       setSelectedSkills([...selectedSkills, customSkillInput.trim()]);
       setCustomSkillInput('');
     }
+  };
+
+  // Searchable skill picker state
+  const [skillSearchOpen, setSkillSearchOpen] = useState(false);
+  const matchingSkills = (() => {
+    const q = customSkillInput.trim();
+    const pool = q
+      ? SUGGESTED_SKILLS.filter((s) => s.includes(q))
+      : SUGGESTED_SKILLS;
+    return pool.filter((s) => !selectedSkills.includes(s)).slice(0, 8);
+  })();
+
+  const addSkillFromList = (skill: string) => {
+    if (!selectedSkills.includes(skill)) {
+      setSelectedSkills([...selectedSkills, skill]);
+    }
+    setCustomSkillInput('');
+    sounds.playPop();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -559,42 +578,73 @@ export const LoginScreen: React.FC = () => {
                 <label className="font-bold text-zinc-300">
                   مهارت‌های کلیدی (جهت تحلیل هوش مصنوعی)
                 </label>
-                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1.5 bg-zinc-950/60 rounded-2xl border border-zinc-800">
-                  {SUGGESTED_SKILLS.map((s) => {
-                    const isSelected = selectedSkills.includes(s);
-                    return (
-                      <button
+
+                {/* Selected skills as removable chips */}
+                {selectedSkills.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedSkills.map((s) => (
+                      <span
                         key={s}
-                        type="button"
-                        onClick={() => toggleSkill(s)}
-                        className={`text-[10px] px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-white text-zinc-950 font-bold shadow-xs'
-                            : 'bg-zinc-800/80 text-zinc-400 hover:text-white'
-                        }`}
+                        className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-xl bg-white text-zinc-950 font-bold shadow-xs"
                       >
                         {s}
-                      </button>
-                    );
-                  })}
-                </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleSkill(s)}
+                          className="text-zinc-400 hover:text-rose-500 cursor-pointer"
+                          title="حذف مهارت"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
 
-                <div className="flex items-center gap-1.5 pt-1">
+                {/* Searchable skill picker — no full list wall */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute right-2.5 top-2 text-zinc-500 pointer-events-none" />
                   <input
                     type="text"
                     value={customSkillInput}
-                    onChange={(e) => setCustomSkillInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill(); } }}
-                    placeholder="مهارت دیگر (تایپ کنید و + را بزنید)..."
-                    className="flex-1 px-3 py-1.5 rounded-xl bg-zinc-800/60 border border-zinc-700/50 text-white text-[11px] outline-hidden placeholder:text-zinc-500"
+                    onChange={(e) => {
+                      setCustomSkillInput(e.target.value);
+                      setSkillSearchOpen(true);
+                    }}
+                    onFocus={() => setSkillSearchOpen(true)}
+                    onBlur={() => setTimeout(() => setSkillSearchOpen(false), 150)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addCustomSkill();
+                      }
+                    }}
+                    placeholder="جستجوی مهارت... (تایپ کنید یا Enter بزنید)"
+                    className="w-full pl-3 pr-8 py-1.5 rounded-xl bg-zinc-800/60 border border-zinc-700/50 text-white text-[11px] outline-hidden placeholder:text-zinc-500"
                   />
-                  <button
-                    type="button"
-                    onClick={addCustomSkill}
-                    className="p-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
+
+                  {/* Suggestions dropdown */}
+                  {skillSearchOpen && matchingSkills.length > 0 && (
+                    <div className="absolute z-30 top-full right-0 left-0 mt-1 max-h-44 overflow-y-auto bg-zinc-900 border border-zinc-700/80 rounded-2xl shadow-2xl p-1.5 animate-in fade-in">
+                      <div className="text-[9px] text-zinc-500 px-2 py-1">
+                        {customSkillInput.trim() ? 'نتایج جستجو' : 'پیشنهادی'}
+                      </div>
+                      {matchingSkills.map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            addSkillFromList(s);
+                          }}
+                          className="w-full text-right px-2.5 py-1.5 rounded-xl text-[11px] text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Check className="w-3 h-3 text-emerald-500" />
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

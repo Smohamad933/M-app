@@ -852,3 +852,37 @@ test('Admin Text Manager: Editable App Texts in Global Settings', async () => {
   const got2 = await request('GET', '/api/settings', null, adminHeader);
   assert(got2.body.settings.texts.appName === '', 'Blank text must be stored as empty string');
 });
+
+// 22. PWA: service worker, manifest and icons must be served
+test('PWA Assets: Service Worker, Manifest & Icons Served', async () => {
+  const sw = await new Promise((resolve) => {
+    const http = require('http');
+    http.get('http://localhost:5173/sw.js', (res) => {
+      let d = '';
+      res.on('data', (c) => (d += c));
+      res.on('end', () => resolve({ status: res.statusCode, body: d }));
+    }).on('error', () => resolve({ status: 0, body: '' }));
+  });
+  assert(sw.status === 200, `sw.js must be served, got ${sw.status}`);
+  assert(sw.body.includes("addEventListener('fetch'"), 'sw.js must contain a fetch handler');
+
+  const manifest = await request('GET', '/manifest.json');
+  assert(manifest.status === 200, `manifest.json must be served, got ${manifest.status}`);
+  const m = typeof manifest.body === 'string' ? JSON.parse(manifest.body) : manifest.body;
+  assert(m.name && m.start_url, 'manifest must have name and start_url');
+  assert(Array.isArray(m.icons) && m.icons.length >= 2, 'manifest must declare icons');
+  const pngIcons = m.icons.filter((i) => i.type === 'image/png');
+  assert(pngIcons.some((i) => i.sizes === '192x192') && pngIcons.some((i) => i.sizes === '512x512'),
+    'manifest must declare 192 and 512 PNG icons');
+
+  for (const icon of ['./icon-192.png', './icon-512.png', './icon-maskable-512.png']) {
+    const r = await new Promise((resolve) => {
+      const http = require('http');
+      http.get('http://localhost:5173/' + icon, (res) => {
+        res.resume();
+        res.on('end', () => resolve(res.statusCode));
+      }).on('error', () => resolve(0));
+    });
+    assert(r === 200, `${icon} must be served, got ${r}`);
+  }
+});

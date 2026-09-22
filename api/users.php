@@ -196,12 +196,30 @@ if ($method === 'GET') {
     jsonResponse(['users' => $users]);
 }
 
-// POST /api/users -> Create new user (or delete via ?action=delete for IIS 405 resilience)
+// POST /api/users -> Create new user (or delete/update via ?action= for IIS 405 resilience)
 if ($method === 'POST') {
     $input = getJsonInput();
 
     if (($_GET['action'] ?? '') === 'delete' || ($input['action'] ?? '') === 'delete') {
         performUserDelete($db, ($input['id'] ?? '') !== '' ? $input['id'] : ($_GET['id'] ?? ''), $currentUser);
+    }
+
+    // IIS 405 resilience: admin user-update fallback for servers that block the PUT verb
+    if (($input['action'] ?? '') === 'update_user') {
+        $id = $input['id'] ?? '';
+        $name = trim($input['name'] ?? '');
+        $role = in_array($input['role'] ?? '', ['admin', 'user']) ? $input['role'] : 'user';
+        $password = $input['password'] ?? null;
+
+        if (empty($id) || empty($name)) {
+            jsonResponse(['error' => 'شناسه و نام کاربر الزامی است.'], 400);
+        }
+
+        $ok = $db->updateUser($id, $name, $role, $password);
+        if ($ok) {
+            jsonResponse(['message' => 'اطلاعات کاربر با موفقیت به‌روزرسانی شد.']);
+        }
+        jsonResponse(['error' => 'کاربر پیدا نشد.'], 404);
     }
 
     $username = trim($input['username'] ?? '');

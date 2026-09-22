@@ -717,6 +717,23 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
     if (method === 'POST') {
       const body = parsedBody;
+
+      // IIS 405 resilience: admin user-update fallback for servers that block PUT
+      if (body.action === 'update_user') {
+        const { id, name, role, password } = body;
+        const user = db.users.find((u) => u.id === id);
+        if (!user) {
+          sendJson(res, { error: 'کاربر پیدا نشد.' }, 404);
+          return true;
+        }
+        if (name) user.name = name.trim();
+        if (role) user.role = role === 'admin' ? 'admin' : 'user';
+        if (password) user.password = password.trim();
+        writeDb(db);
+        sendJson(res, { message: 'کاربر به‌روزرسانی شد.' });
+        return true;
+      }
+
       const username = body.username?.trim();
       const password = body.password?.trim();
       const name = body.name?.trim();
