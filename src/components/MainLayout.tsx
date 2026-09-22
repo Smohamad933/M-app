@@ -4,6 +4,7 @@ import { toPersianDigits, getTodayISO, formatPersianDate } from '../utils/persia
 import { greetingKeySet } from '../utils/appTexts';
 import { UserAvatar } from './UserAvatar';
 import { ProfileModal } from './ProfileModal';
+import { DashboardTaskList } from './DashboardTaskList';
 import type { TabType } from '../types';
 import { TaskList } from './TaskList';
 import { KanbanBoard } from './KanbanBoard';
@@ -579,10 +580,10 @@ export const MainLayout: React.FC = () => {
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
                       <h3 className="text-sm font-extrabold text-white">
-                        کارهای امروز
+                        برنامه‌ی پیشِ رو
                       </h3>
                       <p className="text-xs text-zinc-400 mt-0.5">
-                        برنامه‌ریزی و ثبت تسک‌های امروز شما
+                        اول پین‌شده‌ها، سپس به ترتیب روز — تسک‌های زودتر در صدر
                       </p>
                     </div>
 
@@ -595,7 +596,7 @@ export const MainLayout: React.FC = () => {
                   </div>
 
                   <QuickAddBar />
-                  <TaskList />
+                  <DashboardTaskList />
                 </div>
 
                 {/* Right side bento cards */}
