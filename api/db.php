@@ -407,6 +407,7 @@ class TaskRoozDB {
 
             $res[] = [
                 'id' => $u['id'],
+                'numericId' => $u['numericId'] ?? 1000,
                 'username' => $u['username'],
                 'name' => $u['name'],
                 'role' => $u['role'] ?? 'user',
@@ -419,6 +420,7 @@ class TaskRoozDB {
                 'avatar' => $u['avatar'] ?? null,
                 'skills' => $u['skills'] ?? [],
                 'dailyTimeline' => $u['dailyTimeline'] ?? [],
+                'subscription' => $u['subscription'] ?? ['plan' => (($u['role'] ?? '') === 'admin' ? 'pro' : 'free')],
                 'createdAt' => $u['createdAt'] ?? $u['created_at'] ?? date('Y-m-d H:i:s'),
                 'totalTasks' => $total,
                 'completedTasks' => $done,
@@ -426,6 +428,29 @@ class TaskRoozDB {
             ];
         }
         return $res;
+    }
+
+    public function setUserSubscription($userId, $plan, $planType = null, $expiresAt = null) {
+        $this->loadJson();
+        $updated = false;
+        if (isset($this->data['users'])) {
+            foreach ($this->data['users'] as &$u) {
+                if ($u['id'] === $userId || (isset($u['username']) && strtolower($u['username']) === strtolower($userId))) {
+                    $u['subscription'] = [
+                        'plan' => $plan === 'pro' ? 'pro' : 'free',
+                        'planType' => $planType,
+                        'activatedAt' => date('Y-m-d H:i:s'),
+                        'expiresAt' => $expiresAt,
+                    ];
+                    $updated = true;
+                    break;
+                }
+            }
+        }
+        if ($updated) {
+            $this->saveJson();
+        }
+        return $updated;
     }
 
     public function updateUser($id, $name, $role, $password = null) {

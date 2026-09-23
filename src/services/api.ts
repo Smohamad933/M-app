@@ -1099,12 +1099,17 @@ export const api = {
   },
 
   // ── Subscription Management ──
-  async setUserSubscription(userId: string, plan: 'free' | 'pro', expiresAt?: string): Promise<void> {
+  async setUserSubscription(
+    userId: string,
+    plan: 'free' | 'pro',
+    planType?: '1_month' | '3_months' | '6_months',
+    expiresAt?: string
+  ): Promise<void> {
     await request('api/users.php', {
       method: 'POST',
-      body: JSON.stringify({ action: 'set_subscription', userId, plan, expiresAt }),
+      body: JSON.stringify({ action: 'set_subscription', userId, plan, planType, expiresAt }),
     });
-    broadcastSync('USER_UPDATED', { id: userId, subscription: { plan, expiresAt } });
+    broadcastSync('USER_UPDATED', { id: userId, subscription: { plan, planType, expiresAt } });
   },
 
   // ── Mandatory Profile Completion on First Login ──

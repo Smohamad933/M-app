@@ -32,6 +32,8 @@ interface DBUser {
   dailyTimeline?: any;
   subscription?: {
     plan: 'free' | 'pro';
+    planType?: string;
+    activatedAt?: string;
     expiresAt?: string | null;
   };
   isProfileCompleted?: boolean;
@@ -1032,6 +1034,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           name: u.name,
           role: u.role,
           phone: u.phone,
+          numericId: u.numericId || 1000,
           email: u.email,
           province: u.province,
           city: u.city,
@@ -1040,6 +1043,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           avatar: u.avatar || null,
           skills: u.skills,
           dailyTimeline: u.dailyTimeline,
+          subscription: u.subscription || { plan: u.role === 'admin' ? 'pro' : 'free' },
           createdAt: u.createdAt,
           totalTasks: total,
           completedTasks: done,
@@ -1071,14 +1075,16 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
       // Admin toggle user subscription
       if (body.action === 'set_subscription') {
-        const { userId, plan, expiresAt } = body;
-        const target = db.users.find((u) => u.id === userId);
+        const { userId, plan, planType, expiresAt } = body;
+        const target = db.users.find((u) => u.id === userId || u.username === userId);
         if (!target) {
           sendJson(res, { error: 'کاربر پیدا نشد.' }, 404);
           return true;
         }
         target.subscription = {
           plan: plan === 'pro' ? 'pro' : 'free',
+          planType: planType || (plan === 'pro' ? '1_month' : undefined),
+          activatedAt: new Date().toISOString(),
           expiresAt: expiresAt || null,
         };
         writeDb(db);

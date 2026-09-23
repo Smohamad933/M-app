@@ -157,20 +157,20 @@ if (!$isAdmin) {
 if ($action === 'set_subscription' || ($input['action'] ?? '') === 'set_subscription') {
     $targetId = $input['userId'] ?? $_GET['user_id'] ?? '';
     $plan = ($input['plan'] ?? '') === 'pro' ? 'pro' : 'free';
-    $dbObj = TaskRoozDB::getInstance();
-    $updated = false;
-    if (isset($dbObj->data['users'])) {
-        foreach ($dbObj->data['users'] as &$u) {
-            if ($u['id'] === $targetId) {
-                $u['subscription'] = ['plan' => $plan, 'expiresAt' => $input['expiresAt'] ?? null];
-                $updated = true;
-                break;
-            }
-        }
-    }
+    $planType = $input['planType'] ?? null;
+    $expiresAt = $input['expiresAt'] ?? null;
+
+    $updated = $db->setUserSubscription($targetId, $plan, $planType, $expiresAt);
     if ($updated) {
-        $dbObj->saveJson();
-        jsonResponse(['message' => 'وضعیت اشتراک کاربر با موفقیت تغییر یافت.', 'plan' => $plan]);
+        jsonResponse([
+            'message' => 'وضعیت اشتراک کاربر با موفقیت تغییر یافت.',
+            'plan' => $plan,
+            'subscription' => [
+                'plan' => $plan,
+                'planType' => $planType,
+                'expiresAt' => $expiresAt,
+            ],
+        ]);
     }
     jsonResponse(['error' => 'کاربر پیدا نشد.'], 404);
 }

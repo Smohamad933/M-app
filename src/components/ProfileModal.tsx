@@ -249,7 +249,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
               <div className="text-xs font-black text-slate-900 flex items-center gap-2">
                 <span>سطح اشتراک شما:</span>
                 <span className={isPro ? 'text-amber-600 font-black' : 'text-slate-600 font-bold'}>
-                  {isPro ? 'اشتراک ویژه Pro فعال است ⭐' : 'پلن رایگان (حداکثر ۵ تسک و ۱ پروژه)'}
+                  {isPro
+                    ? `اشتراک ویژه Pro فعال است ⭐ (${
+                        currentUser?.subscription?.planType === '6_months'
+                          ? 'پلن ۶ ماهه'
+                          : currentUser?.subscription?.planType === '3_months'
+                          ? 'پلن ۳ ماهه'
+                          : 'پلن ۱ ماهه'
+                      })`
+                    : 'پلن رایگان (حداکثر ۵ تسک و ۱ پروژه)'}
                 </span>
               </div>
               <p className="text-[10px] text-slate-500">

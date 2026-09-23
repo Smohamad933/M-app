@@ -175,6 +175,43 @@ export const UserManagementView: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [planFilter, setPlanFilter] = useState<'all' | 'pro' | 'free'>('all');
 
+  // Subscription management state
+  const [subscriptionModalUser, setSubscriptionModalUser] = useState<User | null>(null);
+  const [updatingSubUserId, setUpdatingSubUserId] = useState<string | null>(null);
+  const [subNotice, setSubNotice] = useState<string | null>(null);
+
+  const handleUpdateSubscription = async (
+    userId: string,
+    plan: 'free' | 'pro',
+    planType: '1_month' | '3_months' | '6_months' = '1_month'
+  ) => {
+    setUpdatingSubUserId(userId);
+    try {
+      let expiresAt: string | undefined;
+      if (plan === 'pro') {
+        const now = new Date();
+        const days = planType === '6_months' ? 180 : planType === '3_months' ? 90 : 30;
+        now.setDate(now.getDate() + days);
+        expiresAt = now.toISOString();
+      }
+
+      await setUserSubscription(userId, plan, planType, expiresAt);
+      sounds.playComplete();
+      const planName = planType === '6_months' ? '۶ ماهه' : planType === '3_months' ? '۳ ماهه' : '۱ ماهه';
+      setSubNotice(
+        plan === 'pro'
+          ? `اشتراک ویژه Pro (${planName}) برای کاربر با موفقیت فعال شد.`
+          : 'اشتراک کاربر به نسخه رایگان تغییر یافت.'
+      );
+      setTimeout(() => setSubNotice(null), 3500);
+      setSubscriptionModalUser(null);
+    } catch (err: any) {
+      alert(err.message || 'خطا در تغییر اشتراک کاربر');
+    } finally {
+      setUpdatingSubUserId(null);
+    }
+  };
+
   // Bulk selection & actions (multi-select users)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
@@ -946,6 +983,13 @@ export const UserManagementView: React.FC = () => {
               </span>
             </div>
 
+            {subNotice && (
+              <div className="p-3.5 bg-emerald-500/15 border-b border-emerald-500/30 text-emerald-300 text-xs font-bold text-center animate-in fade-in flex items-center justify-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <span>{subNotice}</span>
+              </div>
+            )}
+
             <div className="divide-y divide-zinc-800/60">
               {users
                 .filter((u) => {
@@ -993,9 +1037,14 @@ export const UserManagementView: React.FC = () => {
                               <ShieldCheck className="w-3 h-3" />
                               مدیر کل
                             </span>
+                          ) : isUserPro ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+                              <Sparkles className="w-3 h-3 text-amber-400" />
+                              <span>Pro ({u.subscription?.planType === '6_months' ? '۶ ماهه' : u.subscription?.planType === '3_months' ? '۳ ماهه' : '۱ ماهه'})</span>
+                            </span>
                           ) : (
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/50">
-                              کاربر عادی
+                              کاربر عادی (رایگان)
                             </span>
                           )}
                         </div>
@@ -1083,20 +1132,27 @@ export const UserManagementView: React.FC = () => {
 
                       {/* Action buttons */}
                       <div className="flex items-center gap-2 flex-wrap">
-                        {/* Subscription Toggle for non-admin */}
+                        {/* Subscription Management for non-admin */}
                         {u.role !== 'admin' && (
                           <button
                             type="button"
-                            onClick={() => setUserSubscription(u.id, isUserPro ? 'free' : 'pro')}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                            disabled={updatingSubUserId === u.id}
+                            onClick={() => setSubscriptionModalUser(u)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50 ${
                               isUserPro
                                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
-                                : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700 hover:text-white'
+                                : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 hover:text-white'
                             }`}
-                            title="تغییر وضعیت اشتراک کاربر"
+                            title="تنظیم و تغییر دوره اشتراک Pro کاربر"
                           >
                             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                            <span>{isUserPro ? 'لغو Pro' : 'فعال‌سازی Pro ⭐'}</span>
+                            <span>
+                              {updatingSubUserId === u.id
+                                ? 'در حال ثبت...'
+                                : isUserPro
+                                ? 'مدیریت Pro ⭐'
+                                : 'فعال‌سازی Pro ⭐'}
+                            </span>
                           </button>
                         )}
 
@@ -2806,6 +2862,128 @@ export const UserManagementView: React.FC = () => {
               >
                 <Trash2 className="w-4 h-4" />
                 {isBulkDeleting ? 'در حال حذف گروهی...' : 'بله، حذف قطعی همه انتخاب‌شده‌ها'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin User Pro Subscription Duration Modal */}
+      {subscriptionModalUser && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setSubscriptionModalUser(null)}
+        >
+          <div
+            className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 text-white"
+            onClick={(e) => e.stopPropagation()}
+            dir="rtl"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">مدیریت و فعال‌سازی اشتراک Pro</h3>
+                  <p className="text-[11px] text-zinc-400 font-bold">
+                    {subscriptionModalUser.name} (@{subscriptionModalUser.username})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSubscriptionModalUser(null)}
+                className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="text-xs text-zinc-300">
+              دوره اشتراک Pro مورد نظر برای این کاربر را انتخاب کنید:
+            </div>
+
+            <div className="grid grid-cols-1 gap-2.5">
+              <button
+                type="button"
+                disabled={updatingSubUserId === subscriptionModalUser.id}
+                onClick={() => handleUpdateSubscription(subscriptionModalUser.id, 'pro', '1_month')}
+                className="w-full p-3.5 rounded-2xl bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/80 hover:border-amber-500/50 text-right flex items-center justify-between transition-all cursor-pointer group shadow-2xs"
+              >
+                <div>
+                  <div className="text-xs font-black text-white group-hover:text-amber-300">
+                    پلن ۱ ماهه (۳۰ روز)
+                  </div>
+                  <div className="text-[10px] text-zinc-400 mt-0.5">
+                    دسترسی استاندارد نامحدود تسک‌ها و پروژه‌ها
+                  </div>
+                </div>
+                <span className="px-3 py-1.5 rounded-xl bg-zinc-700 text-zinc-200 text-[10px] font-bold group-hover:bg-amber-500 group-hover:text-black transition-colors">
+                  فعال‌سازی ۱ ماهه
+                </span>
+              </button>
+
+              <button
+                type="button"
+                disabled={updatingSubUserId === subscriptionModalUser.id}
+                onClick={() => handleUpdateSubscription(subscriptionModalUser.id, 'pro', '3_months')}
+                className="w-full p-3.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border-2 border-amber-500/60 text-right flex items-center justify-between transition-all cursor-pointer group shadow-sm"
+              >
+                <div>
+                  <div className="text-xs font-black text-amber-300 flex items-center gap-2">
+                    <span>پلن ۳ ماهه (۹۰ روز)</span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500 text-black font-black">
+                      پیشنهاد ویژه ⭐
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-zinc-400 mt-0.5">
+                    محبوب‌ترین پلن با ۲۰٪ تخفیف اقتصادی
+                  </div>
+                </div>
+                <span className="px-3 py-1.5 rounded-xl bg-amber-500 text-black text-[10px] font-black group-hover:bg-amber-400 transition-colors">
+                  فعال‌سازی ۳ ماهه ⭐
+                </span>
+              </button>
+
+              <button
+                type="button"
+                disabled={updatingSubUserId === subscriptionModalUser.id}
+                onClick={() => handleUpdateSubscription(subscriptionModalUser.id, 'pro', '6_months')}
+                className="w-full p-3.5 rounded-2xl bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/80 hover:border-amber-500/50 text-right flex items-center justify-between transition-all cursor-pointer group shadow-2xs"
+              >
+                <div>
+                  <div className="text-xs font-black text-white group-hover:text-amber-300 flex items-center gap-2">
+                    <span>پلن ۶ ماهه (۱۸۰ روز)</span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-black">
+                      ۳۵٪ تخفیف 💎
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-zinc-400 mt-0.5">
+                    بیشترین صرفه‌جویی و همراهی پیوسته
+                  </div>
+                </div>
+                <span className="px-3 py-1.5 rounded-xl bg-zinc-700 text-zinc-200 text-[10px] font-bold group-hover:bg-amber-500 group-hover:text-black transition-colors">
+                  فعال‌سازی ۶ ماهه
+                </span>
+              </button>
+            </div>
+
+            <div className="pt-2 border-t border-zinc-800 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                disabled={updatingSubUserId === subscriptionModalUser.id}
+                onClick={() => handleUpdateSubscription(subscriptionModalUser.id, 'free')}
+                className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition-colors cursor-pointer"
+              >
+                لغو اشتراک Pro (تبدیل به رایگان)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSubscriptionModalUser(null)}
+                className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                بستن
               </button>
             </div>
           </div>

@@ -26,6 +26,7 @@ import { HourlyPlannerView } from './HourlyPlannerView';
 import { HabitsAnalyzerView } from './HabitsAnalyzerView';
 import { CareerGoalsView } from './CareerGoalsView';
 import { FriendsView } from './FriendsView';
+import { MessagesView } from './MessagesView';
 import { AiTaskAgentModal } from './AiTaskAgentModal';
 import { DirectChatModal } from './DirectChatModal';
 import { NotificationCenterModal } from './NotificationCenterModal';
@@ -68,6 +69,7 @@ import {
   SlidersHorizontal,
   Bell,
   Settings,
+  MessageSquare,
   ChevronDown,
 } from 'lucide-react';
 
@@ -99,6 +101,8 @@ export const MainLayout: React.FC = () => {
     setIsFirstLoginModalOpen,
     isUpgradeModalOpen,
     setIsUpgradeModalOpen,
+    friends,
+    setViewingPublicUser,
   } = useTask();
 
   const todayISO = getTodayISO();
@@ -206,6 +210,7 @@ export const MainLayout: React.FC = () => {
 
   const navItems: Array<{ id: TabType; label: string; icon: React.ElementType; adminOnly?: boolean; badge?: number }> = [
     { id: 'dashboard', label: 'داشبورد (Dashboard)', icon: LayoutDashboard },
+    { id: 'messages', label: 'پیام‌ها و گفتگوها', icon: MessageSquare },
     { id: 'planner', label: 'دیلی پلنر ساعتی', icon: Clock },
     { id: 'habits', label: 'تحلیلگر عادت‌ها', icon: Brain },
     { id: 'career', label: 'اهداف و رشد شغلی', icon: Compass },
@@ -864,6 +869,94 @@ export const MainLayout: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Dashboard Recent Messages & Colleagues Chat Section */}
+                <div className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-4 min-w-0 w-full">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-2xl bg-[#121212] text-white flex items-center justify-center shadow-xs">
+                        <MessageSquare className="w-4 h-4 text-[#00b884]" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900">
+                          پیام‌ها و گفتگوی مستقیم با همکاران
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          ارتباط لحظه‌ای و پیام‌رسانی کاری با اعضای تیم
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('messages')}
+                      className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                    >
+                      <span>ورود به بخش پیام‌ها</span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-slate-500" />
+                    </button>
+                  </div>
+
+                  {friends.length === 0 ? (
+                    <div className="p-6 text-center border border-dashed border-slate-200 rounded-2xl bg-slate-50/50 space-y-2">
+                      <p className="text-xs text-slate-500 font-bold">
+                        هنوز با همکاری گفتگو نکرده‌اید.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('messages')}
+                        className="px-4 py-2 bg-[#121212] hover:bg-black text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs"
+                      >
+                        شروع گفتگوی جدید با همکاران 💬
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {friends.slice(0, 6).map((f) => (
+                        <div
+                          key={f.id}
+                          onClick={() => {
+                            setDirectChatUser(f as any);
+                          }}
+                          className="p-3.5 rounded-2xl border border-slate-200/90 hover:border-slate-400 bg-slate-50/60 hover:bg-white transition-all flex items-center justify-between gap-3 cursor-pointer group shadow-2xs"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="relative flex-shrink-0">
+                              <UserAvatar user={f} size="sm" className="w-10 h-10 shadow-xs" />
+                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white absolute bottom-0 right-0" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-black text-slate-900 group-hover:text-black truncate">
+                                {f.name}
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-mono truncate">
+                                @{f.username}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="p-2 rounded-xl bg-white group-hover:bg-[#121212] text-slate-600 group-hover:text-white border border-slate-200 transition-colors shadow-2xs"
+                            title="چت مستقیم"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB: MESSAGES & CHAT */}
+            {activeTab === 'messages' && (
+              <div className="w-full min-w-0">
+                <MessagesView
+                  initialChatUserId={directChatUser?.id || null}
+                  onOpenPublicProfile={(u) => setViewingPublicUser(u)}
+                />
               </div>
             )}
 

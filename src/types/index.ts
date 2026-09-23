@@ -25,10 +25,7 @@ export interface User {
   jobTitle?: string;
   skills?: string[];
   dailyTimeline?: UserTimeline;
-  subscription?: {
-    plan: 'free' | 'pro';
-    expiresAt?: string | null;
-  };
+  subscription?: UserSubscription;
   isProfileCompleted?: boolean;
   createdAt: string;
   totalTasks?: number;
@@ -138,6 +135,15 @@ export interface DailyNote {
   updatedAt: string;
 }
 
+export type ProDurationPlan = '1_month' | '3_months' | '6_months';
+
+export interface UserSubscription {
+  plan: 'free' | 'pro';
+  planType?: ProDurationPlan;
+  activatedAt?: string;
+  expiresAt?: string | null;
+}
+
 export type TabType =
   | 'dashboard'
   | 'tasks'
@@ -150,7 +156,8 @@ export type TabType =
   | 'categories'
   | 'stats'
   | 'users'
-  | 'friends';
+  | 'friends'
+  | 'messages';
 
 export type TaskViewMode = 'list' | 'kanban' | 'calendar';
 

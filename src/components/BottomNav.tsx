@@ -4,9 +4,9 @@ import type { TabType } from '../types';
 import {
   LayoutDashboard,
   CheckSquare,
-  Clock,
   Users,
   Plus,
+  MessageSquare,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 
@@ -20,8 +20,8 @@ export const BottomNav: React.FC = () => {
 
   const tabs: Array<{ id: TabType; label: string; icon: React.ElementType }> = [
     { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
-    { id: 'planner', label: 'پلنر ساعتی', icon: Clock },
     { id: 'tasks', label: 'کارهای من', icon: CheckSquare },
+    { id: 'messages', label: 'پیام‌ها', icon: MessageSquare },
     { id: 'friends', label: 'همکاران', icon: Users },
   ];
 

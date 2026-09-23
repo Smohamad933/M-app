@@ -184,7 +184,12 @@ interface TaskContextType {
 
   // Subscription & Identity
   isPro: boolean;
-  setUserSubscription: (userId: string, plan: 'free' | 'pro', expiresAt?: string) => Promise<void>;
+  setUserSubscription: (
+    userId: string,
+    plan: 'free' | 'pro',
+    planType?: '1_month' | '3_months' | '6_months',
+    expiresAt?: string
+  ) => Promise<void>;
   isUpgradeModalOpen: boolean;
   setIsUpgradeModalOpen: (open: boolean) => void;
   isFirstLoginModalOpen: boolean;
@@ -692,12 +697,49 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sounds.playPop();
   };
 
-  const setUserSubscription = async (userId: string, plan: 'free' | 'pro', expiresAt?: string) => {
-    await api.setUserSubscription(userId, plan, expiresAt);
-    await refreshUsers();
-    if (currentUser?.id === userId) {
-      setCurrentUser((prev) => (prev ? { ...prev, subscription: { plan, expiresAt } } : prev));
+  const setUserSubscription = async (
+    userId: string,
+    plan: 'free' | 'pro',
+    planType?: '1_month' | '3_months' | '6_months',
+    expiresAt?: string
+  ) => {
+    // 1. Optimistic local state update immediately
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId || u.username === userId
+          ? {
+              ...u,
+              subscription: {
+                plan,
+                planType: planType || (plan === 'pro' ? '1_month' : undefined),
+                activatedAt: new Date().toISOString(),
+                expiresAt,
+              },
+            }
+          : u
+      )
+    );
+    if (currentUser?.id === userId || currentUser?.username === userId) {
+      setCurrentUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              subscription: {
+                plan,
+                planType: planType || (plan === 'pro' ? '1_month' : undefined),
+                activatedAt: new Date().toISOString(),
+                expiresAt,
+              },
+            }
+          : prev
+      );
     }
+
+    // 2. Persist to API
+    await api.setUserSubscription(userId, plan, planType, expiresAt);
+
+    // 3. Re-sync from server
+    await refreshUsers();
     sounds.playComplete();
   };
 
