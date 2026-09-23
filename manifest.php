@@ -19,7 +19,7 @@ if (file_exists($dbFile)) {
 $branding = is_array($settings['appBranding'] ?? null) ? $settings['appBranding'] : [];
 $name = trim($branding['appName'] ?? '');
 if ($name === '') {
-    $name = 'تسک‌روز';
+    $name = 'بگ تایم (Bag Time)';
 }
 
 header('Content-Type: application/manifest+json; charset=utf-8');

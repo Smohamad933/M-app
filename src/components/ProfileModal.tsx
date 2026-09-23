@@ -23,6 +23,7 @@ import {
   Laptop,
   Smartphone,
   ShieldAlert,
+  FileText,
 } from 'lucide-react';
 
 interface ProfileModalProps {
@@ -106,6 +107,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
   const [birthDay, setBirthDay] = useState(birthParts[2] || '01');
 
   const [jobTitle, setJobTitle] = useState(currentUser?.jobTitle || '');
+  const [bio, setBio] = useState(currentUser?.bio || '');
   const [skills, setSkills] = useState<string[]>(currentUser?.skills || []);
   const [skillInput, setSkillInput] = useState('');
   const [timeline, setTimeline] = useState<Record<string, string>>({
@@ -207,6 +209,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
         city: city.trim(),
         birthDate: finalBirthDate,
         jobTitle: jobTitle.trim(),
+        bio: bio.trim(),
         skills,
         dailyTimeline: tl as Record<string, string>,
         avatar: avatar ?? null,
@@ -472,6 +475,20 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
                 <option key={j} value={j} />
               ))}
             </datalist>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-slate-400" />
+              <span>بیوگرافی و معرفی کوتاه (Bio)</span>
+            </label>
+            <textarea
+              rows={2}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              className={inputCls}
+              placeholder="مثلاً: پروداکت دیزاینر، علاقه‌مند به کار تیمی و مدیریت هوشمند پروژه‌ها..."
+            />
           </div>
         </div>
 

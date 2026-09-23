@@ -24,7 +24,14 @@ import {
   Clock,
   AlertTriangle,
   Radio,
+  Music,
+  Volume2,
+  VolumeX,
+  SkipForward,
+  Sliders,
+  Check,
 } from 'lucide-react';
+import { focusAudio, DEFAULT_FOCUS_TRACKS, type FocusTrack } from '../utils/focusAudio';
 
 export const GroupFocusRoom: React.FC = () => {
   const {
@@ -39,7 +46,8 @@ export const GroupFocusRoom: React.FC = () => {
     syncRoomTimer,
     sendRoomMessage,
     globalSettings,
-   getText } = useTask();
+    getText,
+  } = useTask();
 
   // Lobby states
   const [roomInput, setRoomInput] = useState('');
@@ -65,8 +73,29 @@ export const GroupFocusRoom: React.FC = () => {
   const [selectedUserToInvite, setSelectedUserToInvite] = useState('');
   const [inviteSuccessNotice, setInviteSuccessNotice] = useState<string | null>(null);
 
+  // Focus Music State (1 to 3 tracks playlist)
+  const [playlist, setPlaylist] = useState<FocusTrack[]>(DEFAULT_FOCUS_TRACKS);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+  const [musicVolume, setMusicVolume] = useState(0.5);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isMusicModalOpen, setIsMusicModalOpen] = useState(false);
+  const [customAudioUrl, setCustomAudioUrl] = useState('');
+  const [autoPlayWithTimer, setAutoPlayWithTimer] = useState(true);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevMessagesCountRef = useRef<number>(0);
+
+  // Subscribe to audio engine
+  useEffect(() => {
+    const unsub = focusAudio.subscribe((playing, track, vol) => {
+      setIsPlayingMusic(playing);
+      setMusicVolume(vol);
+      const idx = playlist.findIndex((t) => t.id === track.id);
+      if (idx !== -1) setCurrentTrackIndex(idx);
+    });
+    return () => unsub();
+  }, [playlist]);
 
   // Fetch active rooms for lobby
   const loadRooms = () => {
@@ -96,7 +125,6 @@ export const GroupFocusRoom: React.FC = () => {
     if (!activeRoom.isRunning) {
       setLocalTimeLeft(activeRoom.timeLeft);
     } else {
-      // When timer is running, preserve smooth local countdown unless drifted by >2s
       setLocalTimeLeft((prev) => {
         if (Math.abs(prev - activeRoom.timeLeft) > 2) {
           return activeRoom.timeLeft;
@@ -124,6 +152,15 @@ export const GroupFocusRoom: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [activeRoom?.isRunning, activeRoom?.isDeleted]);
+
+  // Auto-play music when timer starts if enabled
+  useEffect(() => {
+    if (activeRoom?.isRunning && autoPlayWithTimer && !isPlayingMusic) {
+      focusAudio.play();
+    } else if (!activeRoom?.isRunning && autoPlayWithTimer && isPlayingMusic) {
+      focusAudio.stop();
+    }
+  }, [activeRoom?.isRunning, autoPlayWithTimer]);
 
   // Auto-scroll chat on new message
   useEffect(() => {
@@ -164,6 +201,60 @@ export const GroupFocusRoom: React.FC = () => {
 
   const isHost = activeRoom ? activeRoom.hostId === currentUser?.id || currentUser?.role === 'admin' : false;
 
+  // Music handlers
+  const handleToggleMusic = () => {
+    sounds.playPop();
+    focusAudio.toggle();
+  };
+
+  const handleNextTrack = () => {
+    sounds.playPop();
+    const nextIdx = (currentTrackIndex + 1) % playlist.length;
+    setCurrentTrackIndex(nextIdx);
+    focusAudio.setTrack(playlist[nextIdx]);
+  };
+
+  const handleVolumeChange = (newVol: number) => {
+    setMusicVolume(newVol);
+    focusAudio.setVolume(newVol);
+    if (newVol > 0 && isMuted) {
+      setIsMuted(false);
+    }
+  };
+
+  const handleToggleMute = () => {
+    sounds.playPop();
+    if (isMuted) {
+      setIsMuted(false);
+      focusAudio.setVolume(musicVolume || 0.5);
+    } else {
+      setIsMuted(true);
+      focusAudio.setVolume(0);
+    }
+  };
+
+  const handleSelectTrack = (track: FocusTrack) => {
+    sounds.playPop();
+    focusAudio.setTrack(track);
+  };
+
+  const handleAddCustomTrack = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customAudioUrl.trim()) return;
+    const newTrack: FocusTrack = {
+      id: `custom-${Date.now()}`,
+      title: 'موسیقی اختصاصی میزبان',
+      artist: 'استریم دلخواه آنلاین',
+      type: 'custom',
+      url: customAudioUrl.trim(),
+      tag: 'اختصاصی 🔗',
+    };
+    const updated = [newTrack, ...playlist].slice(0, 3);
+    setPlaylist(updated);
+    setCustomAudioUrl('');
+    handleSelectTrack(newTrack);
+  };
+
   // Actions
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,7 +262,6 @@ export const GroupFocusRoom: React.FC = () => {
     setIsCreating(true);
     try {
       await createFocusRoom(newRoomName, focusDurationMin * 60, breakDurationMin * 60);
-      // createFocusRoom automatically enters the room and updates activeRoom state
     } catch (err: any) {
       alert(err.message || 'خطا در ساخت اتاق');
     } finally {
@@ -224,7 +314,6 @@ export const GroupFocusRoom: React.FC = () => {
     }
   };
 
-  // Admin: delete ALL rooms in the system
   const handleDeleteAllRooms = async () => {
     setIsDeletingAll(true);
     try {
@@ -282,7 +371,6 @@ export const GroupFocusRoom: React.FC = () => {
     sendRoomMessage(cheer);
   };
 
-  // Timer controls
   const handleToggleTimer = () => {
     if (!activeRoom || activeRoom.isDeleted) return;
     sounds.playPop();
@@ -313,19 +401,21 @@ export const GroupFocusRoom: React.FC = () => {
   const totalDuration = activeRoom?.mode === 'focus' ? activeRoom.focusDuration : (activeRoom?.breakDuration || 300);
   const progressPercent = Math.min(100, Math.max(0, ((totalDuration - localTimeLeft) / totalDuration) * 100));
 
+  const activeFocusTrack = playlist[currentTrackIndex] || DEFAULT_FOCUS_TRACKS[0];
+
   // --- VIEW 1: LOBBY (NOT IN A ROOM) ---
   if (!activeRoom) {
     return (
       <div className="w-full max-w-2xl mx-auto space-y-6 animate-in fade-in">
         {/* Banner */}
-        <div className="p-6 bg-zinc-900/70 rounded-3xl border border-zinc-800 text-center space-y-2 backdrop-blur-md">
-          <div className="w-12 h-12 rounded-2xl bg-white text-zinc-950 flex items-center justify-center mx-auto shadow-md">
+        <div className="p-6 bg-white rounded-3xl border border-zinc-200 shadow-sm text-center space-y-2">
+          <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-white flex items-center justify-center mx-auto shadow-sm">
             <Users className="w-6 h-6 stroke-[2.5]" />
           </div>
-          <h2 className="text-base font-black text-white">
+          <h2 className="text-base font-black text-zinc-900">
             {getText('focusLobbyTitle')}
           </h2>
-          <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+          <p className="text-xs text-zinc-500 max-w-md mx-auto leading-relaxed">
             {getText('focusLobbyHint')}
           </p>
         </div>
@@ -333,18 +423,18 @@ export const GroupFocusRoom: React.FC = () => {
         {/* 2 Column Options: Create or Join */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Create New Room Card */}
-          <div className="p-5 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-4 flex flex-col justify-between">
+          <div className="p-5 bg-white rounded-3xl border border-zinc-200 shadow-sm space-y-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                <div className="p-2 rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
                   <Plus className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-bold text-white">{getText('focusCreateTitle')}</h3>
+                <h3 className="text-sm font-bold text-zinc-900">{getText('focusCreateTitle')}</h3>
               </div>
 
               {globalSettings?.roomPolicy?.allowUserRoomCreation === false && currentUser?.role !== 'admin' ? (
-                <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800 text-zinc-400 text-xs leading-relaxed space-y-2">
-                  <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs leading-relaxed space-y-2">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-900">
                     <AlertTriangle className="w-4 h-4" />
                     <span>سیاست سازمانی ایجاد اتاق</span>
                   </div>
@@ -355,24 +445,24 @@ export const GroupFocusRoom: React.FC = () => {
               ) : (
                 <form onSubmit={handleCreateRoom} className="space-y-3.5 text-xs">
                   <div className="space-y-1">
-                    <label className="font-semibold text-zinc-300">نام اتاق</label>
+                    <label className="font-semibold text-zinc-700">نام اتاق</label>
                     <input
                       type="text"
                       required
                       value={newRoomName}
                       onChange={(e) => setNewRoomName(e.target.value)}
-                      placeholder="مثال: تمرکز پروژه خرداد..."
-                      className="w-full px-3.5 py-2 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white text-xs outline-hidden focus:border-zinc-500"
+                      placeholder="مثال: تمرکز پروژه بگ تایم..."
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-zinc-50 border border-zinc-200 text-zinc-900 text-xs outline-hidden focus:border-zinc-400 focus:bg-white transition-all"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <label className="font-semibold text-zinc-300">زمان تمرکز</label>
+                      <label className="font-semibold text-zinc-700">زمان تمرکز</label>
                       <select
                         value={focusDurationMin}
                         onChange={(e) => setFocusDurationMin(Number(e.target.value))}
-                        className="w-full px-2.5 py-2 rounded-xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden cursor-pointer"
+                        className="w-full px-2.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-800 text-xs outline-hidden cursor-pointer"
                       >
                         <option value={20}>۲۰ دقیقه</option>
                         <option value={25}>۲۵ دقیقه (استاندارد)</option>
@@ -383,11 +473,11 @@ export const GroupFocusRoom: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="font-semibold text-zinc-300">زمان استراحت</label>
+                      <label className="font-semibold text-zinc-700">زمان استراحت</label>
                       <select
                         value={breakDurationMin}
                         onChange={(e) => setBreakDurationMin(Number(e.target.value))}
-                        className="w-full px-2.5 py-2 rounded-xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden cursor-pointer"
+                        className="w-full px-2.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-800 text-xs outline-hidden cursor-pointer"
                       >
                         <option value={5}>۵ دقیقه</option>
                         <option value={10}>۱۰ دقیقه</option>
@@ -399,7 +489,7 @@ export const GroupFocusRoom: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isCreating}
-                    className="w-full py-2.5 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
+                    className="w-full py-2.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
                   >
                     <Sparkles className="w-4 h-4" />
                     {isCreating ? 'در حال ایجاد و ورود...' : 'ایجاد اتاق و ورود مستقیم'}
@@ -410,35 +500,35 @@ export const GroupFocusRoom: React.FC = () => {
           </div>
 
           {/* Join by Code/Link Card */}
-          <div className="p-5 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-4 flex flex-col justify-between">
+          <div className="p-5 bg-white rounded-3xl border border-zinc-200 shadow-sm space-y-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                <div className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
                   <LogIn className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-bold text-white">ورود به اتاق با لینک یا کد</h3>
+                <h3 className="text-sm font-bold text-zinc-900">ورود به اتاق با لینک یا کد</h3>
               </div>
 
               <form onSubmit={handleJoinById} className="space-y-3.5 text-xs">
                 <div className="space-y-1">
-                  <label className="font-semibold text-zinc-300">شناسه یا لینک اتاق</label>
+                  <label className="font-semibold text-zinc-700">شناسه یا لینک اتاق</label>
                   <input
                     type="text"
                     required
                     value={roomInput}
                     onChange={(e) => setRoomInput(e.target.value)}
                     placeholder="کد اتاق یا لینک ارسالی..."
-                    className="w-full px-3.5 py-2 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white text-xs outline-hidden focus:border-zinc-500"
+                    className="w-full px-3.5 py-2.5 rounded-2xl bg-zinc-50 border border-zinc-200 text-zinc-900 text-xs outline-hidden focus:border-zinc-400 focus:bg-white transition-all"
                   />
                   <p className="text-[10px] text-zinc-400">
-                    می‌توانید شناسه کوتاه مانند <code className="text-zinc-300">room_abc123</code> یا لینک کامل را وارد کنید.
+                    می‌توانید شناسه کوتاه مانند <code className="text-zinc-600 font-bold">room_abc123</code> یا لینک کامل را وارد کنید.
                   </p>
                 </div>
 
                 <button
                   type="submit"
                   disabled={isJoining}
-                  className="w-full py-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs border border-zinc-700/60 shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-4"
+                  className="w-full py-2.5 rounded-2xl bg-zinc-100 hover:bg-zinc-200 text-zinc-900 font-bold text-xs border border-zinc-200 shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-4"
                 >
                   <ArrowRight className="w-4 h-4 rotate-180" />
                   {isJoining ? 'در حال ورود...' : 'پیوستن به اتاق تمرکز'}
@@ -449,24 +539,23 @@ export const GroupFocusRoom: React.FC = () => {
         </div>
 
         {/* Active Public / Team Rooms List */}
-        <div className="p-5 bg-zinc-900/40 rounded-3xl border border-zinc-800 space-y-3">
+        <div className="p-5 bg-white rounded-3xl border border-zinc-200 shadow-sm space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <h3 className="text-xs font-bold text-zinc-300 flex items-center gap-2 min-w-0">
-              <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <h3 className="text-xs font-bold text-zinc-900 flex items-center gap-2 min-w-0">
+              <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
               اتاق‌های در حال اجرا در سامانه
               {activeRoomsList.length > 0 && (
-                <span className="text-[10px] text-zinc-500 font-mono">({toPersianDigits(activeRoomsList.length)})</span>
+                <span className="text-[10px] text-zinc-400 font-mono">({toPersianDigits(activeRoomsList.length)})</span>
               )}
             </h3>
             <div className="flex items-center gap-2 flex-wrap">
-              {/* ADMIN ONLY: delete ALL rooms */}
               {currentUser?.role === 'admin' && activeRoomsList.length > 0 && (
                 <button
                   onClick={() => {
                     sounds.playPop();
                     setIsDeleteAllModalOpen(true);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/25 hover:border-red-500/40 text-[11px] font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-[11px] font-bold transition-all cursor-pointer shadow-xs active:scale-95"
                   title="حذف همه اتاق‌های تمرکز توسط مدیر سیستم"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -475,7 +564,7 @@ export const GroupFocusRoom: React.FC = () => {
               )}
               <button
                 onClick={loadRooms}
-                className="text-[11px] text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                className="text-[11px] text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
               >
                 {isLoadingRooms ? 'به‌روزرسانی...' : 'بروزرسانی لیست'}
               </button>
@@ -483,7 +572,7 @@ export const GroupFocusRoom: React.FC = () => {
           </div>
 
           {activeRoomsList.length === 0 ? (
-            <div className="py-6 text-center text-xs text-zinc-400 border border-dashed border-zinc-800 rounded-2xl">
+            <div className="py-6 text-center text-xs text-zinc-400 border border-dashed border-zinc-200 rounded-2xl">
               در حال حاضر اتاق فعالی وجود ندارد. اولین اتاق تمرکز را ایجاد کنید!
             </div>
           ) : (
@@ -491,11 +580,11 @@ export const GroupFocusRoom: React.FC = () => {
               {activeRoomsList.map((r) => (
                 <div
                   key={r.id}
-                  className="p-3.5 rounded-2xl bg-zinc-850 bg-zinc-900/90 border border-zinc-800/80 flex items-center justify-between hover:border-zinc-700 transition-all"
+                  className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center justify-between hover:border-zinc-300 transition-all"
                 >
                   <div className="min-w-0 pr-2">
-                    <h4 className="text-xs font-bold text-white truncate">{r.name}</h4>
-                    <p className="text-[11px] text-zinc-400 truncate">
+                    <h4 className="text-xs font-bold text-zinc-900 truncate">{r.name}</h4>
+                    <p className="text-[11px] text-zinc-500 truncate">
                       میزبان: {r.hostName} • {toPersianDigits(r.participantCount || 1)} نفر
                     </p>
                   </div>
@@ -503,11 +592,11 @@ export const GroupFocusRoom: React.FC = () => {
                   <button
                     onClick={() => handleJoinDirect(r.id)}
                     disabled={joiningRoomId === r.id}
-                    className="px-3.5 py-1.5 rounded-xl bg-white text-zinc-950 font-black text-xs hover:bg-zinc-200 transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0 disabled:opacity-60 shadow-xs"
+                    className="px-3.5 py-1.5 rounded-xl bg-zinc-900 text-white font-bold text-xs hover:bg-zinc-800 transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0 disabled:opacity-60 shadow-xs"
                   >
                     {joiningRoomId === r.id ? (
                       <>
-                        <span className="w-3 h-3 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
+                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         <span>در حال ورود...</span>
                       </>
                     ) : (
@@ -523,31 +612,26 @@ export const GroupFocusRoom: React.FC = () => {
           )}
         </div>
 
-        {/* ADMIN: Delete ALL Rooms Confirmation Modal */}
+        {/* Delete All Rooms Confirmation Modal */}
         {isDeleteAllModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in">
-            <div className="w-full max-w-md bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-zinc-800 space-y-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
+            <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-zinc-200 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20">
+                <div className="p-3 rounded-2xl bg-red-50 text-red-600 border border-red-100">
                   <Trash2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">حذف همه اتاق‌های تمرکز</h3>
-                  <p className="text-xs text-zinc-400">
-                    {toPersianDigits(activeRoomsList.length)} اتاق فعال در حال حاضر در سامانه وجود دارد
-                  </p>
+                  <h3 className="text-sm font-bold text-zinc-900">حذف کلیه اتاق‌های تمرکز سامانه</h3>
+                  <p className="text-xs text-zinc-500">عملیات سراسری ویژه مدیر سیستم</p>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-red-950/30 border border-red-900/50 space-y-2 text-xs leading-relaxed text-red-200">
-                <p className="font-semibold text-red-100">
-                  ⚠️ این عملیات فقط برای مدیر سیستم است:
+              <div className="p-3.5 rounded-2xl bg-red-50/70 border border-red-200 space-y-2 text-xs leading-relaxed text-red-900">
+                <p className="font-bold text-red-950">
+                  ⚠️ اخطار امنیتی مدیر سیستم:
                 </p>
                 <p>
-                  <strong className="text-red-300 mr-1">
-                    همه اتاق‌های تمرکز زنده برای تمامی کاربران بسته می‌شوند
-                  </strong>
-                  و جلسه‌ها به پایان می‌رسند. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه در سرور نگه‌داری و سپس به طور کامل پاکسازی می‌شوند.
+                  با اجرای این عملیات، تمامی {toPersianDigits(activeRoomsList.length)} اتاق تمرکز فعال در سیستم به طور یک‌جا بسته و پیام‌ها و جلسات آن‌ها لغو خواهند شد.
                 </p>
               </div>
 
@@ -555,7 +639,7 @@ export const GroupFocusRoom: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsDeleteAllModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-bold hover:bg-zinc-700 cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-700 text-xs font-bold hover:bg-zinc-200 cursor-pointer"
                 >
                   انصراف
                 </button>
@@ -563,19 +647,9 @@ export const GroupFocusRoom: React.FC = () => {
                   type="button"
                   disabled={isDeletingAll}
                   onClick={handleDeleteAllRooms}
-                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  {isDeletingAll ? (
-                    <>
-                      <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>در حال حذف...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>تأیید حذف همه اتاق‌ها</span>
-                    </>
-                  )}
+                  {isDeletingAll ? 'در حال حذف همه اتاق‌ها...' : 'تأیید و حذف همه اتاق‌ها'}
                 </button>
               </div>
             </div>
@@ -585,48 +659,49 @@ export const GroupFocusRoom: React.FC = () => {
     );
   }
 
-  // --- VIEW 2: ACTIVE ROOM VIEW (LIVE FOCUS SESSION) ---
+  // --- VIEW 2: INSIDE ACTIVE FOCUS ROOM ---
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-5 animate-in fade-in duration-300">
-      {/* Back to lobby breadcrumb */}
+    <div className="w-full max-w-4xl mx-auto space-y-4 animate-in fade-in">
+      {/* Top back button */}
       <div className="flex items-center justify-between">
         <button
           onClick={leaveFocusRoom}
-          className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer py-1"
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-600 hover:text-zinc-900 transition-colors cursor-pointer font-bold"
         >
           <ArrowRight className="w-4 h-4" />
-          <span>بازگشت به فهرست اتاق‌های تمرکز</span>
+          <span>بازگشت به لابی اتاق‌ها</span>
         </button>
 
-        <span className="text-[11px] text-zinc-500 font-mono">
+        <span className="text-[11px] text-zinc-400 font-mono">
           شناسه: {activeRoom.id}
         </span>
       </div>
+
       {/* Retention Banner if room is deleted */}
       {activeRoom.isDeleted && (
-        <div className="p-4 bg-amber-950/40 border border-amber-800/70 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-200 text-xs backdrop-blur-md">
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-900 text-xs shadow-xs">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300">
+            <div className="p-2 rounded-xl bg-amber-100 text-amber-700">
               <AlertTriangle className="w-4 h-4" />
             </div>
             <div>
-              <p className="font-bold text-amber-100">
+              <p className="font-bold text-amber-950">
                 این اتاق توسط میزبان بسته شده است.
               </p>
-              <p className="text-[11px] text-amber-300/80 leading-relaxed">
+              <p className="text-[11px] text-amber-800 leading-relaxed">
                 طبق سیاست سیستم، پیام‌ها به مدت ۱۰ دقیقه پس از بسته شدن در سرور نگه‌داری شده و سپس خودکار پاکسازی می‌شوند.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 font-mono text-xs bg-amber-900/40 px-2.5 py-1 rounded-xl border border-amber-700/50">
+            <div className="flex items-center gap-1 font-mono text-xs bg-amber-100 px-2.5 py-1 rounded-xl border border-amber-200 text-amber-900">
               <Clock className="w-3.5 h-3.5" />
               <span>{toPersianDigits(Math.floor(retentionSecsLeft / 60))}:{toPersianDigits(String(retentionSecsLeft % 60).padStart(2, '0'))}</span>
             </div>
             <button
               onClick={leaveFocusRoom}
-              className="px-3.5 py-1.5 rounded-xl bg-white text-zinc-950 font-bold text-xs hover:bg-zinc-200 cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 text-white font-bold text-xs hover:bg-zinc-800 cursor-pointer"
             >
               خروج به لابی
             </button>
@@ -635,23 +710,23 @@ export const GroupFocusRoom: React.FC = () => {
       )}
 
       {/* Room Header Top Bar */}
-      <div className="p-4 sm:p-5 bg-zinc-900/80 rounded-3xl border border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-md">
+      <div className="p-4 sm:p-5 bg-white rounded-3xl border border-zinc-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center flex-shrink-0">
             <Users className="w-5 h-5" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-black text-white truncate">{activeRoom.name}</h2>
+              <h2 className="text-sm font-black text-zinc-900 truncate">{activeRoom.name}</h2>
               {activeRoom.isDeleted && (
-                <span className="px-2 py-0.5 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-lg bg-red-50 text-red-600 border border-red-200 text-[10px] font-bold">
                   بسته شده
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-zinc-400">
-              میزبان: <span className="text-zinc-200 font-semibold">{activeRoom.hostName}</span>
-              {isHost && <span className="text-amber-400 mr-1 font-bold">(شما میزبانید)</span>}
+            <p className="text-[11px] text-zinc-500">
+              میزبان: <span className="text-zinc-800 font-semibold">{activeRoom.hostName}</span>
+              {isHost && <span className="text-amber-600 mr-1 font-bold">(شما میزبانید)</span>}
             </p>
           </div>
         </div>
@@ -661,18 +736,17 @@ export const GroupFocusRoom: React.FC = () => {
           {!activeRoom.isDeleted && (
             <button
               onClick={() => setIsInviteModalOpen(true)}
-              className="px-3.5 py-2 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold border border-zinc-700/60 transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-2xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-bold border border-zinc-200 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <UserPlus className="w-3.5 h-3.5" />
               <span>دعوت</span>
             </button>
           )}
 
-          {/* Delete Room button (Host & Admin) */}
           {isHost && !activeRoom.isDeleted && (
             <button
               onClick={() => setIsDeleteModalOpen(true)}
-              className="px-3.5 py-2 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-2xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               title="حذف و بستن اتاق"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -680,10 +754,9 @@ export const GroupFocusRoom: React.FC = () => {
             </button>
           )}
 
-          {/* Leave Room Button */}
           <button
             onClick={leaveFocusRoom}
-            className="px-3.5 py-2 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold border border-zinc-700/60 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2 rounded-2xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-bold border border-zinc-200 transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <DoorOpen className="w-3.5 h-3.5" />
             <span>خروج</span>
@@ -691,19 +764,98 @@ export const GroupFocusRoom: React.FC = () => {
         </div>
       </div>
 
+      {/* Focus Music Playlist Bar (1 to 3 tracks) */}
+      <div className="p-3 sm:p-4 bg-gradient-to-r from-purple-50/70 via-indigo-50/50 to-pink-50/60 rounded-3xl border border-purple-100 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
+          <div className="w-9 h-9 rounded-2xl bg-purple-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs relative">
+            <Music className="w-4 h-4" />
+            {isPlayingMusic && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1 sm:flex-initial">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-zinc-900 truncate">{activeFocusTrack.title}</span>
+              <span className="px-2 py-0.5 rounded-lg bg-purple-100 text-purple-700 font-bold text-[10px]">
+                {activeFocusTrack.tag}
+              </span>
+            </div>
+            <p className="text-[11px] text-zinc-500 truncate">{activeFocusTrack.artist}</p>
+          </div>
+        </div>
+
+        {/* Music Controls */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleToggleMusic}
+              className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+            >
+              {isPlayingMusic ? (
+                <>
+                  <Pause className="w-3.5 h-3.5 fill-white" />
+                  <span className="hidden sm:inline">توقف موسیقی</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <span className="hidden sm:inline">پخش موسیقی تمرکز</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handleNextTrack}
+              title="آهنگ بعدی در پلی‌لیست"
+              className="p-2 rounded-xl bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200 shadow-xs cursor-pointer"
+            >
+              <SkipForward className="w-3.5 h-3.5 rotate-180" />
+            </button>
+
+            <button
+              onClick={handleToggleMute}
+              title={isMuted ? 'فعال‌سازی صدا' : 'قطع صدا'}
+              className="p-2 rounded-xl bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200 shadow-xs cursor-pointer"
+            >
+              {isMuted ? <VolumeX className="w-3.5 h-3.5 text-red-500" /> : <Volume2 className="w-3.5 h-3.5" />}
+            </button>
+
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={isMuted ? 0 : musicVolume}
+              onChange={(e) => handleVolumeChange(Number(e.target.value))}
+              className="w-16 h-1.5 accent-purple-600 bg-zinc-200 rounded-lg cursor-pointer hidden md:block"
+              title="تنظیم بلندی صدا"
+            />
+          </div>
+
+          <button
+            onClick={() => setIsMusicModalOpen(true)}
+            className="p-2 rounded-xl bg-white hover:bg-zinc-100 text-purple-700 border border-purple-200 text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1"
+            title="تنظیمات پلی‌لیست تمرکز"
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-bold">پلی‌لیست ({toPersianDigits(playlist.length)})</span>
+          </button>
+        </div>
+      </div>
+
       {/* Main Grid: Synced Pomodoro Timer + Live Chat & Members */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Timer Box */}
-        <div className="p-6 bg-zinc-900/60 rounded-3xl border border-zinc-800 flex flex-col items-center justify-center space-y-6">
+        <div className="p-6 bg-white rounded-3xl border border-zinc-200 shadow-sm flex flex-col items-center justify-center space-y-6">
           {/* Mode Badge Switcher */}
-          <div className="inline-flex items-center p-1 bg-zinc-800/80 rounded-2xl border border-zinc-700/60 text-xs font-bold">
+          <div className="inline-flex items-center p-1 bg-zinc-100 rounded-2xl border border-zinc-200 text-xs font-bold">
             <button
               onClick={() => handleSwitchMode('focus')}
               disabled={activeRoom.isDeleted}
               className={`px-4 py-1.5 rounded-xl transition-all cursor-pointer ${
                 activeRoom.mode === 'focus'
-                  ? 'bg-white text-zinc-950 shadow-xs'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-white text-zinc-900 shadow-xs font-black'
+                  : 'text-zinc-500 hover:text-zinc-900'
               }`}
             >
               تمرکز ({toPersianDigits(Math.round(activeRoom.focusDuration / 60))} دقیقه)
@@ -713,8 +865,8 @@ export const GroupFocusRoom: React.FC = () => {
               disabled={activeRoom.isDeleted}
               className={`px-4 py-1.5 rounded-xl transition-all cursor-pointer ${
                 activeRoom.mode === 'shortBreak'
-                  ? 'bg-white text-zinc-950 shadow-xs'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-white text-zinc-900 shadow-xs font-black'
+                  : 'text-zinc-500 hover:text-zinc-900'
               }`}
             >
               استراحت ({toPersianDigits(Math.round(activeRoom.breakDuration / 60))} دقیقه)
@@ -728,7 +880,7 @@ export const GroupFocusRoom: React.FC = () => {
                 cx="50"
                 cy="50"
                 r="42"
-                className="stroke-zinc-800"
+                className="stroke-zinc-100"
                 strokeWidth="6"
                 fill="transparent"
               />
@@ -737,7 +889,7 @@ export const GroupFocusRoom: React.FC = () => {
                 cy="50"
                 r="42"
                 className={`transition-all duration-1000 ${
-                  activeRoom.mode === 'focus' ? 'stroke-white' : 'stroke-emerald-400'
+                  activeRoom.mode === 'focus' ? 'stroke-zinc-900' : 'stroke-emerald-500'
                 }`}
                 strokeWidth="6"
                 strokeDasharray="264"
@@ -748,10 +900,10 @@ export const GroupFocusRoom: React.FC = () => {
             </svg>
 
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-4xl font-black text-white font-mono tracking-wider">
+              <span className="text-4xl font-black text-zinc-900 font-mono tracking-wider">
                 {toPersianDigits(formattedTime)}
               </span>
-              <span className="text-xs font-semibold text-zinc-400 mt-2">
+              <span className="text-xs font-semibold text-zinc-500 mt-2">
                 {activeRoom.isDeleted
                   ? 'اتاق بسته شده'
                   : activeRoom.isRunning
@@ -766,7 +918,7 @@ export const GroupFocusRoom: React.FC = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={handleResetTimer}
-                className="p-3.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-all cursor-pointer"
+                className="p-3.5 rounded-2xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-all cursor-pointer border border-zinc-200"
                 title="بازنشانی زمان"
               >
                 <RotateCcw className="w-5 h-5" />
@@ -774,16 +926,16 @@ export const GroupFocusRoom: React.FC = () => {
 
               <button
                 onClick={handleToggleTimer}
-                className="px-8 py-3.5 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-sm shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+                className="px-8 py-3.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-black text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer"
               >
                 {activeRoom.isRunning ? (
                   <>
-                    <Pause className="w-5 h-5 fill-zinc-950" />
+                    <Pause className="w-5 h-5 fill-white" />
                     توقف تایمر
                   </>
                 ) : (
                   <>
-                    <Play className="w-5 h-5 fill-zinc-950" />
+                    <Play className="w-5 h-5 fill-white" />
                     شروع تمرکز گروهی
                   </>
                 )}
@@ -791,7 +943,7 @@ export const GroupFocusRoom: React.FC = () => {
 
               <button
                 onClick={() => handleSwitchMode(activeRoom.mode === 'focus' ? 'shortBreak' : 'focus')}
-                className="p-3.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-all cursor-pointer"
+                className="p-3.5 rounded-2xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-all cursor-pointer border border-zinc-200"
                 title="تغییر فاز تمرکز / استراحت"
               >
                 <Coffee className="w-5 h-5" />
@@ -806,7 +958,7 @@ export const GroupFocusRoom: React.FC = () => {
                 <button
                   key={cheer}
                   onClick={() => sendQuickCheer(cheer)}
-                  className="px-2.5 py-1 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 text-[11px] font-bold border border-zinc-700/60 transition-colors cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl bg-zinc-50 hover:bg-zinc-100 text-zinc-700 text-[11px] font-bold border border-zinc-200 transition-colors cursor-pointer"
                 >
                   {cheer}
                 </button>
@@ -818,10 +970,10 @@ export const GroupFocusRoom: React.FC = () => {
         {/* Side Panel: Participants & Live Room Chat */}
         <div className="space-y-4 flex flex-col justify-between">
           {/* Active Participants Box */}
-          <div className="p-4 sm:p-5 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-zinc-400" />
+          <div className="p-4 sm:p-5 bg-white rounded-3xl border border-zinc-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
+              <span className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-zinc-500" />
                 حاضرین در اتاق ({toPersianDigits(activeRoom.participants?.length || 1)})
               </span>
             </div>
@@ -834,18 +986,18 @@ export const GroupFocusRoom: React.FC = () => {
                 const participantAvatar = users.find((u) => u.id === p.userId)?.avatar;
 
                 return (
-                  <div key={p.userId} className="flex items-center justify-between py-1 px-2 rounded-xl bg-zinc-800/40 text-xs">
+                  <div key={p.userId} className="flex items-center justify-between py-1 px-2 rounded-xl bg-zinc-50 text-xs border border-zinc-100">
                     <div className="flex items-center gap-2 min-w-0">
                       <UserAvatar name={displayName} avatar={participantAvatar} size="w-7 h-7 rounded-full text-[11px]" />
                       <div className="truncate">
-                        <span className="font-bold text-white text-[11px]">{displayName}</span>
+                        <span className="font-bold text-zinc-900 text-[11px]">{displayName}</span>
                         {isMe && <span className="text-[10px] text-zinc-400 mr-1">(شما)</span>}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {isUserHost && (
-                        <span className="text-[10px] text-amber-400 flex items-center gap-0.5 font-bold" title="میزبان اتاق">
+                        <span className="text-[10px] text-amber-500 flex items-center gap-0.5 font-bold" title="میزبان اتاق">
                           <Crown className="w-3 h-3" />
                         </span>
                       )}
@@ -858,10 +1010,10 @@ export const GroupFocusRoom: React.FC = () => {
           </div>
 
           {/* Room Live Messages */}
-          <div className="p-4 sm:p-5 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-3 flex-1 flex flex-col justify-between min-h-[260px]">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Flame className="w-4 h-4 text-orange-400" />
+          <div className="p-4 sm:p-5 bg-white rounded-3xl border border-zinc-200 shadow-sm space-y-3 flex-1 flex flex-col justify-between min-h-[260px]">
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
+              <span className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
+                <Flame className="w-4 h-4 text-orange-500" />
                 پیام‌ها و گفتگوی زنده اتاق
               </span>
               <span className="text-[10px] text-zinc-400">
@@ -876,7 +1028,7 @@ export const GroupFocusRoom: React.FC = () => {
 
                 if (isSys) {
                   return (
-                    <div key={m.id} className="text-[10px] text-center text-zinc-400 bg-zinc-800/30 py-1 px-2.5 rounded-xl border border-zinc-800/60">
+                    <div key={m.id} className="text-[10px] text-center text-zinc-500 bg-zinc-100 py-1 px-2.5 rounded-xl border border-zinc-200">
                       <span>{m.text}</span>
                     </div>
                   );
@@ -885,21 +1037,21 @@ export const GroupFocusRoom: React.FC = () => {
                 return (
                   <div
                     key={m.id}
-                    className={`p-2 rounded-2xl max-w-[85%] text-[11px] ${
+                    className={`p-2.5 rounded-2xl max-w-[85%] text-[11px] ${
                       isMe
-                        ? 'bg-white text-zinc-950 mr-auto font-medium shadow-xs'
-                        : 'bg-zinc-800/80 text-white ml-auto border border-zinc-700/50'
+                        ? 'bg-zinc-900 text-white mr-auto font-medium shadow-xs'
+                        : 'bg-zinc-100 text-zinc-900 ml-auto border border-zinc-200'
                     }`}
                   >
                     {!isMe && (
-                      <span className="block font-bold text-[10px] text-zinc-400 mb-0.5">
+                      <span className="block font-bold text-[10px] text-zinc-500 mb-0.5">
                         {m.userName}
                       </span>
                     )}
                     <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>
                     <span
                       className={`block text-[9px] mt-1 text-left font-mono ${
-                        isMe ? 'text-zinc-600' : 'text-zinc-400'
+                        isMe ? 'text-zinc-400' : 'text-zinc-400'
                       }`}
                     >
                       {toPersianDigits(m.timestamp)}
@@ -913,7 +1065,7 @@ export const GroupFocusRoom: React.FC = () => {
             {/* Send message form */}
             {!activeRoom.isDeleted ? (
               globalSettings?.roomPolicy?.allowPublicChat === false && currentUser?.role !== 'admin' ? (
-                <div className="pt-2 text-center text-[11px] text-zinc-400 bg-zinc-950/40 py-2 rounded-xl border border-zinc-800">
+                <div className="pt-2 text-center text-[11px] text-zinc-400 bg-zinc-50 py-2 rounded-xl border border-zinc-200">
                   گفتگوی عمومی طبق سیاست مدیر سازمان موقتاً غیرفعال است.
                 </div>
               ) : (
@@ -923,19 +1075,19 @@ export const GroupFocusRoom: React.FC = () => {
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     placeholder="پیام یا انگیزه..."
-                    className="flex-1 px-3 py-2 rounded-xl bg-zinc-800 text-white text-xs outline-hidden border border-zinc-700/60 placeholder:text-zinc-500 focus:border-zinc-500"
+                    className="flex-1 px-3 py-2.5 rounded-xl bg-zinc-50 text-zinc-900 text-xs outline-hidden border border-zinc-200 placeholder:text-zinc-400 focus:bg-white focus:border-zinc-400 transition-all"
                   />
                   <button
                     type="submit"
                     disabled={!messageText.trim()}
-                    className="p-2.5 rounded-xl bg-white text-zinc-950 font-bold hover:bg-zinc-200 cursor-pointer disabled:opacity-40"
+                    className="p-2.5 rounded-xl bg-zinc-900 text-white font-bold hover:bg-zinc-800 cursor-pointer disabled:opacity-40 shadow-xs"
                   >
                     <Send className="w-3.5 h-3.5 rotate-180" />
                   </button>
                 </form>
               )
             ) : (
-              <div className="pt-2 text-center text-[11px] text-zinc-400 bg-zinc-800/40 p-2 rounded-xl border border-zinc-800">
+              <div className="pt-2 text-center text-[11px] text-zinc-500 bg-zinc-50 p-2 rounded-xl border border-zinc-200">
                 اتاق بسته شده است؛ ارسال پیام غیرفعال است (پیام‌ها تا ۱۰ دقیقه نگه‌داری می‌شوند).
               </div>
             )}
@@ -943,27 +1095,142 @@ export const GroupFocusRoom: React.FC = () => {
         </div>
       </div>
 
+      {/* Focus Playlist Configuration Modal (1 to 3 tracks) */}
+      {isMusicModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-zinc-200 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
+                  <Music className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-zinc-900">پلی‌لیست موسیقی تمرکز پومودورو</h3>
+                  <p className="text-[11px] text-zinc-500">انتخاب قطعات آرامش‌بخش برای تمرکز عمیق</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsMusicModalOpen(false)}
+                className="text-zinc-400 hover:text-zinc-700 text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Playlist list */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-zinc-700">قطعات پلی‌لیست (۱ تا ۳ آهنگ):</label>
+              {DEFAULT_FOCUS_TRACKS.map((t, idx) => {
+                const isCurrent = activeFocusTrack.id === t.id;
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => handleSelectTrack(t)}
+                    className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                      isCurrent
+                        ? 'bg-purple-50/80 border-purple-300 text-purple-900 shadow-xs'
+                        : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300 text-zinc-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold ${
+                        isCurrent ? 'bg-purple-600 text-white' : 'bg-zinc-200 text-zinc-600'
+                      }`}>
+                        {toPersianDigits(idx + 1)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold truncate">{t.title}</p>
+                        <p className="text-[10px] text-zinc-500 truncate">{t.artist}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] px-2 py-0.5 rounded-lg bg-white/70 border border-zinc-200 text-zinc-700">
+                        {t.tag}
+                      </span>
+                      {isCurrent && <Check className="w-4 h-4 text-purple-600" />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add Custom Streaming Track Form */}
+            <form onSubmit={handleAddCustomTrack} className="space-y-2 pt-2 border-t border-zinc-100">
+              <label className="text-xs font-bold text-zinc-700">افزودن لینک موزیک دلخواه میزبان:</label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={customAudioUrl}
+                  onChange={(e) => setCustomAudioUrl(e.target.value)}
+                  placeholder="https://example.com/ambient.mp3..."
+                  className="flex-1 px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 outline-hidden focus:bg-white focus:border-zinc-400"
+                />
+                <button
+                  type="submit"
+                  disabled={!customAudioUrl.trim()}
+                  className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs cursor-pointer disabled:opacity-40 shadow-xs"
+                >
+                  افزودن
+                </button>
+              </div>
+            </form>
+
+            {/* Auto-play toggle */}
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-zinc-50 border border-zinc-200">
+              <div>
+                <p className="text-xs font-bold text-zinc-900">پخش خودکار با شروع تایمر</p>
+                <p className="text-[10px] text-zinc-500">موسیقی همراه با استارت پومودورو آغاز شود</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAutoPlayWithTimer(!autoPlayWithTimer)}
+                className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                  autoPlayWithTimer ? 'bg-purple-600' : 'bg-zinc-300'
+                }`}
+              >
+                <span
+                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                    autoPlayWithTimer ? 'right-6' : 'right-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsMusicModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-zinc-900 text-white text-xs font-bold hover:bg-zinc-800 cursor-pointer shadow-xs"
+              >
+                تأیید و بازگشت
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Room Confirmation Modal */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-md bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-zinc-800 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-zinc-200 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20">
+              <div className="p-3 rounded-2xl bg-red-50 text-red-600 border border-red-100">
                 <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">حذف و بستن اتاق تمرکز</h3>
-                <p className="text-xs text-zinc-400">اتاق «{activeRoom.name}»</p>
+                <h3 className="text-sm font-bold text-zinc-900">حذف و بستن اتاق تمرکز</h3>
+                <p className="text-xs text-zinc-500">اتاق «{activeRoom.name}»</p>
               </div>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-zinc-800/70 border border-zinc-700/50 space-y-2 text-xs leading-relaxed text-zinc-300">
-              <p className="font-semibold text-white">
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 space-y-2 text-xs leading-relaxed text-amber-900">
+              <p className="font-semibold text-amber-950">
                 ⚠️ سیاست نگه‌داری پیام‌ها:
               </p>
               <p>
                 با بستن اتاق، جلسه برای تمام کاربران به پایان می‌رسد.
-                <strong className="text-amber-300 mr-1">
+                <strong className="text-amber-800 mr-1">
                   پیام‌ها و چت‌های این اتاق تا ۱۰ دقیقه پس از حذف بر روی سرور نگه‌داری می‌شوند
                 </strong>
                 تا کاربران در صورت نیاز تاریخچه پیام‌ها را بررسی کنند. پس از ۱۰ دقیقه، کلیه اطلاعات به طور دائمی پاک خواهند شد.
@@ -974,7 +1241,7 @@ export const GroupFocusRoom: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsDeleteModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-bold hover:bg-zinc-700 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-700 text-xs font-bold hover:bg-zinc-200 cursor-pointer"
               >
                 انصراف
               </button>
@@ -982,7 +1249,7 @@ export const GroupFocusRoom: React.FC = () => {
                 type="button"
                 disabled={isDeleting}
                 onClick={handleDeleteRoom}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
               >
                 {isDeleting ? 'در حال حذف...' : 'تأیید و بستن اتاق'}
               </button>
@@ -993,44 +1260,44 @@ export const GroupFocusRoom: React.FC = () => {
 
       {/* Invite Modal */}
       {isInviteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-md bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-zinc-800 space-y-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <UserPlus className="w-4 h-4 text-zinc-300" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-zinc-200 space-y-4">
+            <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-zinc-600" />
               دعوت دوستان به اتاق تمرکز
             </h3>
 
             {/* Invite link box */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-400">لینک ورود مستقیم به اتاق:</label>
-              <div className="flex items-center gap-2 bg-zinc-800/90 p-2 rounded-2xl border border-zinc-700/60">
+              <label className="text-xs font-semibold text-zinc-600">لینک ورود مستقیم به اتاق:</label>
+              <div className="flex items-center gap-2 bg-zinc-50 p-2 rounded-2xl border border-zinc-200">
                 <input
                   type="text"
                   readOnly
                   value={getInviteUrl()}
-                  className="flex-1 bg-transparent text-xs text-white font-mono outline-hidden select-all"
+                  className="flex-1 bg-transparent text-xs text-zinc-900 font-mono outline-hidden select-all"
                 />
                 <button
                   onClick={handleCopyInviteLink}
-                  className="px-3 py-1 rounded-xl bg-white text-zinc-950 text-xs font-bold hover:bg-zinc-200 cursor-pointer"
+                  className="px-3 py-1 rounded-xl bg-zinc-900 text-white text-xs font-bold hover:bg-zinc-800 cursor-pointer shadow-xs"
                 >
                   {copiedLink ? 'کپی شد!' : 'کپی'}
                 </button>
               </div>
-              <p className="text-[10px] text-zinc-500">
+              <p className="text-[10px] text-zinc-400">
                 هر فردی که روی این لینک کلیک کند، اگر لاگین نباشد به صفحه ورود/ثبت‌نام هدایت می‌شود و پس از ورود مستقیماً وارد همین اتاق خواهد شد.
               </p>
             </div>
 
             {/* Select user to invite */}
             {users.length > 1 && (
-              <div className="space-y-1.5 pt-2 border-t border-zinc-800">
-                <label className="text-xs font-semibold text-zinc-400">دعوت از کاربران سامانه:</label>
+              <div className="space-y-1.5 pt-2 border-t border-zinc-100">
+                <label className="text-xs font-semibold text-zinc-600">دعوت از کاربران سامانه:</label>
                 <div className="flex gap-2">
                   <select
                     value={selectedUserToInvite}
                     onChange={(e) => setSelectedUserToInvite(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-white text-xs outline-hidden"
+                    className="flex-1 px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-900 text-xs outline-hidden"
                   >
                     <option value="">انتخاب کاربر...</option>
                     {users
@@ -1043,7 +1310,7 @@ export const GroupFocusRoom: React.FC = () => {
                   </select>
                   <button
                     onClick={handleSendInviteToUser}
-                    className="px-4 py-2 rounded-xl bg-white text-zinc-950 font-bold text-xs hover:bg-zinc-200 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-zinc-900 text-white font-bold text-xs hover:bg-zinc-800 cursor-pointer shadow-xs"
                   >
                     ارسال دعوت
                   </button>
@@ -1052,7 +1319,7 @@ export const GroupFocusRoom: React.FC = () => {
             )}
 
             {inviteSuccessNotice && (
-              <div className="p-2.5 rounded-xl bg-emerald-950/40 text-emerald-400 text-xs border border-emerald-800/60 font-bold text-center">
+              <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs border border-emerald-200 font-bold text-center">
                 {inviteSuccessNotice}
               </div>
             )}
@@ -1060,7 +1327,7 @@ export const GroupFocusRoom: React.FC = () => {
             <div className="pt-2 flex justify-end">
               <button
                 onClick={() => setIsInviteModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-bold hover:bg-zinc-700 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-700 text-xs font-bold hover:bg-zinc-200 cursor-pointer"
               >
                 بستن
               </button>

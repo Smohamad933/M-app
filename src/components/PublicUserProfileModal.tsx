@@ -7,14 +7,21 @@ import type { User } from '../types';
 import {
   X,
   MessageSquare,
+  Phone,
+  Mail,
   UserPlus,
   Check,
-  MapPin,
-  Briefcase,
   CheckCircle2,
   FolderKanban,
   Sparkles,
   Copy,
+  Info,
+  AtSign,
+  Bookmark,
+  Bell,
+  Edit3,
+  CheckSquare,
+  TrendingUp,
 } from 'lucide-react';
 
 interface PublicUserProfileModalProps {
@@ -35,20 +42,31 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
 }) => {
   const { currentUser, friends, sendFriendRequest, removeFriend } = useTask();
   const [copiedId, setCopiedId] = useState(false);
+  const [copiedPhone, setCopiedPhone] = useState(false);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
   if (!user) return null;
 
   const isMe = currentUser?.id === user.id;
   const isFriend = friends.some((f) => f.id === user.id);
-  const numericIdStr = user.numericId ? `#${user.numericId}` : `#${toPersianDigits(1000)}`;
+  const numericIdStr = user.numericId ? `#${user.numericId}` : `#${toPersianDigits(1001)}`;
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(`@${user.username} (${numericIdStr})`);
     setCopiedId(true);
     sounds.playPop();
     setTimeout(() => setCopiedId(false), 2000);
+  };
+
+  const handleCopyPhone = () => {
+    if (!user.phone) return;
+    navigator.clipboard.writeText(user.phone);
+    setCopiedPhone(true);
+    sounds.playPop();
+    setTimeout(() => setCopiedPhone(false), 2000);
   };
 
   const handleSendFriendRequest = async () => {
@@ -68,211 +86,348 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
       onClick={onClose}
+      dir="rtl"
     >
       <div
-        className="w-full max-w-md bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 max-h-[92vh] overflow-y-auto"
+        className="w-full max-w-[390px] sm:max-w-[420px] bg-[#121418] text-white rounded-[38px] shadow-[0_25px_60px_rgba(0,0,0,0.7)] border border-white/10 overflow-hidden relative animate-in zoom-in-95 max-h-[94vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
-        dir="rtl"
       >
-        {/* Top bar with close */}
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800/80">
-          <div className="text-xs font-bold text-slate-500 dark:text-zinc-400">
-            شناسنامه عمومی همکار
+        {/* Cover / Ambient Header */}
+        <div className="relative h-44 sm:h-48 w-full bg-gradient-to-b from-slate-800 via-indigo-950/70 to-[#121418] overflow-hidden flex-shrink-0">
+          {/* Subtle ambient lighting */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-600/30 via-indigo-600/20 to-transparent" />
+          
+          {/* Top navigation actions */}
+          <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/90 hover:text-white transition-all cursor-pointer active:scale-95"
+              title="بستن شناسنامه"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <span className="text-[11px] font-bold text-white/60 tracking-wider">
+              Profile Card
+            </span>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsBookmarked(!isBookmarked);
+                sounds.playPop();
+              }}
+              className={`w-9 h-9 rounded-full backdrop-blur-md border border-white/10 flex items-center justify-center transition-all cursor-pointer active:scale-95 ${
+                isBookmarked ? 'bg-amber-500 text-black font-black' : 'bg-black/40 text-white/90 hover:bg-black/60'
+              }`}
+              title="نشان کردن پروفایل"
+            >
+              <Bookmark className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+          {/* Hero Avatar overlapping the bottom boundary */}
+          <div className="absolute -bottom-8 inset-x-0 flex justify-center">
+            <div className="relative group">
+              <UserAvatar
+                user={user}
+                size="xl"
+                className="w-24 h-24 sm:w-26 sm:h-26 text-3xl shadow-2xl ring-4 ring-[#121418] rounded-full object-cover"
+              />
+              <span
+                className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-500 ring-4 ring-[#121418]"
+                title="آنلاین در سیستم"
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Hero Avatar & Identity */}
-        <div className="flex flex-col items-center text-center space-y-3 pt-1">
-          <div className="relative">
-            <UserAvatar user={user} size="xl" className="w-20 h-20 text-2xl shadow-xl ring-4 ring-slate-100 dark:ring-zinc-800" />
-            <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" title="آنلاین" />
-          </div>
-
-          <div className="space-y-1">
+        {/* Scrollable Content Body */}
+        <div className="flex-1 overflow-y-auto px-5 pt-10 pb-6 space-y-4 no-scrollbar">
+          {/* User Name & Role Status */}
+          <div className="text-center space-y-1">
             <div className="flex items-center justify-center gap-2">
-              <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white">
+              <h3 className="text-lg sm:text-xl font-black text-white tracking-tight">
                 {user.name}
               </h3>
               {user.role === 'admin' ? (
-                <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold border border-indigo-500/20">
+                <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold">
                   مدیر سیستم
                 </span>
               ) : isPro ? (
-                <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold border border-amber-500/20 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-amber-500" />
-                  ویژه Pro
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  {user.subscription?.planType === '6_months'
+                    ? 'اولترا'
+                    : user.subscription?.planType === '3_months'
+                    ? 'پرو'
+                    : 'پلاس'}
                 </span>
-              ) : (
-                <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 text-[10px] font-bold">
-                  کاربر
-                </span>
-              )}
+              ) : null}
             </div>
 
-            {/* Username & Numeric ID */}
-            <div className="flex items-center justify-center gap-2 text-xs">
-              <span className="font-mono text-slate-500 dark:text-zinc-400 dir-ltr text-left">
-                @{user.username}
-              </span>
-              <span className="text-slate-300 dark:text-zinc-600">•</span>
-              <button
-                type="button"
-                onClick={handleCopyId}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 font-mono text-[11px] font-bold transition-all cursor-pointer"
-                title="کپی شناسه یکتا"
-              >
-                <span>{numericIdStr}</span>
-                {copiedId ? (
-                  <Check className="w-3 h-3 text-emerald-500" />
-                ) : (
-                  <Copy className="w-3 h-3 text-slate-400" />
-                )}
-              </button>
-            </div>
-
-            {user.jobTitle && (
-              <p className="text-xs text-slate-600 dark:text-zinc-400 flex items-center justify-center gap-1.5 pt-1">
-                <Briefcase className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
-                <span>{user.jobTitle}</span>
-              </p>
-            )}
-
-            {(user.province || user.city) && (
-              <p className="text-[11px] text-slate-500 dark:text-zinc-500 flex items-center justify-center gap-1">
-                <MapPin className="w-3 h-3 text-rose-500 flex-shrink-0" />
-                <span>{user.province ? `${user.province}، ${user.city || ''}` : user.city}</span>
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Public Productivity Stats */}
-        <div className="grid grid-cols-2 gap-2.5 pt-1">
-          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-zinc-950/60 border border-slate-200 dark:border-zinc-800 text-center space-y-0.5">
-            <div className="text-[10px] text-slate-500 dark:text-zinc-400">تسک‌های تکمیل‌شده</div>
-            <div className="text-lg font-black text-slate-900 dark:text-white">
-              {toPersianDigits(user.completedTasks ?? 0)}
-            </div>
+            <p className="text-xs text-zinc-400 font-medium">
+              {user.jobTitle || 'عضو سامانه بگ تایم'} • آخرین بازدید اخیراً
+            </p>
           </div>
 
-          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-zinc-950/60 border border-slate-200 dark:border-zinc-800 text-center space-y-0.5">
-            <div className="text-[10px] text-slate-500 dark:text-zinc-400">درصد تعهد و پیشرفت</div>
-            <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-              %{toPersianDigits(user.progressPercent ?? 0)}
-            </div>
-          </div>
-        </div>
-
-        {/* Skills Chips */}
-        {user.skills && user.skills.length > 0 && (
-          <div className="space-y-1.5 pt-1">
-            <div className="text-[11px] font-bold text-slate-700 dark:text-zinc-300">
-              مهارت‌ها و حوزه‌های تخصصی:
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {user.skills.map((skill, i) => (
-                <span
-                  key={i}
-                  className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 text-[11px] font-medium"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        {!isMe && (
-          <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
-            {/* Direct Chat Button */}
+          {/* Round Action Buttons Row (Chat, Call, Mail, Connect) */}
+          <div className="flex items-center justify-center gap-3 pt-1">
+            {/* Chat Action */}
             <button
               type="button"
               onClick={() => {
                 onClose();
                 if (onStartChat) onStartChat(user);
               }}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-11 h-11 rounded-2xl bg-zinc-800/90 hover:bg-zinc-700 text-white flex items-center justify-center border border-white/10 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
+              title="گفتگوی مستقیم"
             >
-              <MessageSquare className="w-4 h-4" />
-              <span>ارسال پیام مستقیم به این همکار 💬</span>
+              <MessageSquare className="w-4 h-4 text-emerald-400" />
             </button>
 
-            {/* Friend Request / Connection Status */}
-            {isFriend ? (
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  در لیست همکاران و دوستان شما قرار دارد
-                </span>
-                <button
-                  type="button"
-                  onClick={() => removeFriend(user.id)}
-                  className="text-[10px] text-rose-500 hover:text-rose-600 underline cursor-pointer"
-                >
-                  حذف ارتباط
-                </button>
-              </div>
-            ) : requestSent ? (
-              <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold text-center">
-                درخواست دوستی و همکاری ارسال شد (در انتظار تأیید) ⏳
-              </div>
+            {/* Phone Call / Copy */}
+            {user.phone ? (
+              <a
+                href={`tel:${user.phone}`}
+                className="w-11 h-11 rounded-2xl bg-zinc-800/90 hover:bg-zinc-700 text-white flex items-center justify-center border border-white/10 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
+                title={`تماس با ${user.phone}`}
+              >
+                <Phone className="w-4 h-4 text-sky-400" />
+              </a>
             ) : (
               <button
                 type="button"
-                onClick={handleSendFriendRequest}
-                disabled={isSendingRequest}
-                className="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-800 dark:text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                disabled
+                className="w-11 h-11 rounded-2xl bg-zinc-800/40 text-zinc-600 flex items-center justify-center border border-white/5 cursor-not-allowed"
               >
-                <UserPlus className="w-4 h-4 text-emerald-500" />
-                <span>{isSendingRequest ? 'در حال ارسال...' : 'افزودن به همکاران / ارسال درخواست دوستی 🤝'}</span>
+                <Phone className="w-4 h-4" />
               </button>
             )}
 
-            {/* Invite to project */}
-            {onInviteToProject && (
+            {/* Email */}
+            {user.email ? (
+              <a
+                href={`mailto:${user.email}`}
+                className="w-11 h-11 rounded-2xl bg-zinc-800/90 hover:bg-zinc-700 text-white flex items-center justify-center border border-white/10 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
+                title={`ارسال ایمیل به ${user.email}`}
+              >
+                <Mail className="w-4 h-4 text-amber-400" />
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="w-11 h-11 rounded-2xl bg-zinc-800/40 text-zinc-600 flex items-center justify-center border border-white/5 cursor-not-allowed"
+              >
+                <Mail className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Friend / Connect */}
+            {!isMe && (
+              <button
+                type="button"
+                onClick={isFriend ? () => removeFriend(user.id) : handleSendFriendRequest}
+                disabled={isSendingRequest}
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-sm ${
+                  isFriend
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    : requestSent
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    : 'bg-zinc-800/90 hover:bg-zinc-700 text-white border-white/10'
+                }`}
+                title={isFriend ? 'دوست شما (کلیک جهت لغو)' : requestSent ? 'درخواست ارسال شد' : 'افزودن به همکاران'}
+              >
+                {isFriend ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                ) : (
+                  <UserPlus className="w-4 h-4 text-indigo-400" />
+                )}
+              </button>
+            )}
+          </div>
+
+          {/* Department / Community Pill Card */}
+          <div className="p-3 rounded-2xl bg-zinc-900/90 border border-white/10 flex items-center justify-between gap-3 shadow-inner">
+            <div className="flex items-center gap-2.5">
+              <UserAvatar user={user} size="xs" className="w-7 h-7 rounded-lg" />
+              <div>
+                <div className="text-xs font-black text-white">شناسنامه سازمانی بگ تایم</div>
+                <div className="text-[10px] text-zinc-400">عضو تاییدشده سامانه</div>
+              </div>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-bold border border-zinc-700">
+              {numericIdStr}
+            </span>
+          </div>
+
+          {/* Productivity Stats (Tasks Completed & Commitment %) */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="p-3 rounded-2xl bg-zinc-900/80 border border-white/5 text-center space-y-0.5">
+              <div className="text-[10px] text-zinc-400 flex items-center justify-center gap-1">
+                <CheckSquare className="w-3 h-3 text-emerald-400" />
+                <span>تسک‌های تکمیل‌شده</span>
+              </div>
+              <div className="text-base font-black text-white font-mono">
+                {toPersianDigits(user.completedTasks ?? 0)}
+              </div>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-zinc-900/80 border border-white/5 text-center space-y-0.5">
+              <div className="text-[10px] text-zinc-400 flex items-center justify-center gap-1">
+                <TrendingUp className="w-3 h-3 text-indigo-400" />
+                <span>درصد تعهد و پیشرفت</span>
+              </div>
+              <div className="text-base font-black text-emerald-400 font-mono">
+                %{toPersianDigits(user.progressPercent ?? 0)}
+              </div>
+            </div>
+          </div>
+
+          {/* Details Box (Phone, Bio, Username) */}
+          <div className="p-4 rounded-3xl bg-zinc-900/90 border border-white/10 space-y-3 shadow-sm">
+            {/* Phone */}
+            {user.phone && (
+              <div className="flex items-center justify-between text-xs pb-2.5 border-b border-zinc-800/80">
+                <div className="flex items-center gap-2 text-zinc-400">
+                  <Phone className="w-4 h-4 text-zinc-500" />
+                  <span className="text-[11px]">شماره موبایل:</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyPhone}
+                  className="font-mono text-white font-bold hover:text-emerald-400 flex items-center gap-1.5 cursor-pointer dir-ltr"
+                >
+                  <span>{user.phone}</span>
+                  {copiedPhone ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-zinc-500" />}
+                </button>
+              </div>
+            )}
+
+            {/* Bio */}
+            <div className="space-y-1 pb-2.5 border-b border-zinc-800/80">
+              <div className="flex items-center gap-2 text-zinc-400 text-[11px]">
+                <Info className="w-4 h-4 text-zinc-500" />
+                <span>بیوگرافی:</span>
+              </div>
+              <p className="text-xs text-zinc-200 leading-relaxed pr-6 font-medium select-text">
+                {user.bio || 'توسعه‌دهنده و فعال در تیم، علاقه‌مند به بهره‌وری و تمرکز عمیق.'}
+              </p>
+            </div>
+
+            {/* Username */}
+            <div className="flex items-center justify-between text-xs pb-2.5 border-b border-zinc-800/80">
+              <div className="flex items-center gap-2 text-zinc-400">
+                <AtSign className="w-4 h-4 text-zinc-500" />
+                <span className="text-[11px]">نام کاربری:</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyId}
+                className="font-mono text-white font-bold hover:text-emerald-400 flex items-center gap-1.5 cursor-pointer dir-ltr"
+              >
+                <span>@{user.username}</span>
+                {copiedId ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-zinc-500" />}
+              </button>
+            </div>
+
+            {/* Location */}
+            {(user.province || user.city) && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[11px] text-zinc-400">موقعیت مکانی:</span>
+                <span className="text-xs text-zinc-200 font-bold">
+                  {user.province ? `${user.province}، ${user.city || ''}` : user.city}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Skills chips */}
+          {user.skills && user.skills.length > 0 && (
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold text-zinc-400">مهارت‌ها:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {user.skills.map((s, idx) => (
+                  <span
+                    key={idx}
+                    className="text-[10px] px-2.5 py-1 rounded-xl bg-zinc-800 text-zinc-300 border border-white/5 font-medium"
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Toggle notifications */}
+          {!isMe && (
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-zinc-900/60 border border-white/5">
+              <div className="flex items-center gap-2 text-xs font-bold text-zinc-300">
+                <Bell className="w-4 h-4 text-zinc-400" />
+                <span>اعلانات کاربر</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setNotificationsEnabled(!notificationsEnabled);
+                  sounds.playPop();
+                }}
+                className={`w-10 h-6 rounded-full transition-colors relative cursor-pointer ${
+                  notificationsEnabled ? 'bg-blue-600' : 'bg-zinc-700'
+                }`}
+              >
+                <span
+                  className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${
+                    notificationsEnabled ? 'right-1' : 'left-1'
+                  }`}
+                />
+              </button>
+            </div>
+          )}
+
+          {/* Footer actions */}
+          <div className="pt-2 space-y-2">
+            {!isMe && onInviteToProject && (
               <button
                 type="button"
                 onClick={() => {
                   onClose();
                   onInviteToProject(user);
                 }}
-                className="w-full py-2 rounded-xl border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
               >
-                <FolderKanban className="w-4 h-4 text-indigo-500" />
-                <span>دعوت به پروژه تیمی 📁</span>
+                <FolderKanban className="w-4 h-4 text-purple-400" />
+                <span>دعوت به پروژه تیمی</span>
+              </button>
+            )}
+
+            {isMe ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  if (onEditProfile) onEditProfile();
+                }}
+                className="w-full py-3 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>ویرایش بیوگرافی و اطلاعات من ✏️</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-2.5 rounded-2xl bg-transparent hover:bg-rose-500/10 text-rose-400 text-xs font-bold transition-colors cursor-pointer"
+              >
+                بستن شناسنامه
               </button>
             )}
           </div>
-        )}
-
-        {/* Action Buttons for Myself */}
-        {isMe && (
-          <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
-            <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 text-[11px] text-indigo-900 leading-relaxed text-center font-medium">
-              این پیش‌نمایش شناسنامه عمومی شماست؛ سایر کاربران و همکاران پروفایل شما را به این صورت مشاهده می‌کنند.
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                if (onEditProfile) onEditProfile();
-              }}
-              className="w-full py-2.5 rounded-xl bg-[#121212] hover:bg-black text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Briefcase className="w-4 h-4 text-[#00b884]" />
-              <span>ویرایش اطلاعات و شناسنامه من ✏️</span>
-            </button>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

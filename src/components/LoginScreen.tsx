@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { useTask } from '../context/TaskContext';
-import { toPersianDigits } from '../utils/persianDate';
 import { TaskMasterHexagon } from './TaskMasterLogo';
 import type { AppDeveloper } from '../types';
 import {
@@ -13,16 +12,18 @@ import {
   Phone,
   Mail,
   Check,
+  X,
 } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
   const { login, register, globalSettings, getText } = useTask();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [selectedDevForModal, setSelectedDevForModal] = useState<AppDeveloper | null>(null);
 
   // App branding (custom logo & appName)
   const appBranding = globalSettings?.appBranding;
-  const appName = (appBranding?.appName || '').trim() || 'تسک‌روز';
+  const appName = (appBranding?.appName || '').trim() || 'بگ تایم';
   const appLogo = typeof appBranding?.logoDataUrl === 'string' ? appBranding.logoDataUrl : null;
 
   // App developers configured by admin
@@ -226,7 +227,17 @@ export const LoginScreen: React.FC = () => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-extrabold text-slate-700">کلمه عبور</label>
+                <div className="flex items-center justify-between">
+                  <label className="font-extrabold text-slate-700">کلمه عبور</label>
+                  <a
+                    href="https://t.me/Mohusyn_ir"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-bold text-slate-500 hover:text-emerald-600 transition-colors"
+                  >
+                    فراموشی رمز عبور؟
+                  </a>
+                </div>
                 <div className="relative">
                   <input
                     type="password"
@@ -351,20 +362,22 @@ export const LoginScreen: React.FC = () => {
         {/* App Developers Footer - Configured by Admin in Panel */}
         <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
           <div className="flex items-center -space-x-2 space-x-reverse">
-            {appDevelopers.slice(0, 4).map((dev: AppDeveloper) => (
-              <div
+            {appDevelopers.map((dev: AppDeveloper) => (
+              <button
                 key={dev.id}
-                title={`${dev.name} (${dev.role})`}
-                className="relative group cursor-pointer"
+                type="button"
+                onClick={() => setSelectedDevForModal(dev)}
+                title={`${dev.name} (${dev.role}) - کلیک برای مشاهده پروفایل کامل`}
+                className="relative group cursor-pointer transition-transform hover:scale-110 active:scale-95 focus:outline-none"
               >
                 {dev.avatarUrl ? (
                   <img
                     src={dev.avatarUrl}
                     alt={dev.name}
-                    className="w-7 h-7 rounded-full object-cover border-2 border-white shadow-xs"
+                    className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-xs"
                   />
                 ) : (
-                  <div className="w-7 h-7 rounded-full bg-slate-900 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
+                  <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-black text-xs flex items-center justify-center border-2 border-white shadow-xs">
                     {dev.name.charAt(0)}
                   </div>
                 )}
@@ -373,24 +386,92 @@ export const LoginScreen: React.FC = () => {
                   <span className="font-black">{dev.name}</span>
                   <span className="text-[9px] text-slate-300">{dev.role}</span>
                 </div>
-              </div>
+              </button>
             ))}
-            {appDevelopers.length > 4 && (
-              <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-600 flex items-center justify-center">
-                +{toPersianDigits(appDevelopers.length - 4)}
-              </div>
-            )}
           </div>
           <div className="text-right">
             <span className="text-[11px] font-extrabold text-slate-700 block">
               اعضای توسعه‌دهنده این آپ
             </span>
             <span className="text-[9px] text-slate-400 block font-medium">
-              {appDevelopers.map((d: AppDeveloper) => d.name).join('، ')}
+              جهت مشاهده پروفایل کلیک کنید
             </span>
           </div>
         </div>
       </div>
+
+      {/* Developer Profile Modal */}
+      {selectedDevForModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+          onClick={() => setSelectedDevForModal(null)}
+          dir="rtl"
+        >
+          <div
+            className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 text-center relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setSelectedDevForModal(null)}
+              className="absolute top-4 left-4 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Large Avatar */}
+            <div className="flex justify-center pt-2">
+              <div className="relative">
+                {selectedDevForModal.avatarUrl ? (
+                  <img
+                    src={selectedDevForModal.avatarUrl}
+                    alt={selectedDevForModal.name}
+                    className="w-24 h-24 rounded-3xl object-cover shadow-xl border-4 border-slate-100"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-3xl bg-slate-900 text-white font-black text-3xl flex items-center justify-center shadow-xl border-4 border-slate-100">
+                    {selectedDevForModal.name.charAt(0)}
+                  </div>
+                )}
+                <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-bold border-2 border-white shadow-xs">
+                  توسعه‌دهنده 💻
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-slate-900">{selectedDevForModal.name}</h3>
+              <p className="text-xs font-bold text-indigo-600">{selectedDevForModal.role}</p>
+            </div>
+
+            {selectedDevForModal.bio && (
+              <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100 leading-relaxed font-medium">
+                {selectedDevForModal.bio}
+              </p>
+            )}
+
+            {selectedDevForModal.link && (
+              <a
+                href={selectedDevForModal.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:underline pt-1"
+              >
+                <span>مشاهده وبسایت یا رزومه</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </a>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setSelectedDevForModal(null)}
+              className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+            >
+              بستن
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -46,7 +46,7 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
   ],
   texts: {},
   appBranding: {
-    appName: 'تسک‌روز',
+    appName: 'بگ تایم',
     logoDataUrl: null,
     defaultAvatarDataUrl: null,
     pwaIconDataUrl: null,
@@ -507,6 +507,8 @@ export const api = {
     birthDate?: string;
     jobTitle?: string;
     skills?: string[];
+    bio?: string;
+    coverImage?: string;
     dailyTimeline?: Record<string, string>;
     avatar?: string | null;
     password?: string;

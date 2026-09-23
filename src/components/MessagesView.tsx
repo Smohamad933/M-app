@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Search,
   Send,
+  Check,
   CheckCheck,
   Eye,
   Users,
@@ -503,7 +504,15 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                             }`}
                           >
                             <span>{timeStr ? toPersianDigits(timeStr) : ''}</span>
-                            {isMe && <CheckCheck className="w-3 h-3 text-emerald-400" />}
+                            {isMe && (
+                              <span title={m.read ? 'سین شد' : 'ارسال شد (سین نشده)'}>
+                                {m.read ? (
+                                  <CheckCheck className="w-3 h-3 text-emerald-400" />
+                                ) : (
+                                  <Check className="w-3 h-3 text-zinc-400" />
+                                )}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>

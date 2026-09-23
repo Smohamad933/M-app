@@ -35,6 +35,8 @@ export interface User {
   city?: string;
   birthDate?: string;
   jobTitle?: string;
+  bio?: string;
+  coverImage?: string;
   skills?: string[];
   dailyTimeline?: UserTimeline;
   subscription?: UserSubscription;

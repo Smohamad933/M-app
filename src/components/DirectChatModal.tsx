@@ -7,6 +7,7 @@ import type { DirectChatMessage } from '../types';
 import {
   X,
   Send,
+  Check,
   CheckCheck,
   Sparkles,
   CheckCircle2,
@@ -271,7 +272,15 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
                     }`}
                   >
                     <span>{timeStr}</span>
-                    {isMe && <CheckCheck className="w-3 h-3 text-[#00b884]" />}
+                    {isMe && (
+                      <span title={msg.read ? 'سین شد' : 'ارسال شد (سین نشده)'}>
+                        {msg.read ? (
+                          <CheckCheck className="w-3 h-3 text-[#00b884]" />
+                        ) : (
+                          <Check className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
+                        )}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

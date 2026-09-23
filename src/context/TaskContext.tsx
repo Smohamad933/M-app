@@ -91,6 +91,8 @@ interface TaskContextType {
     birthDate?: string;
     jobTitle?: string;
     skills?: string[];
+    bio?: string;
+    coverImage?: string;
     dailyTimeline?: Record<string, string>;
     avatar?: string | null;
     password?: string;
@@ -1217,6 +1219,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     birthDate?: string;
     jobTitle?: string;
     skills?: string[];
+    bio?: string;
+    coverImage?: string;
     dailyTimeline?: Record<string, string>;
     avatar?: string | null;
     password?: string;

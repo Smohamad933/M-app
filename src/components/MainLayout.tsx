@@ -45,7 +45,6 @@ import {
   LayoutGrid,
   Users,
   BarChart3,
-  Sun,
   Eye,
   LogOut,
   Search,
@@ -88,8 +87,6 @@ export const MainLayout: React.FC = () => {
     setSearchQuery,
     selectedFilterUserId,
     setSelectedFilterUserId,
-    settings,
-    updateSettings,
     streak,
     logout,
     openCreateModal,
@@ -112,7 +109,7 @@ export const MainLayout: React.FC = () => {
   const greetingSub = getText(gk.sub);
 
   const appBranding = globalSettings?.appBranding;
-  const appName = (appBranding?.appName || '').trim() || 'تسک‌روز';
+  const appName = (appBranding?.appName || '').trim() || 'بگ تایم';
   const appLogo = typeof appBranding?.logoDataUrl === 'string' ? appBranding.logoDataUrl : null;
   const defaultAvatar = typeof appBranding?.defaultAvatarDataUrl === 'string' ? appBranding.defaultAvatarDataUrl : null;
   const firstName = (currentUser?.name || '').split(' ')[0];
@@ -516,23 +513,6 @@ export const MainLayout: React.FC = () => {
                   title="اشتراک‌گذاری گزارش"
                 >
                   <Share2 className="w-4 h-4" />
-                </button>
-
-                {/* Theme Toggle (desktop/tablet) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playPop();
-                    updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' });
-                  }}
-                  className="w-8 sm:w-9 h-8 sm:h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs hidden sm:flex cursor-pointer"
-                  title={settings.theme === 'dark' ? 'تغییر به تم روز ☀️' : 'تغییر به تم شب 🌙'}
-                >
-                  {settings.theme === 'dark' ? (
-                    <Sun className="w-4 h-4 text-amber-500" />
-                  ) : (
-                    <Sun className="w-4 h-4 text-slate-600" />
-                  )}
                 </button>
 
                 {/* Notification Bell with interactive Modal */}

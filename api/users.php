@@ -23,7 +23,7 @@ if (in_array($method, ['PUT', 'POST']) && ($input['action'] ?? '') === 'update_p
     }
 
     $fields = [];
-    foreach (['name', 'phone', 'email', 'province', 'city', 'birthDate', 'jobTitle'] as $k) {
+    foreach (['name', 'phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'bio', 'coverImage'] as $k) {
         if (array_key_exists($k, $input) && is_string($input[$k])) {
             $fields[$k] = trim($input[$k]);
         }
@@ -149,12 +149,11 @@ if ($action === 'public' || $action === 'search') {
     jsonResponse(['users' => $safe]);
 }
 
-if (!$isAdmin) {
-    jsonResponse(['error' => 'دسترسی فقط برای مدیر سیستم مجاز است.'], 403);
-}
-
 // Admin toggle user subscription
 if ($action === 'set_subscription' || ($input['action'] ?? '') === 'set_subscription') {
+    if (!$isAdmin) {
+        jsonResponse(['error' => 'دسترسی فقط برای مدیر سیستم مجاز است.'], 403);
+    }
     $targetId = $input['userId'] ?? $_GET['user_id'] ?? '';
     $plan = ($input['plan'] ?? '') === 'pro' ? 'pro' : 'free';
     $planType = $input['planType'] ?? null;
@@ -186,12 +185,22 @@ function performUserDelete($db, $id, $currentUser) {
         jsonResponse(['error' => 'شناسه کاربر الزامی است.'], 400);
     }
 
-    if ($id === ($currentUser['id'] ?? '') || strtolower($id) === 'mohusyn' || $id === 'usr_admin_mohusyn') {
+    if (strtolower($id) === 'mohusyn' || $id === 'usr_admin_mohusyn') {
         jsonResponse(['error' => 'شما نمی‌توانید حساب کاربری مدیر اصلی را حذف کنید.'], 400);
     }
 
+    $isSelf = ($currentUser && ($currentUser['id'] === $id || strtolower($currentUser['username'] ?? '') === strtolower($id)));
+    $isAdmin = ($currentUser && ($currentUser['role'] ?? '') === 'admin');
+
+    if (!$isAdmin && !$isSelf) {
+        jsonResponse(['error' => 'دسترسی فقط برای مدیر سیستم یا صاحب حساب مجاز است.'], 403);
+    }
+
     $db->deleteUser($id);
-    jsonResponse(['message' => 'کاربر و تمامی تسک‌ها و داده‌های مرتبط با موفقیت حذف شد.']);
+    if ($isSelf && session_status() === PHP_SESSION_ACTIVE) {
+        @session_destroy();
+    }
+    jsonResponse(['message' => 'حساب کاربری و تمامی تسک‌ها و داده‌های مرتبط با موفقیت حذف شد.']);
 }
 
 /**
@@ -199,6 +208,9 @@ function performUserDelete($db, $id, $currentUser) {
  * The protected admin (Mohusyn) and the admin's own account are skipped, never deleted.
  */
 function performBulkDelete($db, $rawIds, $currentUser) {
+    if (($currentUser['role'] ?? '') !== 'admin') {
+        jsonResponse(['error' => 'عملیات حذف گروهی فقط برای مدیر مجاز است.'], 403);
+    }
     if (is_string($rawIds)) {
         $rawIds = array_filter(explode(',', $rawIds));
     }

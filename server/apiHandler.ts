@@ -864,11 +864,6 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       return true;
     }
 
-    if (!currentUser || currentUser.role !== 'admin') {
-      sendJson(res, { error: 'دسترسی فقط برای مدیر سیستم مجاز است.' }, 403);
-      return true;
-    }
-
     // Shared user-data purge (no response) — used by single AND bulk delete
     const removeUserData = (id: string) => {
       db.users = db.users.filter((u) => u.id !== id);
@@ -888,18 +883,20 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         sendJson(res, { error: 'شناسه کاربر الزامی است.' }, 400);
         return;
       }
-      const target = db.users.find((u) => u.id === id);
+      const target = db.users.find((u) => u.id === id || u.username === id);
       if (target && isProtectedUser(target)) {
         sendJson(res, { error: 'شما نمی‌توانید حساب کاربری مدیر اصلی را حذف کنید.' }, 400);
         return;
       }
-      if (id === currentUser!.id) {
-        sendJson(res, { error: 'امکان حذف حساب کاربری جاری وجود ندارد.' }, 400);
+      const isSelf = currentUser && (currentUser.id === id || (target && target.id === currentUser.id));
+      const isAdmin = currentUser && currentUser.role === 'admin';
+      if (!isAdmin && !isSelf) {
+        sendJson(res, { error: 'دسترسی فقط برای مدیر سیستم یا صاحب حساب مجاز است.' }, 403);
         return;
       }
-      removeUserData(id);
+      removeUserData(target ? target.id : id);
       writeDb(db);
-      sendJson(res, { message: 'کاربر و تمامی تسک‌ها و داده‌های مرتبط با موفقیت حذف شدند.' });
+      sendJson(res, { message: 'حساب کاربری و تمامی تسک‌ها و داده‌های مرتبط با موفقیت حذف شدند.' });
     };
 
     // IIS 405 resilience: some servers block the DELETE verb, allow delete via GET/POST ?action=delete
@@ -909,6 +906,11 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
     if (method === 'POST' && (qAction === 'delete' || qAction === 'delete_user')) {
       handleUserDelete(typeof parsedBody.id === 'string' && parsedBody.id ? parsedBody.id : urlObj.searchParams.get('id'));
+      return true;
+    }
+
+    if (!currentUser || currentUser.role !== 'admin') {
+      sendJson(res, { error: 'دسترسی فقط برای مدیر سیستم مجاز است.' }, 403);
       return true;
     }
 
