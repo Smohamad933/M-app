@@ -149,24 +149,24 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 w-full">
       {/* 1. TOP-LEFT: TODAY TASKS (Team & Personal with Confidence Message) */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
+      <div className="bg-white rounded-[28px] p-4 sm:p-6 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center shadow-2xs">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center shadow-2xs flex-shrink-0">
               <CheckSquare className="w-4 h-4 stroke-[2.5]" />
             </div>
-            <div>
-              <h3 className="font-black text-base text-slate-900 tracking-tight">
-                کارهای امروز (Today Tasks)
+            <div className="min-w-0">
+              <h3 className="font-black text-sm sm:text-base text-slate-900 tracking-tight truncate">
+                کارهای امروز
               </h3>
-              <span className="text-[10px] text-slate-400 font-bold">
+              <span className="text-[10px] text-slate-400 font-bold block truncate">
                 {teamTasks.length > 0 ? 'شامل پروژه‌های تیمی و کارهای فردی' : 'کارهای فردی شما'}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {onOpenCreateTask && (
               <button
                 type="button"
@@ -180,7 +180,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
             <button
               type="button"
               onClick={onSeeAllTasks || (() => setActiveTab('tasks'))}
-              className="text-xs font-black text-slate-400 hover:text-slate-800 transition-colors flex items-center gap-1 cursor-pointer"
+              className="text-xs font-black text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-0.5 cursor-pointer"
             >
               <span>مشاهده همه</span>
               <span className="text-[10px]">‹</span>
@@ -281,14 +281,14 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
 
         {/* Dynamic Confidence & Motivational Banner */}
         {showTodayBanner && (
-          <div className="bg-[#121212] text-white rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-md animate-in fade-in">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-[#00b884]/20 text-[#00b884] flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-4 h-4 fill-current" />
+          <div className="bg-[#121212] text-white rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 shadow-md animate-in fade-in">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="w-7 h-7 rounded-full bg-[#00b884]/20 text-[#00b884] flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-3.5 h-3.5 fill-current" />
               </div>
-              <span className="text-xs font-black leading-snug truncate">
+              <p className="text-[11px] font-bold leading-relaxed text-zinc-200 line-clamp-2">
                 {motivationalMessage}
-              </span>
+              </p>
             </div>
 
             <button
@@ -297,51 +297,51 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
                 sounds.playPop();
                 setShowTodayBanner(false);
               }}
-              className="w-6 h-6 rounded-full bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer mr-2"
+              className="w-5 h-5 rounded-full bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer"
               title="بستن"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
             </button>
           </div>
         )}
       </div>
 
       {/* 2. TOP-RIGHT: INTERACTIVE CALENDAR */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
+      <div className="bg-white rounded-[28px] p-4 sm:p-6 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
         {/* Header with Month Navigator */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center shadow-2xs">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center shadow-2xs flex-shrink-0">
               <CalendarIcon className="w-4 h-4" />
             </div>
-            <div>
-              <h3 className="font-black text-base text-slate-900 tracking-tight">
-                تقویم (Calendar)
+            <div className="min-w-0">
+              <h3 className="font-black text-sm sm:text-base text-slate-900 tracking-tight truncate">
+                تقویم کارهای ماهانه
               </h3>
-              <span className="text-[10px] text-slate-400 font-bold">
+              <span className="text-[10px] text-slate-400 font-bold hidden sm:block truncate">
                 کلیک روی هر روز برای مشاهده کارهای آن روز
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80 flex-shrink-0">
             <button
               type="button"
               onClick={() => navigateMonth(1)}
-              className="p-1 hover:bg-white rounded-lg text-slate-600 transition-colors"
+              className="p-1 hover:bg-white rounded-lg text-slate-600 transition-colors cursor-pointer"
               title="ماه بعد"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
 
-            <span className="text-xs font-black text-slate-800 px-2">
+            <span className="text-xs font-black text-slate-800 px-1.5 min-w-[65px] text-center">
               {monthName} {toPersianDigits(calYear)}
             </span>
 
             <button
               type="button"
               onClick={() => navigateMonth(-1)}
-              className="p-1 hover:bg-white rounded-lg text-slate-600 transition-colors"
+              className="p-1 hover:bg-white rounded-lg text-slate-600 transition-colors cursor-pointer"
               title="ماه قبل"
             >
               <ChevronLeft className="w-4 h-4" />

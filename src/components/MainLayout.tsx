@@ -438,32 +438,55 @@ export const MainLayout: React.FC = () => {
         {/* 2. MAIN CONTENT AREA */}
         <div className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden min-h-full">
           {/* Top Header Bar */}
-          <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 sm:px-8 py-3.5 sticky top-0 z-30 flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-3">
-              {/* Search Bar */}
-              <div className="flex-1 max-w-md min-w-0">
-                <div className="relative flex items-center bg-[#f4f6f8] border border-slate-200/80 rounded-full px-4 py-2 hover:border-slate-300 focus-within:border-slate-400 transition-all">
-                  <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="اینجا جستجو کنید... (Start searching here)"
-                    className="w-full bg-transparent px-2.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-                    className="text-slate-400 hover:text-slate-700 flex-shrink-0"
-                    title="فیلترها"
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                  </button>
+          <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-3 sm:px-6 py-2.5 sm:py-3.5 sticky top-0 z-30 flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
+              {/* Left/Start Actions on Mobile & Desktop Search Bar */}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {/* Mobile Menu Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="lg:hidden p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer flex-shrink-0"
+                  title="منوی اصلی"
+                >
+                  <Menu className="w-4 h-4" />
+                </button>
+
+                {/* Desktop Search Bar */}
+                <div className="hidden md:flex flex-1 max-w-md min-w-0">
+                  <div className="relative flex items-center bg-[#f4f6f8] border border-slate-200/80 rounded-full px-4 py-2 hover:border-slate-300 focus-within:border-slate-400 transition-all w-full">
+                    <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="اینجا جستجو کنید..."
+                      className="w-full bg-transparent px-2.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+                      className="text-slate-400 hover:text-slate-700 flex-shrink-0 cursor-pointer"
+                      title="فیلترها"
+                    >
+                      <SlidersHorizontal className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Header Right Actions */}
-              <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                {/* Mobile Search Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+                  className="md:hidden w-8 h-8 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs cursor-pointer flex-shrink-0"
+                  title="جستجو"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                </button>
+
                 {/* Admin User Filter Dropdown */}
                 {isAdmin && users.length > 1 && (
                   <select
@@ -480,24 +503,24 @@ export const MainLayout: React.FC = () => {
                   </select>
                 )}
 
-                {/* Share Button */}
+                {/* Share Button (desktop/tablet) */}
                 <button
                   type="button"
                   onClick={() => setIsShareModalOpen(true)}
-                  className="w-9 h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs hidden sm:flex cursor-pointer"
+                  className="w-8 sm:w-9 h-8 sm:h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs hidden sm:flex cursor-pointer"
                   title="اشتراک‌گذاری گزارش"
                 >
                   <Share2 className="w-4 h-4" />
                 </button>
 
-                {/* Theme Toggle */}
+                {/* Theme Toggle (desktop/tablet) */}
                 <button
                   type="button"
                   onClick={() => {
                     sounds.playPop();
                     updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' });
                   }}
-                  className="w-9 h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs cursor-pointer"
+                  className="w-8 sm:w-9 h-8 sm:h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs hidden sm:flex cursor-pointer"
                   title={settings.theme === 'dark' ? 'تغییر به تم روز ☀️' : 'تغییر به تم شب 🌙'}
                 >
                   {settings.theme === 'dark' ? (
@@ -515,23 +538,23 @@ export const MainLayout: React.FC = () => {
                     setIsNotificationCenterOpen(true);
                     setUnreadNotifCount(0);
                   }}
-                  className="w-9 h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs relative cursor-pointer"
+                  className="w-8 sm:w-9 h-8 sm:h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs relative cursor-pointer flex-shrink-0"
                   title="مرکز اعلان‌ها"
                 >
                   <Bell className="w-4 h-4" />
                   {unreadNotifCount > 0 && (
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#f95738] absolute top-1.5 right-1.5 ring-2 ring-white animate-pulse" />
+                    <span className="w-2 h-2 rounded-full bg-[#f95738] absolute top-1 right-1 ring-2 ring-white animate-pulse" />
                   )}
                 </button>
 
                 {/* Subscription Pro Badge or Upgrade Button */}
                 {isPro ? (
                   <div
-                    className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 text-[11px] font-black"
+                    className="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 text-[10px] sm:text-[11px] font-black flex-shrink-0"
                     title="اشتراک ویژه Pro فعال است"
                   >
                     <Sparkles className="w-3 h-3 text-amber-500" />
-                    <span>پلن Pro</span>
+                    <span>Pro</span>
                   </div>
                 ) : (
                   <button
@@ -540,16 +563,15 @@ export const MainLayout: React.FC = () => {
                       sounds.playPop();
                       setIsUpgradeModalOpen(true);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-[11px] shadow-sm transition-all active:scale-95 cursor-pointer"
+                    className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-[10px] sm:text-[11px] shadow-sm transition-all active:scale-95 cursor-pointer flex-shrink-0"
                     title="ارتقاء به اشتراک ویژه نامحدود"
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">ارتقاء به Pro ⭐</span>
-                    <span className="sm:hidden">Pro ⭐</span>
+                    <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    <span>ارتقاء Pro</span>
                   </button>
                 )}
 
-                {/* Settings Cogwheel */}
+                {/* Settings Cogwheel (hidden on small screens, in menu) */}
                 <button
                   type="button"
                   onClick={() => {
@@ -560,7 +582,7 @@ export const MainLayout: React.FC = () => {
                       setIsProfileModalOpen(true);
                     }
                   }}
-                  className="w-9 h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs cursor-pointer"
+                  className="w-8 sm:w-9 h-8 sm:h-9 rounded-full border border-slate-200/80 hover:bg-slate-100 items-center justify-center text-slate-600 transition-colors shadow-2xs cursor-pointer hidden sm:flex flex-shrink-0"
                   title="تنظیمات"
                 >
                   <Settings className="w-4 h-4" />
@@ -574,21 +596,21 @@ export const MainLayout: React.FC = () => {
                       sounds.playPop();
                       setIsProfileModalOpen(true);
                     }}
-                    className="flex items-center gap-2.5 pl-3 pr-1 py-1 rounded-full border border-slate-200/80 hover:border-slate-300 transition-colors bg-white shadow-2xs cursor-pointer"
+                    className="flex items-center gap-1.5 sm:gap-2 sm:pl-3 sm:pr-1 p-0.5 rounded-full border border-slate-200/80 hover:border-slate-300 transition-colors bg-white shadow-2xs cursor-pointer flex-shrink-0"
                     title="مشاهده و ویرایش پروفایل"
                   >
                     <UserAvatar
                       name={currentUser.name}
                       avatar={currentUser.avatar}
                       fallbackImage={defaultAvatar}
-                      size="w-8 h-8 rounded-full text-xs"
+                      size="w-7 h-7 sm:w-8 sm:h-8 rounded-full text-xs"
                       className="border-2 border-[#00b884]"
                     />
                     <div className="hidden sm:flex flex-col text-right leading-tight">
-                      <span className="font-extrabold text-xs text-slate-900 truncate max-w-[120px]">
+                      <span className="font-extrabold text-xs text-slate-900 truncate max-w-[110px]">
                         {currentUser.name}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-bold truncate max-w-[120px]">
+                      <span className="text-[9px] text-slate-400 font-bold truncate max-w-[110px]">
                         {currentUser.jobTitle || (isAdmin ? 'مدیر سیستم' : 'طراح رابط کاربری')}
                       </span>
                     </div>
@@ -596,53 +618,68 @@ export const MainLayout: React.FC = () => {
                   </button>
                 )}
 
-                {/* Primary Add Task Button (Direct Manual Creation) */}
+                {/* Primary Add Task Button (hidden on mobile, in bottom nav) */}
                 <button
                   type="button"
                   onClick={() => {
                     sounds.playPop();
                     openCreateModal(selectedDate);
                   }}
-                  className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-2xl bg-[#121212] hover:bg-black text-white font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer"
+                  className="hidden md:flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-2xl bg-[#121212] hover:bg-black text-white font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer flex-shrink-0"
                   title="افزودن و تعریف تسک جدید"
                 >
                   <Plus className="w-4 h-4 stroke-[2.5]" />
                   <span>تسک جدید</span>
                 </button>
-
-                {/* Mobile Menu Button */}
-                <button
-                  type="button"
-                  onClick={() => setIsMobileMenuOpen(true)}
-                  className="lg:hidden p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
-                  title="منو"
-                >
-                  <Menu className="w-4 h-4" />
-                </button>
               </div>
             </div>
 
+            {/* Mobile Expanded Search Bar (when toggled) */}
+            {isMobileSearchOpen && (
+              <div className="md:hidden pt-1 pb-1 animate-in fade-in">
+                <div className="relative flex items-center bg-[#f4f6f8] border border-slate-300 rounded-2xl px-3 py-2 w-full">
+                  <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="جستجو در تسک‌ها و همکاران..."
+                    className="w-full bg-transparent px-2.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Sub-header info bar */}
-            <div className="flex items-center justify-between text-xs pt-1 px-1 border-t border-slate-100">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="font-extrabold text-slate-800 truncate" title={greetingSub}>
+            <div className="flex items-center justify-between text-xs pt-1 px-1 border-t border-slate-100 flex-wrap gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-extrabold text-slate-800 text-xs sm:text-sm truncate" title={greetingSub}>
                   {greetingText}
                   {firstName ? <span className="text-indigo-600">، {firstName}</span> : null}
                 </span>
                 {isAdmin && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full font-bold">
-                    <ShieldCheck className="w-3 h-3" />
-                    مدیر سیستم
+                  <span className="inline-flex items-center gap-1 text-[9px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full font-bold flex-shrink-0">
+                    <ShieldCheck className="w-2.5 h-2.5" />
+                    مدیر
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200/60">
-                  <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200/60">
+                  <CalendarDays className="w-3 h-3 text-slate-400" />
                   <span>{formatPersianDate(new Date(), 'full')}</span>
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 font-mono font-bold border border-slate-200/60 max-[430px]:hidden">
+                <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 font-mono font-bold border border-slate-200/60 hidden sm:inline-flex">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00b884] animate-pulse" />
                   {liveClock}
                 </span>
