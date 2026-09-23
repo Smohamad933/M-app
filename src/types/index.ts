@@ -212,6 +212,15 @@ export interface SystemFontOption {
   dataUrl?: string;
 }
 
+export interface AppDeveloper {
+  id: string;
+  name: string;
+  role: string;
+  avatarUrl?: string | null;
+  bio?: string;
+  link?: string;
+}
+
 export interface GlobalSystemSettings {
   broadcastNotice: {
     enabled: boolean;
@@ -233,6 +242,8 @@ export interface GlobalSystemSettings {
   };
   dailyMantra: string;
   jobCategories?: string[];
+  /** Admin-configured developers of this app (displayed on login/register screen) */
+  appDevelopers?: AppDeveloper[];
   /** Admin-editable app texts (UI labels & messages). Missing keys fall back to defaults. */
   texts?: Record<string, string>;
   /** Admin-editable app identity: name, logo, default profile photo, PWA icon (data URLs) */

@@ -1863,7 +1863,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
       const body = await parseJsonBody(req);
-      db.globalSettings = { ...body, updatedAt: new Date().toISOString() };
+      db.globalSettings = { ...(db.globalSettings || {}), ...body, updatedAt: new Date().toISOString() };
       writeDb(db);
       sendJson(res, { message: 'تنظیمات سراسری سیستم با موفقیت اعمال گردید.', settings: db.globalSettings });
       return true;

@@ -5,7 +5,7 @@ import { toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import { APP_TEXTS, APP_TEXT_SECTIONS } from '../utils/appTexts';
 import { UserAvatar } from './UserAvatar';
-import type { User, GlobalSystemSettings } from '../types';
+import type { User, GlobalSystemSettings, AppDeveloper } from '../types';
 import {
   Users,
   UserPlus,
@@ -37,6 +37,11 @@ import {
   Image as ImageIcon,
   ImagePlus,
   Smartphone,
+  Code2,
+  ArrowUp,
+  ArrowDown,
+  Edit2,
+  Check,
 } from 'lucide-react';
 
 /**
@@ -161,13 +166,149 @@ export const UserManagementView: React.FC = () => {
   } = useTask();
 
   // Active view tab inside Admin Panel
-  const [adminTab, setAdminTab] = useState<'users' | 'settings' | 'texts'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'settings' | 'texts' | 'developers'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Bulk selection & actions (multi-select users)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  // Admin App Developers Manager (configured by admin with photo, name, role)
+  const [developersList, setDevelopersList] = useState<AppDeveloper[]>(() => {
+    if (globalSettings?.appDevelopers && globalSettings.appDevelopers.length > 0) {
+      return globalSettings.appDevelopers;
+    }
+    return [
+      {
+        id: 'dev_mohusyn',
+        name: 'Mohusyn',
+        role: 'توسعه‌دهنده ارشد و معمار سیستم',
+        avatarUrl: null,
+        bio: 'طراح، برنامه‌نویس و سازنده تسک‌روز',
+        link: '',
+      },
+    ];
+  });
+
+  const [devForm, setDevForm] = useState<{
+    id?: string;
+    name: string;
+    role: string;
+    avatarUrl: string | null;
+    bio: string;
+    link: string;
+  }>({
+    name: '',
+    role: '',
+    avatarUrl: null,
+    bio: '',
+    link: '',
+  });
+
+  const [editingDevId, setEditingDevId] = useState<string | null>(null);
+  const [isSavingDevelopers, setIsSavingDevelopers] = useState(false);
+  const [developersSavedNotice, setDevelopersSavedNotice] = useState(false);
+
+  useEffect(() => {
+    if (globalSettings?.appDevelopers && globalSettings.appDevelopers.length > 0) {
+      setDevelopersList(globalSettings.appDevelopers);
+    }
+  }, [globalSettings?.appDevelopers]);
+
+  const handleDevPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await processSquareImage(file, 256);
+      setDevForm((prev) => ({ ...prev, avatarUrl: dataUrl }));
+      sounds.playPop();
+    } catch {
+      alert('خطا در پردازش تصویر. لطفاً تصویر دیگری انتخاب کنید.');
+    }
+  };
+
+  const handleSaveDeveloperItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!devForm.name.trim()) {
+      alert('لطفاً نام توسعه‌دهنده را وارد کنید.');
+      return;
+    }
+    if (!devForm.role.trim()) {
+      alert('لطفاً سمت / نقش توسعه‌دهنده را مشخص کنید.');
+      return;
+    }
+
+    if (editingDevId) {
+      setDevelopersList((prev) =>
+        prev.map((d) => (d.id === editingDevId ? { ...d, ...devForm, id: editingDevId } : d))
+      );
+      setEditingDevId(null);
+    } else {
+      const newDev: AppDeveloper = {
+        id: 'dev_' + Date.now(),
+        name: devForm.name.trim(),
+        role: devForm.role.trim(),
+        avatarUrl: devForm.avatarUrl,
+        bio: devForm.bio.trim(),
+        link: devForm.link.trim(),
+      };
+      setDevelopersList((prev) => [...prev, newDev]);
+    }
+
+    setDevForm({ name: '', role: '', avatarUrl: null, bio: '', link: '' });
+    sounds.playComplete();
+  };
+
+  const handleEditDev = (dev: AppDeveloper) => {
+    setEditingDevId(dev.id);
+    setDevForm({
+      id: dev.id,
+      name: dev.name,
+      role: dev.role,
+      avatarUrl: dev.avatarUrl || null,
+      bio: dev.bio || '',
+      link: dev.link || '',
+    });
+    sounds.playPop();
+  };
+
+  const handleDeleteDev = (devId: string) => {
+    if (developersList.length <= 1) {
+      alert('حداقل یک توسعه‌دهنده باید در سیستم ثبت باشد.');
+      return;
+    }
+    if (!window.confirm('آیا از حذف این عضو از تیم توسعه اطمینان دارید؟')) return;
+    setDevelopersList((prev) => prev.filter((d) => d.id !== devId));
+    if (editingDevId === devId) {
+      setEditingDevId(null);
+      setDevForm({ name: '', role: '', avatarUrl: null, bio: '', link: '' });
+    }
+    sounds.playPop();
+  };
+
+  const handleMoveDev = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= developersList.length) return;
+    const copy = [...developersList];
+    const [moved] = copy.splice(index, 1);
+    copy.splice(targetIndex, 0, moved);
+    setDevelopersList(copy);
+    sounds.playPop();
+  };
+
+  const handlePublishDevelopers = async () => {
+    setIsSavingDevelopers(true);
+    try {
+      await updateGlobalSettings({ appDevelopers: developersList });
+      setDevelopersSavedNotice(true);
+      setTimeout(() => setDevelopersSavedNotice(false), 3000);
+    } catch (err: any) {
+      alert(err.message || 'خطا در ذخیره توسعه‌دهندگان');
+    } finally {
+      setIsSavingDevelopers(false);
+    }
+  };
 
   // Admin Text Manager — editable app texts (values fall back to built-in defaults)
   const [textsForm, setTextsForm] = useState<Record<string, string>>(() => ({
@@ -538,10 +679,10 @@ export const UserManagementView: React.FC = () => {
       </div>
 
       {/* Admin Panel Tabs */}
-      <div className="flex items-center p-1.5 bg-zinc-950/80 rounded-2xl border border-zinc-800/80 max-w-md">
+      <div className="flex items-center p-1.5 bg-zinc-950/80 rounded-2xl border border-zinc-800/80 max-w-2xl flex-wrap gap-1">
         <button
           onClick={() => setAdminTab('users')}
-          className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'users'
               ? 'bg-zinc-800 text-white shadow-xs'
               : 'text-zinc-400 hover:text-white'
@@ -553,7 +694,7 @@ export const UserManagementView: React.FC = () => {
 
         <button
           onClick={() => setAdminTab('settings')}
-          className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'settings'
               ? 'bg-purple-600 text-white shadow-xs'
               : 'text-zinc-400 hover:text-white'
@@ -565,7 +706,7 @@ export const UserManagementView: React.FC = () => {
 
         <button
           onClick={() => setAdminTab('texts')}
-          className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'texts'
               ? 'bg-emerald-600 text-white shadow-xs'
               : 'text-zinc-400 hover:text-white'
@@ -573,6 +714,18 @@ export const UserManagementView: React.FC = () => {
         >
           <Type className="w-3.5 h-3.5" />
           <span>ویرایش متن‌های سامانه</span>
+        </button>
+
+        <button
+          onClick={() => setAdminTab('developers')}
+          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            adminTab === 'developers'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <Code2 className="w-3.5 h-3.5" />
+          <span>تیم توسعه‌دهنده آپ</span>
         </button>
       </div>
 
@@ -1291,6 +1444,303 @@ export const UserManagementView: React.FC = () => {
             </button>
           </div>
         </form>
+      )}
+
+      {/* TAB 4: APP DEVELOPERS (تیم توسعه‌دهنده اپ - نمایش در صفحه ورود و ثبت‌نام) */}
+      {adminTab === 'developers' && (
+        <div className="space-y-6 animate-in fade-in">
+          {developersSavedNotice && (
+            <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-800/70 text-emerald-300 text-xs font-bold flex items-center gap-2.5 shadow-md">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+              <span>اعضای توسعه‌دهنده با موفقیت ذخیره و در صفحه ورود و ثبت‌نام اعمال گردید.</span>
+            </div>
+          )}
+
+          {/* Header Card */}
+          <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-5 space-y-2 backdrop-blur-md">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2.5 rounded-2xl bg-blue-500/20 text-blue-400">
+                <Code2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">مدیریت اعضای تیم توسعه‌دهنده این آپ</h3>
+                <p className="text-[11px] text-zinc-400">
+                  اعضایی که در این قسمت با نام، عکس و تخصص مشخص می‌کنید، در بخش پایینی فرم ورود و ثبت‌نام سامانه نمایش داده می‌شوند.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Live Preview of Login Screen Footer */}
+          <div className="bg-zinc-900/40 rounded-3xl border border-zinc-800 p-5 space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold text-zinc-400 pb-2 border-b border-zinc-800/60">
+              <span>پیش‌نمایش ظاهر در فوتر صفحه ورود و ثبت‌نام</span>
+              <span className="text-[10px] text-emerald-400 font-mono font-bold">LIVE PREVIEW</span>
+            </div>
+
+            {/* The exact box as it appears in LoginScreen */}
+            <div className="max-w-md mx-auto bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div className="flex items-center -space-x-2 space-x-reverse">
+                {developersList.slice(0, 4).map((dev) => (
+                  <div key={dev.id} title={`${dev.name} (${dev.role})`} className="relative group">
+                    {dev.avatarUrl ? (
+                      <img
+                        src={dev.avatarUrl}
+                        alt={dev.name}
+                        className="w-7 h-7 rounded-full object-cover border-2 border-white shadow-xs"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-slate-900 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
+                        {dev.name.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {developersList.length > 4 && (
+                  <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-600 flex items-center justify-center">
+                    +{toPersianDigits(developersList.length - 4)}
+                  </div>
+                )}
+              </div>
+              <div className="text-right">
+                <span className="text-[11px] font-extrabold text-slate-700 block">
+                  اعضای توسعه‌دهنده این آپ
+                </span>
+                <span className="text-[9px] text-slate-400 block font-medium">
+                  {developersList.map((d) => d.name).join('، ')}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left/Main Column: List of Current Developers */}
+            <div className="lg:col-span-7 space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold text-zinc-300 pb-1">
+                <span>لیست اعضای تیم توسعه ({toPersianDigits(developersList.length)} نفر)</span>
+                <span className="text-[11px] text-zinc-500">برای تغییر اولویت از دکمه‌های فلش استفاده کنید</span>
+              </div>
+
+              {developersList.map((dev, idx) => (
+                <div
+                  key={dev.id}
+                  className="bg-zinc-900/60 rounded-2xl border border-zinc-800 p-4 flex items-center justify-between gap-3 hover:border-zinc-700 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {dev.avatarUrl ? (
+                      <img
+                        src={dev.avatarUrl}
+                        alt={dev.name}
+                        className="w-11 h-11 rounded-2xl object-cover border border-zinc-700 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-11 h-11 rounded-2xl bg-zinc-800 text-white font-black text-sm flex items-center justify-center border border-zinc-700 flex-shrink-0">
+                        {dev.name.charAt(0)}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-white truncate">{dev.name}</h4>
+                        {idx === 0 && (
+                          <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[9px] font-black">
+                            توسعه‌دهنده اصلی
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-400 truncate">{dev.role}</p>
+                      {dev.bio && <p className="text-[10px] text-zinc-500 truncate mt-0.5">{dev.bio}</p>}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() => handleMoveDev(idx, 'up')}
+                      className="p-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                      title="بالا بردن"
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={idx === developersList.length - 1}
+                      onClick={() => handleMoveDev(idx, 'down')}
+                      className="p-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                      title="پایین بردن"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleEditDev(dev)}
+                      className="p-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 cursor-pointer"
+                      title="ویرایش عضو"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteDev(dev.id)}
+                      className="p-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 cursor-pointer"
+                      title="حذف عضو"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <div className="pt-3">
+                <button
+                  type="button"
+                  onClick={handlePublishDevelopers}
+                  disabled={isSavingDevelopers}
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs transition-all shadow-lg active:scale-95 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{isSavingDevelopers ? 'در حال ذخیره...' : 'ذخیره و انتشار تیم توسعه‌دهندگان در صفحه لاگین 🚀'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Right Form: Add / Edit Developer */}
+            <div className="lg:col-span-5 bg-zinc-900/60 rounded-3xl border border-zinc-800 p-5 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+                <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-blue-400" />
+                  <span>{editingDevId ? 'ویرایش اطلاعات توسعه‌دهنده' : 'افزودن عضو جدید به تیم توسعه'}</span>
+                </h4>
+                {editingDevId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingDevId(null);
+                      setDevForm({ name: '', role: '', avatarUrl: null, bio: '', link: '' });
+                    }}
+                    className="text-[10px] text-zinc-400 hover:text-white cursor-pointer"
+                  >
+                    انصراف
+                  </button>
+                )}
+              </div>
+
+              <form onSubmit={handleSaveDeveloperItem} className="space-y-3.5">
+                {/* Photo Upload & Preview */}
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+                    عکس / آواتار عضو
+                  </label>
+                  <div className="flex items-center gap-3">
+                    {devForm.avatarUrl ? (
+                      <div className="relative">
+                        <img
+                          src={devForm.avatarUrl}
+                          alt="پیش‌نمایش"
+                          className="w-14 h-14 rounded-2xl object-cover border border-zinc-700"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setDevForm({ ...devForm, avatarUrl: null })}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] hover:bg-rose-500 cursor-pointer"
+                          title="حذف عکس"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-14 h-14 rounded-2xl bg-zinc-800 border border-dashed border-zinc-700 flex items-center justify-center text-zinc-500 text-xs">
+                        بدون عکس
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5 flex-1">
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold cursor-pointer transition-colors border border-zinc-700">
+                        <ImagePlus className="w-3.5 h-3.5 text-blue-400" />
+                        <span>انتخاب عکس از کامپیوتر</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleDevPhotoUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      <p className="text-[10px] text-zinc-500">
+                        فرمت JPG یا PNG، به صورت خودکار به شکل گرد برش می‌خورد.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">
+                    نام و نام خانوادگی <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={devForm.name}
+                    onChange={(e) => setDevForm({ ...devForm, name: e.target.value })}
+                    placeholder="مثال: Mohusyn یا سارا احمدی"
+                    className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Role */}
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">
+                    سمت یا حوزه تخصصی <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={devForm.role}
+                    onChange={(e) => setDevForm({ ...devForm, role: e.target.value })}
+                    placeholder="مثال: برنامه‌نویس فول‌استک یا طراح رابط کاربری"
+                    className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Short Bio */}
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">
+                    توضیح کوتاه یا افتخارات (اختیاری)
+                  </label>
+                  <input
+                    type="text"
+                    value={devForm.bio}
+                    onChange={(e) => setDevForm({ ...devForm, bio: e.target.value })}
+                    placeholder="مثال: طراح و توسعه‌دهنده نسخه وب و PWA"
+                    className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Link */}
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">
+                    لینک گیت‌هاب یا وب‌سایت (اختیاری)
+                  </label>
+                  <input
+                    type="text"
+                    value={devForm.link}
+                    onChange={(e) => setDevForm({ ...devForm, link: e.target.value })}
+                    placeholder="https://..."
+                    className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-blue-500 dir-ltr text-left"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-colors cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{editingDevId ? 'ثبت تغییرات عضو' : 'افزودن به لیست تیم'}</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* MODAL: ADD USER */}

@@ -20,11 +20,8 @@ import {
   FolderKanban,
   Check,
   Sparkles,
+  Plus,
 } from 'lucide-react';
-import {
-  AvatarMichie,
-  AvatarDesigner,
-} from '../utils/designAvatars';
 
 interface BentoWidgetsProps {
   onSeeAllTasks?: () => void;
@@ -175,9 +172,9 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
                 type="button"
                 onClick={onOpenCreateTask}
                 className="p-1.5 rounded-xl text-slate-500 hover:text-black hover:bg-slate-100 transition-colors flex items-center gap-1 cursor-pointer"
-                title="ثبت سریع تسک با دستیار هوشمند (AI)"
+                title="ثبت تسک جدید"
               >
-                <Sparkles className="w-4 h-4 text-[#00b884]" />
+                <Plus className="w-4 h-4 text-slate-800" />
               </button>
             )}
             <button
@@ -252,15 +249,11 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
                   </p>
 
                   <div className="space-y-2 pt-1">
-                    {/* Avatars + % */}
+                    {/* Status & % */}
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center -space-x-2 space-x-reverse">
-                        <AvatarMichie size={24} className="border-2 border-white shadow-xs" />
-                        <AvatarDesigner size={24} className="border-2 border-white shadow-xs" />
-                        <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-600 flex items-center justify-center">
-                          {toPersianDigits(i + 1)}+
-                        </div>
-                      </div>
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {isCompleted ? 'تکمیل شده' : 'در حال انجام'}
+                      </span>
                       <span className="text-[11px] font-black text-slate-700 font-mono">
                         {toPersianDigits(progress)}٪
                       </span>
@@ -282,7 +275,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
           <div className="py-8 px-4 text-center bg-[#f8fafc] rounded-2xl border border-dashed border-slate-200 space-y-2">
             <CheckSquare className="w-8 h-8 text-slate-300 mx-auto" />
             <p className="text-xs font-black text-slate-700">هنوز تسکی برای امروز ثبت نشده است</p>
-            <p className="text-[11px] text-slate-400">برای شروع روز، اولین تسک خود را با دستیار هوشمند ثبت کنید.</p>
+            <p className="text-[11px] text-slate-400">برای شروع روز، اولین تسک خود را ثبت کنید.</p>
           </div>
         )}
 

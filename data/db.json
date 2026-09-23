@@ -88,7 +88,17 @@
     "texts": {
       "appName": "تسک‌روز"
     },
-    "updatedAt": "2026-09-22T00:00:00.000Z"
+    "updatedAt": "2026-09-22T00:00:00.000Z",
+    "appDevelopers": [
+      {
+        "id": "dev_mohusyn",
+        "name": "Mohusyn",
+        "role": "توسعه‌دهنده ارشد و معمار سیستم",
+        "avatarUrl": null,
+        "bio": "طراح، برنامه‌نویس و سازنده تسک‌روز",
+        "link": ""
+      }
+    ]
   },
   "custom_fonts": []
 }

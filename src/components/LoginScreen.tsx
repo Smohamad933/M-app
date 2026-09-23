@@ -1,16 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTask } from '../context/TaskContext';
 import { api } from '../services/api';
 import { sounds } from '../utils/sound';
 import { IRAN_PROVINCES, POPULAR_JOBS, SUGGESTED_SKILLS } from '../utils/iranLocations';
 import { toPersianDigits } from '../utils/persianDate';
 import { TaskMasterHexagon } from './TaskMasterLogo';
-import {
-  AvatarMichie,
-  AvatarDesigner,
-  AvatarDeveloper,
-  AvatarProductManager,
-} from '../utils/designAvatars';
+import type { AppDeveloper } from '../types';
 import {
   Lock,
   User,
@@ -56,6 +51,21 @@ export const LoginScreen: React.FC = () => {
   const appBranding = globalSettings?.appBranding;
   const appName = (appBranding?.appName || '').trim() || 'تسک‌روز';
   const appLogo = typeof appBranding?.logoDataUrl === 'string' ? appBranding.logoDataUrl : null;
+
+  // App developers configured by admin
+  const appDevelopers = useMemo(() => {
+    if (globalSettings?.appDevelopers && globalSettings.appDevelopers.length > 0) {
+      return globalSettings.appDevelopers;
+    }
+    return [
+      {
+        id: 'dev_mohusyn',
+        name: 'Mohusyn',
+        role: 'توسعه‌دهنده ارشد و معمار سیستم',
+        avatarUrl: null,
+      },
+    ];
+  }, [globalSettings?.appDevelopers]);
 
   // Detect if user is joining via room invite link
   const inviteRoom = typeof window !== 'undefined' 
@@ -718,20 +728,47 @@ export const LoginScreen: React.FC = () => {
           </div>
         </form>
 
-        {/* Team Avatars Footer Preview matching Dribbble reference */}
+        {/* App Developers Footer - Configured by Admin in Panel */}
         <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
           <div className="flex items-center -space-x-2 space-x-reverse">
-            <AvatarMichie size={30} className="border-2 border-white shadow-xs" />
-            <AvatarDesigner size={30} className="border-2 border-white shadow-xs" />
-            <AvatarDeveloper size={30} className="border-2 border-white shadow-xs" />
-            <AvatarProductManager size={30} className="border-2 border-white shadow-xs" />
-            <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-600 flex items-center justify-center">
-              ۱۰+
-            </div>
+            {appDevelopers.slice(0, 4).map((dev: AppDeveloper) => (
+              <div
+                key={dev.id}
+                title={`${dev.name} (${dev.role})`}
+                className="relative group cursor-pointer"
+              >
+                {dev.avatarUrl ? (
+                  <img
+                    src={dev.avatarUrl}
+                    alt={dev.name}
+                    className="w-7 h-7 rounded-full object-cover border-2 border-white shadow-xs"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-slate-900 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
+                    {dev.name.charAt(0)}
+                  </div>
+                )}
+                {/* Tooltip on hover */}
+                <div className="absolute bottom-full mb-1.5 right-0 hidden group-hover:flex flex-col bg-slate-900 text-white text-[10px] py-1 px-2.5 rounded-xl whitespace-nowrap shadow-lg z-30 pointer-events-none">
+                  <span className="font-black">{dev.name}</span>
+                  <span className="text-[9px] text-slate-300">{dev.role}</span>
+                </div>
+              </div>
+            ))}
+            {appDevelopers.length > 4 && (
+              <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-600 flex items-center justify-center">
+                +{toPersianDigits(appDevelopers.length - 4)}
+              </div>
+            )}
           </div>
-          <span className="text-[11px] font-extrabold text-slate-400">
-            تیم خلاق و هوشمند
-          </span>
+          <div className="text-right">
+            <span className="text-[11px] font-extrabold text-slate-700 block">
+              اعضای توسعه‌دهنده این آپ
+            </span>
+            <span className="text-[9px] text-slate-400 block font-medium">
+              {appDevelopers.map((d: AppDeveloper) => d.name).join('، ')}
+            </span>
+          </div>
         </div>
       </div>
     </div>

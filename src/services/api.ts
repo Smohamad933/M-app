@@ -31,6 +31,16 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
     allowPublicChat: true,
   },
   dailyMantra: 'تمرکز پیوسته بر کارهای با اولویت بالا و پرهیز از چندوظیفگی',
+  appDevelopers: [
+    {
+      id: 'dev_mohusyn',
+      name: 'Mohusyn',
+      role: 'توسعه‌دهنده ارشد و معمار سیستم',
+      avatarUrl: null,
+      bio: 'طراح، برنامه‌نویس و سازنده تسک‌روز',
+      link: '',
+    },
+  ],
   texts: {},
   appBranding: {
     appName: 'تسک‌روز',

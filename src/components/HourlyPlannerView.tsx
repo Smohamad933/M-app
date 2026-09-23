@@ -14,7 +14,6 @@ import {
   Plus,
   ChevronRight,
   ChevronLeft,
-  Sparkles,
   CalendarDays,
   CheckCircle2,
   Zap,
@@ -188,12 +187,12 @@ export const HourlyPlannerView: React.FC = () => {
             type="button"
             onClick={() => {
               sounds.playPop();
-              window.dispatchEvent(new CustomEvent('open-ai-agent-modal'));
+              openCreateModal(activeDate);
             }}
             className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#121212] hover:bg-black text-white font-black text-xs shadow-sm transition-all cursor-pointer"
           >
-            <Sparkles className="w-3.5 h-3.5 text-[#00b884]" />
-            <span>ثبت با AI</span>
+            <Plus className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+            <span>تسک جدید</span>
           </button>
         </div>
       </div>

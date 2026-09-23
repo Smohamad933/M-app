@@ -6,12 +6,12 @@ import {
   CheckSquare,
   Clock,
   Users,
-  Sparkles,
+  Plus,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 
 export const BottomNav: React.FC = () => {
-  const { activeTab, setActiveTab } = useTask();
+  const { activeTab, setActiveTab, openCreateModal } = useTask();
 
   const handleTabClick = (tab: TabType) => {
     sounds.playPop();
@@ -54,17 +54,17 @@ export const BottomNav: React.FC = () => {
           );
         })}
 
-        {/* Center Floating AI Agent Button */}
+        {/* Center Floating Task Creation Button */}
         <button
           onClick={() => {
             sounds.playPop();
-            window.dispatchEvent(new CustomEvent('open-ai-agent-modal'));
+            openCreateModal();
           }}
           className="w-12 h-12 rounded-2xl bg-[#121212] hover:bg-black text-white shadow-lg flex flex-col items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer flex-shrink-0 mx-1 border border-slate-700"
-          title="افزودن هوشمند تسک با دستیار صوتی و متنی"
+          title="افزودن تسک جدید"
         >
-          <Sparkles className="w-5 h-5 text-[#00b884] stroke-[2.5]" />
-          <span className="text-[8px] font-black text-white leading-none mt-0.5">AI</span>
+          <Plus className="w-5 h-5 text-white stroke-[2.5]" />
+          <span className="text-[8px] font-black text-white leading-none mt-0.5">تسک</span>
         </button>
 
         {/* Right 2 Tabs */}

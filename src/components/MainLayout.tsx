@@ -7,12 +7,6 @@ import { ProfileModal } from './ProfileModal';
 import { DashboardTaskList } from './DashboardTaskList';
 import { TaskMasterHexagon } from './TaskMasterLogo';
 import { TaskMasterBentoWidgets } from './TaskMasterBentoWidgets';
-import {
-  AvatarMichie,
-  AvatarDesigner,
-  AvatarDeveloper,
-  AvatarProductManager,
-} from '../utils/designAvatars';
 import type { TabType } from '../types';
 import { TaskList } from './TaskList';
 import { KanbanBoard } from './KanbanBoard';
@@ -71,7 +65,6 @@ import {
   Bell,
   Settings,
   ChevronDown,
-  CheckCheck,
 } from 'lucide-react';
 
 export const MainLayout: React.FC = () => {
@@ -143,10 +136,43 @@ export const MainLayout: React.FC = () => {
 
   // Listen for mobile bottom nav custom events
   useEffect(() => {
-    const handler = () => setIsAiAgentModalOpen(true);
+    const handler = () => openCreateModal(selectedDate);
     window.addEventListener('open-ai-agent-modal', handler);
-    return () => window.removeEventListener('open-ai-agent-modal', handler);
-  }, []);
+    window.addEventListener('open-create-task-ai', handler);
+    return () => {
+      window.removeEventListener('open-ai-agent-modal', handler);
+      window.removeEventListener('open-create-task-ai', handler);
+    };
+  }, [selectedDate, openCreateModal]);
+
+  // Real friends list from localStorage
+  const myId = currentUser?.id || 'me';
+  const [friendsList, setFriendsList] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem(`taskrooz_friends_${myId}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const updateFriends = () => {
+      try {
+        const saved = localStorage.getItem(`taskrooz_friends_${myId}`);
+        setFriendsList(saved ? JSON.parse(saved) : []);
+      } catch {
+        setFriendsList([]);
+      }
+    };
+    updateFriends();
+    window.addEventListener('taskrooz-friends-changed', updateFriends);
+    window.addEventListener('storage', updateFriends);
+    return () => {
+      window.removeEventListener('taskrooz-friends-changed', updateFriends);
+      window.removeEventListener('storage', updateFriends);
+    };
+  }, [myId]);
 
   const isAdmin = currentUser?.role === 'admin';
 
@@ -246,72 +272,99 @@ export const MainLayout: React.FC = () => {
               })}
             </nav>
 
-            {/* Team Avatars Strip - Click opens FriendsView */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('friends')}
-              className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between hover:bg-slate-50 p-2 rounded-2xl transition-colors text-right cursor-pointer"
-            >
-              <div className="flex items-center -space-x-2 space-x-reverse">
-                <AvatarMichie size={28} className="border-2 border-white shadow-xs" />
-                <AvatarDesigner size={28} className="border-2 border-white shadow-xs" />
-                <AvatarDeveloper size={28} className="border-2 border-white shadow-xs" />
-                <AvatarProductManager size={28} className="border-2 border-white shadow-xs" />
-                <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-600 flex items-center justify-center">
-                  ۱۰+
-                </div>
-              </div>
-              <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
-                <span>همکاران</span>
-                <span className="text-slate-400">‹</span>
-              </span>
-            </button>
+            {/* Real Colleagues / Friends Section */}
+            {friendsList.length > 0 ? (
+              <div className="pt-4 mt-2 border-t border-slate-100 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setActiveTab('friends');
+                  }}
+                  className="w-full flex items-center justify-between hover:bg-slate-50 p-2 rounded-2xl transition-colors text-right cursor-pointer"
+                >
+                  <div className="flex items-center -space-x-2 space-x-reverse">
+                    {friendsList.slice(0, 4).map((f) => (
+                      <div key={f.id} className="relative">
+                        <UserAvatar
+                          name={f.name}
+                          avatar={f.avatar}
+                          size="w-7 h-7 rounded-full text-[10px]"
+                          className="border-2 border-white shadow-xs"
+                        />
+                      </div>
+                    ))}
+                    {friendsList.length > 4 && (
+                      <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-600 flex items-center justify-center">
+                        +{toPersianDigits(friendsList.length - 4)}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+                    <span>همکاران ({toPersianDigits(friendsList.length)})</span>
+                    <span className="text-slate-400">‹</span>
+                  </span>
+                </button>
 
-            {/* Quick Chat Card ("Michie ✌️" widget) - Interactive click opens live chat! */}
-            <div
-              onClick={() => {
-                sounds.playPop();
-                setDirectChatUser({
-                  id: 'michie-lead',
-                  name: 'Michie ✌️',
-                  username: 'michie',
-                  role: 'Product Lead',
-                  status: 'online',
-                });
-              }}
-              className="mt-4 p-3.5 bg-[#f8fafc] border border-slate-200/80 hover:border-slate-300 rounded-2xl space-y-2.5 text-right cursor-pointer transition-all hover:shadow-xs group"
-              title="کلیک برای چت مستقیم با Michie"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800">
-                  <AvatarMichie size={22} className="rounded-full shadow-xs" />
-                  <span>Michie ✌️</span>
-                  <span className="w-2 h-2 rounded-full bg-[#00b884]" />
-                </div>
-                <div className="text-[10px] text-slate-400 group-hover:text-slate-800 font-bold">
-                  گفتگو 💬
+                {/* Direct quick chat with active colleague */}
+                <div
+                  onClick={() => {
+                    sounds.playPop();
+                    setDirectChatUser({
+                      id: friendsList[0].id,
+                      name: friendsList[0].name,
+                      username: friendsList[0].username,
+                      avatar: friendsList[0].avatar,
+                      role: friendsList[0].jobTitle || 'همکار',
+                      status: 'online',
+                    });
+                  }}
+                  className="p-3 bg-[#f8fafc] border border-slate-200/80 hover:border-slate-300 rounded-2xl space-y-2 text-right cursor-pointer transition-all hover:shadow-xs group"
+                  title={`چت با ${friendsList[0].name}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800">
+                      <UserAvatar
+                        name={friendsList[0].name}
+                        avatar={friendsList[0].avatar}
+                        size="w-5 h-5 rounded-full text-[9px]"
+                      />
+                      <span className="truncate max-w-[100px]">{friendsList[0].name}</span>
+                      <span className="w-2 h-2 rounded-full bg-[#00b884]" />
+                    </div>
+                    <div className="text-[10px] text-slate-400 group-hover:text-slate-800 font-bold">
+                      گفتگو 💬
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    کلیک برای گفتگو با {friendsList[0].name}...
+                  </p>
                 </div>
               </div>
-
-              {/* Chat Bubble 1 (Incoming) */}
-              <div className="bg-white rounded-2xl rounded-tl-xs p-2.5 text-[11px] text-slate-700 shadow-2xs space-y-1">
-                <div className="flex items-center justify-between text-[10px] text-slate-400">
-                  <span className="text-slate-800 font-semibold">Morning ✌️</span>
-                  <span>۱۲:۴۹</span>
+            ) : (
+              /* Clean empty state for fresh install: no fake Michie, no fake +10 avatars */
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setActiveTab('friends');
+                }}
+                className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between hover:bg-slate-50 p-2.5 rounded-2xl transition-colors text-right cursor-pointer group w-full"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-500 flex items-center justify-center group-hover:bg-[#00b884]/15 group-hover:text-[#00895f] transition-colors">
+                    <Users className="w-4 h-4 stroke-[2]" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-black text-slate-800">همکاران</div>
+                    <div className="text-[10px] text-slate-400">یافتن و افزودن همکاران ‹</div>
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-600 leading-snug">
-                  امروز وارد مرحله وایرفریم تسک‌ها می‌شیم.
-                </p>
-              </div>
-
-              {/* Chat Bubble 2 (Outgoing) */}
-              <div className="bg-[#00b884]/15 text-[#00895f] rounded-2xl rounded-br-xs px-2.5 py-1 text-[10px] font-bold inline-flex items-center gap-1 float-left">
-                <CheckCheck className="w-3.5 h-3.5 text-[#00b884]" />
-                <span>عالیه Michie 👍</span>
-                <span className="text-[9px] opacity-70">۱۳:۰۰</span>
-              </div>
-              <div className="clear-both" />
-            </div>
+                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                  ۰
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Sidebar Footer */}
@@ -499,32 +552,18 @@ export const MainLayout: React.FC = () => {
                   </button>
                 )}
 
-                {/* PRIMARY: AI Task Agent Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playPop();
-                    setIsAiAgentModalOpen(true);
-                  }}
-                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-2xl bg-[#121212] hover:bg-black text-white font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer"
-                  title="ثبت هوشمند کارهای روز با دستیار صوتی و متنی هوش مصنوعی"
-                >
-                  <Sparkles className="w-4 h-4 text-[#00b884] stroke-[2.5]" />
-                  <span>تسک جدید (AI)</span>
-                </button>
-
-                {/* SECONDARY: Manual Add Task Button */}
+                {/* Primary Add Task Button (Direct Manual Creation) */}
                 <button
                   type="button"
                   onClick={() => {
                     sounds.playPop();
                     openCreateModal(selectedDate);
                   }}
-                  className="hidden sm:flex items-center gap-1 px-3 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs transition-colors cursor-pointer border border-slate-200/80 shadow-2xs"
-                  title="افزودن دستی تسک با فرم سنتی"
+                  className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-2xl bg-[#121212] hover:bg-black text-white font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer"
+                  title="افزودن و تعریف تسک جدید"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>دستی</span>
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                  <span>تسک جدید</span>
                 </button>
 
                 {/* Mobile Menu Button */}
@@ -626,7 +665,7 @@ export const MainLayout: React.FC = () => {
                 {/* 4 Dribbble Signature Widgets */}
                 <TaskMasterBentoWidgets
                   onSeeAllTasks={() => setActiveTab('tasks')}
-                  onOpenCreateTask={() => setIsAiAgentModalOpen(true)}
+                  onOpenCreateTask={() => openCreateModal(selectedDate)}
                 />
 
                 {/* 4 KPI Summary Cards */}

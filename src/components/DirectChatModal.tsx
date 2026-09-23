@@ -52,27 +52,9 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
       }
     } catch {}
 
-    // Initial conversation seed
-    const initial: ChatMessage[] = [
-      {
-        id: 'msg-1',
-        senderId: peerId,
-        senderName: friend.name,
-        text: `سلام ${currentUser?.name || ''}! امروز برنامه‌ام روی وایرفریم‌هاست. روی چه تسکی کار می‌کنی؟`,
-        timestamp: '۱۲:۴۵',
-        isMe: false,
-      },
-      {
-        id: 'msg-2',
-        senderId: myId,
-        senderName: currentUser?.name || 'من',
-        text: 'سلام Michie عزیز! تسک‌های روزانه‌م رو توی دیلی پلنر مرتب کردم، کارها خوب پیش میره 👍',
-        timestamp: '۱۲:۵۰',
-        isMe: true,
-      },
-    ];
-    setMessages(initial);
-  }, [friend, myId, peerId, currentUser?.name]);
+    // Initial empty conversation if no previous messages
+    setMessages([]);
+  }, [friend, myId, peerId]);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -184,6 +166,16 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
               گفتگوی امن و مستقیم با {friend.name}
             </span>
           </div>
+
+          {messages.length === 0 && (
+            <div className="py-12 text-center text-slate-400 space-y-2">
+              <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto">
+                <Send className="w-5 h-5 text-slate-400" />
+              </div>
+              <p className="text-xs font-bold text-slate-600">هنوز پیامی ردوبدل نشده است</p>
+              <p className="text-[11px] text-slate-400">برای شروع گفتگو با {friend.name}، اولین پیام خود را بنویسید.</p>
+            </div>
+          )}
 
           {messages.map((msg) => (
             <div
