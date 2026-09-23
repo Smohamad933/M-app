@@ -235,11 +235,14 @@ class TaskRoozDB {
             try {
                 $stmt = $this->pdo->prepare("SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?) LIMIT 1");
                 $stmt->execute([$id, $id]);
-                $u = $stmt->fetch();
-                if ($u) {
+                 = ->fetch();
+                if () {
                     if (!empty($u['skills_json'])) $u['skills'] = json_decode($u['skills_json'], true);
                     if (!empty($u['timeline_json'])) $u['dailyTimeline'] = json_decode($u['timeline_json'], true);
-                    return $u;
+                    if (isset($u['birth_date']) && !isset($u['birthDate'])) $u['birthDate'] = $u['birth_date'];
+                    if (isset($u['job_title']) && !isset($u['jobTitle'])) $u['jobTitle'] = $u['job_title'];
+                    $u['isProfileCompleted'] = !empty($u['is_profile_completed']) || ($u['role'] === 'admin') || (!empty($u['birthDate']) && !empty($u['city']));
+                    return ;
                 }
             } catch (Exception $e) {}
         }
@@ -552,6 +555,7 @@ class TaskRoozDB {
                 }
                 if (array_key_exists('skills', $fields)) $u['skills'] = is_array($fields['skills']) ? $fields['skills'] : [];
                 if (array_key_exists('dailyTimeline', $fields)) $u['dailyTimeline'] = is_array($fields['dailyTimeline']) ? $fields['dailyTimeline'] : [];
+                $u['isProfileCompleted'] = true;
                 if (!empty($password)) {
                     $u['password'] = $password;
                     $u['password_hash'] = password_hash($password, PASSWORD_DEFAULT);

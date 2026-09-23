@@ -1,54 +1,73 @@
 import React from 'react';
 
+const PRESET_SIZES: Record<string, string> = {
+  xs: 'w-6 h-6 text-[10px]',
+  sm: 'w-8 h-8 text-xs',
+  md: 'w-11 h-11 text-sm',
+  lg: 'w-14 h-14 text-base',
+  xl: 'w-20 h-20 text-2xl',
+  '2xl': 'w-24 h-24 text-3xl',
+};
+
 interface UserAvatarProps {
   user?: { name?: string; avatar?: string | null } | null;
   name?: string;
   avatar?: string | null;
   /** Admin-set default profile image, shown when the user has no personal photo */
   fallbackImage?: string | null;
-  /** tailwind size classes, e.g. 'w-10 h-10 text-sm' */
+  /** tailwind size classes (e.g. 'w-10 h-10 text-sm') or preset name ('xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl') */
   size?: string;
   className?: string;
 }
 
 /**
- * عکس پروفایل کاربر: اگر عکس آپلود شده باشد نمایشش می‌دهد،
- * در غیر این صورت عکس پیش‌فرض ادمین یا حرف اول نام داخل قاب گرد زیبا.
+ * عکس پروفایل کاربر: تضمین ابعاد استاندارد با کانتینر ضد سرریز (Overflow-proof)
  */
 export const UserAvatar: React.FC<UserAvatarProps> = ({
   user,
   name,
   avatar,
   fallbackImage,
-  size = 'w-10 h-10 text-sm',
+  size = 'md',
   className = '',
 }) => {
   const finalName = name || user?.name || '?';
   const finalAvatar = avatar || user?.avatar || null;
   const firstChar = finalName.trim().charAt(0);
   const roundedClass = className.includes('rounded-') ? '' : 'rounded-full';
+  const resolvedSize = PRESET_SIZES[size] || (size.includes('w-') ? size : 'w-11 h-11 text-sm');
 
   if (finalAvatar && typeof finalAvatar === 'string' && finalAvatar.startsWith('data:image/')) {
     return (
-      <img
-        src={finalAvatar}
-        alt={finalName}
-        className={`${size} ${roundedClass} object-cover border-2 border-[#00b884] shadow-xs flex-shrink-0 ${className}`}
-      />
+      <div
+        className={`${resolvedSize} ${roundedClass} overflow-hidden border-2 border-[#00b884] shadow-xs flex-shrink-0 relative ${className}`}
+      >
+        <img
+          src={finalAvatar}
+          alt={finalName}
+          className="w-full h-full object-cover block"
+        />
+      </div>
     );
   }
+
   if (fallbackImage && typeof fallbackImage === 'string' && fallbackImage.startsWith('data:image/')) {
     return (
-      <img
-        src={fallbackImage}
-        alt={finalName}
-        className={`${size} ${roundedClass} object-cover border-2 border-[#00b884] shadow-xs flex-shrink-0 opacity-95 ${className}`}
-      />
+      <div
+        className={`${resolvedSize} ${roundedClass} overflow-hidden border-2 border-[#00b884] shadow-xs flex-shrink-0 relative opacity-95 ${className}`}
+      >
+        <img
+          src={fallbackImage}
+          alt={finalName}
+          className="w-full h-full object-cover block"
+        />
+      </div>
     );
   }
+
   return (
     <div
-      className={`${size} ${roundedClass} bg-gradient-to-tr from-[#00b884] to-emerald-600 border-2 border-white shadow-xs text-white font-bold flex items-center justify-center flex-shrink-0 ${className}`}
+      className={`${resolvedSize} ${roundedClass} bg-gradient-to-tr from-[#00b884] to-emerald-600 border-2 border-white shadow-xs text-white font-bold flex items-center justify-center flex-shrink-0 select-none ${className}`}
     >
       {firstChar}
     </div>

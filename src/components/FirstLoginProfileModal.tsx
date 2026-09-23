@@ -74,6 +74,7 @@ export const FirstLoginProfileModal: React.FC<FirstLoginProfileModalProps> = ({ 
           city,
           jobTitle: finalJob,
           email: email.trim(),
+          isProfileCompleted: true,
           dailyTimeline: {
             wakeUp,
             workStart,
@@ -81,6 +82,9 @@ export const FirstLoginProfileModal: React.FC<FirstLoginProfileModalProps> = ({ 
             sleep,
           },
         });
+        try {
+          localStorage.setItem('taskrooz_user_profile_completed_' + currentUser.id, 'true');
+        } catch {}
       }
       sounds.playComplete();
       onClose();

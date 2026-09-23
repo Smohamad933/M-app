@@ -93,6 +93,7 @@ interface TaskContextType {
     skills?: string[];
     bio?: string;
     coverImage?: string;
+    isProfileCompleted?: boolean;
     dailyTimeline?: Record<string, string>;
     avatar?: string | null;
     password?: string;
@@ -1045,8 +1046,14 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshGoals();
       refreshFriends();
 
-      if (currentUser.role !== 'admin' && currentUser.isProfileCompleted === false) {
+      const localCompleted = typeof window !== 'undefined' && localStorage.getItem('taskrooz_user_profile_completed_' + currentUser.id) === 'true';
+      const hasCoreInfo = Boolean(currentUser.birthDate && currentUser.city && currentUser.jobTitle);
+      const isAlreadyCompleted = currentUser.role === 'admin' || currentUser.isProfileCompleted === true || localCompleted || hasCoreInfo;
+
+      if (!isAlreadyCompleted) {
         setIsFirstLoginModalOpen(true);
+      } else {
+        setIsFirstLoginModalOpen(false);
       }
     }
   }, [currentUser, refreshTasks, refreshUsers, refreshProjects, refreshGoals, refreshFriends]);
@@ -1221,6 +1228,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     skills?: string[];
     bio?: string;
     coverImage?: string;
+    isProfileCompleted?: boolean;
     dailyTimeline?: Record<string, string>;
     avatar?: string | null;
     password?: string;
@@ -1229,14 +1237,18 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Merge returned fields into the current user (only fields that were sent)
     setCurrentUser((prev) => {
       if (!prev) return prev;
-      const merged = { ...prev };
+      const merged = { ...prev, isProfileCompleted: true };
       for (const k of Object.keys(updated) as (keyof typeof updated)[]) {
         if (updated[k] !== null && updated[k] !== undefined && updated[k] !== '') {
           (merged as any)[k] = updated[k];
-        } else if (k === 'avatar' && data.avatar === null || (k === 'avatar' && data.avatar === '')) {
+        } else if ((k === 'avatar' && data.avatar === null) || (k === 'avatar' && data.avatar === '')) {
           delete (merged as any).avatar;
         }
       }
+      merged.isProfileCompleted = true;
+      try {
+        localStorage.setItem('taskrooz_user_profile_completed_' + prev.id, 'true');
+      } catch {}
       return merged;
     });
     await refreshUsers();

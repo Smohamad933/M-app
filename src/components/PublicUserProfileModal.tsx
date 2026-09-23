@@ -95,7 +95,7 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cover / Ambient Header */}
-        <div className="relative h-44 sm:h-48 w-full bg-gradient-to-b from-slate-800 via-indigo-950/70 to-[#121418] overflow-hidden flex-shrink-0">
+        <div className="relative h-32 sm:h-36 w-full bg-gradient-to-b from-slate-800 via-indigo-950/70 to-[#121418] overflow-hidden flex-shrink-0">
           {/* Subtle ambient lighting */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-600/30 via-indigo-600/20 to-transparent" />
           
@@ -110,7 +110,7 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
               <X className="w-5 h-5" />
             </button>
 
-            <span className="text-[11px] font-bold text-white/60 tracking-wider">
+            <span className="text-[11px] font-bold text-white/70 tracking-wider">
               Profile Card
             </span>
 
@@ -128,37 +128,37 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
               <Bookmark className="w-4 h-4" />
             </button>
           </div>
+        </div>
 
-          {/* Hero Avatar overlapping the bottom boundary */}
-          <div className="absolute -bottom-8 inset-x-0 flex justify-center">
-            <div className="relative group">
-              <UserAvatar
-                user={user}
-                size="xl"
-                className="w-24 h-24 sm:w-26 sm:h-26 text-3xl shadow-2xl ring-4 ring-[#121418] rounded-full object-cover"
-              />
-              <span
-                className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-500 ring-4 ring-[#121418]"
-                title="آنلاین در سیستم"
-              />
-            </div>
+        {/* Hero Avatar outside overflow-hidden: NEVER clipped or sliced */}
+        <div className="relative -mt-14 flex justify-center z-20 flex-shrink-0">
+          <div className="relative group">
+            <UserAvatar
+              user={user}
+              size="2xl"
+              className="w-24 h-24 sm:w-26 sm:h-26 text-3xl shadow-2xl ring-4 ring-[#121418] rounded-full object-cover"
+            />
+            <span
+              className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-500 ring-4 ring-[#121418]"
+              title="آنلاین در سیستم"
+            />
           </div>
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="flex-1 overflow-y-auto px-5 pt-10 pb-6 space-y-4 no-scrollbar">
+        <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6 space-y-4 no-scrollbar">
           {/* User Name & Role Status */}
-          <div className="text-center space-y-1">
-            <div className="flex items-center justify-center gap-2">
+          <div className="text-center space-y-1.5">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <h3 className="text-lg sm:text-xl font-black text-white tracking-tight">
                 {user.name}
               </h3>
               {user.role === 'admin' ? (
-                <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold">
+                <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/25 text-indigo-300 border border-indigo-500/40 text-[10px] font-black inline-flex items-center whitespace-nowrap">
                   مدیر سیستم
                 </span>
               ) : isPro ? (
-                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold flex items-center gap-1">
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/25 text-amber-300 border border-amber-500/40 text-[10px] font-black inline-flex items-center gap-1 whitespace-nowrap">
                   <Sparkles className="w-3 h-3 text-amber-400" />
                   {user.subscription?.planType === '6_months'
                     ? 'اولترا'
@@ -283,7 +283,7 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
                 <span>درصد تعهد و پیشرفت</span>
               </div>
               <div className="text-base font-black text-emerald-400 font-mono">
-                %{toPersianDigits(user.progressPercent ?? 0)}
+                {toPersianDigits(user.progressPercent ?? 0)}٪
               </div>
             </div>
           </div>

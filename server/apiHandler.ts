@@ -793,6 +793,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       if (typeof (parsedBody as any).password === 'string' && (parsedBody as any).password) {
         self.password = (parsedBody as any).password.trim();
       }
+      self.isProfileCompleted = true;
       writeDb(db);
       sendJson(res, {
         message: 'پروفایل شما با موفقیت به‌روزرسانی شد.',
@@ -808,6 +809,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           birthDate: self.birthDate,
           jobTitle: self.jobTitle,
           avatar: self.avatar || null,
+          isProfileCompleted: true,
           skills: self.skills,
           dailyTimeline: self.dailyTimeline,
         },

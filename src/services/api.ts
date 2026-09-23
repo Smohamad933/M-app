@@ -509,6 +509,7 @@ export const api = {
     skills?: string[];
     bio?: string;
     coverImage?: string;
+    isProfileCompleted?: boolean;
     dailyTimeline?: Record<string, string>;
     avatar?: string | null;
     password?: string;

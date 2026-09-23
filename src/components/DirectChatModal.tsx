@@ -124,31 +124,31 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Chat Header */}
-        <div className="p-4 sm:px-6 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/70 dark:bg-zinc-950/70">
-          <div className="flex items-center gap-3">
-            <div className="relative">
+        <div className="p-4 sm:px-6 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-950/70 flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="relative flex-shrink-0">
               <UserAvatar
                 user={friend}
                 size="md"
-                className="ring-2 ring-emerald-500"
+                className="w-11 h-11 ring-2 ring-emerald-500 rounded-full"
               />
               <span className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-zinc-900 absolute bottom-0 left-0" />
             </div>
 
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-black text-sm text-slate-900 dark:text-white leading-snug">
+                <h3 className="font-black text-sm text-slate-900 dark:text-white leading-snug truncate">
                   {friend.name}
                 </h3>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">آنلاین</span>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex-shrink-0">آنلاین</span>
               </div>
-              <p className="text-[10px] font-mono text-slate-400 font-bold dir-ltr text-left">
+              <p className="text-[10px] font-mono text-slate-400 font-bold dir-ltr text-left truncate">
                 @{friend.username} {friend.numericId ? `(#${friend.numericId})` : ''}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               type="button"
               onClick={onClose}

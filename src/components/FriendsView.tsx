@@ -315,7 +315,7 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ onStartChat, onOpenCha
                     className="p-3.5 rounded-2xl bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 flex items-center justify-between gap-3"
                   >
                     <div className="flex items-center gap-3">
-                      <UserAvatar name={req.fromUserName} avatar={req.fromUserAvatar} size="md" />
+                      <UserAvatar name={req.fromUserName} avatar={req.fromUserAvatar} size="md" className="w-11 h-11 flex-shrink-0 rounded-full" />
                       <div>
                         <div className="text-xs font-black text-slate-900 dark:text-white">
                           {req.fromUserName}
@@ -423,26 +423,26 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ onStartChat, onOpenCha
                       return (
                         <div
                           key={user.id}
-                          className="p-4 rounded-2xl bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 flex items-center justify-between gap-3 shadow-2xs"
+                          className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 flex items-center justify-between gap-3 shadow-2xs"
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <UserAvatar user={user} size="md" />
+                            <UserAvatar user={user} size="md" className="w-11 h-11 flex-shrink-0 rounded-full" />
                             <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs font-black text-slate-900 truncate">
                                   {user.name}
                                 </span>
                                 {user.numericId && (
-                                  <span className="px-1.5 py-0.2 rounded bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-mono text-[9px] font-bold">
+                                  <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono text-[9px] font-bold border border-slate-200">
                                     #{user.numericId}
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[11px] font-mono text-slate-400 dir-ltr text-left">
+                              <div className="text-[11px] font-mono text-slate-500 dir-ltr text-right truncate">
                                 @{user.username}
                               </div>
                               {user.jobTitle && (
-                                <div className="text-[10px] text-slate-500 dark:text-zinc-400 truncate mt-0.5">
+                                <div className="text-[10px] text-slate-500 truncate mt-0.5">
                                   {user.jobTitle}
                                 </div>
                               )}

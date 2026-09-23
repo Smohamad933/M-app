@@ -20,20 +20,21 @@ export const TaskMasterHexagon: React.FC<{ size?: number; className?: string }> 
       
       {/* Center inner dark ring */}
       <circle cx="50" cy="52" r="14" fill="#090d16" />
-      <circle cx="50" cy="52" r="6" fill="#00b884" />
+      <circle cx="50" cy="52" r="8" fill="#00E676" />
+      <circle cx="50" cy="52" r="4.5" fill="#090d16" />
 
       <defs>
         <linearGradient id="hexTopGrad" x1="15" y1="20" x2="85" y2="40" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#06B6D4" />
-          <stop offset="1" stopColor="#3B82F6" />
+          <stop stopColor="#00B0FF" />
+          <stop offset="1" stopColor="#2979FF" />
         </linearGradient>
         <linearGradient id="hexLeftGrad" x1="15" y1="40" x2="50" y2="90" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#10B981" />
-          <stop offset="1" stopColor="#059669" />
+          <stop stopColor="#00E676" />
+          <stop offset="1" stopColor="#00B884" />
         </linearGradient>
         <linearGradient id="hexRightGrad" x1="50" y1="52" x2="85" y2="85" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#F97316" />
-          <stop offset="1" stopColor="#F43F5E" />
+          <stop stopColor="#FF6D00" />
+          <stop offset="1" stopColor="#F4511E" />
         </linearGradient>
       </defs>
     </svg>

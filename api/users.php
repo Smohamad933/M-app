@@ -69,6 +69,7 @@ if (in_array($method, ['PUT', 'POST']) && ($input['action'] ?? '') === 'update_p
             'jobTitle' => $fields['jobTitle'] ?? null,
             'skills' => $fields['skills'] ?? null,
             'dailyTimeline' => $fields['dailyTimeline'] ?? null,
+            'isProfileCompleted' => true,
         ],
     ]);
 }
