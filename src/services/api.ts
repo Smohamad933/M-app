@@ -1105,6 +1105,28 @@ export const api = {
     planType?: '1_month' | '3_months' | '6_months',
     expiresAt?: string
   ): Promise<void> {
+    try {
+      const raw = localStorage.getItem('taskrooz_registered_users');
+      if (raw) {
+        const list = JSON.parse(raw);
+        const updated = list.map((u: any) => {
+          if (u.id === userId || (u.username && u.username.toLowerCase() === userId.toLowerCase())) {
+            return {
+              ...u,
+              subscription: {
+                plan,
+                planType: planType || (plan === 'pro' ? '3_months' : undefined),
+                activatedAt: new Date().toISOString(),
+                expiresAt,
+              },
+            };
+          }
+          return u;
+        });
+        localStorage.setItem('taskrooz_registered_users', JSON.stringify(updated));
+      }
+    } catch {}
+
     await request('api/users.php', {
       method: 'POST',
       body: JSON.stringify({ action: 'set_subscription', userId, plan, planType, expiresAt }),

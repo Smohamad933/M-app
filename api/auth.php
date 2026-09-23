@@ -177,7 +177,8 @@ if ($action === 'login' || empty($action) && (isset($_GET['username']) || isset(
             'avatar' => $user['avatar'] ?? null,
             'skills' => $user['skills'] ?? [],
             'dailyTimeline' => $user['dailyTimeline'] ?? [],
-            'subscription' => $user['subscription'] ?? ['plan' => (($user['role'] ?? '') === 'admin' ? 'pro' : 'free')],
+            'subscription' => $user['subscription'] ?? ['plan' => ($user['role'] === 'admin' ? 'pro' : 'free')],
+            'isProfileCompleted' => !empty($user['isProfileCompleted']) || ($user['role'] === 'admin') || (!empty($user['birthDate']) && !empty($user['jobTitle']) && !empty($user['city'])),
             'createdAt' => $user['createdAt'] ?? date('Y-m-d H:i:s'),
         ],
         'token' => $token
@@ -209,7 +210,8 @@ if ($method === 'GET' && $action === 'me') {
             'avatar' => $user['avatar'] ?? null,
             'skills' => $user['skills'] ?? [],
             'dailyTimeline' => $user['dailyTimeline'] ?? [],
-            'subscription' => $user['subscription'] ?? ['plan' => (($user['role'] ?? '') === 'admin' ? 'pro' : 'free')],
+            'subscription' => $user['subscription'] ?? ['plan' => ($user['role'] === 'admin' ? 'pro' : 'free')],
+            'isProfileCompleted' => !empty($user['isProfileCompleted']) || ($user['role'] === 'admin') || (!empty($user['birthDate']) && !empty($user['jobTitle']) && !empty($user['city'])),
             'createdAt' => $user['createdAt'] ?? date('Y-m-d H:i:s'),
         ]
     ]);

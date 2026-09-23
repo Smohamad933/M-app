@@ -555,18 +555,18 @@ export const MainLayout: React.FC = () => {
                 {/* Subscription Pro Badge or Upgrade Button */}
                 {isPro ? (
                   <div
-                    className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-[10px] sm:text-[11px] font-black flex-shrink-0 shadow-2xs"
-                    title={`اشتراک ویژه ${currentUser?.subscription?.planType === '6_months' ? 'اولترا' : currentUser?.subscription?.planType === '1_month' ? 'پلاس' : 'پرو'} فعال است`}
+                    className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-amber-500/15 via-yellow-500/15 to-amber-500/15 border border-amber-500/35 text-amber-700 text-[10px] sm:text-[11px] font-black flex-shrink-0 shadow-2xs"
+                    title="اشتراک ویژه فعال است"
                   >
-                    <Sparkles className="w-3 h-3 text-amber-500" />
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
                     <span>
                       {currentUser?.role === 'admin'
-                        ? 'Pro (مدیر)'
+                        ? 'مدیر (Ultra)'
                         : currentUser?.subscription?.planType === '6_months'
-                        ? 'اولترا 💎'
+                        ? 'اولترا (Ultra)'
                         : currentUser?.subscription?.planType === '1_month'
-                        ? 'پلاس ⭐'
-                        : 'پرو ⭐'}
+                        ? 'پلاس (Plus)'
+                        : 'پرو (Pro)'}
                     </span>
                   </div>
                 ) : (
@@ -580,7 +580,7 @@ export const MainLayout: React.FC = () => {
                     title="ارتقاء به اشتراک ویژه نامحدود"
                   >
                     <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    <span>ارتقاء اشتراک</span>
+                    <span>ارتقاء Pro</span>
                   </button>
                 )}
 

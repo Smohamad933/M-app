@@ -352,6 +352,12 @@ class TaskRoozDB {
             }
         }
         if ($existingIdx >= 0) {
+            if (isset($this->data['users'][$existingIdx]['subscription'])) {
+                $userObj['subscription'] = $this->data['users'][$existingIdx]['subscription'];
+            }
+            if (isset($this->data['users'][$existingIdx]['status'])) {
+                $userObj['status'] = $this->data['users'][$existingIdx]['status'];
+            }
             $this->data['users'][$existingIdx] = array_merge($this->data['users'][$existingIdx], $userObj);
             $userObj = $this->data['users'][$existingIdx];
         } else {

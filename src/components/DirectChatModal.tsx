@@ -9,7 +9,8 @@ import {
   Send,
   CheckCheck,
   Sparkles,
-  Check,
+  CheckCircle2,
+  Clock,
 } from 'lucide-react';
 
 interface DirectChatModalProps {
@@ -19,29 +20,6 @@ interface DirectChatModalProps {
   onClose: () => void;
 }
 
-function parseSubscriptionRequest(text: string) {
-  if (!text || !text.includes('درخواست فعال‌سازی اشتراک')) return null;
-
-  let planType: '1_month' | '3_months' | '6_months' = '3_months';
-  let planName = 'پرو (Pro - ۳ ماهه)';
-
-  if (text.includes('اولترا') || text.includes('Ultra') || text.includes('۶ ماهه') || text.includes('۱۸۰ روز')) {
-    planType = '6_months';
-    planName = 'اولترا (Ultra - ۶ ماهه)';
-  } else if (text.includes('پلاس') || text.includes('Plus') || text.includes('۱ ماهه') || text.includes('۳۰ روز')) {
-    planType = '1_month';
-    planName = 'پلاس (Plus - ۱ ماهه)';
-  } else {
-    planType = '3_months';
-    planName = 'پرو (Pro - ۳ ماهه)';
-  }
-
-  const refMatch = text.match(/شماره پیگیری[^\n:]*:\s*([^\n]+)/);
-  const refNum = refMatch ? refMatch[1].trim() : '';
-
-  return { planType, planName, refNum };
-}
-
 export const DirectChatModal: React.FC<DirectChatModalProps> = ({
   friend: friendProp,
   peerUser,
@@ -49,12 +27,11 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
   onClose,
 }) => {
   const friend = peerUser || friendProp || null;
-  const { currentUser, setUserSubscription } = useTask();
+  const { currentUser, users, setUserSubscription } = useTask();
   const [messages, setMessages] = useState<DirectChatMessage[]>([]);
   const [inputVal, setInputVal] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [approvingMsgId, setApprovingMsgId] = useState<string | null>(null);
-  const [approvedMsgIds, setApprovedMsgIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const friendId = friend?.id;
@@ -83,29 +60,6 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
   }, [messages, isOpen]);
 
   if (!isOpen || !friend) return null;
-
-  const handleApproveSubscription = async (
-    msgId: string,
-    targetUserId: string,
-    planType: '1_month' | '3_months' | '6_months',
-    planName: string
-  ) => {
-    try {
-      setApprovingMsgId(msgId);
-      await setUserSubscription(targetUserId, 'pro', planType);
-      setApprovedMsgIds((prev) => new Set([...prev, msgId]));
-
-      const confirmText = `🎉 رسید پرداخت شما تایید شد و اشتراک ویژه «${planName}» با موفقیت برای حساب کاربری شما فعال گردید. هم‌اکنون دسترسی کامل و نامحدود برای شما برقرار است! ⭐`;
-      const reply = await api.sendDirectMessage(targetUserId, confirmText);
-      setMessages((prev) => [...prev, reply]);
-      sounds.playComplete();
-      await loadMessages();
-    } catch (err: any) {
-      alert(err.message || 'خطا در فعال‌سازی اشتراک');
-    } finally {
-      setApprovingMsgId(null);
-    }
-  };
 
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -136,6 +90,29 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
       alert(err.message || 'خطا در ارسال پیام');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleApproveSubscription = async (
+    msg: DirectChatMessage,
+    planType: '1_month' | '3_months' | '6_months',
+    planLabel: string
+  ) => {
+    if (!friendId) return;
+    setApprovingMsgId(msg.id);
+    try {
+      const days = planType === '6_months' ? 180 : planType === '3_months' ? 90 : 30;
+      const expiresAt = new Date(Date.now() + days * 86400000).toISOString();
+      await setUserSubscription(friendId, 'pro', planType, expiresAt);
+      sounds.playComplete();
+
+      const confirmationText = `✅ اشتراک ویژه «${planLabel}» شما با موفقیت تأیید و در سیستم فعال گردید. از امکانات تسک‌روز لذت ببرید! ⭐`;
+      const reply = await api.sendDirectMessage(friendId, confirmationText);
+      setMessages((prev) => [...prev, reply]);
+    } catch (err: any) {
+      alert(err.message || 'خطا در فعال‌سازی اشتراک');
+    } finally {
+      setApprovingMsgId(null);
     }
   };
 
@@ -202,8 +179,25 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
           {messages.map((msg) => {
             const isMe = msg.senderId === currentUser?.id;
             const timeStr = msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
-            const subReq = parseSubscriptionRequest(msg.text);
-            const isFriendPro = friend?.subscription?.plan === 'pro';
+
+            const isSubRequest =
+              msg.text.includes('درخواست فعال‌سازی اشتراک ویژه') ||
+              (msg.text.includes('پلن انتخابی:') && msg.text.includes('اطلاعات کارت'));
+
+            let detectedPlan: '1_month' | '3_months' | '6_months' = '1_month';
+            let detectedPlanLabel = 'پلاس Plus (۱ ماهه)';
+            if (msg.text.includes('اولترا') || msg.text.includes('Ultra') || msg.text.includes('۶ ماهه')) {
+              detectedPlan = '6_months';
+              detectedPlanLabel = 'اولترا Ultra (۶ ماهه)';
+            } else if (msg.text.includes('پرو') || msg.text.includes('Pro') || msg.text.includes('۳ ماهه')) {
+              detectedPlan = '3_months';
+              detectedPlanLabel = 'پرو Pro (۳ ماهه)';
+            }
+
+            const targetUserInDirectory = users.find((u) => u.id === friendId) || friend;
+            const isTargetPro =
+              targetUserInDirectory?.role === 'admin' ||
+              targetUserInDirectory?.subscription?.plan === 'pro';
 
             return (
               <div
@@ -211,54 +205,62 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
                 className={`flex flex-col ${isMe ? 'items-start' : 'items-end'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed space-y-1 shadow-2xs ${
+                  className={`max-w-[85%] sm:max-w-[80%] rounded-2xl p-3.5 text-xs leading-relaxed space-y-1.5 shadow-2xs ${
                     isMe
                       ? 'bg-[#121212] dark:bg-white text-white dark:text-zinc-900 rounded-br-xs'
                       : 'bg-white dark:bg-zinc-800 text-slate-800 dark:text-white border border-slate-200/80 dark:border-zinc-700 rounded-bl-xs'
                   }`}
                 >
-                  <p className="font-bold whitespace-pre-wrap">{msg.text}</p>
+                  <p className="font-bold select-text whitespace-pre-wrap">{msg.text}</p>
 
-                  {/* Interactive Subscription Approval Card */}
-                  {subReq && (
-                    <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/40 text-right space-y-2">
-                      <div className="flex items-center justify-between gap-1 flex-wrap">
-                        <span className="text-[11px] font-black text-amber-500 dark:text-amber-400 flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>درخواست فعال‌سازی {subReq.planName}</span>
-                        </span>
-                        {subReq.refNum && subReq.refNum !== '—' && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">
-                            کد: {subReq.refNum}
-                          </span>
-                        )}
-                      </div>
-
-                      {currentUser?.role === 'admin' && (
-                        <button
-                          type="button"
-                          disabled={approvingMsgId === msg.id}
-                          onClick={() => handleApproveSubscription(msg.id, friend.id, subReq.planType, subReq.planName)}
-                          className={`w-full py-2 px-3 rounded-lg font-black text-[11px] flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50 ${
-                            approvedMsgIds.has(msg.id) || isFriendPro
-                              ? 'bg-emerald-500 text-black hover:bg-emerald-400'
-                              : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black'
-                          }`}
-                        >
-                          {approvingMsgId === msg.id ? (
-                            <span>در حال فعال‌سازی...</span>
-                          ) : approvedMsgIds.has(msg.id) || isFriendPro ? (
+                  {/* ACTIONABLE SUBSCRIPTION ACTIVATION BUTTON IN CHAT */}
+                  {isSubRequest && (
+                    <div className="mt-2.5 pt-2.5 border-t border-amber-500/30">
+                      {currentUser?.role === 'admin' ? (
+                        isTargetPro ? (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-1.5 text-[11px] font-black text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded-xl border border-emerald-500/30">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>
+                                اشتراک ویژه این کاربر فعال است ({targetUserInDirectory?.subscription?.planType === '6_months' ? 'اولترا' : targetUserInDirectory?.subscription?.planType === '3_months' ? 'پرو' : 'پلاس'}) ✅
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={approvingMsgId === msg.id}
+                              onClick={() => handleApproveSubscription(msg, detectedPlan, detectedPlanLabel)}
+                              className="text-[10px] font-bold text-amber-400 hover:text-amber-300 underline cursor-pointer"
+                            >
+                              تمدید یا تغییر دوره به «{detectedPlanLabel}» ⚡
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={approvingMsgId === msg.id}
+                            onClick={() => handleApproveSubscription(msg, detectedPlan, detectedPlanLabel)}
+                            className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                          >
+                            <Sparkles className="w-4 h-4 fill-black" />
+                            <span>
+                              {approvingMsgId === msg.id ? 'در حال فعال‌سازی...' : `تأیید اشتراک و فعال‌سازی فوری ${detectedPlanLabel} ⚡`}
+                            </span>
+                          </button>
+                        )
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-300">
+                          {isTargetPro ? (
                             <>
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
-                              <span>اشتراک فعال است ✓ (تمدید)</span>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                              <span className="text-emerald-300">درخواست شما توسط مدیر تأیید شد و اشتراک فعال است ✅</span>
                             </>
                           ) : (
                             <>
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
-                              <span>تأیید پرداخت و فعال‌سازی فوری ✅</span>
+                              <Clock className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                              <span>درخواست ثبت شده — در انتظار تأیید پرداخت توسط مدیر...</span>
                             </>
                           )}
-                        </button>
+                        </div>
                       )}
                     </div>
                   )}
