@@ -24,6 +24,7 @@ interface UpgradeToProModalProps {
 
 const PRO_PLANS: {
   id: ProDurationPlan;
+  name: string;
   title: string;
   durationLabel: string;
   days: number;
@@ -34,16 +35,18 @@ const PRO_PLANS: {
 }[] = [
   {
     id: '1_month',
-    title: '۱ ماهه (۳۰ روز)',
-    durationLabel: '۳۰ روز دسترسی Pro',
+    name: 'پلاس (Plus)',
+    title: 'پلاس (Plus) — ۱ ماهه',
+    durationLabel: '۳۰ روز دسترسی پلاس',
     days: 30,
     price: '۲۹۰,۰۰۰ تومان',
     perMonth: 'ماهی ۲۹۰ هزار ت',
   },
   {
     id: '3_months',
-    title: '۳ ماهه (۹۰ روز)',
-    durationLabel: '۹۰ روز دسترسی ویژه',
+    name: 'پرو (Pro)',
+    title: 'پرو (Pro) — ۳ ماهه',
+    durationLabel: '۹۰ روز دسترسی ویژه پرو',
     days: 90,
     price: '۶۹۰,۰۰۰ تومان',
     perMonth: 'ماهی ۲۳۰ هزار ت (۲۰٪ تخفیف)',
@@ -52,12 +55,13 @@ const PRO_PLANS: {
   },
   {
     id: '6_months',
-    title: '۶ ماهه (۱۸۰ روز)',
-    durationLabel: '۱۸۰ روز دسترسی کامل',
+    name: 'اولترا (Ultra)',
+    title: 'اولترا (Ultra) — ۶ ماهه',
+    durationLabel: '۱۸۰ روز دسترسی کامل اولترا',
     days: 180,
     price: '۱,۱۹۰,۰۰۰ تومان',
     perMonth: 'ماهی ۱۹۸ هزار ت (۳۵٪ تخفیف)',
-    tag: 'بیشترین صرفه‌جویی 💎',
+    tag: 'بیشترین قدرت و تخفیف 💎',
   },
 ];
 

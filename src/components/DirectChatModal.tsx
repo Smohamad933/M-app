@@ -8,6 +8,8 @@ import {
   X,
   Send,
   CheckCheck,
+  Sparkles,
+  Check,
 } from 'lucide-react';
 
 interface DirectChatModalProps {
@@ -17,6 +19,29 @@ interface DirectChatModalProps {
   onClose: () => void;
 }
 
+function parseSubscriptionRequest(text: string) {
+  if (!text || !text.includes('درخواست فعال‌سازی اشتراک')) return null;
+
+  let planType: '1_month' | '3_months' | '6_months' = '3_months';
+  let planName = 'پرو (Pro - ۳ ماهه)';
+
+  if (text.includes('اولترا') || text.includes('Ultra') || text.includes('۶ ماهه') || text.includes('۱۸۰ روز')) {
+    planType = '6_months';
+    planName = 'اولترا (Ultra - ۶ ماهه)';
+  } else if (text.includes('پلاس') || text.includes('Plus') || text.includes('۱ ماهه') || text.includes('۳۰ روز')) {
+    planType = '1_month';
+    planName = 'پلاس (Plus - ۱ ماهه)';
+  } else {
+    planType = '3_months';
+    planName = 'پرو (Pro - ۳ ماهه)';
+  }
+
+  const refMatch = text.match(/شماره پیگیری[^\n:]*:\s*([^\n]+)/);
+  const refNum = refMatch ? refMatch[1].trim() : '';
+
+  return { planType, planName, refNum };
+}
+
 export const DirectChatModal: React.FC<DirectChatModalProps> = ({
   friend: friendProp,
   peerUser,
@@ -24,10 +49,12 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
   onClose,
 }) => {
   const friend = peerUser || friendProp || null;
-  const { currentUser } = useTask();
+  const { currentUser, setUserSubscription } = useTask();
   const [messages, setMessages] = useState<DirectChatMessage[]>([]);
   const [inputVal, setInputVal] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [approvingMsgId, setApprovingMsgId] = useState<string | null>(null);
+  const [approvedMsgIds, setApprovedMsgIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const friendId = friend?.id;
@@ -56,6 +83,29 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
   }, [messages, isOpen]);
 
   if (!isOpen || !friend) return null;
+
+  const handleApproveSubscription = async (
+    msgId: string,
+    targetUserId: string,
+    planType: '1_month' | '3_months' | '6_months',
+    planName: string
+  ) => {
+    try {
+      setApprovingMsgId(msgId);
+      await setUserSubscription(targetUserId, 'pro', planType);
+      setApprovedMsgIds((prev) => new Set([...prev, msgId]));
+
+      const confirmText = `🎉 رسید پرداخت شما تایید شد و اشتراک ویژه «${planName}» با موفقیت برای حساب کاربری شما فعال گردید. هم‌اکنون دسترسی کامل و نامحدود برای شما برقرار است! ⭐`;
+      const reply = await api.sendDirectMessage(targetUserId, confirmText);
+      setMessages((prev) => [...prev, reply]);
+      sounds.playComplete();
+      await loadMessages();
+    } catch (err: any) {
+      alert(err.message || 'خطا در فعال‌سازی اشتراک');
+    } finally {
+      setApprovingMsgId(null);
+    }
+  };
 
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -152,6 +202,8 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
           {messages.map((msg) => {
             const isMe = msg.senderId === currentUser?.id;
             const timeStr = msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+            const subReq = parseSubscriptionRequest(msg.text);
+            const isFriendPro = friend?.subscription?.plan === 'pro';
 
             return (
               <div
@@ -159,13 +211,58 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
                 className={`flex flex-col ${isMe ? 'items-start' : 'items-end'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl p-3 text-xs leading-relaxed space-y-1 shadow-2xs ${
+                  className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed space-y-1 shadow-2xs ${
                     isMe
                       ? 'bg-[#121212] dark:bg-white text-white dark:text-zinc-900 rounded-br-xs'
                       : 'bg-white dark:bg-zinc-800 text-slate-800 dark:text-white border border-slate-200/80 dark:border-zinc-700 rounded-bl-xs'
                   }`}
                 >
-                  <p className="font-bold">{msg.text}</p>
+                  <p className="font-bold whitespace-pre-wrap">{msg.text}</p>
+
+                  {/* Interactive Subscription Approval Card */}
+                  {subReq && (
+                    <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/40 text-right space-y-2">
+                      <div className="flex items-center justify-between gap-1 flex-wrap">
+                        <span className="text-[11px] font-black text-amber-500 dark:text-amber-400 flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>درخواست فعال‌سازی {subReq.planName}</span>
+                        </span>
+                        {subReq.refNum && subReq.refNum !== '—' && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">
+                            کد: {subReq.refNum}
+                          </span>
+                        )}
+                      </div>
+
+                      {currentUser?.role === 'admin' && (
+                        <button
+                          type="button"
+                          disabled={approvingMsgId === msg.id}
+                          onClick={() => handleApproveSubscription(msg.id, friend.id, subReq.planType, subReq.planName)}
+                          className={`w-full py-2 px-3 rounded-lg font-black text-[11px] flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50 ${
+                            approvedMsgIds.has(msg.id) || isFriendPro
+                              ? 'bg-emerald-500 text-black hover:bg-emerald-400'
+                              : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black'
+                          }`}
+                        >
+                          {approvingMsgId === msg.id ? (
+                            <span>در حال فعال‌سازی...</span>
+                          ) : approvedMsgIds.has(msg.id) || isFriendPro ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              <span>اشتراک فعال است ✓ (تمدید)</span>
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              <span>تأیید پرداخت و فعال‌سازی فوری ✅</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   <div
                     className={`flex items-center gap-1 text-[9px] font-mono ${
                       isMe ? 'text-slate-400 dark:text-zinc-500 justify-start' : 'text-slate-400 dark:text-zinc-400 justify-end'

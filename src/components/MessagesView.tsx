@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTask } from '../context/TaskContext';
 import { api } from '../services/api';
 import { UserAvatar } from './UserAvatar';
@@ -12,6 +12,8 @@ import {
   CheckCheck,
   Eye,
   Users,
+  Sparkles,
+  Check,
 } from 'lucide-react';
 
 interface MessagesViewProps {
@@ -19,11 +21,34 @@ interface MessagesViewProps {
   onOpenPublicProfile?: (user: User) => void;
 }
 
+function parseSubscriptionRequest(text: string) {
+  if (!text || !text.includes('درخواست فعال‌سازی اشتراک')) return null;
+
+  let planType: '1_month' | '3_months' | '6_months' = '3_months';
+  let planName = 'پرو (Pro - ۳ ماهه)';
+
+  if (text.includes('اولترا') || text.includes('Ultra') || text.includes('۶ ماهه') || text.includes('۱۸۰ روز')) {
+    planType = '6_months';
+    planName = 'اولترا (Ultra - ۶ ماهه)';
+  } else if (text.includes('پلاس') || text.includes('Plus') || text.includes('۱ ماهه') || text.includes('۳۰ روز')) {
+    planType = '1_month';
+    planName = 'پلاس (Plus - ۱ ماهه)';
+  } else {
+    planType = '3_months';
+    planName = 'پرو (Pro - ۳ ماهه)';
+  }
+
+  const refMatch = text.match(/شماره پیگیری[^\n:]*:\s*([^\n]+)/);
+  const refNum = refMatch ? refMatch[1].trim() : '';
+
+  return { planType, planName, refNum };
+}
+
 export const MessagesView: React.FC<MessagesViewProps> = ({
   initialChatUserId,
   onOpenPublicProfile,
 }) => {
-  const { currentUser, friends, users, setViewingPublicUser } = useTask();
+  const { currentUser, friends, users, setViewingPublicUser, setUserSubscription } = useTask();
 
   const [activePartner, setActivePartner] = useState<User | null>(null);
   const [conversations, setConversations] = useState<any[]>([]);
@@ -31,6 +56,8 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [approvingMsgId, setApprovingMsgId] = useState<string | null>(null);
+  const [approvedMsgIds, setApprovedMsgIds] = useState<Set<string>>(new Set());
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -129,17 +156,120 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     }
   };
 
-  // Filter conversations / colleagues by search query
-  const filteredPartners = (friends.length > 0 ? friends : users).filter((u) => {
-    if (u.id === currentUser?.id) return false;
+  // Direct 1-click Pro subscription approval from chat message
+  const handleApproveSubscriptionFromChat = async (
+    msgId: string,
+    partner: User,
+    planType: '1_month' | '3_months' | '6_months',
+    planName: string
+  ) => {
+    try {
+      setApprovingMsgId(msgId);
+      // 1. Activate user subscription
+      await setUserSubscription(partner.id, 'pro', planType);
+      setApprovedMsgIds((prev) => new Set([...prev, msgId]));
+
+      // 2. Send automatic confirmation message in the chat
+      const confirmText = `🎉 رسید پرداخت شما تایید شد و اشتراک ویژه «${planName}» با موفقیت برای حساب کاربری شما فعال گردید. هم‌اکنون دسترسی کامل و نامحدود برای شما برقرار است! ⭐`;
+      const reply = await api.sendDirectMessage(partner.id, confirmText);
+      setMessages((prev) => [...prev, reply]);
+      sounds.playComplete();
+
+      // 3. Update activePartner state locally
+      setActivePartner((prev) =>
+        prev && prev.id === partner.id
+          ? {
+              ...prev,
+              subscription: {
+                plan: 'pro',
+                planType,
+                activatedAt: new Date().toISOString(),
+              },
+            }
+          : prev
+      );
+    } catch (err: any) {
+      alert(err.message || 'خطا در فعال‌سازی اشتراک');
+    } finally {
+      setApprovingMsgId(null);
+    }
+  };
+
+  // Colleague chat partners list:
+  // For regular users: strictly friends ONLY + Admin (support) + anyone with an existing conversation
+  // For admin: existing conversation partners + friends + users who messaged
+  const eligiblePartners = useMemo(() => {
+    const list: User[] = [];
+    const seenIds = new Set<string>();
+
+    if (currentUser?.id) {
+      seenIds.add(currentUser.id);
+    }
+
+    // 1. Add all accepted friends
+    for (const f of friends) {
+      if (!seenIds.has(f.id)) {
+        seenIds.add(f.id);
+        list.push(f);
+      }
+    }
+
+    // 2. If regular user, add the system admin for support/subscription inquiries
+    if (currentUser?.role !== 'admin') {
+      const adminUser = users.find(
+        (u) =>
+          u.role === 'admin' ||
+          u.id === 'usr_admin_mohusyn' ||
+          u.username?.toLowerCase() === 'mohusyn'
+      );
+      if (adminUser && !seenIds.has(adminUser.id)) {
+        seenIds.add(adminUser.id);
+        list.push(adminUser);
+      }
+    }
+
+    // 3. Include any user with an existing conversation
+    for (const convo of conversations) {
+      if (convo.partnerId && !seenIds.has(convo.partnerId)) {
+        seenIds.add(convo.partnerId);
+        const existing = users.find((u) => u.id === convo.partnerId);
+        if (existing) {
+          list.push(existing);
+        } else {
+          list.push({
+            id: convo.partnerId,
+            name: convo.partnerName || 'کاربر سیستم',
+            username: convo.partnerUsername || '',
+            avatar: convo.partnerAvatar,
+            role: 'user',
+          } as User);
+        }
+      }
+    }
+
+    // 4. For Admin only: can also search or message all users
+    if (currentUser?.role === 'admin') {
+      for (const u of users) {
+        if (!seenIds.has(u.id)) {
+          seenIds.add(u.id);
+          list.push(u);
+        }
+      }
+    }
+
+    return list;
+  }, [currentUser, friends, users, conversations]);
+
+  const filteredPartners = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      (u.name || '').toLowerCase().includes(q) ||
-      (u.username || '').toLowerCase().includes(q) ||
-      String(u.numericId || '').includes(q)
+    if (!q) return eligiblePartners;
+    return eligiblePartners.filter(
+      (u) =>
+        (u.name || '').toLowerCase().includes(q) ||
+        (u.username || '').toLowerCase().includes(q) ||
+        String(u.numericId || '').includes(q)
     );
-  });
+  }, [eligiblePartners, searchQuery]);
 
   return (
     <div className="w-full space-y-4 animate-in fade-in pb-16" dir="rtl">
@@ -314,6 +444,9 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                   messages.map((m) => {
                     const isMe = m.senderId === currentUser?.id;
                     const timeStr = m.createdAt ? m.createdAt.slice(11, 16) : '';
+                    const subReq = parseSubscriptionRequest(m.text);
+                    const isTargetPro = activePartner.subscription?.plan === 'pro';
+                    const targetPlanType = activePartner.subscription?.planType;
 
                     return (
                       <div
@@ -328,13 +461,87 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                         />
 
                         <div
-                          className={`max-w-[75%] rounded-2xl p-3.5 text-xs leading-relaxed space-y-1 shadow-2xs ${
+                          className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3.5 text-xs leading-relaxed space-y-1 shadow-2xs ${
                             isMe
                               ? 'bg-[#121212] text-white rounded-bl-none'
                               : 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white rounded-br-none border border-slate-200 dark:border-zinc-700/80'
                           }`}
                         >
                           <p className="whitespace-pre-wrap font-medium select-text">{m.text}</p>
+
+                          {/* Interactive Subscription Approval Card (Image 1 Requirement) */}
+                          {subReq && (
+                            <div className="mt-2.5 p-3 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 text-right space-y-2">
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <div className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400 font-black text-xs">
+                                  <Sparkles className="w-4 h-4 text-amber-400" />
+                                  <span>درخواست فعال‌سازی: {subReq.planName}</span>
+                                </div>
+                                {subReq.refNum && subReq.refNum !== '—' && (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-mono">
+                                    پیگیری: {subReq.refNum}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="text-[11px] text-slate-600 dark:text-zinc-300 flex items-center gap-1.5">
+                                <span>وضعیت اشتراک فعلی کاربر:</span>
+                                {isTargetPro ? (
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                    <span>
+                                      اشتراک ویژه (
+                                      {targetPlanType === '6_months'
+                                        ? 'اولترا'
+                                        : targetPlanType === '1_month'
+                                        ? 'پلاس'
+                                        : 'پرو'}
+                                      ) فعال است
+                                    </span>
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-600 dark:text-amber-400 font-bold">نسخه رایگان (در انتظار تأیید)</span>
+                                )}
+                              </div>
+
+                              {currentUser?.role === 'admin' && (
+                                <div className="pt-1">
+                                  <button
+                                    type="button"
+                                    disabled={approvingMsgId === m.id}
+                                    onClick={() =>
+                                      handleApproveSubscriptionFromChat(
+                                        m.id,
+                                        activePartner,
+                                        subReq.planType,
+                                        subReq.planName
+                                      )
+                                    }
+                                    className={`w-full py-2.5 px-3.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50 ${
+                                      approvedMsgIds.has(m.id) || isTargetPro
+                                        ? 'bg-emerald-500 text-black hover:bg-emerald-400'
+                                        : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black'
+                                    }`}
+                                  >
+                                    {approvingMsgId === m.id ? (
+                                      <span>در حال ثبت و فعال‌سازی...</span>
+                                    ) : approvedMsgIds.has(m.id) || isTargetPro ? (
+                                      <>
+                                        <Check className="w-4 h-4 stroke-[3]" />
+                                        <span>اشتراک تایید و فعال است ✓ (تمدید / به‌روزرسانی مجدد)</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Check className="w-4 h-4 stroke-[3]" />
+                                        <span>تأیید پرداخت و فعال‌سازی فوری {subReq.planName} ✅</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           <div
                             className={`flex items-center gap-1.5 text-[9px] pt-0.5 justify-end ${
                               isMe ? 'text-zinc-400' : 'text-slate-400'

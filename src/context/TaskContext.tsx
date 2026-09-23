@@ -21,7 +21,7 @@ import type {
   AppOperatingMode,
   TaskWorkLog,
 } from '../types';
-import { api, DEFAULT_GLOBAL_SETTINGS, onSyncEvent, broadcastSync } from '../services/api';
+import { api, DEFAULT_GLOBAL_SETTINGS, onSyncEvent, broadcastSync, getAuthToken } from '../services/api';
 import { getTodayISO, formatPersianDate, toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import { DEFAULT_APP_TEXTS } from '../utils/appTexts';
@@ -770,21 +770,46 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sounds.playPop();
   };
 
+  const refreshCurrentUser = useCallback(async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const freshUser = await api.getCurrentUser();
+      if (freshUser) {
+        setCurrentUser((prev) => {
+          if (!prev) return freshUser;
+          const planChanged = prev.subscription?.plan !== freshUser.subscription?.plan;
+          const planTypeChanged = prev.subscription?.planType !== freshUser.subscription?.planType;
+          const statusChanged = prev.status !== freshUser.status;
+          if (planChanged || planTypeChanged || statusChanged || prev.role !== freshUser.role) {
+            try {
+              localStorage.setItem('taskrooz_current_user', JSON.stringify(freshUser));
+            } catch {}
+            return freshUser;
+          }
+          return prev;
+        });
+      }
+    } catch {}
+  }, []);
+
   const setUserSubscription = async (
     userId: string,
     plan: 'free' | 'pro',
     planType?: '1_month' | '3_months' | '6_months',
     expiresAt?: string
   ) => {
+    const selectedPlanType = planType || (plan === 'pro' ? '3_months' : undefined);
     // 1. Optimistic local state update immediately
     setUsers((prev) =>
       prev.map((u) =>
         u.id === userId || u.username === userId
           ? {
               ...u,
+              status: plan === 'pro' ? 'active' : u.status,
               subscription: {
                 plan,
-                planType: planType || (plan === 'pro' ? '1_month' : undefined),
+                planType: selectedPlanType,
                 activatedAt: new Date().toISOString(),
                 expiresAt,
               },
@@ -792,26 +817,41 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           : u
       )
     );
-    if (currentUser?.id === userId || currentUser?.username === userId) {
-      setCurrentUser((prev) =>
-        prev
-          ? {
-              ...prev,
-              subscription: {
-                plan,
-                planType: planType || (plan === 'pro' ? '1_month' : undefined),
-                activatedAt: new Date().toISOString(),
-                expiresAt,
-              },
-            }
-          : prev
-      );
+    if (
+      currentUser?.id === userId ||
+      currentUser?.username?.toLowerCase() === userId?.toLowerCase()
+    ) {
+      setCurrentUser((prev) => {
+        if (!prev) return prev;
+        const updated = {
+          ...prev,
+          status: (plan === 'pro' ? 'active' : prev.status) as any,
+          subscription: {
+            plan,
+            planType: selectedPlanType,
+            activatedAt: new Date().toISOString(),
+            expiresAt,
+          },
+        };
+        try {
+          localStorage.setItem('taskrooz_current_user', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
     }
 
     // 2. Persist to API
-    await api.setUserSubscription(userId, plan, planType, expiresAt);
+    await api.setUserSubscription(userId, plan, selectedPlanType, expiresAt);
 
-    // 3. Re-sync from server
+    // 3. Broadcast real-time sync across tabs/devices
+    broadcastSync('USER_SUBSCRIPTION_UPDATED', {
+      userId,
+      plan,
+      planType: selectedPlanType,
+      expiresAt,
+    });
+
+    // 4. Re-sync from server
     await refreshUsers();
     sounds.playComplete();
   };
@@ -945,13 +985,16 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUsers = useCallback(async () => {
     if (currentUser) {
       try {
-        const uList = await api.getUsers();
-        setUsers(uList);
+        if (currentUser.role === 'admin') {
+          const uList = await api.getUsers();
+          setUsers(uList);
+        }
+        await refreshCurrentUser();
       } catch (e) {
         console.error('Error fetching users:', e);
       }
     }
-  }, [currentUser]);
+  }, [currentUser, refreshCurrentUser]);
 
   // Real-time synchronization: BroadcastChannel + periodic polling
   useEffect(() => {
@@ -970,6 +1013,36 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (currentUser?.role === 'admin') {
           refreshUsers();
         }
+      } else if (event === 'USER_SUBSCRIPTION_UPDATED') {
+        const targetUserId = (payload as any)?.userId;
+        const newPlan = (payload as any)?.plan;
+        const newPlanType = (payload as any)?.planType;
+        if (
+          currentUser &&
+          (currentUser.id === targetUserId ||
+            currentUser.username?.toLowerCase() === targetUserId?.toLowerCase())
+        ) {
+          setCurrentUser((prev) => {
+            if (!prev) return prev;
+            const updated = {
+              ...prev,
+              status: (newPlan === 'pro' ? 'active' : prev.status) as any,
+              subscription: {
+                ...(prev.subscription || {}),
+                plan: newPlan,
+                planType: newPlanType,
+                activatedAt: new Date().toISOString(),
+              },
+            };
+            try {
+              localStorage.setItem('taskrooz_current_user', JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+          sounds.playComplete();
+        }
+        refreshUsers();
+        refreshCurrentUser();
       } else if (event === 'TASK_UPDATED' || event === 'TASK_CREATED' || event === 'TASK_DELETED' || event === 'PROJECT_SYNC') {
         refreshTasks();
         refreshProjects();
@@ -985,21 +1058,22 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       pollInterval = setInterval(refreshUsers, 3000);
     }
 
-    // Background sync for team project tasks and live progress (every 3 seconds)
-    let taskPoll: any = null;
+    // Background sync for tasks, projects & current user profile/subscription (every 3 seconds)
+    let syncPoll: any = null;
     if (currentUser) {
-      taskPoll = setInterval(() => {
+      syncPoll = setInterval(() => {
         refreshTasks();
         refreshProjects();
+        refreshCurrentUser();
       }, 3000);
     }
 
     return () => {
       unsubscribe();
       if (pollInterval) clearInterval(pollInterval);
-      if (taskPoll) clearInterval(taskPoll);
+      if (syncPoll) clearInterval(syncPoll);
     };
-  }, [currentUser, refreshUsers, refreshTasks, refreshProjects, refreshActiveRoom]);
+  }, [currentUser, refreshUsers, refreshTasks, refreshProjects, refreshActiveRoom, refreshCurrentUser]);
 
   useEffect(() => {
     if (currentUser) {

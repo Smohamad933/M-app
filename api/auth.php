@@ -162,9 +162,12 @@ if ($action === 'login' || empty($action) && (isset($_GET['username']) || isset(
         'message' => 'ورود با موفقیت انجام شد.',
         'user' => [
             'id' => $user['id'],
+            'numericId' => $user['numericId'] ?? 1000,
             'username' => $user['username'],
             'name' => $user['name'],
             'role' => $user['role'] ?? 'user',
+            'status' => $user['status'] ?? 'active',
+            'isDemo' => !empty($user['isDemo']),
             'phone' => $user['phone'] ?? '',
             'email' => $user['email'] ?? '',
             'province' => $user['province'] ?? '',
@@ -174,6 +177,7 @@ if ($action === 'login' || empty($action) && (isset($_GET['username']) || isset(
             'avatar' => $user['avatar'] ?? null,
             'skills' => $user['skills'] ?? [],
             'dailyTimeline' => $user['dailyTimeline'] ?? [],
+            'subscription' => $user['subscription'] ?? ['plan' => (($user['role'] ?? '') === 'admin' ? 'pro' : 'free')],
             'createdAt' => $user['createdAt'] ?? date('Y-m-d H:i:s'),
         ],
         'token' => $token
@@ -190,9 +194,12 @@ if ($method === 'GET' && $action === 'me') {
         'authenticated' => true,
         'user' => [
             'id' => $user['id'],
+            'numericId' => $user['numericId'] ?? 1000,
             'username' => $user['username'],
             'name' => $user['name'],
-            'role' => $user['role'],
+            'role' => $user['role'] ?? 'user',
+            'status' => $user['status'] ?? 'active',
+            'isDemo' => !empty($user['isDemo']),
             'phone' => $user['phone'] ?? '',
             'email' => $user['email'] ?? '',
             'province' => $user['province'] ?? '',
@@ -202,6 +209,7 @@ if ($method === 'GET' && $action === 'me') {
             'avatar' => $user['avatar'] ?? null,
             'skills' => $user['skills'] ?? [],
             'dailyTimeline' => $user['dailyTimeline'] ?? [],
+            'subscription' => $user['subscription'] ?? ['plan' => (($user['role'] ?? '') === 'admin' ? 'pro' : 'free')],
             'createdAt' => $user['createdAt'] ?? date('Y-m-d H:i:s'),
         ]
     ]);

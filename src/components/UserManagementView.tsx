@@ -201,10 +201,10 @@ export const UserManagementView: React.FC = () => {
 
       await setUserSubscription(userId, plan, planType, expiresAt);
       sounds.playComplete();
-      const planName = planType === '6_months' ? '۶ ماهه' : planType === '3_months' ? '۳ ماهه' : '۱ ماهه';
+      const planName = planType === '6_months' ? 'اولترا (۶ ماهه)' : planType === '3_months' ? 'پرو (۳ ماهه)' : 'پلاس (۱ ماهه)';
       setSubNotice(
         plan === 'pro'
-          ? `اشتراک ویژه Pro (${planName}) برای کاربر با موفقیت فعال شد.`
+          ? `اشتراک ویژه ${planName} برای کاربر با موفقیت فعال شد.`
           : 'اشتراک کاربر به نسخه رایگان تغییر یافت.'
       );
       setTimeout(() => setSubNotice(null), 3500);
@@ -1148,7 +1148,7 @@ export const UserManagementView: React.FC = () => {
                           ) : isUserPro ? (
                             <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
                               <Sparkles className="w-3 h-3 text-amber-400" />
-                              <span>Pro ({u.subscription?.planType === '6_months' ? '۶ ماهه' : u.subscription?.planType === '3_months' ? '۳ ماهه' : '۱ ماهه'})</span>
+                              <span>{u.subscription?.planType === '6_months' ? 'اولترا (Ultra)' : u.subscription?.planType === '1_month' ? 'پلاس (Plus)' : 'پرو (Pro)'}</span>
                             </span>
                           ) : (
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/50">
@@ -3036,14 +3036,14 @@ export const UserManagementView: React.FC = () => {
               >
                 <div>
                   <div className="text-xs font-black text-white group-hover:text-amber-300">
-                    پلن ۱ ماهه (۳۰ روز)
+                    پلن پلاس (Plus) — ۱ ماهه (۳۰ روز)
                   </div>
                   <div className="text-[10px] text-zinc-400 mt-0.5">
                     دسترسی استاندارد نامحدود تسک‌ها و پروژه‌ها
                   </div>
                 </div>
                 <span className="px-3 py-1.5 rounded-xl bg-zinc-700 text-zinc-200 text-[10px] font-bold group-hover:bg-amber-500 group-hover:text-black transition-colors">
-                  فعال‌سازی ۱ ماهه
+                  فعال‌سازی پلاس
                 </span>
               </button>
 
@@ -3055,7 +3055,7 @@ export const UserManagementView: React.FC = () => {
               >
                 <div>
                   <div className="text-xs font-black text-amber-300 flex items-center gap-2">
-                    <span>پلن ۳ ماهه (۹۰ روز)</span>
+                    <span>پلن پرو (Pro) — ۳ ماهه (۹۰ روز)</span>
                     <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500 text-black font-black">
                       پیشنهاد ویژه ⭐
                     </span>
@@ -3065,7 +3065,7 @@ export const UserManagementView: React.FC = () => {
                   </div>
                 </div>
                 <span className="px-3 py-1.5 rounded-xl bg-amber-500 text-black text-[10px] font-black group-hover:bg-amber-400 transition-colors">
-                  فعال‌سازی ۳ ماهه ⭐
+                  فعال‌سازی پرو ⭐
                 </span>
               </button>
 
@@ -3077,7 +3077,7 @@ export const UserManagementView: React.FC = () => {
               >
                 <div>
                   <div className="text-xs font-black text-white group-hover:text-amber-300 flex items-center gap-2">
-                    <span>پلن ۶ ماهه (۱۸۰ روز)</span>
+                    <span>پلن اولترا (Ultra) — ۶ ماهه (۱۸۰ روز)</span>
                     <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-black">
                       ۳۵٪ تخفیف 💎
                     </span>
@@ -3087,7 +3087,7 @@ export const UserManagementView: React.FC = () => {
                   </div>
                 </div>
                 <span className="px-3 py-1.5 rounded-xl bg-zinc-700 text-zinc-200 text-[10px] font-bold group-hover:bg-amber-500 group-hover:text-black transition-colors">
-                  فعال‌سازی ۶ ماهه
+                  فعال‌سازی اولترا
                 </span>
               </button>
             </div>
