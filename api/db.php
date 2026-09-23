@@ -289,6 +289,9 @@ class TaskRoozDB {
         $numericId = ($role === 'admin' && $usernameLower === 'mohusyn') ? 1000 : ($maxNum + 1);
         $isCompleted = !empty($birthDate) && !empty($jobTitle) && !empty($city);
 
+        $status = $extra['status'] ?? 'active';
+        $isDemo = !empty($extra['isDemo']);
+
         $userObj = [
             'id' => $id,
             'numericId' => $numericId,
@@ -297,6 +300,8 @@ class TaskRoozDB {
             'password_hash' => $hash,
             'name' => trim($name),
             'role' => $role,
+            'status' => $status,
+            'isDemo' => $isDemo,
             'phone' => $phone,
             'email' => $email,
             'province' => $province,
@@ -420,6 +425,8 @@ class TaskRoozDB {
                 'avatar' => $u['avatar'] ?? null,
                 'skills' => $u['skills'] ?? [],
                 'dailyTimeline' => $u['dailyTimeline'] ?? [],
+                'status' => $u['status'] ?? 'active',
+                'isDemo' => !empty($u['isDemo']),
                 'subscription' => $u['subscription'] ?? ['plan' => (($u['role'] ?? '') === 'admin' ? 'pro' : 'free')],
                 'createdAt' => $u['createdAt'] ?? $u['created_at'] ?? date('Y-m-d H:i:s'),
                 'totalTasks' => $total,
@@ -442,6 +449,9 @@ class TaskRoozDB {
                         'activatedAt' => date('Y-m-d H:i:s'),
                         'expiresAt' => $expiresAt,
                     ];
+                    if ($plan === 'pro') {
+                        $u['status'] = 'active';
+                    }
                     $updated = true;
                     break;
                 }

@@ -168,11 +168,15 @@ export const UserManagementView: React.FC = () => {
     updateGlobalSettings,
     deleteUsersBulk,
     setUserSubscription,
+    appOperatingMode,
+    setAppOperatingMode,
+    approveUserRegistration,
   } = useTask();
 
   // Active view tab inside Admin Panel
   const [adminTab, setAdminTab] = useState<'users' | 'settings' | 'texts' | 'developers' | 'apk'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const pendingUsers = users.filter((u) => u.status === 'pending_approval');
   const [planFilter, setPlanFilter] = useState<'all' | 'pro' | 'free'>('all');
 
   // Subscription management state
@@ -919,6 +923,101 @@ export const UserManagementView: React.FC = () => {
             </div>
           )}
 
+          {/* System Operating Mode Switcher: Commercial Pro vs Community Demo */}
+          <div className="p-4 rounded-3xl bg-zinc-900 border border-zinc-800 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h4 className="text-xs font-black text-white flex items-center gap-2">
+                  <span>سیستم کاری سامانه:</span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
+                      appOperatingMode === 'community_demo'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                    }`}
+                  >
+                    {appOperatingMode === 'community_demo' ? 'نسخه دمو و کامیونیتی تست 🚀' : 'سیستم تجاری و پلن‌های Pro 💳'}
+                  </span>
+                </h4>
+                <p className="text-[11px] text-zinc-400 mt-1">
+                  {appOperatingMode === 'community_demo'
+                    ? 'در این حالت، ثبت‌نام کاربران نیازمند تأیید مدیر است و پس از تأیید، اشتراک نامحدود دمو دریافت می‌کنند.'
+                    : 'در حالت تجاری، کاربران عادی رایگان هستند و جهت ارتقا به پلن‌های ۱، ۳ یا ۶ ماهه Pro کارت‌به‌کارت می‌کنند.'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAppOperatingMode('commercial');
+                    sounds.playPop();
+                  }}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    appOperatingMode === 'commercial'
+                      ? 'bg-amber-500 text-black font-black shadow-sm'
+                      : 'bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700'
+                  }`}
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>حالت ۱: تجاری و فروش Pro</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAppOperatingMode('community_demo');
+                    sounds.playPop();
+                  }}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    appOperatingMode === 'community_demo'
+                      ? 'bg-emerald-500 text-black font-black shadow-sm'
+                      : 'bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>حالت ۲: دمو و کامیونیتی تست 🚀</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Pending Demo Users Notification Card */}
+          {pendingUsers.length > 0 && (
+            <div className="p-4 rounded-3xl bg-amber-500/10 border-2 border-amber-500/40 text-amber-300 space-y-3 animate-in fade-in">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+                  <span className="text-xs font-black">
+                    🔔 {toPersianDigits(pendingUsers.length)} کاربر جدید در انتظار تأیید و فعال‌سازی اشتراک دمو هستند:
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                {pendingUsers.map((pu) => (
+                  <div key={pu.id} className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-xs font-black text-white truncate">{pu.name}</div>
+                      <div className="text-[10px] text-zinc-400 font-mono">@{pu.username}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        approveUserRegistration(pu.id);
+                        sounds.playComplete();
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[11px] transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1"
+                    >
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>تأیید دمو</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Filter Pills for Subscription */}
           <div className="flex items-center gap-2">
             <button
@@ -1037,6 +1136,15 @@ export const UserManagementView: React.FC = () => {
                               <ShieldCheck className="w-3 h-3" />
                               مدیر کل
                             </span>
+                          ) : u.status === 'pending_approval' ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold animate-pulse">
+                              در انتظار تأیید دمو ⏳
+                            </span>
+                          ) : u.isDemo ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                              <Sparkles className="w-3 h-3 text-emerald-400" />
+                              <span>دمو کامیونیتی (Beta) 🚀</span>
+                            </span>
                           ) : isUserPro ? (
                             <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
                               <Sparkles className="w-3 h-3 text-amber-400" />
@@ -1132,6 +1240,22 @@ export const UserManagementView: React.FC = () => {
 
                       {/* Action buttons */}
                       <div className="flex items-center gap-2 flex-wrap">
+                        {/* Approval button if user is pending in demo mode */}
+                        {u.status === 'pending_approval' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              approveUserRegistration(u.id);
+                              sounds.playComplete();
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                            title="تأیید فوری حساب کاربری و فعال‌سازی کامل اشتراک دمو"
+                          >
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            <span>تأیید دمو 🚀</span>
+                          </button>
+                        )}
+
                         {/* Subscription Management for non-admin */}
                         {u.role !== 'admin' && (
                           <button

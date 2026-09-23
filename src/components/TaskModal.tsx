@@ -328,28 +328,85 @@ export const TaskModal: React.FC = () => {
             </div>
 
             {/* 24-Hour Time Picker */}
-            <div className="space-y-1.5 pt-2 border-t border-slate-200">
-              <label className="font-extrabold text-slate-700 flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5">
+            <div className="space-y-2 pt-2.5 border-t border-slate-200">
+              <div className="flex items-center justify-between">
+                <label className="font-extrabold text-slate-700 flex items-center gap-1.5 text-xs">
                   <Clock className="w-3.5 h-3.5 text-amber-500" />
                   <span>ساعت اجرا (۲۴ ساعته)</span>
-                </span>
-                <span className="text-[11px] font-normal text-slate-400">
-                  جهت نمایش در دیلی پلنر ساعتی
-                </span>
-              </label>
+                </label>
+                {time ? (
+                  <span className="text-[11px] font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                    ساعت {toPersianDigits(time)}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-slate-400">
+                    بدون زمان مشخص
+                  </span>
+                )}
+              </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs font-mono outline-none cursor-pointer focus:border-slate-400"
-                />
+              {/* Styled 24h Selectors (No native browser overlay) */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-slate-500 font-bold block">ساعت (۰۰ تا ۲۳)</span>
+                  <select
+                    value={time ? time.split(':')[0] : ''}
+                    onChange={(e) => {
+                      const h = e.target.value;
+                      if (!h) {
+                        setTime('');
+                      } else {
+                        const m = time ? time.split(':')[1] || '00' : '00';
+                        setTime(`${h}:${m}`);
+                      }
+                    }}
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs font-mono font-bold outline-none cursor-pointer focus:border-slate-400"
+                  >
+                    <option value="">بدون ساعت</option>
+                    {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((h) => (
+                      <option key={h} value={h}>
+                        ساعت {toPersianDigits(h)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                {/* Quick hour buttons */}
+                <div className="space-y-1">
+                  <span className="text-[10px] text-slate-500 font-bold block">دقیقه</span>
+                  <select
+                    value={time ? time.split(':')[1] : '00'}
+                    onChange={(e) => {
+                      const m = e.target.value;
+                      const h = time ? time.split(':')[0] || '12' : '12';
+                      setTime(`${h}:${m}`);
+                    }}
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs font-mono font-bold outline-none cursor-pointer focus:border-slate-400"
+                  >
+                    {['00', '15', '30', '45'].map((m) => (
+                      <option key={m} value={m}>
+                        {toPersianDigits(m)} دقیقه
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Quick hour presets & now */}
+              <div className="flex items-center justify-between gap-1 flex-wrap pt-1">
                 <div className="flex flex-wrap gap-1">
-                  {['09:00', '12:00', '15:00', '18:00'].map((preset) => (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const now = new Date();
+                      const hh = String(now.getHours()).padStart(2, '0');
+                      const mm = String(Math.floor(now.getMinutes() / 15) * 15).padStart(2, '0');
+                      setTime(`${hh}:${mm}`);
+                    }}
+                    className="text-[10px] px-2 py-1 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 font-bold hover:bg-indigo-100 transition-colors cursor-pointer"
+                  >
+                    همین الان ⚡
+                  </button>
+                  {['09:00', '12:00', '15:00', '18:00', '21:00'].map((preset) => (
                     <button
                       key={preset}
                       type="button"
@@ -363,16 +420,17 @@ export const TaskModal: React.FC = () => {
                       {toPersianDigits(preset)}
                     </button>
                   ))}
-                  {time && (
-                    <button
-                      type="button"
-                      onClick={() => setTime('')}
-                      className="text-[10px] text-slate-400 hover:text-rose-500 px-1 py-1 cursor-pointer font-bold"
-                    >
-                      پاک کردن
-                    </button>
-                  )}
                 </div>
+
+                {time && (
+                  <button
+                    type="button"
+                    onClick={() => setTime('')}
+                    className="text-[10px] text-slate-400 hover:text-rose-500 px-1 py-1 cursor-pointer font-bold"
+                  >
+                    پاک کردن زمان
+                  </button>
+                )}
               </div>
             </div>
           </div>

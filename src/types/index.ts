@@ -10,12 +10,24 @@ export interface UserTimeline {
   sleep?: string;
 }
 
+export interface UserDeviceSession {
+  id: string;
+  deviceName: string;
+  browser: string;
+  os: string;
+  ip?: string;
+  lastActive: string;
+  isCurrent: boolean;
+}
+
 export interface User {
   id: string;
   numericId?: number; // Unique system-assigned numeric ID (e.g. 1000, 1001...)
   username: string;
   name: string;
   role: UserRole;
+  status?: 'active' | 'pending_approval' | 'suspended';
+  isDemo?: boolean;
   avatar?: string; // data URL (base64) — uploaded profile photo
   phone?: string;
   email?: string;
@@ -26,6 +38,7 @@ export interface User {
   skills?: string[];
   dailyTimeline?: UserTimeline;
   subscription?: UserSubscription;
+  deviceSessions?: UserDeviceSession[];
   isProfileCompleted?: boolean;
   createdAt: string;
   totalTasks?: number;
@@ -47,6 +60,14 @@ export type UncompletedCategory =
   | 'distraction'
   | 'external'
   | 'other';
+
+export interface TaskWorkLog {
+  userId: string;
+  userName: string;
+  userAvatar?: string | null;
+  minutes: number;
+  loggedAt: string;
+}
 
 export interface Task {
   id: string;
@@ -70,6 +91,7 @@ export interface Task {
   subtasks: SubTask[];
   isPinned?: boolean;
   focusMinutesSpent?: number;
+  workLogs?: TaskWorkLog[];
   reminder?: boolean;
   repeat?: 'none' | 'daily' | 'weekly';
   createdAt: string;
@@ -269,6 +291,8 @@ export interface AppDeveloper {
   link?: string;
 }
 
+export type AppOperatingMode = 'commercial' | 'community_demo';
+
 export interface GlobalSystemSettings {
   broadcastNotice: {
     enabled: boolean;
@@ -290,6 +314,8 @@ export interface GlobalSystemSettings {
   };
   dailyMantra: string;
   jobCategories?: string[];
+  /** Operating Mode: 'commercial' (Free vs Pro) or 'community_demo' (Community testing beta with approval) */
+  appOperatingMode?: 'commercial' | 'community_demo';
   /** Admin-configured developers of this app (displayed on login/register screen) */
   appDevelopers?: AppDeveloper[];
   /** Admin-editable app texts (UI labels & messages). Missing keys fall back to defaults. */

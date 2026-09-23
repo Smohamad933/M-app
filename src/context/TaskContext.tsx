@@ -18,8 +18,10 @@ import type {
   GlobalSystemSettings,
   SystemFontOption,
   FriendRequestItem,
+  AppOperatingMode,
+  TaskWorkLog,
 } from '../types';
-import { api, DEFAULT_GLOBAL_SETTINGS, onSyncEvent } from '../services/api';
+import { api, DEFAULT_GLOBAL_SETTINGS, onSyncEvent, broadcastSync } from '../services/api';
 import { getTodayISO, formatPersianDate, toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import { DEFAULT_APP_TEXTS } from '../utils/appTexts';
@@ -196,6 +198,14 @@ interface TaskContextType {
   setIsFirstLoginModalOpen: (open: boolean) => void;
   viewingPublicUser: User | null;
   setViewingPublicUser: (user: User | null) => void;
+
+  // Operating Mode & Community Demo & Work Logger
+  isDemoMode: boolean;
+  appOperatingMode: AppOperatingMode;
+  setAppOperatingMode: (mode: AppOperatingMode) => Promise<void>;
+  logTaskWorkTime: (taskId: string, minutes: number) => Promise<void>;
+  deleteMyAccount: () => Promise<void>;
+  approveUserRegistration: (userId: string) => Promise<void>;
 
   // Settings
   updateSettings: (partial: Partial<AppSettings>) => void;
@@ -423,7 +433,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const [selectedDate, setSelectedDate] = useState<string>(getTodayISO);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [taskViewMode, setTaskViewMode] = useState<TaskViewMode>('list');
+  const [taskViewMode, setTaskViewMode] = useState<TaskViewMode>('kanban');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [selectedFilterUserId, setSelectedFilterUserId] = useState<string | null>(null);
@@ -461,22 +471,16 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isFirstLoginModalOpen, setIsFirstLoginModalOpen] = useState(false);
   const [viewingPublicUser, setViewingPublicUser] = useState<User | null>(null);
 
-  // Sync settings with audio, theme and persistence
+  // Sync settings with audio and light theme
   useEffect(() => {
     sounds.enabled = settings.soundEnabled;
     sounds.hapticEnabled = settings.hapticEnabled;
     
-    const isDark = settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.documentElement.classList.add('light');
-    }
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
 
     try {
-      localStorage.setItem('taskrooz_settings', JSON.stringify(settings));
+      localStorage.setItem('taskrooz_settings', JSON.stringify({ ...settings, theme: 'light' }));
     } catch {}
   }, [settings]);
 
@@ -659,7 +663,76 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const isPro = currentUser?.role === 'admin' || currentUser?.subscription?.plan === 'pro';
+  const appOperatingMode: AppOperatingMode = globalSettings?.appOperatingMode || 'commercial';
+  const isDemoMode = appOperatingMode === 'community_demo';
+  const isPro = isDemoMode || currentUser?.role === 'admin' || currentUser?.subscription?.plan === 'pro';
+
+  const setAppOperatingMode = async (mode: AppOperatingMode) => {
+    await updateGlobalSettings({ appOperatingMode: mode });
+    broadcastSync('SETTINGS_UPDATED', { appOperatingMode: mode });
+    sounds.playComplete();
+  };
+
+  const logTaskWorkTime = async (taskId: string, minutes: number) => {
+    if (!currentUser || minutes <= 0) return;
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    const newLog: TaskWorkLog = {
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userAvatar: currentUser.avatar || null,
+      minutes,
+      loggedAt: new Date().toISOString(),
+    };
+
+    const updatedLogs = [...(task.workLogs || []), newLog];
+    const totalMinutes = (task.focusMinutesSpent || 0) + minutes;
+
+    const updatedTask: Task = {
+      ...task,
+      focusMinutesSpent: totalMinutes,
+      workLogs: updatedLogs,
+    };
+
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));
+    await api.updateTask(updatedTask);
+    broadcastSync('TASK_UPDATED', { taskId, projectId: task.projectId });
+    sounds.playComplete();
+  };
+
+  const deleteMyAccount = async () => {
+    if (!currentUser) return;
+    if (currentUser.id === 'usr_admin_mohusyn' || (currentUser.username || '').toLowerCase() === 'mohusyn') {
+      alert('حساب کاربری مدیر اصلی محافظت‌شده است و قابل حذف نیست.');
+      return;
+    }
+    await api.deleteUser(currentUser.id, currentUser.username);
+    broadcastSync('USER_DELETED', { id: currentUser.id, username: currentUser.username });
+    await logout();
+  };
+
+  const approveUserRegistration = async (userId: string) => {
+    await api.setUserSubscription(userId, 'pro', '3_months');
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId
+          ? {
+              ...u,
+              status: 'active',
+              isDemo: true,
+              subscription: {
+                plan: 'pro',
+                planType: '3_months',
+                activatedAt: new Date().toISOString(),
+              },
+            }
+          : u
+      )
+    );
+    await refreshUsers();
+    sounds.playComplete();
+  };
 
   const refreshFriends = useCallback(async () => {
     if (!currentUser) return;
@@ -880,7 +953,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser]);
 
-  // Real-time synchronization: BroadcastChannel + periodic polling for Admin
+  // Real-time synchronization: BroadcastChannel + periodic polling
   useEffect(() => {
     const unsubscribe = onSyncEvent((event, payload) => {
       if (event === 'USER_REGISTERED') {
@@ -897,6 +970,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (currentUser?.role === 'admin') {
           refreshUsers();
         }
+      } else if (event === 'TASK_UPDATED' || event === 'TASK_CREATED' || event === 'TASK_DELETED' || event === 'PROJECT_SYNC') {
+        refreshTasks();
+        refreshProjects();
+      } else if (event === 'SETTINGS_UPDATED') {
+        api.getGlobalSettings().then(setGlobalSettings).catch(() => {});
       } else if (event === 'ROOM_SYNC') {
         refreshActiveRoom();
       }
@@ -907,11 +985,21 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       pollInterval = setInterval(refreshUsers, 3000);
     }
 
+    // Background sync for team project tasks and live progress (every 3 seconds)
+    let taskPoll: any = null;
+    if (currentUser) {
+      taskPoll = setInterval(() => {
+        refreshTasks();
+        refreshProjects();
+      }, 3000);
+    }
+
     return () => {
       unsubscribe();
       if (pollInterval) clearInterval(pollInterval);
+      if (taskPoll) clearInterval(taskPoll);
     };
-  }, [currentUser?.role, refreshUsers, refreshActiveRoom]);
+  }, [currentUser, refreshUsers, refreshTasks, refreshProjects, refreshActiveRoom]);
 
   useEffect(() => {
     if (currentUser) {
@@ -1177,6 +1265,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     setTasks((prev) => [created, ...prev]);
     sounds.playPop();
+    broadcastSync('TASK_CREATED', { taskId: created.id, projectId: created.projectId });
     refreshUsers();
     refreshProjects();
     return created;
@@ -1186,17 +1275,20 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await api.updateTask(updatedTask);
     setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
     sounds.playPop();
+    broadcastSync('TASK_UPDATED', { taskId: updatedTask.id, projectId: updatedTask.projectId });
     refreshUsers();
     refreshProjects();
   };
 
   const deleteTask = async (id: string) => {
+    const target = tasks.find((t) => t.id === id);
     await api.deleteTask(id);
     setTasks((prev) => prev.filter((t) => t.id !== id));
     if (activeFocusTaskId === id) {
       setActiveFocusTaskId(null);
     }
     sounds.playPop();
+    broadcastSync('TASK_DELETED', { taskId: id, projectId: target?.projectId });
     refreshUsers();
     refreshProjects();
   };
@@ -1226,6 +1318,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     await api.toggleTask(id);
+    broadcastSync('TASK_UPDATED', { taskId: id, projectId: task.projectId });
     refreshUsers();
     refreshProjects();
   };
@@ -1451,6 +1544,13 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsFirstLoginModalOpen,
       viewingPublicUser,
       setViewingPublicUser,
+      // Operating Mode & Work Logger
+      isDemoMode,
+      appOperatingMode,
+      setAppOperatingMode,
+      logTaskWorkTime,
+      deleteMyAccount,
+      approveUserRegistration,
     }),
     [
       currentUser,
@@ -1493,6 +1593,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isUpgradeModalOpen,
       isFirstLoginModalOpen,
       viewingPublicUser,
+      isDemoMode,
+      appOperatingMode,
     ]
   );
 

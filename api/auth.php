@@ -58,6 +58,9 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
         }
     }
 
+    $globalSettings = $db->getGlobalSettings();
+    $isDemoMode = ($globalSettings['appOperatingMode'] ?? '') === 'community_demo';
+
     $extra = [
         'phone' => trim($input['phone'] ?? ''),
         'email' => trim($input['email'] ?? $input['gmail'] ?? ''),
@@ -67,6 +70,8 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
         'jobTitle' => trim($input['jobTitle'] ?? $input['job_title'] ?? ''),
         'skills' => is_array($input['skills'] ?? null) ? $input['skills'] : [],
         'dailyTimeline' => is_array($input['dailyTimeline'] ?? null) ? $input['dailyTimeline'] : [],
+        'status' => $isDemoMode ? 'pending_approval' : 'active',
+        'isDemo' => $isDemoMode,
     ];
 
     $created = $db->createUser($username, $password, $name, 'user', $extra);
@@ -75,13 +80,20 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
     $_SESSION['user_id'] = $created['id'];
     $token = base64_encode($created['id'] . ':' . time());
 
+    $successMsg = $isDemoMode
+        ? 'ثبت‌نام شما با موفقیت انجام شد. حساب کاربری شما در نسخه دموی کامیونیتی، پس از فعال‌سازی دستی مدیر تایید می‌گردد.'
+        : 'حساب کاربری شما با موفقیت در سامانه ایجاد شد.';
+
     jsonResponse([
-        'message' => 'حساب کاربری شما با موفقیت در سامانه ایجاد شد.',
+        'message' => $successMsg,
         'user' => [
             'id' => $created['id'],
+            'numericId' => $created['numericId'] ?? 1000,
             'username' => $created['username'],
             'name' => $created['name'],
             'role' => $created['role'],
+            'status' => $created['status'] ?? 'active',
+            'isDemo' => !empty($created['isDemo']),
             'phone' => $created['phone'] ?? '',
             'email' => $created['email'] ?? '',
             'province' => $created['province'] ?? '',
@@ -89,6 +101,7 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
             'birthDate' => $created['birthDate'] ?? '',
             'jobTitle' => $created['jobTitle'] ?? '',
             'skills' => $created['skills'] ?? [],
+            'subscription' => $created['subscription'] ?? ['plan' => 'free'],
             'createdAt' => $created['createdAt'] ?? date('Y-m-d H:i:s'),
         ],
         'token' => $token

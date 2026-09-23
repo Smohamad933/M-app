@@ -46,7 +46,7 @@ import {
   Users,
   BarChart3,
   Sun,
-  Moon,
+  Eye,
   LogOut,
   Search,
   Plus,
@@ -102,6 +102,7 @@ export const MainLayout: React.FC = () => {
     isUpgradeModalOpen,
     setIsUpgradeModalOpen,
     friends,
+    viewingPublicUser,
     setViewingPublicUser,
   } = useTask();
 
@@ -408,23 +409,21 @@ export const MainLayout: React.FC = () => {
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
-            >
-              {settings.theme === 'dark' ? (
-                <>
-                  <Sun className="w-4 h-4 text-amber-500" />
-                  <span>حالت روز</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-4 h-4 text-slate-500" />
-                  <span>حالت شب</span>
-                </>
-              )}
-            </button>
+            {/* View My Public Profile Button */}
+            {currentUser && (
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setViewingPublicUser(currentUser);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-bold text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+                title="مشاهده نحوه نمایش پروفایل شما برای سایر همکاران"
+              >
+                <Eye className="w-4 h-4 text-indigo-500" />
+                <span>پروفایل من (دید همکاران)</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -600,10 +599,10 @@ export const MainLayout: React.FC = () => {
                     type="button"
                     onClick={() => {
                       sounds.playPop();
-                      setIsProfileModalOpen(true);
+                      setViewingPublicUser(currentUser);
                     }}
                     className="flex items-center gap-1.5 sm:gap-2 sm:pl-3 sm:pr-1 p-0.5 rounded-full border border-slate-200/80 hover:border-slate-300 transition-colors bg-white shadow-2xs cursor-pointer flex-shrink-0"
-                    title="مشاهده و ویرایش پروفایل"
+                    title="مشاهده پروفایل و شناسنامه من"
                   >
                     <UserAvatar
                       name={currentUser.name}
@@ -1174,21 +1173,14 @@ export const MainLayout: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' });
+                  setIsMobileMenuOpen(false);
+                  sounds.playPop();
+                  setViewingPublicUser(currentUser);
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100 font-bold text-xs"
               >
-                {settings.theme === 'dark' ? (
-                  <>
-                    <Sun className="w-4 h-4 text-amber-500" />
-                    <span>حالت روز</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon className="w-4 h-4 text-slate-500" />
-                    <span>حالت شب</span>
-                  </>
-                )}
+                <Eye className="w-4 h-4 text-indigo-500" />
+                <span>پروفایل من (دید همکاران)</span>
               </button>
 
               <button
@@ -1257,15 +1249,24 @@ export const MainLayout: React.FC = () => {
         onClose={() => setIsFirstLoginModalOpen(false)}
       />
 
-      {/* Colleague Public Profile Card */}
-      {inspectedUser && (
+      {/* Colleague or Self Public Profile Card */}
+      {(inspectedUser || viewingPublicUser) && (
         <PublicUserProfileModal
-          isOpen={Boolean(inspectedUser)}
-          user={inspectedUser}
-          onClose={() => setInspectedUser(null)}
+          isOpen={Boolean(inspectedUser || viewingPublicUser)}
+          user={inspectedUser || viewingPublicUser}
+          onClose={() => {
+            setInspectedUser(null);
+            setViewingPublicUser(null);
+          }}
           onStartChat={(peer) => {
             setInspectedUser(null);
+            setViewingPublicUser(null);
             setDirectChatUser(peer as any);
+          }}
+          onEditProfile={() => {
+            setInspectedUser(null);
+            setViewingPublicUser(null);
+            setIsProfileModalOpen(true);
           }}
         />
       )}

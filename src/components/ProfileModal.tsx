@@ -20,6 +20,9 @@ import {
   UserRound,
   Sparkles,
   ShieldCheck,
+  Laptop,
+  Smartphone,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface ProfileModalProps {
@@ -88,7 +91,7 @@ const BIRTH_YEARS = Array.from({ length: 66 }, (_, i) => String(1395 - i));
 const BIRTH_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
-  const { currentUser, updateMyProfile, isPro, setIsUpgradeModalOpen } = useTask();
+  const { currentUser, updateMyProfile, isPro, setIsUpgradeModalOpen, deleteMyAccount } = useTask();
 
   const [name, setName] = useState(currentUser?.name || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
@@ -117,7 +120,28 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Active Device detection
+  const isMobileDevice = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  const browserName = typeof navigator !== 'undefined'
+    ? /Edg/i.test(navigator.userAgent) ? 'مایکروسافت اج'
+    : /Chrome/i.test(navigator.userAgent) ? 'گوگل کروم'
+    : /Firefox/i.test(navigator.userAgent) ? 'موزیلا فایرفاکس'
+    : /Safari/i.test(navigator.userAgent) ? 'اپل سافاری'
+    : 'مرورگر وب'
+    : 'مرورگر وب';
+  const osName = typeof navigator !== 'undefined'
+    ? /Android/i.test(navigator.userAgent) ? 'اندروید'
+    : /iPhone|iPad/i.test(navigator.userAgent) ? 'iOS'
+    : /Windows/i.test(navigator.userAgent) ? 'ویندوز'
+    : /Macintosh|Mac OS/i.test(navigator.userAgent) ? 'مک او اس'
+    : /Linux/i.test(navigator.userAgent) ? 'لینوکس'
+    : 'سیستم‌عامل نامشخص'
+    : 'سیستم‌عامل نامشخص';
 
   const cities = IRAN_PROVINCES.find((p) => p.name === province)?.cities || [];
 
@@ -531,6 +555,119 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
             className={inputCls}
           />
         </div>
+
+        {/* Active Sessions & Devices */}
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              {isMobileDevice ? <Smartphone className="w-3.5 h-3.5 text-slate-500" /> : <Laptop className="w-3.5 h-3.5 text-slate-500" />}
+              <span>دستگاه‌ها و نشست‌های فعال</span>
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold border border-emerald-200 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              آنلاین و متصل
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-white border border-slate-200/60 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+                {isMobileDevice ? <Smartphone className="w-4 h-4" /> : <Laptop className="w-4 h-4" />}
+              </div>
+              <div>
+                <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <span>{osName} • {browserName}</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-normal">این دستگاه</span>
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">
+                  موقعیت تقریبی: {city || province || 'ایران'} • آخرین فعالیت: هم‌اکنون
+                </div>
+              </div>
+            </div>
+            <div className="text-[11px] font-bold text-emerald-600 font-mono">
+              فعال 🟢
+            </div>
+          </div>
+        </div>
+
+        {/* Danger Zone: Delete Account */}
+        {currentUser?.role !== 'admin' && currentUser?.id !== 'usr_admin_mohusyn' && (
+          <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-rose-700 flex items-center gap-1.5">
+                <ShieldAlert className="w-4 h-4 text-rose-600" />
+                <span>ناحیه خطر (مدیریت حساب)</span>
+              </span>
+            </div>
+            <p className="text-[11px] text-rose-600/80 leading-relaxed">
+              با حذف حساب کاربری، کلیه تسک‌ها، پروژه‌ها، یادداشت‌ها و اطلاعات ثبت‌شده شما برای همیشه پاک شده و قابل بازیابی نخواهد بود.
+            </p>
+
+            {!showDeleteConfirm ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteConfirm(true);
+                  sounds.playPop();
+                }}
+                className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>حذف دائمی حساب کاربری</span>
+              </button>
+            ) : (
+              <div className="p-3.5 rounded-xl bg-white border border-rose-300 space-y-2.5 animate-in fade-in">
+                <div className="text-xs font-bold text-slate-800">
+                  جهت تأیید نهایی، لطفاً نام کاربری خود (<span className="text-rose-600 font-mono">@{currentUser?.username}</span>) را دقیق وارد کنید:
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={deleteConfirmInput}
+                    onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                    placeholder={currentUser?.username}
+                    className="flex-1 px-3 py-1.5 rounded-lg border border-rose-300 text-xs font-mono outline-none focus:border-rose-600"
+                    dir="ltr"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (deleteConfirmInput.trim() !== currentUser?.username) {
+                        alert('نام کاربری وارد شده با نام کاربری شما تطابق ندارد.');
+                        return;
+                      }
+                      if (!confirm('آیا از حذف دائمی حساب خود و تمامی داده‌های آن اطمینان کامل دارید؟ این عمل غیرقابل بازگشت است.')) {
+                        return;
+                      }
+                      try {
+                        setIsDeletingAccount(true);
+                        await deleteMyAccount();
+                        onClose();
+                      } catch (err: any) {
+                        alert(err.message || 'خطا در حذف حساب کاربری');
+                        setIsDeletingAccount(false);
+                      }
+                    }}
+                    disabled={isDeletingAccount || deleteConfirmInput.trim() !== currentUser?.username}
+                    className="px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-black text-xs transition-all cursor-pointer disabled:opacity-40"
+                  >
+                    {isDeletingAccount ? 'در حال حذف...' : 'تأیید و حذف'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setDeleteConfirmInput('');
+                    }}
+                    className="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
+                  >
+                    انصراف
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t border-slate-100 flex-wrap gap-2">

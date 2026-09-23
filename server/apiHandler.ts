@@ -22,6 +22,8 @@ interface DBUser {
   password: string;
   name: string;
   role: 'admin' | 'user';
+  status?: 'active' | 'pending_approval' | 'suspended';
+  isDemo?: boolean;
   phone?: string;
   email?: string;
   province?: string;
@@ -584,6 +586,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
       const nextNumericId = Math.max(1000, ...db.users.map((u) => u.numericId || 1000)) + 1;
       const isProfileCompleted = Boolean(body.birthDate && body.jobTitle && body.city);
+      const isDemoMode = (db.globalSettings as any)?.appOperatingMode === 'community_demo';
+      const userStatus: 'active' | 'pending_approval' = isDemoMode ? 'pending_approval' : 'active';
 
       const newUser: DBUser = {
         id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
@@ -592,6 +596,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         password,
         name,
         role: 'user', // Always user, never admin!
+        status: userStatus,
+        isDemo: isDemoMode,
         phone: body.phone?.trim(),
         email: body.email?.trim(),
         province: body.province?.trim(),
@@ -610,13 +616,17 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
       const token = Buffer.from(`${newUser.id}:${Date.now()}`).toString('base64');
       sendJson(res, {
-        message: 'ثبت‌نام با موفقیت انجام شد.',
+        message: isDemoMode
+          ? 'ثبت‌نام با موفقیت انجام شد. حساب کاربری شما در نسخه دمو پس از تأیید مدیر فعال خواهد شد.'
+          : 'ثبت‌نام با موفقیت انجام شد.',
         user: {
           id: newUser.id,
           numericId: newUser.numericId,
           username: newUser.username,
           name: newUser.name,
           role: newUser.role,
+          status: newUser.status,
+          isDemo: newUser.isDemo,
           phone: newUser.phone,
           email: newUser.email,
           province: newUser.province,
@@ -1033,6 +1043,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           username: u.username,
           name: u.name,
           role: u.role,
+          status: u.status || 'active',
+          isDemo: Boolean(u.isDemo),
           phone: u.phone,
           numericId: u.numericId || 1000,
           email: u.email,

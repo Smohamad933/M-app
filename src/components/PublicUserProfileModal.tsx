@@ -23,6 +23,7 @@ interface PublicUserProfileModalProps {
   onClose: () => void;
   onStartChat?: (user: User) => void;
   onInviteToProject?: (user: User) => void;
+  onEditProfile?: () => void;
 }
 
 export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
@@ -30,6 +31,7 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
   onClose,
   onStartChat,
   onInviteToProject,
+  onEditProfile,
 }) => {
   const { currentUser, friends, sendFriendRequest, removeFriend } = useTask();
   const [copiedId, setCopiedId] = useState(false);
@@ -249,6 +251,26 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
                 <span>دعوت به پروژه تیمی 📁</span>
               </button>
             )}
+          </div>
+        )}
+
+        {/* Action Buttons for Myself */}
+        {isMe && (
+          <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
+            <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 text-[11px] text-indigo-900 leading-relaxed text-center font-medium">
+              این پیش‌نمایش شناسنامه عمومی شماست؛ سایر کاربران و همکاران پروفایل شما را به این صورت مشاهده می‌کنند.
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                if (onEditProfile) onEditProfile();
+              }}
+              className="w-full py-2.5 rounded-xl bg-[#121212] hover:bg-black text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Briefcase className="w-4 h-4 text-[#00b884]" />
+              <span>ویرایش اطلاعات و شناسنامه من ✏️</span>
+            </button>
           </div>
         )}
       </div>
