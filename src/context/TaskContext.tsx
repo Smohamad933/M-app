@@ -17,6 +17,7 @@ import type {
   UserTimeline,
   GlobalSystemSettings,
   SystemFontOption,
+  FriendRequestItem,
 } from '../types';
 import { api, DEFAULT_GLOBAL_SETTINGS, onSyncEvent } from '../services/api';
 import { getTodayISO, formatPersianDate, toPersianDigits } from '../utils/persianDate';
@@ -172,6 +173,25 @@ interface TaskContextType {
   addCategory: (category: { name: string; color: string; icon: string }) => Promise<Category>;
   deleteCategory?: (id: string) => Promise<void>;
   
+  // Friends & Colleague Network
+  friends: User[];
+  friendRequests: { incoming: FriendRequestItem[]; outgoing: FriendRequestItem[] };
+  refreshFriends: () => Promise<void>;
+  sendFriendRequest: (toUserId: string, projectId?: string, projectName?: string) => Promise<any>;
+  acceptFriendRequest: (requestId: string) => Promise<any>;
+  rejectFriendRequest: (requestId: string) => Promise<any>;
+  removeFriend: (friendId: string) => Promise<any>;
+
+  // Subscription & Identity
+  isPro: boolean;
+  setUserSubscription: (userId: string, plan: 'free' | 'pro', expiresAt?: string) => Promise<void>;
+  isUpgradeModalOpen: boolean;
+  setIsUpgradeModalOpen: (open: boolean) => void;
+  isFirstLoginModalOpen: boolean;
+  setIsFirstLoginModalOpen: (open: boolean) => void;
+  viewingPublicUser: User | null;
+  setViewingPublicUser: (user: User | null) => void;
+
   // Settings
   updateSettings: (partial: Partial<AppSettings>) => void;
   getDailySummaryText: () => string;
@@ -426,6 +446,16 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [dailyNotes, setDailyNotes] = useState<Record<string, string>>({});
   const [incompleteModalTask, setIncompleteModalTask] = useState<Task | null>(null);
 
+  // Friends & Colleague Network state
+  const [friends, setFriends] = useState<User[]>([]);
+  const [friendRequests, setFriendRequests] = useState<{ incoming: FriendRequestItem[]; outgoing: FriendRequestItem[] }>({
+    incoming: [],
+    outgoing: [],
+  });
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isFirstLoginModalOpen, setIsFirstLoginModalOpen] = useState(false);
+  const [viewingPublicUser, setViewingPublicUser] = useState<User | null>(null);
+
   // Sync settings with audio, theme and persistence
   useEffect(() => {
     sounds.enabled = settings.soundEnabled;
@@ -624,6 +654,53 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const isPro = currentUser?.role === 'admin' || currentUser?.subscription?.plan === 'pro';
+
+  const refreshFriends = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const fList = await api.getFriends();
+      setFriends(fList);
+      const reqs = await api.getFriendRequests();
+      setFriendRequests(reqs);
+    } catch {}
+  }, [currentUser]);
+
+  const sendFriendRequest = async (toUserId: string, projectId?: string, projectName?: string) => {
+    const res = await api.sendFriendRequest(toUserId, projectId, projectName);
+    await refreshFriends();
+    return res;
+  };
+
+  const acceptFriendRequest = async (requestId: string) => {
+    const res = await api.acceptFriendRequest(requestId);
+    await refreshFriends();
+    await refreshProjects();
+    sounds.playComplete();
+    return res;
+  };
+
+  const rejectFriendRequest = async (requestId: string) => {
+    const res = await api.rejectFriendRequest(requestId);
+    await refreshFriends();
+    return res;
+  };
+
+  const removeFriend = async (friendId: string) => {
+    await api.removeFriend(friendId);
+    await refreshFriends();
+    sounds.playPop();
+  };
+
+  const setUserSubscription = async (userId: string, plan: 'free' | 'pro', expiresAt?: string) => {
+    await api.setUserSubscription(userId, plan, expiresAt);
+    await refreshUsers();
+    if (currentUser?.id === userId) {
+      setCurrentUser((prev) => (prev ? { ...prev, subscription: { plan, expiresAt } } : prev));
+    }
+    sounds.playComplete();
+  };
+
   const refreshProjects = useCallback(async () => {
     try {
       const pList = await api.getTeamProjects();
@@ -640,6 +717,14 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     icon?: string;
     memberIds?: string[];
   }): Promise<TeamProject> => {
+    if (!isPro) {
+      const myProjects = projects.filter((p) => p.creatorId === currentUser?.id);
+      if (myProjects.length >= 1) {
+        setIsUpgradeModalOpen(true);
+        sounds.playPop();
+        throw new Error('در پلن رایگان فقط مجاز به ایجاد ۱ پروژه تیمی هستید. جهت ایجاد پروژه‌های نامحدود، حساب خود را به اشتراک ویژه (Pro) ارتقا دهید.');
+      }
+    }
     const created = await api.createTeamProject(data);
     setProjects((prev) => [created, ...prev]);
     sounds.playComplete();
@@ -792,8 +877,13 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshUsers();
       refreshProjects();
       refreshGoals();
+      refreshFriends();
+
+      if (currentUser.role !== 'admin' && currentUser.isProfileCompleted === false) {
+        setIsFirstLoginModalOpen(true);
+      }
     }
-  }, [currentUser, refreshTasks, refreshUsers, refreshProjects, refreshGoals]);
+  }, [currentUser, refreshTasks, refreshUsers, refreshProjects, refreshGoals, refreshFriends]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -1031,6 +1121,14 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const addTask = async (taskData: TaskCreateInput): Promise<Task> => {
+    if (!isPro) {
+      const activeTasksCount = tasks.filter((t) => t.userId === currentUser?.id && !t.completed).length;
+      if (activeTasksCount >= 5) {
+        setIsUpgradeModalOpen(true);
+        sounds.playPop();
+        throw new Error('سقف تسک‌های فعال در پلن رایگان ۵ عدد است. لطفاً جهت ثبت تسک‌های بیشتر، حساب خود را به نسخه ویژه (Pro) ارتقا دهید.');
+      }
+    }
     const created = await api.createTask({
       ...taskData,
       userId: taskData.userId || currentUser?.id || 'usr_admin_1',
@@ -1294,6 +1392,23 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addCustomFont,
       uploadCustomFont,
       deleteCustomFont,
+      // Friends & Colleague Network
+      friends,
+      friendRequests,
+      refreshFriends,
+      sendFriendRequest,
+      acceptFriendRequest,
+      rejectFriendRequest,
+      removeFriend,
+      // Subscription & Public Profile
+      isPro,
+      setUserSubscription,
+      isUpgradeModalOpen,
+      setIsUpgradeModalOpen,
+      isFirstLoginModalOpen,
+      setIsFirstLoginModalOpen,
+      viewingPublicUser,
+      setViewingPublicUser,
     }),
     [
       currentUser,
@@ -1329,6 +1444,13 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       globalSettings,
       allAvailableFonts,
       customFonts,
+      friends,
+      friendRequests,
+      refreshFriends,
+      isPro,
+      isUpgradeModalOpen,
+      isFirstLoginModalOpen,
+      viewingPublicUser,
     ]
   );
 

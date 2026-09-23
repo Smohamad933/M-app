@@ -2,8 +2,22 @@ import fs from 'fs';
 import path from 'path';
 import type { IncomingMessage, ServerResponse } from 'http';
 
+function normalizePersianText(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/[ي]/g, 'ی')
+    .replace(/[ك]/g, 'ک')
+    .replace(/[ة]/g, 'ه')
+    .replace(/[٠-٩]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1728))
+    .replace(/[۰-۹]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1776))
+    .replace(/^[@#]/, '')
+    .trim()
+    .toLowerCase();
+}
+
 interface DBUser {
   id: string;
+  numericId?: number;
   username: string;
   password: string;
   name: string;
@@ -16,6 +30,11 @@ interface DBUser {
   jobTitle?: string;
   skills?: string[];
   dailyTimeline?: any;
+  subscription?: {
+    plan: 'free' | 'pro';
+    expiresAt?: string | null;
+  };
+  isProfileCompleted?: boolean;
   avatar?: string; // data URL (base64) profile photo
   createdAt: string;
 }
@@ -141,6 +160,38 @@ interface AppData {
   personalityResults: DBPersonalityResult[];
   globalSettings?: any;
   custom_fonts?: any[];
+  friendships?: Array<{ id: string; user1Id: string; user2Id: string; createdAt: string }>;
+  friend_requests?: Array<{
+    id: string;
+    fromUserId: string;
+    fromUserName: string;
+    fromUserUsername?: string;
+    fromUserAvatar?: string | null;
+    toUserId: string;
+    projectId?: string;
+    projectName?: string;
+    status: 'pending' | 'accepted' | 'rejected';
+    createdAt: string;
+  }>;
+  messages?: Array<{
+    id: string;
+    senderId: string;
+    senderName?: string;
+    senderAvatar?: string | null;
+    receiverId: string;
+    text: string;
+    createdAt: string;
+    read?: boolean;
+  }>;
+  project_messages?: Array<{
+    id: string;
+    projectId: string;
+    senderId: string;
+    senderName: string;
+    senderAvatar?: string | null;
+    text: string;
+    createdAt: string;
+  }>;
 }
 
 const DB_FILE = path.resolve(process.cwd(), 'data/db.json');
@@ -290,6 +341,32 @@ function readDb(): AppData {
       if (!parsed.dailyNotes) parsed.dailyNotes = [];
       if (!parsed.personalityResults) parsed.personalityResults = [];
       if (!parsed.custom_fonts) parsed.custom_fonts = [];
+      if (!parsed.friendships) parsed.friendships = [];
+      if (!parsed.friend_requests) parsed.friend_requests = [];
+      if (!parsed.messages) parsed.messages = [];
+      if (!parsed.project_messages) parsed.project_messages = [];
+
+      // Ensure every user has numericId, subscription & isProfileCompleted
+      let maxNum = 1000;
+      for (const u of parsed.users) {
+        if (u.numericId) maxNum = Math.max(maxNum, u.numericId);
+      }
+      for (const u of parsed.users) {
+        if (!u.numericId) {
+          if (u.username?.toLowerCase() === 'mohusyn') {
+            u.numericId = 1000;
+          } else {
+            maxNum++;
+            u.numericId = maxNum;
+          }
+        }
+        if (!u.subscription) {
+          u.subscription = { plan: u.role === 'admin' ? 'pro' : 'free' };
+        }
+        if (u.isProfileCompleted === undefined) {
+          u.isProfileCompleted = u.role === 'admin' || Boolean(u.birthDate && u.jobTitle && u.city);
+        }
+      }
 
       if (purgeExpiredDeletedRooms(parsed)) {
         writeDb(parsed);
@@ -472,13 +549,16 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
   // 1. Auth routes
   if (pathname.startsWith('/api/auth')) {
-    const action = urlObj.searchParams.get('action') || pathname.replace('/api/auth/', '').replace('/api/auth', '');
+    const parsedAuthBody = method === 'POST' ? await parseJsonBody(req) : {};
+    const action = urlObj.searchParams.get('action') || parsedAuthBody.action || pathname.replace('/api/auth/', '').replace('/api/auth', '');
 
     if (method === 'POST' && (action === 'register' || pathname.endsWith('/register'))) {
-      const body = await parseJsonBody(req);
+      const body = parsedAuthBody;
       const username = body.username?.trim();
       const password = body.password?.trim();
       const name = body.name?.trim();
+      const rawPhone = body.phone ? normalizePersianText(body.phone) : '';
+      const email = body.email?.trim().toLowerCase();
 
       if (!username || !password || !name) {
         sendJson(res, { error: 'تمامی فیلدها الزامی هستند.' }, 400);
@@ -486,24 +566,40 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       }
 
       if (db.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
-        sendJson(res, { error: 'این نام کاربری قبلاً ثبت شده است.' }, 400);
+        sendJson(res, { error: 'این نام کاربری قبلاً ثبت شده است. لطفاً نام دیگری انتخاب کنید.' }, 400);
         return true;
       }
 
+      if (rawPhone && db.users.some((u) => u.phone && normalizePersianText(u.phone) === rawPhone)) {
+        sendJson(res, { error: 'این شماره موبایل قبلاً در سامانه ثبت شده است.' }, 400);
+        return true;
+      }
+
+      if (email && db.users.some((u) => u.email && u.email.toLowerCase() === email)) {
+        sendJson(res, { error: 'این آدرس ایمیل قبلاً در سامانه ثبت شده است.' }, 400);
+        return true;
+      }
+
+      const nextNumericId = Math.max(1000, ...db.users.map((u) => u.numericId || 1000)) + 1;
+      const isProfileCompleted = Boolean(body.birthDate && body.jobTitle && body.city);
+
       const newUser: DBUser = {
         id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        numericId: nextNumericId,
         username,
         password,
         name,
         role: 'user', // Always user, never admin!
-        phone: body.phone,
-        email: body.email,
-        province: body.province,
-        city: body.city,
-        birthDate: body.birthDate,
-        jobTitle: body.jobTitle,
-        skills: body.skills,
+        phone: body.phone?.trim(),
+        email: body.email?.trim(),
+        province: body.province?.trim(),
+        city: body.city?.trim(),
+        birthDate: body.birthDate?.trim(),
+        jobTitle: body.jobTitle?.trim(),
+        skills: body.skills || [],
         dailyTimeline: body.dailyTimeline,
+        subscription: { plan: 'free' },
+        isProfileCompleted,
         createdAt: new Date().toISOString(),
       };
 
@@ -515,6 +611,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         message: 'ثبت‌نام با موفقیت انجام شد.',
         user: {
           id: newUser.id,
+          numericId: newUser.numericId,
           username: newUser.username,
           name: newUser.name,
           role: newUser.role,
@@ -526,6 +623,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           jobTitle: newUser.jobTitle,
           skills: newUser.skills,
           dailyTimeline: newUser.dailyTimeline,
+          subscription: newUser.subscription,
+          isProfileCompleted: newUser.isProfileCompleted,
           createdAt: newUser.createdAt,
         },
         token,
@@ -533,8 +632,32 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       return true;
     }
 
+    if (method === 'POST' && (action === 'complete_profile' || pathname.endsWith('/complete_profile'))) {
+      if (!currentUser) {
+        sendJson(res, { error: 'ابتدا وارد حساب کاربری خود شوید.' }, 401);
+        return true;
+      }
+      const body = parsedAuthBody;
+      const self = db.users.find((u) => u.id === currentUser.id);
+      if (!self) {
+        sendJson(res, { error: 'کاربر یافت نشد.' }, 404);
+        return true;
+      }
+      if (body.birthDate) self.birthDate = body.birthDate.trim();
+      if (body.province) self.province = body.province.trim();
+      if (body.city) self.city = body.city.trim();
+      if (body.jobTitle) self.jobTitle = body.jobTitle.trim();
+      if (body.email) self.email = body.email.trim();
+      if (body.skills) self.skills = body.skills;
+      if (body.dailyTimeline) self.dailyTimeline = body.dailyTimeline;
+      self.isProfileCompleted = true;
+      writeDb(db);
+      sendJson(res, { message: 'اطلاعات پروفایل با موفقیت ثبت شد.', user: self });
+      return true;
+    }
+
     if (method === 'POST' && (action === 'login' || pathname.endsWith('/login') || !action || action === '')) {
-      const body = await parseJsonBody(req);
+      const body = parsedAuthBody;
       const username = body.username?.trim();
       const password = body.password?.trim();
 
@@ -555,6 +678,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         message: 'ورود با موفقیت انجام شد.',
         user: {
           id: user.id,
+          numericId: user.numericId,
           username: user.username,
           name: user.name,
           role: user.role,
@@ -567,6 +691,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           avatar: user.avatar || null,
           skills: user.skills,
           dailyTimeline: user.dailyTimeline,
+          subscription: user.subscription || { plan: user.role === 'admin' ? 'pro' : 'free' },
+          isProfileCompleted: user.isProfileCompleted ?? (user.role === 'admin' || Boolean(user.birthDate && user.jobTitle && user.city)),
           createdAt: user.createdAt,
         },
         token,
@@ -583,6 +709,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         authenticated: true,
         user: {
           id: currentUser.id,
+          numericId: currentUser.numericId,
           username: currentUser.username,
           name: currentUser.name,
           role: currentUser.role,
@@ -595,6 +722,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           avatar: currentUser.avatar || null,
           skills: currentUser.skills || [],
           dailyTimeline: currentUser.dailyTimeline || [],
+          subscription: currentUser.subscription || { plan: currentUser.role === 'admin' ? 'pro' : 'free' },
+          isProfileCompleted: currentUser.isProfileCompleted ?? (currentUser.role === 'admin' || Boolean(currentUser.birthDate && currentUser.jobTitle && currentUser.city)),
           createdAt: currentUser.createdAt,
         },
       });
@@ -677,29 +806,48 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     const qAction = urlObj.searchParams.get('action') || '';
 
     // Allow authenticated users to search/view safe public colleague profiles
-    if (method === 'GET' && (qAction === 'public' || qAction === 'search')) {
-      const q = (urlObj.searchParams.get('q') || '').trim().toLowerCase();
+    if (method === 'GET' && (qAction === 'public' || qAction === 'search' || urlObj.searchParams.has('q') || urlObj.searchParams.has('search'))) {
+      const rawQ = urlObj.searchParams.get('q') || urlObj.searchParams.get('search') || '';
+      const q = normalizePersianText(rawQ);
       let list = db.users || [];
       if (q) {
-        list = list.filter((u) =>
-          (u.name && u.name.toLowerCase().includes(q)) ||
-          (u.username && u.username.toLowerCase().includes(q)) ||
-          (u.jobTitle && u.jobTitle.toLowerCase().includes(q))
-        );
+        list = list.filter((u) => {
+          const nameNorm = normalizePersianText(u.name || '');
+          const userNorm = normalizePersianText(u.username || '');
+          const jobNorm = normalizePersianText(u.jobTitle || '');
+          const phoneNorm = normalizePersianText(u.phone || '');
+          const numStr = String(u.numericId || '');
+          return (
+            nameNorm.includes(q) ||
+            userNorm.includes(q) ||
+            jobNorm.includes(q) ||
+            phoneNorm.includes(q) ||
+            numStr === q
+          );
+        });
       }
-      const safeUsers = list.map((u) => ({
-        id: u.id,
-        name: u.name,
-        username: u.username,
-        avatar: u.avatar || null,
-        jobTitle: u.jobTitle || null,
-        role: u.role || 'user',
-        phone: u.phone || null,
-        province: u.province || null,
-        city: u.city || null,
-        skills: u.skills || [],
-        createdAt: u.createdAt,
-      }));
+      const myId = currentUser?.id;
+      const safeUsers = list.map((u) => {
+        const isFriend = db.friendships?.some(
+          (f) => (f.user1Id === myId && f.user2Id === u.id) || (f.user2Id === myId && f.user1Id === u.id)
+        ) || false;
+        return {
+          id: u.id,
+          numericId: u.numericId || 1000,
+          name: u.name,
+          username: u.username,
+          avatar: u.avatar || null,
+          jobTitle: u.jobTitle || null,
+          role: u.role || 'user',
+          phone: u.phone || null,
+          province: u.province || null,
+          city: u.city || null,
+          skills: u.skills || [],
+          subscription: u.subscription || { plan: u.role === 'admin' ? 'pro' : 'free' },
+          isFriend,
+          createdAt: u.createdAt,
+        };
+      });
       sendJson(res, { users: safeUsers });
       return true;
     }
@@ -921,35 +1069,70 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
 
+      // Admin toggle user subscription
+      if (body.action === 'set_subscription') {
+        const { userId, plan, expiresAt } = body;
+        const target = db.users.find((u) => u.id === userId);
+        if (!target) {
+          sendJson(res, { error: 'کاربر پیدا نشد.' }, 404);
+          return true;
+        }
+        target.subscription = {
+          plan: plan === 'pro' ? 'pro' : 'free',
+          expiresAt: expiresAt || null,
+        };
+        writeDb(db);
+        sendJson(res, { message: 'اشتراک کاربر به‌روزرسانی شد.', subscription: target.subscription });
+        return true;
+      }
+
       const username = body.username?.trim();
       const password = body.password?.trim();
       const name = body.name?.trim();
       const role = body.role === 'admin' ? 'admin' : 'user';
+      const rawPhone = body.phone ? normalizePersianText(body.phone) : '';
+      const email = body.email?.trim().toLowerCase();
 
       if (!username || !password || !name) {
         sendJson(res, { error: 'تمامی فیلدها الزامی هستند.' }, 400);
         return true;
       }
 
-      if (db.users.some((u) => u.username === username)) {
+      if (db.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
         sendJson(res, { error: 'این نام کاربری قبلاً ثبت شده است.' }, 400);
         return true;
       }
 
+      if (rawPhone && db.users.some((u) => u.phone && normalizePersianText(u.phone) === rawPhone)) {
+        sendJson(res, { error: 'این شماره موبایل قبلاً در سامانه ثبت شده است.' }, 400);
+        return true;
+      }
+
+      if (email && db.users.some((u) => u.email && u.email.toLowerCase() === email)) {
+        sendJson(res, { error: 'این آدرس ایمیل قبلاً در سامانه ثبت شده است.' }, 400);
+        return true;
+      }
+
+      const nextNumericId = Math.max(1000, ...db.users.map((u) => u.numericId || 1000)) + 1;
+      const isProfileCompleted = Boolean(body.birthDate && body.jobTitle && body.city);
+
       const newUser: DBUser = {
         id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        numericId: nextNumericId,
         username,
         password,
         name,
         role,
-        phone: body.phone,
-        email: body.email,
-        province: body.province,
-        city: body.city,
-        birthDate: body.birthDate,
-        jobTitle: body.jobTitle,
-        skills: body.skills,
+        phone: body.phone?.trim(),
+        email: body.email?.trim(),
+        province: body.province?.trim(),
+        city: body.city?.trim(),
+        birthDate: body.birthDate?.trim(),
+        jobTitle: body.jobTitle?.trim(),
+        skills: body.skills || [],
         dailyTimeline: body.dailyTimeline,
+        subscription: { plan: body.plan || (role === 'admin' ? 'pro' : 'free') },
+        isProfileCompleted,
         createdAt: new Date().toISOString(),
       };
 
@@ -960,6 +1143,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         message: 'کاربر جدید با موفقیت ایجاد شد.',
         user: {
           id: newUser.id,
+          numericId: newUser.numericId,
           username: newUser.username,
           name: newUser.name,
           role: newUser.role,
@@ -971,10 +1155,9 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           jobTitle: newUser.jobTitle,
           skills: newUser.skills,
           dailyTimeline: newUser.dailyTimeline,
+          subscription: newUser.subscription,
+          isProfileCompleted: newUser.isProfileCompleted,
           createdAt: newUser.createdAt,
-          totalTasks: 0,
-          completedTasks: 0,
-          progressPercent: 0,
         },
       }, 201);
       return true;
@@ -1339,6 +1522,14 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
     // List user projects with task progress stats
     if (method === 'GET') {
+      const action = urlObj.searchParams.get('action') || '';
+      if (action === 'messages' || urlObj.searchParams.has('project_id')) {
+        const pId = urlObj.searchParams.get('project_id') || urlObj.searchParams.get('id');
+        const msgs = (db.project_messages || []).filter((m) => m.projectId === pId);
+        sendJson(res, { messages: msgs });
+        return true;
+      }
+
       const isAdmin = currentUser.role === 'admin';
       const visible = db.projects.filter(
         (p) => isAdmin || p.creatorId === currentUser.id || (p.memberIds && p.memberIds.includes(currentUser.id))
@@ -1360,9 +1551,44 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       return true;
     }
 
-    // Create team project
+    // Create team project / project group chat
     if (method === 'POST') {
       const body = await parseJsonBody(req);
+      const action = urlObj.searchParams.get('action') || body.action;
+
+      // Group chat message inside team project
+      if (action === 'messages' || action === 'send_message') {
+        const projectId = body.projectId || urlObj.searchParams.get('project_id');
+        const text = body.text?.trim();
+        if (!projectId || !text) {
+          sendJson(res, { error: 'شناسه پروژه و متن پیام الزامی است.' }, 400);
+          return true;
+        }
+        const newMsg = {
+          id: 'pmsg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          projectId,
+          senderId: currentUser.id,
+          senderName: currentUser.name,
+          senderAvatar: currentUser.avatar || null,
+          text,
+          createdAt: new Date().toISOString(),
+        };
+        if (!db.project_messages) db.project_messages = [];
+        db.project_messages.push(newMsg);
+        writeDb(db);
+        sendJson(res, { message: 'پیام تیمی ارسال شد.', data: newMsg }, 201);
+        return true;
+      }
+
+      // Free plan restriction: max 1 project
+      if (currentUser.role !== 'admin' && (!currentUser.subscription || currentUser.subscription.plan !== 'pro')) {
+        const myProjects = db.projects.filter((p) => p.creatorId === currentUser.id);
+        if (myProjects.length >= 1) {
+          sendJson(res, { error: 'در پلن رایگان فقط مجاز به ایجاد ۱ پروژه تیمی هستید. جهت ایجاد پروژه‌های نامحدود، حساب خود را ارتقا دهید.' }, 403);
+          return true;
+        }
+      }
+
       const name = body.name?.trim();
       if (!name) {
         sendJson(res, { error: 'نام پروژه تیمی الزامی است.' }, 400);
@@ -2027,6 +2253,241 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
       sendJson(res, { error: 'فایل APK یافت نشد.' }, 404);
+      return true;
+    }
+  }
+
+  // 14. Friends & Colleague Network (/api/friends)
+  if (pathname.startsWith('/api/friends')) {
+    if (!currentUser) {
+      sendJson(res, { error: 'ابتدا وارد حساب کاربری خود شوید.' }, 401);
+      return true;
+    }
+    const myId = currentUser.id;
+    const action = urlObj.searchParams.get('action') || '';
+
+    // GET /api/friends?action=requests or /api/friends/requests or ?type=incoming
+    if (method === 'GET' && (action === 'requests' || action === 'incoming' || urlObj.searchParams.get('type') === 'incoming' || pathname.endsWith('/requests'))) {
+      const incoming = (db.friend_requests || []).filter((r) => r.toUserId === myId && r.status === 'pending');
+      const outgoing = (db.friend_requests || []).filter((r) => r.fromUserId === myId);
+      sendJson(res, { requests: incoming, incoming, outgoing });
+      return true;
+    }
+
+    // GET /api/friends (list my accepted friends)
+    if (method === 'GET') {
+      const friendIds = new Set<string>();
+      (db.friendships || []).forEach((f) => {
+        if (f.user1Id === myId) friendIds.add(f.user2Id);
+        if (f.user2Id === myId) friendIds.add(f.user1Id);
+      });
+      const friendsList = (db.users || [])
+        .filter((u) => friendIds.has(u.id))
+        .map((u) => ({
+          id: u.id,
+          numericId: u.numericId || 1000,
+          name: u.name,
+          username: u.username,
+          avatar: u.avatar || null,
+          jobTitle: u.jobTitle || null,
+          phone: u.phone || null,
+          role: u.role || 'user',
+          subscription: u.subscription || { plan: 'free' },
+          online: true,
+        }));
+      sendJson(res, { friends: friendsList });
+      return true;
+    }
+
+    // POST /api/friends (request, accept, reject)
+    if (method === 'POST') {
+      const body = await parseJsonBody(req);
+      const postAction = body.action || action;
+
+      // Send friend request or project invite
+      if (postAction === 'request' || postAction === 'send' || postAction === 'send_request') {
+        const toUserId = body.toUserId || body.receiverId || body.userId;
+        if (!toUserId || toUserId === myId) {
+          sendJson(res, { error: 'کاربر مقصد نامعتبر است.' }, 400);
+          return true;
+        }
+
+        const isAlreadyFriend = (db.friendships || []).some(
+          (f) => (f.user1Id === myId && f.user2Id === toUserId) || (f.user2Id === myId && f.user1Id === toUserId)
+        );
+
+        if (isAlreadyFriend) {
+          if (body.projectId) {
+            const p = (db.projects || []).find((proj) => proj.id === body.projectId);
+            if (p && !p.memberIds.includes(toUserId)) {
+              p.memberIds.push(toUserId);
+              writeDb(db);
+            }
+          }
+          sendJson(res, { message: 'این کاربر در لیست همکاران شما قرار دارد.', isFriend: true });
+          return true;
+        }
+
+        const newReq = {
+          id: 'freq_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          fromUserId: myId,
+          fromUserName: currentUser.name,
+          fromUserUsername: currentUser.username,
+          fromUserAvatar: currentUser.avatar || null,
+          toUserId,
+          projectId: body.projectId || undefined,
+          projectName: body.projectName || undefined,
+          status: 'pending' as const,
+          createdAt: new Date().toISOString(),
+        };
+
+        if (!db.friend_requests) db.friend_requests = [];
+        db.friend_requests.push(newReq);
+        writeDb(db);
+        sendJson(res, { message: 'درخواست با موفقیت ارسال شد.', request: newReq }, 201);
+        return true;
+      }
+
+      // Accept request
+      if (postAction === 'accept' || postAction === 'accept_request') {
+        const reqId = body.requestId || body.id;
+        const reqItem = (db.friend_requests || []).find((r) => r.id === reqId && r.toUserId === myId);
+        if (!reqItem) {
+          sendJson(res, { error: 'درخواست یافت نشد.' }, 404);
+          return true;
+        }
+        reqItem.status = 'accepted';
+
+        if (!db.friendships) db.friendships = [];
+        const exists = db.friendships.some(
+          (f) => (f.user1Id === reqItem.fromUserId && f.user2Id === myId) || (f.user2Id === reqItem.fromUserId && f.user1Id === myId)
+        );
+        if (!exists) {
+          db.friendships.push({
+            id: 'fs_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            user1Id: reqItem.fromUserId,
+            user2Id: myId,
+            createdAt: new Date().toISOString(),
+          });
+        }
+
+        if (reqItem.projectId) {
+          const proj = (db.projects || []).find((p) => p.id === reqItem.projectId);
+          if (proj && !proj.memberIds.includes(myId)) {
+            proj.memberIds.push(myId);
+          }
+        }
+        writeDb(db);
+        sendJson(res, { message: 'درخواست همکاری با موفقیت پذیرفته شد.' });
+        return true;
+      }
+
+      // Reject request
+      if (postAction === 'reject' || postAction === 'reject_request') {
+        const reqId = body.requestId || body.id;
+        const reqItem = (db.friend_requests || []).find((r) => r.id === reqId && r.toUserId === myId);
+        if (reqItem) {
+          reqItem.status = 'rejected';
+          writeDb(db);
+        }
+        sendJson(res, { message: 'درخواست رد شد.' });
+        return true;
+      }
+    }
+
+    // DELETE /api/friends?id=FRIEND_ID
+    if (method === 'DELETE') {
+      const friendId = urlObj.searchParams.get('id');
+      if (friendId && db.friendships) {
+        db.friendships = db.friendships.filter(
+          (f) => !(f.user1Id === myId && f.user2Id === friendId) && !(f.user2Id === myId && f.user1Id === friendId)
+        );
+        writeDb(db);
+      }
+      sendJson(res, { message: 'کاربر از لیست دوستان حذف شد.' });
+      return true;
+    }
+  }
+
+  // 15. Direct Real-time User-to-User Messages (/api/messages)
+  if (pathname.startsWith('/api/messages')) {
+    if (!currentUser) {
+      sendJson(res, { error: 'ابتدا وارد حساب کاربری خود شوید.' }, 401);
+      return true;
+    }
+    const myId = currentUser.id;
+
+    if (method === 'GET') {
+      const withUserId = urlObj.searchParams.get('with') || urlObj.searchParams.get('chatWith') || urlObj.searchParams.get('userId');
+      if (withUserId) {
+        const conv = (db.messages || []).filter(
+          (m) =>
+            (m.senderId === myId && m.receiverId === withUserId) ||
+            (m.senderId === withUserId && m.receiverId === myId)
+        );
+        let changed = false;
+        conv.forEach((m) => {
+          if (m.receiverId === myId && !m.read) {
+            m.read = true;
+            changed = true;
+          }
+        });
+        if (changed) writeDb(db);
+        sendJson(res, { messages: conv });
+        return true;
+      }
+
+      // Summary of conversations
+      const partnersMap = new Map<string, { lastMessage: any; unreadCount: number }>();
+      (db.messages || []).forEach((m) => {
+        if (m.senderId === myId || m.receiverId === myId) {
+          const partnerId = m.senderId === myId ? m.receiverId : m.senderId;
+          const entry = partnersMap.get(partnerId) || { lastMessage: null, unreadCount: 0 };
+          entry.lastMessage = m;
+          if (m.receiverId === myId && !m.read) {
+            entry.unreadCount++;
+          }
+          partnersMap.set(partnerId, entry);
+        }
+      });
+
+      const convos = Array.from(partnersMap.entries()).map(([partnerId, data]) => {
+        const partner = (db.users || []).find((u) => u.id === partnerId);
+        return {
+          partnerId,
+          partnerName: partner?.name || 'کاربر',
+          partnerUsername: partner?.username || '',
+          partnerAvatar: partner?.avatar || null,
+          lastMessage: data.lastMessage,
+          unreadCount: data.unreadCount,
+        };
+      });
+      sendJson(res, { conversations: convos });
+      return true;
+    }
+
+    if (method === 'POST') {
+      const body = await parseJsonBody(req);
+      const receiverId = body.receiverId;
+      const text = body.text?.trim();
+      if (!receiverId || !text) {
+        sendJson(res, { error: 'گیرنده و متن پیام الزامی است.' }, 400);
+        return true;
+      }
+      const newMsg = {
+        id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        senderId: myId,
+        senderName: currentUser.name,
+        senderAvatar: currentUser.avatar || null,
+        receiverId,
+        text,
+        createdAt: new Date().toISOString(),
+        read: false,
+      };
+      if (!db.messages) db.messages = [];
+      db.messages.push(newMsg);
+      writeDb(db);
+      sendJson(res, { message: 'پیام ارسال شد.', data: newMsg }, 201);
       return true;
     }
   }

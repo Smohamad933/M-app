@@ -45,6 +45,7 @@ import {
   Download,
   Copy,
   Package,
+  CreditCard,
 } from 'lucide-react';
 
 /**
@@ -166,11 +167,13 @@ export const UserManagementView: React.FC = () => {
     globalSettings,
     updateGlobalSettings,
     deleteUsersBulk,
+    setUserSubscription,
   } = useTask();
 
   // Active view tab inside Admin Panel
   const [adminTab, setAdminTab] = useState<'users' | 'settings' | 'texts' | 'developers' | 'apk'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [planFilter, setPlanFilter] = useState<'all' | 'pro' | 'free'>('all');
 
   // Bulk selection & actions (multi-select users)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -806,16 +809,16 @@ export const UserManagementView: React.FC = () => {
             </div>
 
             <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800/80 hover:border-zinc-700 transition-colors">
-              <div className="text-xs text-zinc-400 mb-1">مدیران سیستم</div>
-              <div className="text-2xl font-black text-purple-400">
-                {toPersianDigits(users.filter((u) => u.role === 'admin').length)}
+              <div className="text-xs text-zinc-400 mb-1">اشتراک ویژه Pro ⭐</div>
+              <div className="text-2xl font-black text-amber-400">
+                {toPersianDigits(users.filter((u) => u.role === 'admin' || u.subscription?.plan === 'pro').length)}
               </div>
             </div>
 
             <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800/80 hover:border-zinc-700 transition-colors">
-              <div className="text-xs text-zinc-400 mb-1">کاربران عادی (User)</div>
-              <div className="text-2xl font-black text-white">
-                {toPersianDigits(users.filter((u) => u.role === 'user').length)}
+              <div className="text-xs text-zinc-400 mb-1">کاربران پلن رایگان</div>
+              <div className="text-2xl font-black text-slate-300">
+                {toPersianDigits(users.filter((u) => u.role !== 'admin' && u.subscription?.plan !== 'pro').length)}
               </div>
             </div>
 
@@ -879,6 +882,46 @@ export const UserManagementView: React.FC = () => {
             </div>
           )}
 
+          {/* Filter Pills for Subscription */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPlanFilter('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                planFilter === 'all'
+                  ? 'bg-zinc-800 text-white border border-zinc-700'
+                  : 'bg-zinc-900/60 text-zinc-400 border border-zinc-800 hover:text-white'
+              }`}
+            >
+              همه کاربران ({toPersianDigits(users.length)})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPlanFilter('pro')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                planFilter === 'pro'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  : 'bg-zinc-900/60 text-zinc-400 border border-zinc-800 hover:text-amber-300'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>اشتراک ویژه Pro ({toPersianDigits(users.filter((u) => u.role === 'admin' || u.subscription?.plan === 'pro').length)})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPlanFilter('free')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                planFilter === 'free'
+                  ? 'bg-zinc-800 text-white border border-zinc-700'
+                  : 'bg-zinc-900/60 text-zinc-400 border border-zinc-800 hover:text-white'
+              }`}
+            >
+              پلن رایگان ({toPersianDigits(users.filter((u) => u.role !== 'admin' && u.subscription?.plan !== 'pro').length)})
+            </button>
+          </div>
+
           {/* Users List Table/Cards */}
           <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 overflow-hidden shadow-sm">
             <div className="px-5 py-3.5 border-b border-zinc-800/80 flex items-center justify-between">
@@ -894,9 +937,9 @@ export const UserManagementView: React.FC = () => {
                   className="w-4 h-4 accent-rose-600 rounded cursor-pointer"
                   title="انتخاب همه کاربران قابل انتخاب"
                 />
-                              <span className="text-xs font-bold text-zinc-300">
-                                فهرست کامل اعضای سیستم ({toPersianDigits(users.length)})
-                              </span>
+                <span className="text-xs font-bold text-zinc-300">
+                  فهرست کامل اعضای سیستم ({toPersianDigits(users.length)})
+                </span>
               </div>
               <span className="text-[11px] text-zinc-400">
                 مشاهده لحظه‌ای عملکرد و انتصاب مستقیم تسک
@@ -904,12 +947,19 @@ export const UserManagementView: React.FC = () => {
             </div>
 
             <div className="divide-y divide-zinc-800/60">
-              {users.map((u) => {
+              {users
+                .filter((u) => {
+                  if (planFilter === 'pro') return u.role === 'admin' || u.subscription?.plan === 'pro';
+                  if (planFilter === 'free') return u.role !== 'admin' && u.subscription?.plan !== 'pro';
+                  return true;
+                })
+                .map((u) => {
                 const isCurrent = u.id === currentUser?.id;
                 const total = u.totalTasks || 0;
                 const done = u.completedTasks || 0;
                 const percent = total > 0 ? Math.round((done / total) * 100) : 0;
                 const skills = Array.isArray(u.skills) ? u.skills : [];
+                const isUserPro = u.role === 'admin' || u.subscription?.plan === 'pro';
 
                 return (
                   <div
@@ -952,7 +1002,13 @@ export const UserManagementView: React.FC = () => {
 
                         {/* Metadata tags */}
                         <div className="flex items-center gap-3 text-xs text-zinc-400 flex-wrap pt-0.5">
-                          <span className="font-mono text-zinc-500">@{u.username}</span>
+                          <span className="font-mono text-zinc-500 dir-ltr text-left">@{u.username}</span>
+
+                          {u.numericId && (
+                            <span className="px-1.5 py-0.2 rounded bg-zinc-800/90 text-zinc-300 font-mono text-[10px] font-bold border border-zinc-700/50">
+                              #{u.numericId}
+                            </span>
+                          )}
 
                           {u.jobTitle && (
                             <span className="inline-flex items-center gap-1 text-[11px] text-zinc-300 bg-zinc-800/80 px-2 py-0.5 rounded-lg border border-zinc-700/50">
@@ -1027,6 +1083,23 @@ export const UserManagementView: React.FC = () => {
 
                       {/* Action buttons */}
                       <div className="flex items-center gap-2 flex-wrap">
+                        {/* Subscription Toggle for non-admin */}
+                        {u.role !== 'admin' && (
+                          <button
+                            type="button"
+                            onClick={() => setUserSubscription(u.id, isUserPro ? 'free' : 'pro')}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                              isUserPro
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
+                                : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700 hover:text-white'
+                            }`}
+                            title="تغییر وضعیت اشتراک کاربر"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                            <span>{isUserPro ? 'لغو Pro' : 'فعال‌سازی Pro ⭐'}</span>
+                          </button>
+                        )}
+
                         {/* VIEW USER COMPREHENSIVE REPORT */}
                         <button
                           onClick={() => handleOpenReport(u)}
@@ -1414,6 +1487,105 @@ export const UserManagementView: React.FC = () => {
                 <PlusCircle className="w-4 h-4" />
                 <span>افزودن دسته</span>
               </button>
+            </div>
+          </div>
+
+          {/* 5. Subscription & Card-to-Card Payment Settings */}
+          <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-5 space-y-4 backdrop-blur-md">
+            <div className="flex items-center gap-2 pb-2 border-b border-zinc-800">
+              <CreditCard className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-bold text-white">تنظیمات پرداخت کارت به کارت و ارتقاء به Pro</h3>
+            </div>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              این اطلاعات در پنجره «ارتقاء به اشتراک Pro» برای کاربران پلن رایگان نمایش داده می‌شود تا پس از واریز کارت به کارت، رسید را برای شما ارسال کنند.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-zinc-300">شماره کارت بانکی ۱۶ رقمی</label>
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={formSettings.subscriptionInfo?.cardNumber || ''}
+                  onChange={(e) => {
+                    const prev = formSettings.subscriptionInfo || {};
+                    setFormSettings({
+                      ...formSettings,
+                      subscriptionInfo: { ...prev, cardNumber: e.target.value },
+                    });
+                  }}
+                  placeholder="6037-9975-XXXX-XXXX"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white font-mono text-xs outline-none focus:border-amber-500 text-center"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-zinc-300">نام صاحب حساب</label>
+                <input
+                  type="text"
+                  value={formSettings.subscriptionInfo?.cardHolder || formSettings.subscriptionInfo?.ownerName || ''}
+                  onChange={(e) => {
+                    const prev = formSettings.subscriptionInfo || {};
+                    setFormSettings({
+                      ...formSettings,
+                      subscriptionInfo: { ...prev, cardHolder: e.target.value, ownerName: e.target.value },
+                    });
+                  }}
+                  placeholder="مثال: سید محمدحسین"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-zinc-300">نام بانک</label>
+                <input
+                  type="text"
+                  value={formSettings.subscriptionInfo?.bankName || ''}
+                  onChange={(e) => {
+                    const prev = formSettings.subscriptionInfo || {};
+                    setFormSettings({
+                      ...formSettings,
+                      subscriptionInfo: { ...prev, bankName: e.target.value },
+                    });
+                  }}
+                  placeholder="مثال: بانک ملی / سامان"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-zinc-300">مبلغ اشتراک ماهانه</label>
+                <input
+                  type="text"
+                  value={formSettings.subscriptionInfo?.monthlyPrice || ''}
+                  onChange={(e) => {
+                    const prev = formSettings.subscriptionInfo || {};
+                    setFormSettings({
+                      ...formSettings,
+                      subscriptionInfo: { ...prev, monthlyPrice: e.target.value },
+                    });
+                  }}
+                  placeholder="مثال: ۹۹,۰۰۰ تومان"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="sm:col-span-2 space-y-1.5">
+                <label className="block text-xs font-bold text-zinc-300">راه ارتباطی و پشتیبانی جهت ارسال فیش واریز</label>
+                <input
+                  type="text"
+                  value={formSettings.subscriptionInfo?.supportContact || ''}
+                  onChange={(e) => {
+                    const prev = formSettings.subscriptionInfo || {};
+                    setFormSettings({
+                      ...formSettings,
+                      subscriptionInfo: { ...prev, supportContact: e.target.value },
+                    });
+                  }}
+                  placeholder="مثال: تلگرام @Mohusyn_Support یا واتساپ ۰۹۱۲۳۴۵۶۷۸۹"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-amber-500"
+                />
+              </div>
             </div>
           </div>
 

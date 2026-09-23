@@ -1,6 +1,7 @@
 import React from 'react';
 
 interface UserAvatarProps {
+  user?: { name?: string; avatar?: string | null } | null;
   name?: string;
   avatar?: string | null;
   /** Admin-set default profile image, shown when the user has no personal photo */
@@ -15,20 +16,23 @@ interface UserAvatarProps {
  * در غیر این صورت عکس پیش‌فرض ادمین یا حرف اول نام داخل قاب گرد زیبا.
  */
 export const UserAvatar: React.FC<UserAvatarProps> = ({
+  user,
   name,
   avatar,
   fallbackImage,
   size = 'w-10 h-10 text-sm',
   className = '',
 }) => {
-  const firstChar = (name || '?').trim().charAt(0);
+  const finalName = name || user?.name || '?';
+  const finalAvatar = avatar || user?.avatar || null;
+  const firstChar = finalName.trim().charAt(0);
   const roundedClass = className.includes('rounded-') ? '' : 'rounded-full';
 
-  if (avatar && typeof avatar === 'string' && avatar.startsWith('data:image/')) {
+  if (finalAvatar && typeof finalAvatar === 'string' && finalAvatar.startsWith('data:image/')) {
     return (
       <img
-        src={avatar}
-        alt={name || 'عکس پروفایل'}
+        src={finalAvatar}
+        alt={finalName}
         className={`${size} ${roundedClass} object-cover border-2 border-[#00b884] shadow-xs flex-shrink-0 ${className}`}
       />
     );
@@ -37,7 +41,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
     return (
       <img
         src={fallbackImage}
-        alt={name || 'عکس پیش‌فرض'}
+        alt={finalName}
         className={`${size} ${roundedClass} object-cover border-2 border-[#00b884] shadow-xs flex-shrink-0 opacity-95 ${className}`}
       />
     );

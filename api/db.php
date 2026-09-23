@@ -280,8 +280,18 @@ class TaskRoozDB {
             $role = 'user';
         }
 
+        $maxNum = 1000;
+        foreach ($this->getAllUsers() as $existingU) {
+            if (!empty($existingU['numericId']) && is_numeric($existingU['numericId'])) {
+                $maxNum = max($maxNum, (int)$existingU['numericId']);
+            }
+        }
+        $numericId = ($role === 'admin' && $usernameLower === 'mohusyn') ? 1000 : ($maxNum + 1);
+        $isCompleted = !empty($birthDate) && !empty($jobTitle) && !empty($city);
+
         $userObj = [
             'id' => $id,
+            'numericId' => $numericId,
             'username' => $usernameClean,
             'password' => $password,
             'password_hash' => $hash,
@@ -295,6 +305,8 @@ class TaskRoozDB {
             'jobTitle' => $jobTitle,
             'skills' => is_array($skills) ? $skills : [],
             'dailyTimeline' => is_array($timeline) ? $timeline : [],
+            'subscription' => ['plan' => $role === 'admin' ? 'pro' : 'free'],
+            'isProfileCompleted' => $role === 'admin' || $isCompleted,
             'createdAt' => $now,
             'totalTasks' => 0,
             'completedTasks' => 0,

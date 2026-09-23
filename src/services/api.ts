@@ -8,6 +8,9 @@ import type {
   PersonalityTestResult,
   GlobalSystemSettings,
   SystemFontOption,
+  DirectChatMessage,
+  ProjectChatMessage,
+  FriendRequestItem,
 } from '../types';
 import { DEFAULT_CATEGORIES } from '../utils/storage';
 
@@ -1093,5 +1096,124 @@ export const api = {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  },
+
+  // ── Subscription Management ──
+  async setUserSubscription(userId: string, plan: 'free' | 'pro', expiresAt?: string): Promise<void> {
+    await request('api/users.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'set_subscription', userId, plan, expiresAt }),
+    });
+    broadcastSync('USER_UPDATED', { id: userId, subscription: { plan, expiresAt } });
+  },
+
+  // ── Mandatory Profile Completion on First Login ──
+  async completeProfile(data: {
+    birthDate: string;
+    province: string;
+    city: string;
+    jobTitle: string;
+    email?: string;
+    dailyTimeline?: any;
+  }): Promise<User> {
+    const res = await request<{ user: User; message: string }>('api/auth.php?action=complete_profile', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return res.user;
+  },
+
+  // ── Friends & Colleague Network ──
+  async getFriends(): Promise<User[]> {
+    try {
+      const res = await request<{ friends: User[] }>('api/friends.php');
+      return Array.isArray(res.friends) ? res.friends : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async getFriendRequests(): Promise<{ incoming: FriendRequestItem[]; outgoing: FriendRequestItem[] }> {
+    try {
+      const res = await request<{ incoming: FriendRequestItem[]; outgoing: FriendRequestItem[] }>('api/friends.php?action=requests');
+      return {
+        incoming: Array.isArray(res.incoming) ? res.incoming : [],
+        outgoing: Array.isArray(res.outgoing) ? res.outgoing : [],
+      };
+    } catch {
+      return { incoming: [], outgoing: [] };
+    }
+  },
+
+  async sendFriendRequest(toUserId: string, projectId?: string, projectName?: string): Promise<any> {
+    return await request('api/friends.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'request', toUserId, projectId, projectName }),
+    });
+  },
+
+  async acceptFriendRequest(requestId: string): Promise<any> {
+    return await request('api/friends.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'accept', requestId }),
+    });
+  },
+
+  async rejectFriendRequest(requestId: string): Promise<any> {
+    return await request('api/friends.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'reject', requestId }),
+    });
+  },
+
+  async removeFriend(friendId: string): Promise<any> {
+    return await request(`api/friends.php?id=${encodeURIComponent(friendId)}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // ── Direct P2P Messaging ──
+  async getDirectMessages(withUserId: string): Promise<DirectChatMessage[]> {
+    try {
+      const res = await request<{ messages: DirectChatMessage[] }>(`api/messages.php?with=${encodeURIComponent(withUserId)}`);
+      return Array.isArray(res.messages) ? res.messages : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async sendDirectMessage(receiverId: string, text: string): Promise<DirectChatMessage> {
+    const res = await request<{ data: DirectChatMessage; message: string }>('api/messages.php', {
+      method: 'POST',
+      body: JSON.stringify({ receiverId, text }),
+    });
+    return res.data;
+  },
+
+  async getConversations(): Promise<any[]> {
+    try {
+      const res = await request<{ conversations: any[] }>('api/messages.php?action=conversations');
+      return Array.isArray(res.conversations) ? res.conversations : [];
+    } catch {
+      return [];
+    }
+  },
+
+  // ── Team Project Group Chat ──
+  async getProjectMessages(projectId: string): Promise<ProjectChatMessage[]> {
+    try {
+      const res = await request<{ messages: ProjectChatMessage[] }>(`api/projects.php?action=messages&project_id=${encodeURIComponent(projectId)}`);
+      return Array.isArray(res.messages) ? res.messages : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async sendProjectMessage(projectId: string, text: string): Promise<ProjectChatMessage> {
+    const res = await request<{ data: ProjectChatMessage; message: string }>('api/projects.php?action=messages', {
+      method: 'POST',
+      body: JSON.stringify({ projectId, text }),
+    });
+    return res.data;
   },
 };

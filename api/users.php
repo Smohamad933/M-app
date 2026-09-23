@@ -85,41 +85,94 @@ if ($currentUser && $currentUser['role'] === 'admin') {
     }
 }
 
+function normalizePersianSearch($str) {
+    if (!$str) return '';
+    $s = str_replace(['ي', 'ك', 'ة'], ['ی', 'ک', 'ه'], (string)$str);
+    $s = ltrim($s, '@#');
+    return mb_strtolower(trim($s), 'UTF-8');
+}
+
 // Allow authenticated users to search/view safe public colleague profiles
-$action = $_GET['action'] ?? '';
-if (!$isAdmin) {
-    if ($action === 'public' || $action === 'search') {
-        $all = $db->getAllUsers();
-        $q = isset($_GET['q']) ? strtolower(trim((string)$_GET['q'])) : '';
-        $safe = [];
-        foreach ($all as $u) {
-            if ($q !== '') {
-                $nameMatch = isset($u['name']) && strpos(strtolower($u['name']), $q) !== false;
-                $userMatch = isset($u['username']) && strpos(strtolower($u['username']), $q) !== false;
-                $jobMatch = isset($u['jobTitle']) && strpos(strtolower($u['jobTitle']), $q) !== false;
-                if (!$nameMatch && !$userMatch && !$jobMatch) {
-                    continue;
-                }
-            }
-            unset($u['password']);
-            unset($u['password_hash']);
-            $safe[] = [
-                'id' => $u['id'],
-                'name' => $u['name'],
-                'username' => $u['username'],
-                'avatar' => $u['avatar'] ?? null,
-                'jobTitle' => $u['jobTitle'] ?? null,
-                'role' => $u['role'] ?? 'user',
-                'phone' => $u['phone'] ?? null,
-                'province' => $u['province'] ?? null,
-                'city' => $u['city'] ?? null,
-                'skills' => $u['skills'] ?? [],
-                'createdAt' => $u['createdAt'] ?? null,
-            ];
+$action = $_GET['action'] ?? $input['action'] ?? '';
+if ($action === 'public' || $action === 'search') {
+    $all = $db->getAllUsers();
+    $rawQ = isset($_GET['q']) ? (string)$_GET['q'] : '';
+    $q = normalizePersianSearch($rawQ);
+    $myId = $currentUser ? $currentUser['id'] : '';
+    $dbObj = TaskRoozDB::getInstance();
+    $friendships = $dbObj->data['friendships'] ?? [];
+
+    $safe = [];
+    foreach ($all as $u) {
+        if ($q !== '') {
+            $nameNorm = normalizePersianSearch($u['name'] ?? '');
+            $userNorm = normalizePersianSearch($u['username'] ?? '');
+            $jobNorm = normalizePersianSearch($u['jobTitle'] ?? '');
+            $phoneNorm = normalizePersianSearch($u['phone'] ?? '');
+            $numStr = (string)($u['numericId'] ?? '');
+
+            $match = (
+                mb_strpos($nameNorm, $q, 0, 'UTF-8') !== false ||
+                mb_strpos($userNorm, $q, 0, 'UTF-8') !== false ||
+                mb_strpos($jobNorm, $q, 0, 'UTF-8') !== false ||
+                mb_strpos($phoneNorm, $q, 0, 'UTF-8') !== false ||
+                $numStr === $q
+            );
+            if (!$match) continue;
         }
-        jsonResponse(['users' => $safe]);
+
+        $isFriend = false;
+        foreach ($friendships as $f) {
+            if (($f['user1Id'] === $myId && $f['user2Id'] === $u['id']) || ($f['user2Id'] === $myId && $f['user1Id'] === $u['id'])) {
+                $isFriend = true;
+                break;
+            }
+        }
+
+        $safe[] = [
+            'id' => $u['id'],
+            'numericId' => $u['numericId'] ?? 1000,
+            'name' => $u['name'],
+            'username' => $u['username'],
+            'avatar' => $u['avatar'] ?? null,
+            'jobTitle' => $u['jobTitle'] ?? null,
+            'role' => $u['role'] ?? 'user',
+            'phone' => $u['phone'] ?? null,
+            'province' => $u['province'] ?? null,
+            'city' => $u['city'] ?? null,
+            'skills' => $u['skills'] ?? [],
+            'subscription' => $u['subscription'] ?? ['plan' => ($u['role'] === 'admin' ? 'pro' : 'free')],
+            'isFriend' => $isFriend,
+            'createdAt' => $u['createdAt'] ?? null,
+        ];
     }
+    jsonResponse(['users' => $safe]);
+}
+
+if (!$isAdmin) {
     jsonResponse(['error' => 'دسترسی فقط برای مدیر سیستم مجاز است.'], 403);
+}
+
+// Admin toggle user subscription
+if ($action === 'set_subscription' || ($input['action'] ?? '') === 'set_subscription') {
+    $targetId = $input['userId'] ?? $_GET['user_id'] ?? '';
+    $plan = ($input['plan'] ?? '') === 'pro' ? 'pro' : 'free';
+    $dbObj = TaskRoozDB::getInstance();
+    $updated = false;
+    if (isset($dbObj->data['users'])) {
+        foreach ($dbObj->data['users'] as &$u) {
+            if ($u['id'] === $targetId) {
+                $u['subscription'] = ['plan' => $plan, 'expiresAt' => $input['expiresAt'] ?? null];
+                $updated = true;
+                break;
+            }
+        }
+    }
+    if ($updated) {
+        $dbObj->saveJson();
+        jsonResponse(['message' => 'وضعیت اشتراک کاربر با موفقیت تغییر یافت.', 'plan' => $plan]);
+    }
+    jsonResponse(['error' => 'کاربر پیدا نشد.'], 404);
 }
 
 /**

@@ -4,6 +4,7 @@ export type UserRole = 'admin' | 'user';
 export interface UserTimeline {
   wakeUp?: string;
   workStart?: string;
+  workEnd?: string;
   lunch?: string;
   gym?: string;
   sleep?: string;
@@ -11,6 +12,7 @@ export interface UserTimeline {
 
 export interface User {
   id: string;
+  numericId?: number; // Unique system-assigned numeric ID (e.g. 1000, 1001...)
   username: string;
   name: string;
   role: UserRole;
@@ -23,6 +25,11 @@ export interface User {
   jobTitle?: string;
   skills?: string[];
   dailyTimeline?: UserTimeline;
+  subscription?: {
+    plan: 'free' | 'pro';
+    expiresAt?: string | null;
+  };
+  isProfileCompleted?: boolean;
   createdAt: string;
   totalTasks?: number;
   completedTasks?: number;
@@ -184,6 +191,40 @@ export interface RoomMessage {
   timestamp: string;
 }
 
+export interface DirectChatMessage {
+  id: string;
+  senderId: string;
+  senderName?: string;
+  senderAvatar?: string | null;
+  receiverId: string;
+  text: string;
+  createdAt: string;
+  read?: boolean;
+}
+
+export interface ProjectChatMessage {
+  id: string;
+  projectId: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar?: string | null;
+  text: string;
+  createdAt: string;
+}
+
+export interface FriendRequestItem {
+  id: string;
+  fromUserId: string;
+  fromUserName: string;
+  fromUserUsername?: string;
+  fromUserAvatar?: string | null;
+  toUserId: string;
+  projectId?: string;
+  projectName?: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+}
+
 export interface FocusRoom {
   id: string;
   name: string;
@@ -252,5 +293,14 @@ export interface GlobalSystemSettings {
     logoDataUrl?: string | null;
     defaultAvatarDataUrl?: string | null;
     pwaIconDataUrl?: string | null;
+  };
+  /** Subscription details & Card-to-Card payment info */
+  subscriptionInfo?: {
+    cardNumber?: string;
+    bankName?: string;
+    ownerName?: string;
+    cardHolder?: string;
+    monthlyPrice?: string;
+    supportContact?: string;
   };
 }

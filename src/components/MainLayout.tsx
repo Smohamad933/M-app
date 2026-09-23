@@ -29,6 +29,10 @@ import { FriendsView } from './FriendsView';
 import { AiTaskAgentModal } from './AiTaskAgentModal';
 import { DirectChatModal } from './DirectChatModal';
 import { NotificationCenterModal } from './NotificationCenterModal';
+import { UpgradeToProModal } from './UpgradeToProModal';
+import { FirstLoginProfileModal } from './FirstLoginProfileModal';
+import { PublicUserProfileModal } from './PublicUserProfileModal';
+import type { User } from '../types';
 import { BottomNav } from './BottomNav';
 import { sounds } from '../utils/sound';
 import {
@@ -90,6 +94,9 @@ export const MainLayout: React.FC = () => {
     setIsShareModalOpen,
     globalSettings,
     getText,
+    isPro,
+    isFirstLoginModalOpen,
+    setIsFirstLoginModalOpen,
   } = useTask();
 
   const todayISO = getTodayISO();
@@ -108,6 +115,8 @@ export const MainLayout: React.FC = () => {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isFontModalOpen, setIsFontModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [inspectedUser, setInspectedUser] = useState<User | null>(null);
 
   // New interactive states
   const [isAiAgentModalOpen, setIsAiAgentModalOpen] = useState(false);
@@ -134,14 +143,24 @@ export const MainLayout: React.FC = () => {
     return () => clearInterval(id);
   }, []);
 
-  // Listen for mobile bottom nav custom events
+  // Listen for mobile bottom nav custom events and subscription/profile events
   useEffect(() => {
     const handler = () => openCreateModal(selectedDate);
+    const handleUpgrade = () => setIsUpgradeModalOpen(true);
+    const handleUserProfile = (e: any) => {
+      if (e?.detail) setInspectedUser(e.detail);
+    };
+
     window.addEventListener('open-ai-agent-modal', handler);
     window.addEventListener('open-create-task-ai', handler);
+    window.addEventListener('open-upgrade-modal', handleUpgrade);
+    window.addEventListener('open-user-profile', handleUserProfile);
+
     return () => {
       window.removeEventListener('open-ai-agent-modal', handler);
       window.removeEventListener('open-create-task-ai', handler);
+      window.removeEventListener('open-upgrade-modal', handleUpgrade);
+      window.removeEventListener('open-user-profile', handleUserProfile);
     };
   }, [selectedDate, openCreateModal]);
 
@@ -504,6 +523,31 @@ export const MainLayout: React.FC = () => {
                     <span className="w-2.5 h-2.5 rounded-full bg-[#f95738] absolute top-1.5 right-1.5 ring-2 ring-white animate-pulse" />
                   )}
                 </button>
+
+                {/* Subscription Pro Badge or Upgrade Button */}
+                {isPro ? (
+                  <div
+                    className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 text-[11px] font-black"
+                    title="اشتراک ویژه Pro فعال است"
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-500" />
+                    <span>پلن Pro</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      setIsUpgradeModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-[11px] shadow-sm transition-all active:scale-95 cursor-pointer"
+                    title="ارتقاء به اشتراک ویژه نامحدود"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">ارتقاء به Pro ⭐</span>
+                    <span className="sm:hidden">Pro ⭐</span>
+                  </button>
+                )}
 
                 {/* Settings Cogwheel */}
                 <button
@@ -1067,6 +1111,31 @@ export const MainLayout: React.FC = () => {
           isOpen={Boolean(directChatUser)}
           onClose={() => setDirectChatUser(null)}
           peerUser={directChatUser}
+        />
+      )}
+
+      {/* Subscription Upgrade Modal */}
+      <UpgradeToProModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+      />
+
+      {/* Mandatory First-Login Profile Completion */}
+      <FirstLoginProfileModal
+        isOpen={isFirstLoginModalOpen}
+        onClose={() => setIsFirstLoginModalOpen(false)}
+      />
+
+      {/* Colleague Public Profile Card */}
+      {inspectedUser && (
+        <PublicUserProfileModal
+          isOpen={Boolean(inspectedUser)}
+          user={inspectedUser}
+          onClose={() => setInspectedUser(null)}
+          onStartChat={(peer) => {
+            setInspectedUser(null);
+            setDirectChatUser(peer as any);
+          }}
         />
       )}
     </div>

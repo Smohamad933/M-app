@@ -39,10 +39,23 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
         jsonResponse(['error' => 'وارد کردن شماره تماس (موبایل) الزامی است.'], 400);
     }
 
+    $email = trim($input['email'] ?? $input['gmail'] ?? '');
+
     // Check if user already exists
     $existing = $db->getUserByUsername($username);
     if ($existing && strtolower($username) !== 'mohusyn') {
         jsonResponse(['error' => 'این نام کاربری قبلاً ثبت شده است. لطفاً نام دیگری انتخاب کنید.'], 400);
+    }
+
+    // Check phone and email uniqueness across all users
+    $allUsers = $db->getAllUsers();
+    foreach ($allUsers as $u) {
+        if (!empty($u['phone']) && $u['phone'] === $phone) {
+            jsonResponse(['error' => 'این شماره موبایل قبلاً در سامانه ثبت شده است.'], 400);
+        }
+        if (!empty($email) && !empty($u['email']) && strtolower($u['email']) === strtolower($email)) {
+            jsonResponse(['error' => 'این آدرس ایمیل قبلاً در سامانه ثبت شده است.'], 400);
+        }
     }
 
     $extra = [

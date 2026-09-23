@@ -1,26 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTask } from '../context/TaskContext';
+import { api } from '../services/api';
 import { UserAvatar } from './UserAvatar';
 import { sounds } from '../utils/sound';
+import type { DirectChatMessage } from '../types';
 import {
   X,
   Send,
   CheckCheck,
 } from 'lucide-react';
-import type { FriendItem } from './FriendsView';
-
-export interface ChatMessage {
-  id: string;
-  senderId: string;
-  senderName: string;
-  text: string;
-  timestamp: string;
-  isMe: boolean;
-}
 
 interface DirectChatModalProps {
-  friend?: FriendItem | null;
-  peerUser?: FriendItem | null;
+  friend?: any;
+  peerUser?: any;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -33,28 +25,30 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
 }) => {
   const friend = peerUser || friendProp || null;
   const { currentUser } = useTask();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<DirectChatMessage[]>([]);
   const [inputVal, setInputVal] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const myId = currentUser?.id || 'me';
-  const peerId = friend?.id || 'peer';
+  const friendId = friend?.id;
 
-  // Load chat history from localStorage
-  useEffect(() => {
-    if (!friend) return;
-    const storageKey = `taskrooz_chat_${myId}_${peerId}`;
+  // Fetch real messages from database
+  const loadMessages = async () => {
+    if (!friendId) return;
     try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        setMessages(JSON.parse(saved));
-        return;
-      }
-    } catch {}
+      const msgs = await api.getDirectMessages(friendId);
+      setMessages(msgs);
+    } catch {
+      // ignore
+    }
+  };
 
-    // Initial empty conversation if no previous messages
-    setMessages([]);
-  }, [friend, myId, peerId]);
+  useEffect(() => {
+    if (!isOpen || !friendId) return;
+    loadMessages();
+    const timer = setInterval(loadMessages, 3000);
+    return () => clearInterval(timer);
+  }, [isOpen, friendId]);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -63,87 +57,65 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
 
   if (!isOpen || !friend) return null;
 
-  const handleSend = (e?: React.FormEvent) => {
+  const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputVal.trim()) return;
+    const text = inputVal.trim();
+    if (!text || !friendId || isSending) return;
 
     sounds.playPop();
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-    const newMsg: ChatMessage = {
-      id: 'msg-' + Date.now(),
-      senderId: myId,
-      senderName: currentUser?.name || 'من',
-      text: inputVal.trim(),
-      timestamp: timeStr,
-      isMe: true,
-    };
-
-    const updated = [...messages, newMsg];
-    setMessages(updated);
     setInputVal('');
+    setIsSending(true);
 
-    const storageKey = `taskrooz_chat_${myId}_${peerId}`;
+    // Optimistic message
+    const tempMsg: DirectChatMessage = {
+      id: 'opt_' + Date.now(),
+      senderId: currentUser?.id || 'me',
+      senderName: currentUser?.name || 'من',
+      senderAvatar: currentUser?.avatar || null,
+      receiverId: friendId,
+      text,
+      createdAt: new Date().toISOString(),
+      read: false,
+    };
+    setMessages((prev) => [...prev, tempMsg]);
+
     try {
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-    } catch {}
-
-    // Simulated interactive reply from colleague after 1.5s
-    setTimeout(() => {
-      const replies = [
-        'عالیه! پرانرژی ادامه بده، هر کمکی خواستی من اینجام ✌️',
-        'پیامت رسید، منم دارم تسک‌های مربوط به پروژه تیمی رو نهایی می‌کنم.',
-        'آفرین بر تو! بریم که تا آخر وقت تمام تسک‌ها رو سبز کنیم 💪',
-      ];
-      const randomReply = replies[Math.floor(Math.random() * replies.length)];
-      const replyMsg: ChatMessage = {
-        id: 'msg-' + Date.now() + 1,
-        senderId: peerId,
-        senderName: friend.name,
-        text: randomReply,
-        timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        isMe: false,
-      };
-      setMessages((prev) => {
-        const withReply = [...prev, replyMsg];
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(withReply));
-        } catch {}
-        return withReply;
-      });
-      sounds.playPop();
-    }, 1500);
+      const saved = await api.sendDirectMessage(friendId, text);
+      setMessages((prev) => prev.map((m) => (m.id === tempMsg.id ? saved : m)));
+    } catch (err: any) {
+      alert(err.message || 'خطا در ارسال پیام');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-in fade-in" dir="rtl">
       <div
-        className="w-full max-w-lg bg-white rounded-[32px] shadow-2xl border border-slate-200/90 h-[620px] max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95"
+        className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-[32px] shadow-2xl border border-slate-200/90 dark:border-zinc-800 h-[620px] max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Chat Header */}
-        <div className="p-4 sm:px-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+        <div className="p-4 sm:px-6 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/70 dark:bg-zinc-950/70">
           <div className="flex items-center gap-3">
             <div className="relative">
               <UserAvatar
-                name={friend.name}
-                avatar={friend.avatar}
-                size="w-10 h-10 rounded-full text-xs"
-                className="border-2 border-[#00b884]"
+                user={friend}
+                size="md"
+                className="ring-2 ring-emerald-500"
               />
-              <span className="w-3 h-3 rounded-full bg-[#00b884] border-2 border-white absolute bottom-0 left-0" />
+              <span className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-zinc-900 absolute bottom-0 left-0" />
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-black text-sm text-slate-900 leading-snug">
+                <h3 className="font-black text-sm text-slate-900 dark:text-white leading-snug">
                   {friend.name}
                 </h3>
-                <span className="text-[10px] text-[#00895f] font-bold">آنلاین</span>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">آنلاین</span>
               </div>
-              <p className="text-[10px] font-mono text-slate-400 font-bold">
-                @{friend.username}
+              <p className="text-[10px] font-mono text-slate-400 font-bold dir-ltr text-left">
+                @{friend.username} {friend.numericId ? `(#${friend.numericId})` : ''}
               </p>
             </div>
           </div>
@@ -152,7 +124,7 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-full text-slate-400 hover:text-slate-800 transition-colors"
+              className="p-1.5 rounded-full text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -160,68 +132,73 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
         </div>
 
         {/* Chat Messages Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 bg-[#f8fafc]/60">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 bg-[#f8fafc]/60 dark:bg-zinc-950/40">
           <div className="text-center my-2">
-            <span className="text-[10px] font-bold text-slate-400 bg-white border border-slate-200/80 px-3 py-1 rounded-full shadow-2xs">
-              گفتگوی امن و مستقیم با {friend.name}
+            <span className="text-[10px] font-bold text-slate-400 bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 px-3 py-1 rounded-full shadow-2xs">
+              گفتگوی واقعی و رمزگذاری‌شده میان شما و {friend.name}
             </span>
           </div>
 
           {messages.length === 0 && (
-            <div className="py-12 text-center text-slate-400 space-y-2">
-              <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto">
-                <Send className="w-5 h-5 text-slate-400" />
+            <div className="py-14 text-center text-slate-400 space-y-2">
+              <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 flex items-center justify-center mx-auto">
+                <Send className="w-5 h-5" />
               </div>
-              <p className="text-xs font-bold text-slate-600">هنوز پیامی ردوبدل نشده است</p>
-              <p className="text-[11px] text-slate-400">برای شروع گفتگو با {friend.name}، اولین پیام خود را بنویسید.</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-zinc-300">هنوز پیامی ردوبدل نشده است</p>
+              <p className="text-[11px] text-slate-400">پیام شما بلافاصله در پنل کاربری {friend.name} نمایش داده خواهد شد.</p>
             </div>
           )}
 
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex flex-col ${msg.isMe ? 'items-start' : 'items-end'}`}
-            >
+          {messages.map((msg) => {
+            const isMe = msg.senderId === currentUser?.id;
+            const timeStr = msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+
+            return (
               <div
-                className={`max-w-[80%] rounded-2xl p-3 text-xs leading-relaxed space-y-1 shadow-2xs ${
-                  msg.isMe
-                    ? 'bg-[#121212] text-white rounded-br-xs'
-                    : 'bg-white text-slate-800 border border-slate-200/80 rounded-bl-xs'
-                }`}
+                key={msg.id}
+                className={`flex flex-col ${isMe ? 'items-start' : 'items-end'}`}
               >
-                <p className="font-bold">{msg.text}</p>
                 <div
-                  className={`flex items-center gap-1 text-[9px] font-mono ${
-                    msg.isMe ? 'text-slate-400 justify-start' : 'text-slate-400 justify-end'
+                  className={`max-w-[80%] rounded-2xl p-3 text-xs leading-relaxed space-y-1 shadow-2xs ${
+                    isMe
+                      ? 'bg-[#121212] dark:bg-white text-white dark:text-zinc-900 rounded-br-xs'
+                      : 'bg-white dark:bg-zinc-800 text-slate-800 dark:text-white border border-slate-200/80 dark:border-zinc-700 rounded-bl-xs'
                   }`}
                 >
-                  <span>{msg.timestamp}</span>
-                  {msg.isMe && <CheckCheck className="w-3 h-3 text-[#00b884]" />}
+                  <p className="font-bold">{msg.text}</p>
+                  <div
+                    className={`flex items-center gap-1 text-[9px] font-mono ${
+                      isMe ? 'text-slate-400 dark:text-zinc-500 justify-start' : 'text-slate-400 dark:text-zinc-400 justify-end'
+                    }`}
+                  >
+                    <span>{timeStr}</span>
+                    {isMe && <CheckCheck className="w-3 h-3 text-[#00b884]" />}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <div ref={messagesEndRef} />
         </div>
 
         {/* Chat Input Bar */}
         <form
           onSubmit={handleSend}
-          className="p-3 sm:p-4 border-t border-slate-100 bg-white flex items-center gap-2"
+          className="p-3 sm:p-4 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-2"
         >
           <input
             type="text"
             value={inputVal}
             onChange={(e) => setInputVal(e.target.value)}
             placeholder={`پیامی برای ${friend.name} بنویسید...`}
-            className="flex-1 bg-[#f8fafc] border border-slate-200 rounded-2xl px-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-slate-400 focus:bg-white font-bold transition-all shadow-2xs"
+            className="flex-1 bg-[#f8fafc] dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl px-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-slate-400 dark:focus:border-zinc-700 font-bold transition-all shadow-2xs"
             autoFocus
           />
 
           <button
             type="submit"
-            disabled={!inputVal.trim()}
-            className="p-2.5 rounded-2xl bg-[#121212] hover:bg-black text-white transition-colors cursor-pointer disabled:opacity-40 shadow-xs flex items-center justify-center flex-shrink-0"
+            disabled={!inputVal.trim() || isSending}
+            className="p-2.5 rounded-2xl bg-[#121212] hover:bg-black dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-900 transition-colors cursor-pointer disabled:opacity-40 shadow-xs flex items-center justify-center flex-shrink-0"
             title="ارسال پیام"
           >
             <Send className="w-4 h-4 rotate-180" />

@@ -11,7 +11,12 @@
       "province": "تهران",
       "city": "تهران",
       "jobTitle": "مدیر کل سامانه",
-      "createdAt": "2026-09-22T00:00:00.000Z"
+      "createdAt": "2026-09-22T00:00:00.000Z",
+      "numericId": 1000,
+      "subscription": {
+        "plan": "pro"
+      },
+      "isProfileCompleted": true
     }
   ],
   "tasks": [],
@@ -59,7 +64,62 @@
       "isDefault": true
     }
   ],
-  "focus_rooms": [],
+  "focus_rooms": [
+    {
+      "id": "room_deepwork",
+      "name": "اتاق تمرکز عمیق (دیپ ورک)",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1790168504030,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۰۸:۳۰",
+          "lastPing": 1790168504030
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_init_1",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق تمرکز عمیق آماده است. کار روی مهم‌ترین تسک روز را آغاز کنید! 🎯",
+          "timestamp": "۰۸:۳۰"
+        }
+      ],
+      "createdAt": "2026-09-23T13:01:44.030Z"
+    },
+    {
+      "id": "room_dev",
+      "name": "اتاق توسعه محصول و برنامه‌نویسی",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 3000,
+      "breakDuration": 600,
+      "timeLeft": 3000,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1790168504030,
+      "participants": [],
+      "messages": [
+        {
+          "id": "msg_init_2",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق توسعه محصول آماده است. برنامه‌نویسی با بازه‌های ۵۰ دقیقه‌ای! 💻",
+          "timestamp": "۰۹:۰۰"
+        }
+      ],
+      "createdAt": "2026-09-23T13:01:44.030Z"
+    }
+  ],
   "projects": [],
   "goals": [],
   "dailyNotes": [],
@@ -98,7 +158,18 @@
         "bio": "طراح، برنامه‌نویس و سازنده تسک‌روز",
         "link": ""
       }
-    ]
+    ],
+    "subscriptionInfo": {
+      "cardNumber": "۶۰۳۷-۹۹۷۹-۵۰۵۰-۱۲۳۴",
+      "bankName": "بانک ملی ایران",
+      "ownerName": "مدیر سیستم (Mohusyn)",
+      "monthlyPrice": "۲۹۰,۰۰۰ تومان",
+      "supportContact": "پشتیبانی تلگرام/ایتا: @mohusyn_support"
+    }
   },
-  "custom_fonts": []
+  "custom_fonts": [],
+  "friendships": [],
+  "friend_requests": [],
+  "messages": [],
+  "project_messages": []
 }
