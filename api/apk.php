@@ -12,8 +12,8 @@ if ($action === 'status') {
     $size = $exists ? filesize($apkFile) : 0;
     jsonResponse([
         'status' => 'ready',
-        'appName' => 'تسک‌روز',
-        'packageName' => 'com.taskrooz.app',
+        'appName' => 'بگ تایم (Bag Time)',
+        'packageName' => 'com.bagtime.app',
         'version' => '1.0.0',
         'apkExists' => $exists,
         'sizeBytes' => $size,
@@ -30,12 +30,12 @@ if ($action === 'build' || $action === 'download') {
         if ($zip->open($apkFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
             $manifest = '<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.taskrooz.app"
+    package="com.bagtime.app"
     android:versionCode="1"
     android:versionName="1.0.0">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <application android:label="تسک‌روز" android:icon="@mipmap/ic_launcher">
+    <application android:label="بگ تایم" android:icon="@mipmap/ic_launcher">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

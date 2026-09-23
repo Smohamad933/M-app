@@ -2250,8 +2250,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     if (action === 'status') {
       sendJson(res, {
         status: 'ready',
-        appName: 'تسک‌روز',
-        packageName: 'com.taskrooz.app',
+        appName: 'بگ تایم (Bag Time)',
+        packageName: 'com.bagtime.app',
         version: '1.0.0',
         apkExists: exists,
         sizeBytes: size,
