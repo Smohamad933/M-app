@@ -38,11 +38,14 @@ export const AiTaskAgentModal: React.FC<AiTaskAgentModalProps> = ({
   const [drafts, setDrafts] = useState<ParsedTaskDraft[]>([]);
   const [hasParsed, setHasParsed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
 
   if (!isOpen) return null;
 
   const todayISO = getTodayISO();
   const activeDate = selectedDate || todayISO;
+
+  const CLOUDFLARE_WORKER_URL = 'https://black-water-424ftask-extractor-proxy.smosh-1387.workers.dev/';
 
   const samplePrompts = [
     'قراره ساعت ۱۲ ظهر برم کلاس موسیقی و ساعت ۱ میخوام با دوستم قرار دارم و ساعت ۵ برم شیرینی فروشی شیرینی بخرم و بعدش برم فلان جا تحویل اش بدم',
@@ -50,11 +53,64 @@ export const AiTaskAgentModal: React.FC<AiTaskAgentModalProps> = ({
     'ساعت ۱۰ مراجعه به بانک، ساعت ۱۲ خرید مایحتاج خانه، ساعت ۱۶ مطالعه فصل دوم کتاب',
   ];
 
-  const handleParse = (textToParse?: string) => {
+  const handleParse = async (textToParse?: string) => {
     const text = typeof textToParse === 'string' ? textToParse : inputText;
     if (!text.trim()) return;
 
     sounds.playPop();
+    setIsParsing(true);
+
+    try {
+      // 1. Direct fetch to user-specified Cloudflare Worker proxy
+      const response = await fetch(CLOUDFLARE_WORKER_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          text,
+          prompt: text,
+          date: activeDate,
+        }),
+      });
+
+      if (response.ok) {
+        const json = await response.json();
+        const rawTasks = Array.isArray(json)
+          ? json
+          : Array.isArray(json.tasks)
+          ? json.tasks
+          : Array.isArray(json.data)
+          ? json.data
+          : Array.isArray(json.result)
+          ? json.result
+          : null;
+
+        if (rawTasks && rawTasks.length > 0) {
+          const mapped: ParsedTaskDraft[] = rawTasks.map((t: any, i: number) => ({
+            id: t.id || `worker-${Date.now()}-${i}`,
+            title: t.title || t.name || t.text || `تسک ${i + 1}`,
+            time: t.time || t.hour || undefined,
+            priority: t.priority === 'high' || t.priority === 'low' ? t.priority : 'medium',
+            categoryId: t.categoryId || 'cat-personal',
+            categoryName: t.categoryName || 'شخصی',
+            date: t.date || activeDate,
+            selected: true,
+          }));
+          setDrafts(mapped);
+          setHasParsed(true);
+          setIsParsing(false);
+          return;
+        }
+      }
+    } catch (workerErr) {
+      console.warn('Cloudflare Worker fallback to local NLP parser:', workerErr);
+    } finally {
+      setIsParsing(false);
+    }
+
+    // 2. High-precision fallback to local Persian NLP parser
     const parsed = parseTasksFromPersianText(text, activeDate);
     setDrafts(parsed);
     setHasParsed(true);
@@ -263,10 +319,11 @@ export const AiTaskAgentModal: React.FC<AiTaskAgentModalProps> = ({
                 <button
                   type="button"
                   onClick={() => handleParse()}
-                  className="px-4 py-2 bg-[#121212] hover:bg-black text-white rounded-xl font-black text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  disabled={isParsing}
+                  className="px-4 py-2 bg-[#121212] hover:bg-black text-white rounded-xl font-black text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-[#00b884]" />
-                  <span>تفکیک با ایجنت</span>
+                  <Sparkles className={`w-3.5 h-3.5 text-[#00b884] ${isParsing ? 'animate-spin' : ''}`} />
+                  <span>{isParsing ? 'در حال استخراج...' : 'تفکیک با ایجنت'}</span>
                 </button>
               </div>
             </div>

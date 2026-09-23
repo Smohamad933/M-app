@@ -674,6 +674,27 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       return true;
     }
 
+    const qAction = urlObj.searchParams.get('action') || '';
+
+    // Allow authenticated users to search/view safe public colleague profiles
+    if (method === 'GET' && (qAction === 'public' || qAction === 'search')) {
+      const safeUsers = db.users.map((u) => ({
+        id: u.id,
+        name: u.name,
+        username: u.username,
+        avatar: u.avatar || null,
+        jobTitle: u.jobTitle || null,
+        role: u.role || 'user',
+        phone: u.phone || null,
+        province: u.province || null,
+        city: u.city || null,
+        skills: u.skills || [],
+        createdAt: u.createdAt,
+      }));
+      sendJson(res, { users: safeUsers });
+      return true;
+    }
+
     if (!currentUser || currentUser.role !== 'admin') {
       sendJson(res, { error: 'دسترسی فقط برای مدیر سیستم مجاز است.' }, 403);
       return true;
@@ -711,8 +732,6 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       writeDb(db);
       sendJson(res, { message: 'کاربر و تمامی تسک‌ها و داده‌های مرتبط با موفقیت حذف شدند.' });
     };
-
-    const qAction = urlObj.searchParams.get('action') || '';
 
     // IIS 405 resilience: some servers block the DELETE verb, allow delete via GET/POST ?action=delete
     if (method === 'GET' && (qAction === 'delete' || qAction === 'delete_user')) {
@@ -776,8 +795,22 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         }
         const userTasks = db.tasks.filter((t) => t.userId === targetUser.id);
         const userGoals = ((db as any).goals || []).filter((g: any) => g.userId === targetUser.id);
-        const userNotes = ((db as any).dailyNotes || {})[targetUser.id] || {};
-        const userPersonality = ((db as any).personalityResults || {})[targetUser.id] || null;
+        const userNotes: Record<string, string> = {};
+        const rawNotes = (db as any).dailyNotes;
+        if (Array.isArray(rawNotes)) {
+          for (const n of rawNotes) {
+            if (n && n.userId === targetUser.id) userNotes[n.date] = n.content;
+          }
+        } else if (rawNotes && typeof rawNotes === 'object') {
+          Object.assign(userNotes, rawNotes[targetUser.id] || {});
+        }
+        let userPersonality = null;
+        const rawPers = (db as any).personalityResults;
+        if (Array.isArray(rawPers)) {
+          userPersonality = rawPers.find((p: any) => p && p.userId === targetUser.id) || null;
+        } else if (rawPers && typeof rawPers === 'object') {
+          userPersonality = rawPers[targetUser.id] || null;
+        }
         const total = userTasks.length;
         const done = userTasks.filter((t) => t.completed).length;
         const pending = total - done;

@@ -372,7 +372,15 @@ export const api = {
         serverReachable = true;
       }
     } catch {
-      // ignore
+      try {
+        const publicData = await request<{ users: User[] }>('api/users.php?action=public');
+        if (Array.isArray(publicData.users) && publicData.users.length > 0) {
+          serverUsers = publicData.users;
+          serverReachable = true;
+        }
+      } catch {
+        // ignore
+      }
     }
 
     try {

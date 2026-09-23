@@ -85,7 +85,31 @@ if ($currentUser && $currentUser['role'] === 'admin') {
     }
 }
 
+// Allow authenticated users to search/view safe public colleague profiles
+$action = $_GET['action'] ?? '';
 if (!$isAdmin) {
+    if ($action === 'public' || $action === 'search') {
+        $all = $db->getAllUsers();
+        $safe = [];
+        foreach ($all as $u) {
+            unset($u['password']);
+            unset($u['password_hash']);
+            $safe[] = [
+                'id' => $u['id'],
+                'name' => $u['name'],
+                'username' => $u['username'],
+                'avatar' => $u['avatar'] ?? null,
+                'jobTitle' => $u['jobTitle'] ?? null,
+                'role' => $u['role'] ?? 'user',
+                'phone' => $u['phone'] ?? null,
+                'province' => $u['province'] ?? null,
+                'city' => $u['city'] ?? null,
+                'skills' => $u['skills'] ?? [],
+                'createdAt' => $u['createdAt'] ?? null,
+            ];
+        }
+        jsonResponse(['users' => $safe]);
+    }
     jsonResponse(['error' => 'دسترسی فقط برای مدیر سیستم مجاز است.'], 403);
 }
 
