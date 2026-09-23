@@ -97,6 +97,8 @@ export const MainLayout: React.FC = () => {
     isPro,
     isFirstLoginModalOpen,
     setIsFirstLoginModalOpen,
+    isUpgradeModalOpen,
+    setIsUpgradeModalOpen,
   } = useTask();
 
   const todayISO = getTodayISO();
@@ -115,7 +117,6 @@ export const MainLayout: React.FC = () => {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isFontModalOpen, setIsFontModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [inspectedUser, setInspectedUser] = useState<User | null>(null);
 
   // New interactive states

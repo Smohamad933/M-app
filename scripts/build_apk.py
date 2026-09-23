@@ -45,6 +45,8 @@ def build_apk():
             # Add dist files
             for root_dir, _, files in os.walk('dist'):
                 for f in files:
+                    if f.endswith('.apk') or f.endswith('.zip'):
+                        continue
                     full_p = os.path.join(root_dir, f)
                     rel_p = os.path.relpath(full_p, 'dist')
                     z.write(full_p, f'assets/www/{rel_p}')

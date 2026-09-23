@@ -27,6 +27,7 @@ import {
   Folder,
   UserCheck,
   FolderKanban,
+  Sparkles,
 } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -51,6 +52,7 @@ export const TaskModal: React.FC = () => {
     selectedDate,
     currentUser,
     users,
+    setIsUpgradeModalOpen,
   } = useTask();
 
   const [title, setTitle] = useState('');
@@ -63,6 +65,8 @@ export const TaskModal: React.FC = () => {
   const [isPinned, setIsPinned] = useState(false);
   const [subtasks, setSubtasks] = useState<SubTask[]>([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Admin user assignment
   const [assignedUserId, setAssignedUserId] = useState<string>(currentUser?.id || '');
@@ -115,41 +119,48 @@ export const TaskModal: React.FC = () => {
     setSubtasks(subtasks.filter((s) => s.id !== id));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+    setError(null);
+    setIsSubmitting(true);
 
-    if (editingTask) {
-      updateTask({
-        ...editingTask,
-        title: title.trim(),
-        description: description.trim() || undefined,
-        date,
-        time: time || undefined,
-        priority,
-        categoryId,
-        projectId: projectId || undefined,
-        isPinned,
-        subtasks,
-        ...(currentUser?.role === 'admin' ? { userId: assignedUserId } : {}),
-      });
-    } else {
-      addTask({
-        title: title.trim(),
-        description: description.trim() || undefined,
-        date,
-        time: time || undefined,
-        priority,
-        categoryId,
-        projectId: projectId || undefined,
-        completed: false,
-        isPinned,
-        subtasks,
-        ...(currentUser?.role === 'admin' ? { userId: assignedUserId } : {}),
-      });
+    try {
+      if (editingTask) {
+        await updateTask({
+          ...editingTask,
+          title: title.trim(),
+          description: description.trim() || undefined,
+          date,
+          time: time || undefined,
+          priority,
+          categoryId,
+          projectId: projectId || undefined,
+          isPinned,
+          subtasks,
+          ...(currentUser?.role === 'admin' ? { userId: assignedUserId } : {}),
+        });
+      } else {
+        await addTask({
+          title: title.trim(),
+          description: description.trim() || undefined,
+          date,
+          time: time || undefined,
+          priority,
+          categoryId,
+          projectId: projectId || undefined,
+          completed: false,
+          isPinned,
+          subtasks,
+          ...(currentUser?.role === 'admin' ? { userId: assignedUserId } : {}),
+        });
+      }
+      closeTaskModal();
+    } catch (err: any) {
+      setError(err.message || 'خطا در ثبت تسک');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    closeTaskModal();
   };
 
   // Jalali selector parts
@@ -182,6 +193,26 @@ export const TaskModal: React.FC = () => {
 
         {/* Modal Scrollable Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+          {error && (
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold space-y-2 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  closeTaskModal();
+                  setIsUpgradeModalOpen(true);
+                }}
+                className="w-full py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 text-white font-extrabold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>ارتقاء به اشتراک ویژه (Pro) ⭐</span>
+              </button>
+            </div>
+          )}
+
           {/* Admin User Assignment Selector */}
           {currentUser?.role === 'admin' && users.length > 1 && (
             <div className="space-y-1.5 p-3.5 rounded-2xl bg-[#f8fafc] border border-slate-200">
@@ -550,10 +581,17 @@ export const TaskModal: React.FC = () => {
             </button>
             <button
               type="submit"
-              className="flex-1 py-3 rounded-2xl bg-[#121212] hover:bg-black text-white font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+              disabled={isSubmitting}
+              className="flex-1 py-3 rounded-2xl bg-[#121212] hover:bg-black text-white font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Check className="w-4 h-4 stroke-[2.5]" />
-              <span>{editingTask ? 'ذخیره تغییرات' : 'افزودن تسک'}</span>
+              <span>
+                {isSubmitting
+                  ? 'در حال ثبت...'
+                  : editingTask
+                  ? 'ذخیره تغییرات'
+                  : 'افزودن تسک'}
+              </span>
             </button>
           </div>
         </form>
