@@ -697,7 +697,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (gSettings.enforcedFont) {
           setSystemFontState(gSettings.enforcedFont);
         }
-        if (user?.role === 'admin') {
+        if (user) {
           try {
             const uList = await api.getUsers();
             setUsers(uList);
@@ -743,7 +743,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [selectedFilterUserId, selectedProjectId]);
 
   const refreshUsers = useCallback(async () => {
-    if (currentUser?.role === 'admin') {
+    if (currentUser) {
       try {
         const uList = await api.getUsers();
         setUsers(uList);
@@ -799,7 +799,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await api.login(username, password);
       setCurrentUser(res.user);
-      if (res.user.role === 'admin') {
+      if (res.user) {
         try {
           const uList = await api.getUsers();
           setUsers(uList);

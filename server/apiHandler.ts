@@ -678,7 +678,16 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
     // Allow authenticated users to search/view safe public colleague profiles
     if (method === 'GET' && (qAction === 'public' || qAction === 'search')) {
-      const safeUsers = db.users.map((u) => ({
+      const q = (urlObj.searchParams.get('q') || '').trim().toLowerCase();
+      let list = db.users || [];
+      if (q) {
+        list = list.filter((u) =>
+          (u.name && u.name.toLowerCase().includes(q)) ||
+          (u.username && u.username.toLowerCase().includes(q)) ||
+          (u.jobTitle && u.jobTitle.toLowerCase().includes(q))
+        );
+      }
+      const safeUsers = list.map((u) => ({
         id: u.id,
         name: u.name,
         username: u.username,
@@ -1981,6 +1990,43 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         writeDb(db);
       }
       sendJson(res, { message: 'فونت سفارشی حذف شد.' });
+      return true;
+    }
+  }
+
+  // 13. Android APK Builder & Download (/api/apk)
+  if (pathname.startsWith('/api/apk')) {
+    const action = urlObj.searchParams.get('action') || 'status';
+    const apkPath = path.join(process.cwd(), 'public', 'TaskRooz.apk');
+    const exists = fs.existsSync(apkPath);
+    const size = exists ? fs.statSync(apkPath).size : 0;
+
+    if (action === 'status') {
+      sendJson(res, {
+        status: 'ready',
+        appName: 'تسک‌روز',
+        packageName: 'com.taskrooz.app',
+        version: '1.0.0',
+        apkExists: exists,
+        sizeBytes: size,
+        sizeFormatted: exists ? `${Math.round(size / 1024)} KB` : '0 KB',
+        downloadUrl: '/TaskRooz.apk',
+      });
+      return true;
+    }
+
+    if (action === 'download' || action === 'build') {
+      if (exists) {
+        res.writeHead(200, {
+          'Content-Type': 'application/vnd.android.package-archive',
+          'Content-Disposition': 'attachment; filename="TaskRooz.apk"',
+          'Content-Length': size,
+        });
+        const stream = fs.createReadStream(apkPath);
+        stream.pipe(res);
+        return true;
+      }
+      sendJson(res, { error: 'فایل APK یافت نشد.' }, 404);
       return true;
     }
   }

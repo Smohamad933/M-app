@@ -438,6 +438,21 @@ export const api = {
     }
   },
 
+  async searchUsers(query: string): Promise<User[]> {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    try {
+      const res = await request<{ users: User[] }>(`api/users.php?action=search&q=${encodeURIComponent(q)}`);
+      if (Array.isArray(res.users)) return res.users;
+    } catch {}
+    // Fallback to local filter
+    const all = await this.getUsers();
+    return all.filter((u) =>
+      (u.name && u.name.toLowerCase().includes(q)) ||
+      (u.username && u.username.toLowerCase().includes(q))
+    );
+  },
+
   async createUser(user: {
     username: string;
     password: string;

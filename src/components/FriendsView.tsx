@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
+import { api } from '../services/api';
+import type { User } from '../types';
 import { UserAvatar } from './UserAvatar';
 import { sounds } from '../utils/sound';
 import {
@@ -66,11 +68,14 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ onStartChat, onOpenCha
   });
 
   const [sentNotice, setSentNotice] = useState<string | null>(null);
+  const [serverSearchResults, setServerSearchResults] = useState<typeof users>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Sync to localStorage
   useEffect(() => {
     try {
       localStorage.setItem(`taskrooz_friends_${myId}`, JSON.stringify(friends));
+      window.dispatchEvent(new CustomEvent('taskrooz-friends-changed', { detail: friends }));
     } catch {}
   }, [friends, myId]);
 
@@ -80,33 +85,75 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ onStartChat, onOpenCha
     } catch {}
   }, [requests, myId]);
 
-  // Search logic: Privacy requirement — only display users when searched!
+  // Live server search when query is typed
+  useEffect(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (q.length < 1) {
+      setServerSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+    let active = true;
+    setIsSearching(true);
+    api.searchUsers(q)
+      .then((res: User[]) => {
+        if (active) {
+          setServerSearchResults(res.filter((u: User) => u.id !== currentUser?.id));
+          setIsSearching(false);
+        }
+      })
+      .catch(() => {
+        if (active) setIsSearching(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [searchQuery, currentUser?.id]);
+
+  // Combined search results: server results + context users
   const searchResults = (() => {
     const q = searchQuery.trim().toLowerCase();
-    if (q.length < 2) return [];
+    if (q.length < 1) return [];
 
-    return users
+    const map = new Map<string, (typeof users)[0]>();
+    serverSearchResults.forEach((u) => {
+      if (u.id !== currentUser?.id) map.set(u.id, u);
+    });
+    users
       .filter((u) => u.id !== currentUser?.id)
       .filter((u) => {
-        const matchName = u.name.toLowerCase().includes(q);
-        const matchUser = u.username.toLowerCase().includes(q);
-        return matchName || matchUser;
+        const matchName = u.name && u.name.toLowerCase().includes(q);
+        const matchUser = u.username && u.username.toLowerCase().includes(q);
+        const matchJob = u.jobTitle && u.jobTitle.toLowerCase().includes(q);
+        return matchName || matchUser || matchJob;
       })
-      .slice(0, 10);
+      .forEach((u) => map.set(u.id, u));
+
+    return Array.from(map.values()).slice(0, 20);
   })();
 
   const handleSendRequest = (user: (typeof users)[0]) => {
-    sounds.playPop();
+    sounds.playComplete();
     // Check if already friends
     if (friends.some((f) => f.id === user.id)) {
-      setSentNotice(`شما قبلاً با «${user.name}» دوست هستید.`);
-      setTimeout(() => setSentNotice(null), 3000);
+      setSentNotice(`شما قبلاً با «${user.name}» همکار و دوست هستید.`);
+      setTimeout(() => setSentNotice(null), 3500);
       return;
     }
 
-    // In a real system, send request to user's storage. Here we add to our simulated pending:
-    setSentNotice(`✅ درخواست دوستی برای «${user.name}» (@${user.username}) ارسال شد.`);
-    setTimeout(() => setSentNotice(null), 3000);
+    const newFriend: FriendItem = {
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      jobTitle: user.jobTitle || 'همکار تیمی',
+      avatar: user.avatar,
+      online: true,
+      addedAt: new Date().toISOString(),
+    };
+    const updated = [...friends, newFriend];
+    setFriends(updated);
+    setSentNotice(`✅ «${user.name}» (@${user.username}) به لیست همکاران و دوستان شما اضافه شد!`);
+    setTimeout(() => setSentNotice(null), 4000);
   };
 
   const handleAcceptRequest = (req: FriendRequest) => {
@@ -359,7 +406,13 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ onStartChat, onOpenCha
           </div>
 
           {/* Results list */}
-          {searchQuery.trim().length >= 2 && (
+          {isSearching && (
+            <div className="text-xs text-slate-400 font-bold animate-pulse pt-2">
+              در حال جستجو در میان کاربران سامانه...
+            </div>
+          )}
+
+          {searchQuery.trim().length >= 1 && (
             <div className="space-y-2.5 pt-2">
               <span className="text-[11px] font-bold text-slate-400">
                 نتایج جستجو ({searchResults.length} کاربر پیدا شد):
@@ -393,22 +446,40 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ onStartChat, onOpenCha
                           <span className="text-[10px] font-mono text-slate-400 font-bold block">
                             @{user.username}
                           </span>
+                          {user.jobTitle && (
+                            <span className="text-[10px] text-slate-500 block">
+                              {user.jobTitle}
+                            </span>
+                          )}
                         </div>
                       </div>
 
                       {isFriend ? (
-                        <span className="text-[11px] px-3 py-1.5 rounded-xl bg-emerald-50 text-[#00895f] border border-emerald-200 font-extrabold flex items-center gap-1">
-                          <Check className="w-3.5 h-3.5" />
-                          <span>دوست شماست</span>
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] px-2.5 py-1 rounded-xl bg-emerald-50 text-[#00895f] border border-emerald-200 font-bold flex items-center gap-1">
+                            <Check className="w-3 h-3" />
+                            <span>همکار</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const f = friends.find((item) => item.id === user.id);
+                              if (f) handleChat(f);
+                            }}
+                            className="p-1.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs cursor-pointer shadow-xs"
+                            title="شروع گفتگو"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       ) : (
                         <button
                           type="button"
                           onClick={() => handleSendRequest(user)}
                           className="px-3.5 py-1.5 rounded-xl bg-[#121212] hover:bg-black text-white text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
                         >
-                          <UserPlus className="w-3.5 h-3.5" />
-                          <span>درخواست دوستی</span>
+                          <UserPlus className="w-3.5 h-3.5 text-[#00b884]" />
+                          <span>افزودن همکار</span>
                         </button>
                       )}
                     </div>
@@ -416,7 +487,7 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ onStartChat, onOpenCha
                 })}
               </div>
 
-              {searchResults.length === 0 && (
+              {!isSearching && searchResults.length === 0 && (
                 <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400 font-bold text-xs">
                   کاربری با عبارت «{searchQuery}» پیدا نشد.
                 </div>

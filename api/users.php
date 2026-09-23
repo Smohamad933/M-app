@@ -90,8 +90,17 @@ $action = $_GET['action'] ?? '';
 if (!$isAdmin) {
     if ($action === 'public' || $action === 'search') {
         $all = $db->getAllUsers();
+        $q = isset($_GET['q']) ? strtolower(trim((string)$_GET['q'])) : '';
         $safe = [];
         foreach ($all as $u) {
+            if ($q !== '') {
+                $nameMatch = isset($u['name']) && strpos(strtolower($u['name']), $q) !== false;
+                $userMatch = isset($u['username']) && strpos(strtolower($u['username']), $q) !== false;
+                $jobMatch = isset($u['jobTitle']) && strpos(strtolower($u['jobTitle']), $q) !== false;
+                if (!$nameMatch && !$userMatch && !$jobMatch) {
+                    continue;
+                }
+            }
             unset($u['password']);
             unset($u['password_hash']);
             $safe[] = [

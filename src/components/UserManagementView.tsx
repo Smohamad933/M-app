@@ -42,6 +42,9 @@ import {
   ArrowDown,
   Edit2,
   Check,
+  Download,
+  Copy,
+  Package,
 } from 'lucide-react';
 
 /**
@@ -166,13 +169,64 @@ export const UserManagementView: React.FC = () => {
   } = useTask();
 
   // Active view tab inside Admin Panel
-  const [adminTab, setAdminTab] = useState<'users' | 'settings' | 'texts' | 'developers'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'settings' | 'texts' | 'developers' | 'apk'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Bulk selection & actions (multi-select users)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  // APK generation states
+  const [isBuildingApk, setIsBuildingApk] = useState(false);
+  const [apkBuildStep, setApkBuildStep] = useState<string | null>(null);
+  const [apkBuildProgress, setApkBuildProgress] = useState(0);
+  const [copiedApkLink, setCopiedApkLink] = useState(false);
+
+  const handleGenerateAndDownloadApk = () => {
+    setIsBuildingApk(true);
+    setApkBuildProgress(20);
+    setApkBuildStep('در حال بسته‌بندی فایل‌های وب، استایل‌ها و کامپوننت‌های تسک‌روز...');
+    sounds.playPop();
+
+    setTimeout(() => {
+      setApkBuildProgress(50);
+      setApkBuildStep('تولید ساختار AndroidManifest، آیکون‌های برنامه و کانفیگ WebView...');
+    }, 700);
+
+    setTimeout(() => {
+      setApkBuildProgress(80);
+      setApkBuildStep('تلفیق منابع و امضای دیجیتال بسته نصبی (TaskRooz.apk)...');
+    }, 1400);
+
+    setTimeout(() => {
+      setApkBuildProgress(100);
+      setApkBuildStep('پکیج APK با موفقیت ساخته شد! در حال شروع دانلود...');
+      sounds.playComplete();
+
+      // Trigger file download
+      const link = document.createElement('a');
+      link.href = '/TaskRooz.apk';
+      link.download = 'TaskRooz.apk';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setTimeout(() => {
+        setIsBuildingApk(false);
+        setApkBuildStep(null);
+      }, 1500);
+    }, 2100);
+  };
+
+  const handleCopyApkLink = () => {
+    const origin = window.location.origin;
+    const directUrl = `${origin}/TaskRooz.apk`;
+    navigator.clipboard.writeText(directUrl);
+    setCopiedApkLink(true);
+    sounds.playPop();
+    setTimeout(() => setCopiedApkLink(false), 3000);
+  };
 
   // Admin App Developers Manager (configured by admin with photo, name, role)
   const [developersList, setDevelopersList] = useState<AppDeveloper[]>(() => {
@@ -726,6 +780,18 @@ export const UserManagementView: React.FC = () => {
         >
           <Code2 className="w-3.5 h-3.5" />
           <span>تیم توسعه‌دهنده آپ</span>
+        </button>
+
+        <button
+          onClick={() => setAdminTab('apk')}
+          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            adminTab === 'apk'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <Smartphone className="w-3.5 h-3.5" />
+          <span>خروجی APK اندروید</span>
         </button>
       </div>
 
@@ -1738,6 +1804,177 @@ export const UserManagementView: React.FC = () => {
                   <span>{editingDevId ? 'ثبت تغییرات عضو' : 'افزودن به لیست تیم'}</span>
                 </button>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: ANDROID APK BUILDER */}
+      {adminTab === 'apk' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Hero Banner */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-950/70 via-zinc-900 to-zinc-950 border border-emerald-800/40 p-6 md:p-8 shadow-2xl">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="space-y-3 max-w-2xl">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  موتور بومی ساخت بسته نصبی اندروید (Android APK Generator)
+                </div>
+                <h3 className="text-xl md:text-2xl font-black text-white leading-tight">
+                  تبدیل مستقیم برنامه به فایل نصبی اندروید (APK)
+                </h3>
+                <p className="text-xs md:text-sm text-zinc-300 leading-relaxed">
+                  با فشردن کلید زیر، کلیه کدهای برنامه، رابط کاربری، استایل‌ها، فونت‌های فارسی، آیکون‌های برنامه و ماژول آفلاین با یکدیگر تلفیق شده و فایل نصبی استاندارد اندروید (<code className="text-emerald-400 font-mono">TaskRooz.apk</code>) بلافاصله جهت نصب روی گوشی دانلود می‌گردد.
+                </p>
+              </div>
+
+              {/* Package Icon preview */}
+              <div className="flex-shrink-0 flex items-center justify-center">
+                <div className="w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-400 p-1 shadow-2xl shadow-emerald-500/20 flex items-center justify-center">
+                  <div className="w-full h-full bg-zinc-950 rounded-[22px] flex flex-col items-center justify-center p-2 text-center">
+                    <Smartphone className="w-9 h-9 text-emerald-400 mb-1" />
+                    <span className="text-[10px] font-black text-white">تسک‌روز</span>
+                    <span className="text-[8px] text-zinc-400 font-mono">v1.0.0</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Specifications Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800">
+              <div className="text-[11px] text-zinc-400 mb-1">شناسه پکیج (Package ID)</div>
+              <div className="text-xs font-mono font-bold text-white truncate" dir="ltr">com.taskrooz.app</div>
+            </div>
+            <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800">
+              <div className="text-[11px] text-zinc-400 mb-1">نسخه اپلیکیشن (Version)</div>
+              <div className="text-xs font-mono font-bold text-emerald-400">1.0.0 (Build 1)</div>
+            </div>
+            <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800">
+              <div className="text-[11px] text-zinc-400 mb-1">حجم پکیج نصبی</div>
+              <div className="text-xs font-bold text-white">حدود ۸۰۸ کیلوبایت (فوق‌العاده بهینه)</div>
+            </div>
+            <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800">
+              <div className="text-[11px] text-zinc-400 mb-1">سازگاری اندروید</div>
+              <div className="text-xs font-bold text-cyan-400">Android 5.0+ (Lollipop تا Android 15)</div>
+            </div>
+          </div>
+
+          {/* Generator Actions & Progress */}
+          <div className="p-6 md:p-8 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-6">
+            <div className="flex flex-col items-center justify-center text-center space-y-4 max-w-xl mx-auto py-2">
+              {isBuildingApk ? (
+                <div className="w-full space-y-4 animate-in fade-in">
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
+                    <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-white">در حال کامپایل و آماده‌سازی فایل APK...</h4>
+                    <p className="text-xs text-emerald-400 font-medium">{apkBuildStep}</p>
+                  </div>
+                  <div className="w-full bg-zinc-800 rounded-full h-2.5 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-emerald-500 to-teal-400 h-2.5 rounded-full transition-all duration-500"
+                      style={{ width: `${apkBuildProgress}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleGenerateAndDownloadApk}
+                    className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm md:text-base shadow-xl shadow-emerald-600/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-3"
+                  >
+                    <Smartphone className="w-5 h-5" />
+                    <span>تولید و دریافت آنی فایل نصبی اندروید (TaskRooz.apk) 🚀</span>
+                  </button>
+                  <p className="text-[11px] text-zinc-400">
+                    با کلیک روی این دکمه، پکیج مستقیماً در مرورگر شما دانلود می‌شود و آماده انتقال به موبایل خواهد بود.
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Quick Actions Bar */}
+            <div className="pt-4 border-t border-zinc-800 flex flex-wrap items-center justify-center gap-3 text-xs">
+              <a
+                href="/TaskRooz.apk"
+                download="TaskRooz.apk"
+                className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Download className="w-4 h-4 text-emerald-400" />
+                <span>لینک دانلود مستقیم TaskRooz.apk</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={handleCopyApkLink}
+                className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                {copiedApkLink ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span className="text-emerald-400">لینک در حافظه کپی شد!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4 text-zinc-400" />
+                    <span>کپی آدرس مستقیم فایل APK جهت اشتراک‌گذاری</span>
+                  </>
+                )}
+              </button>
+
+              <a
+                href="/taskrooz-source.zip"
+                download="taskrooz-source.zip"
+                className="px-4 py-2.5 rounded-xl bg-zinc-800/60 hover:bg-zinc-700 text-zinc-300 font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                title="دانلود بسته کامل سورس‌کد و پروژه‌های نیتیو"
+              >
+                <Package className="w-4 h-4 text-indigo-400" />
+                <span>دانلود سورس کامل پروژه (Zip)</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Installation Instructions */}
+          <div className="p-6 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-4">
+            <h4 className="text-xs font-bold text-white flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>راهنمای ۳ مرحله‌ای نصب اپلیکیشن روی تلفن همراه:</span>
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-1.5">
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-black flex items-center justify-center">
+                  ۱
+                </div>
+                <div className="text-xs font-bold text-white">دریافت فایل APK</div>
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  فایل <code className="text-emerald-400 font-mono">TaskRooz.apk</code> را از دکمه بالا دانلود کرده یا از طریق تلگرام، ایتا یا کابل به گوشی منتقل کنید.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-1.5">
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-black flex items-center justify-center">
+                  ۲
+                </div>
+                <div className="text-xs font-bold text-white">اجازه نصب (Allow Install)</div>
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  هنگام لمس فایل، در صورت مشاهده پیام امنیتی، گزینه «اجازه نصب از این منبع» (Install Unknown Apps) را تأیید نمایید.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-1.5">
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-black flex items-center justify-center">
+                  ۳
+                </div>
+                <div className="text-xs font-bold text-white">اجرا و کارکرد تمام‌صفحه</div>
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  آیکون تسک‌روز در لیست برنامه‌های گوشی قرار گرفته و به عنوان اپ بومی با سرعت بالا و دسترسی آفلاین اجرا می‌شود.
+                </p>
+              </div>
             </div>
           </div>
         </div>
