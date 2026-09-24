@@ -49,6 +49,9 @@ import {
   CreditCard,
   Music,
   Upload,
+  Monitor,
+  Key,
+  Laptop,
 } from 'lucide-react';
 
 /**
@@ -307,25 +310,31 @@ export const UserManagementView: React.FC = () => {
   const [apkBuildProgress, setApkBuildProgress] = useState(0);
   const [copiedApkLink, setCopiedApkLink] = useState(false);
 
+  const [isBuildingExe, setIsBuildingExe] = useState(false);
+  const [exeBuildProgress, setExeBuildProgress] = useState(0);
+  const [copiedExeLink, setCopiedExeLink] = useState(false);
+  const [copiedKeystorePass, setCopiedKeystorePass] = useState(false);
+  const [copiedSha256, setCopiedSha256] = useState(false);
+
   const handleGenerateAndDownloadApk = () => {
     setIsBuildingApk(true);
     setApkBuildProgress(20);
-    setApkBuildStep('در حال بسته‌بندی فایل‌های وب، استایل‌ها و کامپوننت‌های تسک‌روز...');
+    setApkBuildStep('در حال بسته‌بندی فایل‌های وب، استایل‌ها و کامپوننت‌های بگ تایم...');
     sounds.playPop();
 
     setTimeout(() => {
       setApkBuildProgress(50);
-      setApkBuildStep('تولید ساختار AndroidManifest، آیکون‌های برنامه و کانفیگ WebView...');
+      setApkBuildStep('تولید ساختار AndroidManifest، آیکون‌های برنامه و ماژول آفلاین...');
     }, 700);
 
     setTimeout(() => {
       setApkBuildProgress(80);
-      setApkBuildStep('تلفیق منابع و امضای دیجیتال بسته نصبی (TaskRooz.apk)...');
+      setApkBuildStep('امضای دیجیتال بسته نصبی با کلید اختصاصی taskrooz-release.keystore...');
     }, 1400);
 
     setTimeout(() => {
       setApkBuildProgress(100);
-      setApkBuildStep('پکیج APK با موفقیت ساخته شد! در حال شروع دانلود...');
+      setApkBuildStep('پکیج APK امضا شده با موفقیت ساخته شد! در حال شروع دانلود...');
       sounds.playComplete();
 
       // Trigger file download
@@ -350,6 +359,48 @@ export const UserManagementView: React.FC = () => {
     setCopiedApkLink(true);
     sounds.playPop();
     setTimeout(() => setCopiedApkLink(false), 3000);
+  };
+
+  const handleGenerateAndDownloadExe = () => {
+    setIsBuildingExe(true);
+    setExeBuildProgress(25);
+    sounds.playPop();
+
+    setTimeout(() => setExeBuildProgress(60), 600);
+    setTimeout(() => {
+      setExeBuildProgress(100);
+      sounds.playComplete();
+      const link = document.createElement('a');
+      link.href = '/TaskRooz.exe';
+      link.download = 'TaskRooz.exe';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => setIsBuildingExe(false), 1500);
+    }, 1400);
+  };
+
+  const handleCopyExeLink = () => {
+    const origin = window.location.origin;
+    const directUrl = `${origin}/TaskRooz.exe`;
+    navigator.clipboard.writeText(directUrl);
+    setCopiedExeLink(true);
+    sounds.playPop();
+    setTimeout(() => setCopiedExeLink(false), 3000);
+  };
+
+  const handleCopyKeystorePass = () => {
+    navigator.clipboard.writeText('taskrooz1405');
+    setCopiedKeystorePass(true);
+    sounds.playPop();
+    setTimeout(() => setCopiedKeystorePass(false), 3000);
+  };
+
+  const handleCopySha256 = () => {
+    navigator.clipboard.writeText('6B:3D:7F:CE:FB:0A:56:C7:9F:3A:3F:4A:97:B5:6E:0D:95:3A:B1:8C:B9:83:00:70:30:7B:FB:A7:93:A4:63:62');
+    setCopiedSha256(true);
+    sounds.playPop();
+    setTimeout(() => setCopiedSha256(false), 3000);
   };
 
   // Admin App Developers Manager (configured by admin with photo, name, role)
@@ -2630,10 +2681,20 @@ export const UserManagementView: React.FC = () => {
                 ) : (
                   <>
                     <Copy className="w-4 h-4 text-zinc-400" />
-                    <span>کپی آدرس مستقیم فایل APK جهت اشتراک‌گذاری</span>
+                    <span>کپی آدرس مستقیم فایل APK</span>
                   </>
                 )}
               </button>
+
+              <a
+                href="/TaskRooz.exe"
+                download="TaskRooz.exe"
+                className="px-4 py-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                title="دانلود نسخه آفلاین دسکتاپ ویندوز"
+              >
+                <Monitor className="w-4 h-4 text-blue-400" />
+                <span>دانلود نسخه دسکتاپ ویندوز (TaskRooz.exe)</span>
+              </a>
 
               <a
                 href="/taskrooz-source.zip"
@@ -2644,56 +2705,177 @@ export const UserManagementView: React.FC = () => {
                 <Package className="w-4 h-4 text-indigo-400" />
                 <span>دانلود سورس کامل پروژه (Zip)</span>
               </a>
-
-              <a
-                href="/TaskRooz.exe"
-                download="TaskRooz.exe"
-                className="px-4 py-2.5 rounded-xl bg-blue-600/30 hover:bg-blue-600/40 text-blue-300 border border-blue-500/40 font-bold flex items-center gap-2 transition-colors cursor-pointer"
-                title="دانلود نسخه اجرایی دسکتاپ ویندوز"
-              >
-                <Download className="w-4 h-4 text-blue-400" />
-                <span>دانلود نسخه ویندوز (TaskRooz.exe) 💻</span>
-              </a>
             </div>
           </div>
 
-          {/* Android Keystore & Signing Package Key (کلید رسمی پکیج) */}
-          <div className="p-6 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+          {/* APK SIGNING KEY / KEYSTORE SECTION */}
+          <div className="p-6 bg-gradient-to-br from-zinc-900 to-zinc-950 rounded-3xl border border-amber-500/30 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <Key className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-white">اطلاعات کلید پکیج و امضای اندروید (APK Release Keystore)</h4>
-                  <p className="text-[11px] text-zinc-400">مشخصات کلید رسمی جهت امضا و انتشار در کافه‌بازار، مایکت و گوگل‌پلی</p>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>مشخصات و دانلود کلید پکیج و امضای دیجیتال (APK Signing Keystore)</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono">
+                      Release Key
+                    </span>
+                  </h4>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    کلید رسمی ۳۰ ساله امضای فایل نصبی اندروید و هویت برنامه جهت انتشار در مارکت‌ها و به‌روزرسانی
+                  </p>
                 </div>
               </div>
 
               <a
-                href="/bagtime-release.keystore"
-                download="bagtime-release.keystore"
-                className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                href="/taskrooz-release.keystore"
+                download="taskrooz-release.keystore"
+                className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>دانلود فایل کلید (bagtime-release.keystore) 🔑</span>
+                <span>دانلود فایل Keystore</span>
               </a>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-zinc-950/80 rounded-2xl border border-zinc-800 space-y-1">
-                <span className="text-[11px] text-zinc-400">نام پکیج اندروید (Package Name):</span>
-                <div className="font-mono font-bold text-emerald-400" dir="ltr">com.bagtime.app</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <div className="p-3.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 space-y-1">
+                <div className="text-[11px] text-zinc-400">نام فایل کلید (Keystore File)</div>
+                <div className="font-mono font-bold text-white text-xs truncate">taskrooz-release.keystore</div>
+                <div className="text-[10px] text-emerald-400">فرمت PKCS#12 معتبر اندروید</div>
               </div>
-              <div className="p-3 bg-zinc-950/80 rounded-2xl border border-zinc-800 space-y-1">
-                <span className="text-[11px] text-zinc-400">نام مستعار کلید (Key Alias) و پسورد:</span>
-                <div className="font-mono font-bold text-amber-300" dir="ltr">alias: bagtime_key | pass: bagtime123456</div>
+
+              <div className="p-3.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 space-y-1">
+                <div className="text-[11px] text-zinc-400">نام مستعار (Key Alias)</div>
+                <div className="font-mono font-bold text-amber-400 text-xs">bagtime</div>
+                <div className="text-[10px] text-zinc-500">سازمان: BagTime Org</div>
               </div>
-              <div className="p-3 bg-zinc-950/80 rounded-2xl border border-zinc-800 space-y-1 md:col-span-2">
-                <span className="text-[11px] text-zinc-400">اثر انگشت SHA-256 (Fingerprint):</span>
-                <div className="font-mono text-[11px] text-white break-all select-all bg-zinc-900 p-2 rounded-xl" dir="ltr">
-                  A2:95:D5:4A:00:AF:02:65:34:48:5E:8F:FD:5D:89:A7:CA:E4:CE:B4:0D:2B:67:48:AD:DA:1A:3D:30:FA:08:46
+
+              <div className="p-3.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 space-y-1">
+                <div className="text-[11px] text-zinc-400 flex items-center justify-between">
+                  <span>رمز عبور کلید (Password)</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyKeystorePass}
+                    className="text-amber-400 hover:text-amber-300 font-bold text-[10px] cursor-pointer"
+                  >
+                    {copiedKeystorePass ? 'کپی شد!' : 'کپی'}
+                  </button>
                 </div>
+                <div className="font-mono font-bold text-white text-xs">taskrooz1405</div>
+                <div className="text-[10px] text-zinc-500">Store & Key Password</div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 space-y-1">
+                <div className="text-[11px] text-zinc-400">مدت اعتبار (Validity)</div>
+                <div className="font-bold text-emerald-400 text-xs">۳۰ سال (۱۰,۹۵۰ روز)</div>
+                <div className="text-[10px] text-zinc-500">معتبر تا سال ۲۰۵۶ میلادی</div>
+              </div>
+            </div>
+
+            {/* SHA Fingerprints */}
+            <div className="p-3.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-zinc-300">اثر انگشت SHA-256 (SHA-256 Fingerprint)</span>
+                <button
+                  type="button"
+                  onClick={handleCopySha256}
+                  className="inline-flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300 font-bold cursor-pointer"
+                >
+                  <Copy className="w-3 h-3" />
+                  <span>{copiedSha256 ? 'کپی شد!' : 'کپی اثر انگشت'}</span>
+                </button>
+              </div>
+              <div className="p-2.5 rounded-xl bg-zinc-900 font-mono text-[11px] text-emerald-400 break-all select-all dir-ltr text-left border border-zinc-800">
+                6B:3D:7F:CE:FB:0A:56:C7:9F:3A:3F:4A:97:B5:6E:0D:95:3A:B1:8C:B9:83:00:70:30:7B:FB:A7:93:A4:63:62
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] text-zinc-400">اثر انگشت SHA-1:</span>
+                <span className="font-mono text-[11px] text-zinc-300 dir-ltr">
+                  D5:7F:50:5A:BE:F9:77:B9:87:EB:39:53:39:9A:C9:8C:0D:E3:FD:3F
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* WINDOWS DESKTOP EXECUTABLE SECTION */}
+          <div className="p-6 bg-gradient-to-br from-blue-950/40 via-zinc-900 to-zinc-950 rounded-3xl border border-blue-600/30 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                  <Laptop className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-sm md:text-base font-bold text-white flex items-center gap-2">
+                    <span>نسخه مستقل دسکتاپ ویندوز (TaskRooz.exe)</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 font-mono">
+                      Windows 64-bit
+                    </span>
+                  </h4>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    برنامه کامل آفلاین ویندوز با دیتابیس لوکال و سینک خودکار ۱۲ ساعته با سرور بدون نیاز به نصب نرم‌افزار اضافی
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleGenerateAndDownloadExe}
+                  disabled={isBuildingExe}
+                  className="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-blue-600/20"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{isBuildingExe ? 'در حال آماده‌سازی...' : 'دانلود فایل TaskRooz.exe'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyExeLink}
+                  className="p-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition-colors cursor-pointer"
+                  title="کپی لینک مستقیم فایل exe"
+                >
+                  {copiedExeLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {isBuildingExe && (
+              <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${exeBuildProgress}%` }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* OFFLINE-FIRST & 12-HOUR CENTRAL SYNC ARCHITECTURE */}
+          <div className="p-6 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-3">
+            <h4 className="text-xs font-bold text-white flex items-center gap-2">
+              <Clock className="w-4 h-4 text-emerald-400" />
+              <span>مکانیزم عملکرد آفلاین و همگام‌سازی اجباری ۱۲ ساعته:</span>
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-1.5">
+                <div className="font-bold text-white text-xs">۱. ذخیره‌سازی محلی (Offline-First)</div>
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  تمام اقدامات (افزودن، ویرایش، حذف و تیک تسک‌ها) به صورت آنی در حافظه محلی ذخیره شده و حتی در زمان قطعی کامل اینترنت بدون تاخیر کار می‌کند.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-1.5">
+                <div className="font-bold text-white text-xs">۲. صف تغییرات (Action Queue)</div>
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  عملیات‌های انجام شده در حالت آفلاین شماره‌گذاری شده و در صف محلی قرار می‌گیرند تا به محض برقراری اینترنت با سرور ادغام شوند.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-1.5">
+                <div className="font-bold text-white text-xs">۳. الزام اتصال هر ۱۲ ساعت</div>
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  برای جلوگیری از عدم انطباق با پایگاه داده مرکزی سرور، هر ۱۲ ساعت یکبار اتصال به اینترنت جهت سینک داده‌ها الزامی است.
+                </p>
               </div>
             </div>
           </div>

@@ -1507,11 +1507,79 @@ export const api = {
     });
   },
 
-  // ── 12-Hour Mandatory Offline Sync ──
-  async syncOfflineData(tasks: any[]): Promise<{ success: boolean; tasks?: any[]; syncedAt?: string }> {
-    return await request('api/sync.php', {
-      method: 'POST',
-      body: JSON.stringify({ tasks }),
-    });
+  // ── 12-Hour Offline-First Sync Engine ──
+  getLastSyncTime(): number {
+    try {
+      const stored = localStorage.getItem('taskrooz_last_server_sync');
+      if (stored) return parseInt(stored, 10);
+    } catch {}
+    const now = Date.now();
+    try { localStorage.setItem('taskrooz_last_server_sync', String(now)); } catch {}
+    return now;
+  },
+
+  setLastSyncTime(ts: number = Date.now()): void {
+    try {
+      localStorage.setItem('taskrooz_last_server_sync', String(ts));
+    } catch {}
+  },
+
+  isMandatorySyncDue(): boolean {
+    const lastSync = this.getLastSyncTime();
+    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+    return (Date.now() - lastSync) > TWELVE_HOURS_MS;
+  },
+
+  getRemainingHoursUntilMandatorySync(): number {
+    const lastSync = this.getLastSyncTime();
+    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+    const elapsed = Date.now() - lastSync;
+    const remaining = TWELVE_HOURS_MS - elapsed;
+    if (remaining <= 0) return 0;
+    return Math.round((remaining / (60 * 60 * 1000)) * 10) / 10;
+  },
+
+  enqueueOfflineAction(type: string, data: any): void {
+    try {
+      const raw = localStorage.getItem('taskrooz_offline_queue');
+      const queue = raw ? JSON.parse(raw) : [];
+      queue.push({ type, data, timestamp: Date.now() });
+      localStorage.setItem('taskrooz_offline_queue', JSON.stringify(queue));
+    } catch {}
+  },
+
+  getOfflineQueue(): any[] {
+    try {
+      const raw = localStorage.getItem('taskrooz_offline_queue');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  clearOfflineQueue(): void {
+    try {
+      localStorage.removeItem('taskrooz_offline_queue');
+    } catch {}
+  },
+
+  async syncDataWithServer(): Promise<{ success: boolean; tasks?: any[]; syncedAt?: string; message?: string }> {
+    const pendingActions = this.getOfflineQueue();
+    try {
+      const res = await request<{ status: string; syncedAt: string; tasks?: any[] }>('api/sync.php', {
+        method: 'POST',
+        body: JSON.stringify({ pendingActions }),
+      });
+      this.clearOfflineQueue();
+      this.setLastSyncTime(Date.now());
+      if (res.tasks && Array.isArray(res.tasks)) {
+        try {
+          localStorage.setItem('taskrooz_cached_tasks', JSON.stringify(res.tasks));
+        } catch {}
+      }
+      return { success: true, tasks: res.tasks, syncedAt: res.syncedAt };
+    } catch (err: any) {
+      throw new Error(err.message || 'خطا در ارتباط با سرور جهت همگام‌سازی اطلاعات');
+    }
   },
 };

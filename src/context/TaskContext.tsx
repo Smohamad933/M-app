@@ -222,6 +222,13 @@ interface TaskContextType {
   addCustomFont: (font: { name: string; family: string; fontUrl?: string; description?: string }) => void;
   uploadCustomFont: (file: File, name: string, family?: string, description?: string) => Promise<SystemFontOption>;
   deleteCustomFont: (fontId: string) => void;
+
+  // 12-Hour Offline-First Sync
+  isMandatorySyncDue: boolean;
+  remainingHoursUntilSync: number;
+  triggerServerSync: () => Promise<void>;
+  isSyncModalOpen: boolean;
+  setIsSyncModalOpen: (open: boolean) => void;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -473,6 +480,36 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isFirstLoginModalOpen, setIsFirstLoginModalOpen] = useState(false);
   const [viewingPublicUser, setViewingPublicUser] = useState<User | null>(null);
+
+  // 12-Hour Offline-First Sync State
+  const [isMandatorySyncDue, setIsMandatorySyncDue] = useState<boolean>(() => api.isMandatorySyncDue());
+  const [remainingHoursUntilSync, setRemainingHoursUntilSync] = useState<number>(() => api.getRemainingHoursUntilMandatorySync());
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
+
+  // Periodically check 12-hour sync requirement
+  useEffect(() => {
+    const checkSyncStatus = () => {
+      const isDue = api.isMandatorySyncDue();
+      setIsMandatorySyncDue(isDue);
+      setRemainingHoursUntilSync(api.getRemainingHoursUntilMandatorySync());
+      if (isDue) {
+        setIsSyncModalOpen(true);
+      }
+    };
+    checkSyncStatus();
+    const interval = setInterval(checkSyncStatus, 45000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const triggerServerSync = async () => {
+    await api.syncDataWithServer();
+    setIsMandatorySyncDue(false);
+    setRemainingHoursUntilSync(12);
+    setIsSyncModalOpen(false);
+    await refreshTasks();
+    await refreshProjects();
+    await refreshUsers();
+  };
 
   // Sync settings with audio and light theme
   useEffect(() => {
@@ -1625,6 +1662,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logTaskWorkTime,
       deleteMyAccount,
       approveUserRegistration,
+      // 12-Hour Offline-First Sync
+      isMandatorySyncDue,
+      remainingHoursUntilSync,
+      triggerServerSync,
+      isSyncModalOpen,
+      setIsSyncModalOpen,
     }),
     [
       currentUser,
@@ -1669,6 +1712,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       viewingPublicUser,
       isDemoMode,
       appOperatingMode,
+      isMandatorySyncDue,
+      remainingHoursUntilSync,
+      isSyncModalOpen,
     ]
   );
 

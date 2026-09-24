@@ -83,8 +83,8 @@ test('Regular User Registration Defaults to role: "user"', async () => {
     username: uniqueUser,
     password: 'TestPassword123',
     name: 'تست کننده سیستم',
-    phone: '09120001122',
-    email: 'tester@taskrooz.local',
+    phone: '0912' + Math.floor(1000000 + Math.random() * 9000000),
+    email: 'tester_' + Date.now() + '@taskrooz.local',
     province: 'اصفهان',
     city: 'اصفهان',
     birthDate: '1375/02/10',
@@ -605,11 +605,13 @@ test('Multi-User Room Co-presence: Both Users in Same Room with Unified State', 
 test('Admin Can Read Comprehensive Performance Report of Other Users', async () => {
   // 1. Register a user with complete profile
   const reportUsername = 'student_' + Date.now();
+  const studentPhone = '0912' + Math.floor(1000000 + Math.random() * 9000000);
   const reg = await request('POST', '/api/auth?action=register', {
     username: reportUsername,
     password: 'StudentPass123',
     name: 'سارا احمدی',
-    phone: '09129876543',
+    phone: studentPhone,
+    email: 'student_' + Date.now() + '@taskrooz.local',
     birthDate: '1381/06/20',
     jobTitle: 'کارشناس هوش مصنوعی',
   });
@@ -633,7 +635,7 @@ test('Admin Can Read Comprehensive Performance Report of Other Users', async () 
   const reportRes = await request('GET', `/api/users?action=report&user_id=${studentId}`, null, adminHeader);
   assert(reportRes.status === 200, 'User report fetched successfully');
   assert(reportRes.body.user.name === 'سارا احمدی', 'Report belongs to student');
-  assert(reportRes.body.user.phone === '09129876543', 'Phone is included in report');
+  assert(reportRes.body.user.phone === studentPhone, 'Phone is included in report');
   assert(Array.isArray(reportRes.body.tasks), 'Tasks list returned in report');
   assert(reportRes.body.stats.totalTasks >= 1, 'Total tasks counted in report');
 });
@@ -731,7 +733,8 @@ test('Admin Delete All Focus Rooms', async () => {
     username: 'noadmin_' + Date.now(),
     password: 'Pass123!',
     name: 'کاربر بدون دسترسی',
-    phone: '09120009999',
+    phone: '0912' + Math.floor(1000000 + Math.random() * 9000000),
+    email: 'noadmin_' + Date.now() + '@taskrooz.local',
   });
   const noAdminHeader = { Authorization: `Bearer ${regRes.body.token}` };
   const forbidden = await request('POST', '/api/rooms?action=delete_all', {}, noAdminHeader);
@@ -1005,4 +1008,84 @@ test('Database Install Guard: 503 When Missing + One-Click Install', async () =>
     fs.copyFileSync(backup, dbPath);
     fs.unlinkSync(backup);
   }
+});
+
+test('12-Hour Offline-First Sync Endpoint & Action Processing', async () => {
+  // Login first to get authorization token
+  const login = await request('POST', '/api/auth/login', {
+    username: 'Mohusyn',
+    password: 'Smosh1387',
+  });
+  assert(login.status === 200, 'login must succeed');
+  const authHeader = { Authorization: 'Bearer ' + login.body.token };
+
+  // 1. Sync endpoint returns current timestamp & data when empty queue
+  const emptySync = await request(
+    'POST',
+    '/api/sync.php',
+    {
+      lastSyncTime: Date.now() - 3600000,
+      actions: [],
+    },
+    authHeader
+  );
+  assert(emptySync.status === 200, `empty sync should be 200, got ${emptySync.status}`);
+  assert(emptySync.body.serverTimestamp, 'sync must return serverTimestamp');
+  assert(Array.isArray(emptySync.body.tasks), 'sync must return tasks array');
+
+  // 2. Client queued offline task action sync
+  const testOfflineId = 'offline_task_' + Date.now();
+  const pushSync = await request(
+    'POST',
+    '/api/sync.php',
+    {
+      lastSyncTime: Date.now() - 3600000 * 12,
+      actions: [
+        {
+          id: 'act_1',
+          type: 'create_task',
+          payload: {
+            id: testOfflineId,
+            title: 'Offline Queued Task',
+            userId: 'usr_admin',
+            category: 'personal',
+            date: '1405-01-01',
+            timeBlock: '10:00-11:00',
+          },
+          timestamp: Date.now() - 1000,
+        },
+        {
+          id: 'act_2',
+          type: 'toggle_task',
+          payload: { id: testOfflineId },
+          timestamp: Date.now() - 500,
+        },
+      ],
+    },
+    authHeader
+  );
+  assert(pushSync.status === 200, `pushSync should succeed with 200, got ${pushSync.status}`);
+  assert(pushSync.body.syncedActionsCount === 2, `expected 2 synced actions, got ${pushSync.body.syncedActionsCount}`);
+
+  const created = pushSync.body.tasks.find((t) => t.id === testOfflineId);
+  assert(created, 'created task must be present in sync result');
+  assert(created.completed === true, 'task should be completed due to action 2 toggle');
+
+  // Clean up test task
+  await request(
+    'POST',
+    '/api/sync.php',
+    {
+      lastSyncTime: Date.now(),
+      actions: [
+        {
+          id: 'act_3',
+          type: 'delete_task',
+          payload: { id: testOfflineId },
+          timestamp: Date.now(),
+        },
+      ],
+    },
+    authHeader
+  );
 });

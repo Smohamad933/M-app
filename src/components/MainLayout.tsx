@@ -33,7 +33,6 @@ import { NotificationCenterModal, type AppNotification } from './NotificationCen
 import { UpgradeToProModal } from './UpgradeToProModal';
 import { FirstLoginProfileModal } from './FirstLoginProfileModal';
 import { PublicUserProfileModal } from './PublicUserProfileModal';
-import { OfflineSyncManager } from './OfflineSyncManager';
 import { SubscriptionBadge } from './SubscriptionBadge';
 import { api } from '../services/api';
 import type { User } from '../types';
@@ -75,7 +74,9 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Wifi,
 } from 'lucide-react';
+import { MandatorySyncModal } from './MandatorySyncModal';
 
 export const MainLayout: React.FC = () => {
   const {
@@ -106,6 +107,10 @@ export const MainLayout: React.FC = () => {
     friends,
     viewingPublicUser,
     setViewingPublicUser,
+    isMandatorySyncDue,
+    remainingHoursUntilSync,
+    isSyncModalOpen,
+    setIsSyncModalOpen,
   } = useTask();
 
   const todayISO = getTodayISO();
@@ -641,9 +646,6 @@ export const MainLayout: React.FC = () => {
                   </select>
                 )}
 
-                {/* 12-Hour Mandatory Offline Sync Indicator & Enforcement */}
-                <OfflineSyncManager />
-
                 {/* Share Button (desktop/tablet) */}
                 <button
                   type="button"
@@ -793,6 +795,25 @@ export const MainLayout: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-1.5 flex-shrink-0">
+                {/* 12-Hour Offline Sync Indicator & Trigger */}
+                <button
+                  type="button"
+                  onClick={() => setIsSyncModalOpen(true)}
+                  className={`inline-flex items-center gap-1 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold border transition-all cursor-pointer ${
+                    isMandatorySyncDue
+                      ? 'bg-amber-500 text-white border-amber-600 animate-pulse font-black'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200/60'
+                  }`}
+                  title="وضعیت همگام‌سازی آفلاین ۱۲ ساعته با سرور"
+                >
+                  <Wifi className={`w-3 h-3 ${isMandatorySyncDue ? 'text-white' : 'text-emerald-600'}`} />
+                  <span>
+                    {isMandatorySyncDue
+                      ? 'سینک اجباری ۱۲h'
+                      : `${toPersianDigits(remainingHoursUntilSync)}h تا سینک`}
+                  </span>
+                </button>
+
                 <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200/60">
                   <CalendarDays className="w-3 h-3 text-slate-400" />
                   <span>{formatPersianDate(new Date(), 'full')}</span>
@@ -1380,6 +1401,12 @@ export const MainLayout: React.FC = () => {
       <FirstLoginProfileModal
         isOpen={isFirstLoginModalOpen}
         onClose={() => setIsFirstLoginModalOpen(false)}
+      />
+
+      {/* 12-Hour Offline-First Mandatory Sync Modal */}
+      <MandatorySyncModal
+        isOpen={isSyncModalOpen || isMandatorySyncDue}
+        onClose={() => setIsSyncModalOpen(false)}
       />
 
       {/* Colleague or Self Public Profile Card */}

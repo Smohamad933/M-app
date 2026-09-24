@@ -5,7 +5,7 @@ import zipfile
 def build_source_zip():
     out_paths = ['taskrooz-source.zip', 'public/taskrooz-source.zip']
     exclude_dirs = {'.git', 'node_modules', '.venv', '.turbo', 'build', 'coverage', '.pytest_cache'}
-    exclude_extensions = {'.apk', '.zip'}
+    exclude_extensions = {'.apk', '.zip', '.exe', '.pem'}
     
     for out_path in out_paths:
         if os.path.exists(out_path):

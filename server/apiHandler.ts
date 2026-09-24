@@ -2762,56 +2762,84 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
   }
 
-  // 18. Bulk Offline/Online 12-Hour Sync (/api/sync)
+  // 18. 12-Hour Offline-First Sync (/api/sync)
   if (pathname.startsWith('/api/sync')) {
     if (!currentUser) {
       sendJson(res, { error: 'ابتدا وارد حساب کاربری خود شوید.' }, 401);
       return true;
     }
     const myId = currentUser.id;
+    const isAdmin = currentUser.role === 'admin';
 
     if (method === 'POST') {
-      const body = await parseJsonBody(req);
-      const offlineTasks = Array.isArray(body.tasks) ? body.tasks : [];
-      let count = 0;
+      let body: any = {};
+      try { body = await parseJsonBody(req); } catch {}
+      const actionsList = Array.isArray(body.actions)
+        ? body.actions
+        : Array.isArray(body.pendingActions)
+        ? body.pendingActions
+        : [];
 
-      if (!db.tasks) db.tasks = [];
-      const taskMap = new Map(db.tasks.map((t, idx) => [t.id, idx]));
-
-      for (const ot of offlineTasks) {
-        if (!ot.id) continue;
-        ot.userId = myId;
-        if (taskMap.has(ot.id)) {
-          const idx = taskMap.get(ot.id)!;
-          db.tasks[idx] = { ...db.tasks[idx], ...ot };
-        } else {
-          db.tasks.push(ot);
+      for (const act of actionsList) {
+        const itemData = act.payload || act.data || {};
+        if (act.type === 'create_task' && itemData.title) {
+          const newId = itemData.id || ('task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
+          if (!db.tasks.some((t: any) => t.id === newId)) {
+            db.tasks.unshift({
+              id: newId,
+              title: itemData.title,
+              description: itemData.description || '',
+              completed: Boolean(itemData.completed),
+              date: itemData.date || new Date().toISOString().slice(0, 10),
+              time: itemData.time || null,
+              priority: itemData.priority || 'medium',
+              categoryId: itemData.categoryId || null,
+              userId: myId,
+              createdAt: itemData.createdAt || new Date().toISOString(),
+            });
+          }
+        } else if (act.type === 'toggle_task' && itemData.id) {
+          const t = db.tasks.find((task: any) => task.id === itemData.id);
+          if (t && (t.userId === myId || isAdmin)) {
+            t.completed = itemData.completed !== undefined ? Boolean(itemData.completed) : !t.completed;
+          }
+        } else if (act.type === 'update_task' && itemData.id) {
+          const t = db.tasks.find((task: any) => task.id === itemData.id);
+          if (t && (t.userId === myId || isAdmin)) {
+            Object.assign(t, itemData);
+          }
+        } else if (act.type === 'delete_task' && itemData.id) {
+          db.tasks = db.tasks.filter((t: any) => !(t.id === itemData.id && (t.userId === myId || isAdmin)));
         }
-        count++;
       }
       writeDb(db);
 
-      const myTasks = db.tasks.filter((t) => t.userId === myId);
+      const myTasks = db.tasks.filter((t: any) => isAdmin || t.userId === myId);
       sendJson(res, {
-        success: true,
-        message: `همگام‌سازی با موفقیت انجام شد (${count} مورد ذخیره شد).`,
+        status: 'synced',
         syncedAt: new Date().toISOString(),
         serverTimestamp: Date.now(),
+        nextMandatorySyncInHours: 12,
+        syncedActionsCount: actionsList.length,
         tasks: myTasks,
-        projects: (db.projects || []).filter((p) => p.creatorId === myId || (p.memberIds || []).includes(myId)),
+        projects: db.projects || [],
+        categories: db.categories || [],
       });
       return true;
     }
 
-    if (method === 'GET') {
-      const myTasks = (db.tasks || []).filter((t) => t.userId === myId);
-      sendJson(res, {
-        serverTimestamp: Date.now(),
-        serverTime: new Date().toISOString(),
-        tasks: myTasks,
-      });
-      return true;
-    }
+    const myTasks = db.tasks.filter((t: any) => isAdmin || t.userId === myId);
+    sendJson(res, {
+      status: 'synced',
+      syncedAt: new Date().toISOString(),
+      serverTimestamp: Date.now(),
+      nextMandatorySyncInHours: 12,
+      syncedActionsCount: 0,
+      tasks: myTasks,
+      projects: db.projects || [],
+      categories: db.categories || [],
+    });
+    return true;
   }
 
   sendJson(res, { error: 'آدرس نامعتبر است.' }, 404);
