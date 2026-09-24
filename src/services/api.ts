@@ -117,6 +117,20 @@ export function removeAuthToken() {
   }
 }
 
+function resolveApiUrl(endpoint: string): string {
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint;
+  }
+  const clean = endpoint.replace(/^\/+/, '');
+  if (typeof window !== 'undefined' && window.location) {
+    const pathname = window.location.pathname;
+    // Get directory of current page (e.g. '/' or '/M-app/' or '/taskrooz/')
+    const baseDir = pathname.substring(0, pathname.lastIndexOf('/') + 1) || '/';
+    return `${window.location.origin}${baseDir}${clean}`;
+  }
+  return '/' + clean;
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
   const headers: Record<string, string> = {
@@ -129,10 +143,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers['X-Auth-Token'] = token;
   }
 
-  let url = endpoint;
-  if (!url.startsWith('http')) {
-    url = url.startsWith('/') ? url : '/' + url;
-  }
+  let url = resolveApiUrl(endpoint);
 
   // Append token to query parameter for IIS / Apache environments where headers might be filtered
   if (token && !url.includes('token=')) {
@@ -149,6 +160,68 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     });
   } catch (err: any) {
     throw new Error('عدم برقراری ارتباط با سرور. لطفاً وضعیت سرور و شبکه را بررسی کنید.');
+  }
+
+  // Handle IIS 405 Method Not Allowed resilience!
+  if (res.status === 405) {
+    const method = (options.method || 'GET').toUpperCase();
+    if (method === 'POST') {
+      try {
+        const bodyStr = typeof options.body === 'string' ? options.body : JSON.stringify(options.body || {});
+        const formHeaders = {
+          ...headers,
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        };
+        const fallbackRes = await fetch(url, {
+          ...options,
+          method: 'POST',
+          headers: formHeaders,
+          body: `data=${encodeURIComponent(bodyStr)}&payload=${encodeURIComponent(bodyStr)}`,
+        });
+        if (fallbackRes.ok || fallbackRes.status < 400) {
+          const fbText = await fallbackRes.text();
+          try {
+            return JSON.parse(fbText);
+          } catch {}
+        }
+      } catch {}
+
+      try {
+        const sep = url.includes('?') ? '&' : '?';
+        const fallbackRes2 = await fetch(`${url}${sep}_method=POST`, {
+          ...options,
+          method: 'POST',
+          headers: {
+            ...headers,
+            'X-HTTP-Method-Override': 'POST',
+          },
+        });
+        if (fallbackRes2.ok || fallbackRes2.status < 400) {
+          const fbText = await fallbackRes2.text();
+          try {
+            return JSON.parse(fbText);
+          } catch {}
+        }
+      } catch {}
+    } else if (method === 'PUT' || method === 'DELETE') {
+      try {
+        const sep = url.includes('?') ? '&' : '?';
+        const fallbackRes = await fetch(`${url}${sep}_method=${method}`, {
+          ...options,
+          method: 'POST',
+          headers: {
+            ...headers,
+            'X-HTTP-Method-Override': method,
+          },
+        });
+        if (fallbackRes.ok || fallbackRes.status < 400) {
+          const fbText = await fallbackRes.text();
+          try {
+            return JSON.parse(fbText);
+          } catch {}
+        }
+      } catch {}
+    }
   }
 
   const text = await res.text();
@@ -517,16 +590,22 @@ export const api = {
     const payload = { action: 'update_profile', ...data };
     let data_: { user: User } | undefined;
     try {
-      data_ = await request<{ user: User }>('api/users.php', {
+      data_ = await request<{ user: User }>('api/users.php?action=update_profile', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
     } catch (err: any) {
-      // Fallback for servers where POST is filtered: try the PUT verb
-      data_ = await request<{ user: User }>('api/users.php', {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      });
+      try {
+        data_ = await request<{ user: User }>('api/users.php', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      } catch (err2: any) {
+        data_ = await request<{ user: User }>('api/users.php', {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+      }
     }
     broadcastSync('USER_UPDATED', { id: data.id });
     return data_.user;

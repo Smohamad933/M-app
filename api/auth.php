@@ -5,7 +5,16 @@
 require_once __DIR__ . '/config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
-$action = $_GET['action'] ?? '';
+if (!empty($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'])) {
+    $method = strtoupper($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE']);
+}
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
+if (empty($action)) {
+    $rawInput = getJsonInput();
+    if (!empty($rawInput['action'])) {
+        $action = $rawInput['action'];
+    }
+}
 
 // REGISTER ACCOUNT
 if ($action === 'register' || $action === 'signup' || empty($action) && isset($_GET['register'])) {

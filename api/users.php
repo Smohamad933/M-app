@@ -6,15 +6,22 @@ require_once __DIR__ . '/config.php';
 
 $currentUser = getCurrentUser();
 $method = $_SERVER['REQUEST_METHOD'];
-$input = in_array($method, ['POST', 'PUT', 'PATCH']) ? getJsonInput() : [];
+if (!empty($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'])) {
+    $method = strtoupper($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE']);
+} elseif (!empty($_GET['_method'])) {
+    $method = strtoupper($_GET['_method']);
+} elseif (!empty($_POST['_method'])) {
+    $method = strtoupper($_POST['_method']);
+}
+
+$input = getJsonInput();
+$action = $_GET['action'] ?? $input['action'] ?? '';
 
 /**
  * ── Self profile update (ANY authenticated user) ──────────────────────────
- * PUT /api/users.php  { "action": "update_profile", ...profile fields }
- * A user may only update their OWN profile (name, contact info, photo...).
- * Admins editing OTHER users keep using the plain PUT below (admin-only).
+ * Accepts POST, PUT, PATCH, or fallback GET with action=update_profile
  */
-if (in_array($method, ['PUT', 'POST']) && ($input['action'] ?? '') === 'update_profile') {
+if ($action === 'update_profile' || ($input['action'] ?? '') === 'update_profile') {
     if (!$currentUser) {
         jsonResponse(['error' => 'ابتدا وارد حساب کاربری خود شوید.'], 401);
     }

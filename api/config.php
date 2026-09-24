@@ -46,10 +46,29 @@ function jsonResponse($data, $status = 200) {
 }
 
 function getJsonInput() {
-    $raw = file_get_contents('php://input');
-    $parsed = json_decode($raw, true);
-    if (is_array($parsed)) return $parsed;
+    $raw = @file_get_contents('php://input');
+    if (!empty($raw)) {
+        $parsed = @json_decode($raw, true);
+        if (is_array($parsed)) return $parsed;
+    }
+    if (!empty($_POST['data'])) {
+        $parsed = @json_decode($_POST['data'], true);
+        if (is_array($parsed)) return $parsed;
+    }
+    if (!empty($_POST['payload'])) {
+        $parsed = @json_decode($_POST['payload'], true);
+        if (is_array($parsed)) return $parsed;
+    }
     if (!empty($_POST)) return $_POST;
+    if (!empty($_GET['data'])) {
+        $decoded = @base64_decode($_GET['data']);
+        if ($decoded) {
+            $parsed = @json_decode($decoded, true);
+            if (is_array($parsed)) return $parsed;
+        }
+        $parsed = @json_decode($_GET['data'], true);
+        if (is_array($parsed)) return $parsed;
+    }
     if (!empty($_GET)) return $_GET;
     return [];
 }
@@ -68,7 +87,7 @@ function getCurrentUser($dbInstance = null) {
         }
     }
 
-    // 2. Token check (IIS strips Authorization, so check X-Auth-Token, HTTP_X_AUTH_TOKEN, and ?token=)
+    // 2. Token check (IIS strips Authorization, so check X-Auth-Token, HTTP_X_AUTH_TOKEN, ?token=, and POST token)
     $headers = function_exists('getallheaders') ? getallheaders() : [];
     $authHeader = $headers['Authorization'] 
         ?? $headers['authorization'] 
@@ -77,6 +96,7 @@ function getCurrentUser($dbInstance = null) {
         ?? $_SERVER['HTTP_AUTHORIZATION'] 
         ?? $_SERVER['HTTP_X_AUTH_TOKEN'] 
         ?? $_GET['token'] 
+        ?? $_POST['token']
         ?? '';
 
     $token = '';
