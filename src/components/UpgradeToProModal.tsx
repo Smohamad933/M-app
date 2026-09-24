@@ -35,16 +35,16 @@ const PRO_PLANS: {
   {
     id: '1_month',
     title: 'پلاس Plus (۱ ماهه)',
-    durationLabel: '۳۰ روز دسترسی ویژه Plus',
+    durationLabel: '۳۰ روز دسترسی با نماد پلاس ➕',
     days: 30,
     price: '۲۹۰,۰۰۰ تومان',
     perMonth: 'ماهی ۲۹۰ هزار ت',
-    tag: 'شروع اقتصادی ⚡',
+    tag: 'نماد ➕ در پروفایل',
   },
   {
     id: '3_months',
     title: 'پرو Pro (۳ ماهه)',
-    durationLabel: '۹۰ روز دسترسی کامل Pro',
+    durationLabel: '۹۰ روز دسترسی با نماد ستاره ⭐',
     days: 90,
     price: '۶۹۰,۰۰۰ تومان',
     perMonth: 'ماهی ۲۳۰ هزار ت (۲۰٪ تخفیف)',
@@ -54,11 +54,11 @@ const PRO_PLANS: {
   {
     id: '6_months',
     title: 'اولترا Ultra (۶ ماهه)',
-    durationLabel: '۱۸۰ روز دسترسی نامحدود Ultra',
+    durationLabel: '۱۸۰ روز دسترسی با نماد الماس 💎',
     days: 180,
     price: '۱,۱۹۰,۰۰۰ تومان',
     perMonth: 'ماهی ۱۹۸ هزار ت (۳۵٪ تخفیف)',
-    tag: 'بیشترین صرفه‌جویی 💎',
+    tag: 'نماد 💎 الماس در پروفایل',
   },
 ];
 

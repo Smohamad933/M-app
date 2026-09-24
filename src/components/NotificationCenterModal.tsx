@@ -35,8 +35,8 @@ interface NotificationCenterModalProps {
 const DEFAULT_NOTIFICATIONS: AppNotification[] = [
   {
     id: 'notif-welcome',
-    title: 'خوش‌آمدید به تسک‌روز 👋',
-    message: 'سامانه مدیریت تسک، تایم‌لاین ساعتی و تمرکز آماده استفاده است. اولین تسک خود را با دستیار هوشمند ثبت کنید!',
+    title: 'خوش‌آمدید به بگ تایم 👋',
+    message: 'سامانه مدیریت تسک، تایم‌لاین ساعتی و تمرکز آماده استفاده است. اولین تسک خود را ثبت کنید!',
     type: 'info',
     timestamp: 'الان',
     read: false,
@@ -129,7 +129,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             </div>
             <div>
               <h3 className="font-black text-sm text-slate-900">
-                مرکز اعلان‌ها (Notifications)
+                مرکز اعلان‌ها
               </h3>
               <span className="text-[10px] text-slate-400 font-bold">
                 {toPersianDigits(unreadCount)} پیام خوانده‌نشده

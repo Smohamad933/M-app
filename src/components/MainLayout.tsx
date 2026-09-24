@@ -29,10 +29,12 @@ import { FriendsView } from './FriendsView';
 import { MessagesView } from './MessagesView';
 import { AiTaskAgentModal } from './AiTaskAgentModal';
 import { DirectChatModal } from './DirectChatModal';
-import { NotificationCenterModal } from './NotificationCenterModal';
+import { NotificationCenterModal, type AppNotification } from './NotificationCenterModal';
 import { UpgradeToProModal } from './UpgradeToProModal';
 import { FirstLoginProfileModal } from './FirstLoginProfileModal';
 import { PublicUserProfileModal } from './PublicUserProfileModal';
+import { SubscriptionBadge } from './SubscriptionBadge';
+import { api } from '../services/api';
 import type { User } from '../types';
 import { BottomNav } from './BottomNav';
 import { sounds } from '../utils/sound';
@@ -125,7 +127,8 @@ export const MainLayout: React.FC = () => {
   // New interactive states
   const [isAiAgentModalOpen, setIsAiAgentModalOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
-  const [unreadNotifCount, setUnreadNotifCount] = useState<number>(3);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
   const [directChatUser, setDirectChatUser] = useState<{
     id: string;
     name: string;
@@ -134,6 +137,33 @@ export const MainLayout: React.FC = () => {
     status?: 'online' | 'offline';
     role?: string;
   } | null>(null);
+
+  const refreshNotifications = React.useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const list = await api.getNotifications();
+      setNotifications(list);
+      setUnreadNotifCount(list.filter((n: any) => !n.read).length);
+    } catch {}
+  }, [currentUser]);
+
+  useEffect(() => {
+    refreshNotifications();
+    const interval = setInterval(refreshNotifications, 10000);
+    return () => clearInterval(interval);
+  }, [refreshNotifications]);
+
+  const handleMarkAllNotifsRead = async () => {
+    await api.markNotificationsRead();
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadNotifCount(0);
+  };
+
+  const handleClearAllNotifs = async () => {
+    await api.clearNotifications();
+    setNotifications([]);
+    setUnreadNotifCount(0);
+  };
 
   // Live 24-hour clock
   const [liveClock, setLiveClock] = useState('');
@@ -207,6 +237,13 @@ export const MainLayout: React.FC = () => {
   const totalFocusMinutes = tasks.reduce((sum, t) => sum + (t.focusMinutesSpent || 0), 0);
   const pendingTodayCount = todayTasks.filter((t) => !t.completed).length;
 
+  const myVisibleProjectsCount = projects.filter((p) => {
+    if (!currentUser) return false;
+    if (p.creatorId === currentUser.id) return true;
+    const memberIds = Array.isArray(p.memberIds) ? p.memberIds : [];
+    return memberIds.includes(currentUser.id) || (currentUser.username && memberIds.includes(currentUser.username));
+  }).length;
+
   const navItems: Array<{ id: TabType; label: string; icon: React.ElementType; adminOnly?: boolean; badge?: number }> = [
     { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
     { id: 'tasks', label: 'کارهای من', icon: CheckSquare, badge: pendingTodayCount > 0 ? pendingTodayCount : undefined },
@@ -214,7 +251,7 @@ export const MainLayout: React.FC = () => {
     { id: 'calendar', label: 'تقویم', icon: CalendarDays },
     { id: 'messages', label: 'پیام‌ها و گفتگوها', icon: MessageSquare },
     { id: 'friends', label: 'همکاران و دوستان', icon: Users, badge: friendsList.length > 0 ? friendsList.length : undefined },
-    { id: 'projects', label: 'پروژه‌های تیمی', icon: FolderKanban, badge: projects.length > 0 ? projects.length : undefined },
+    { id: 'projects', label: 'پروژه‌های تیمی', icon: FolderKanban, badge: myVisibleProjectsCount > 0 ? myVisibleProjectsCount : undefined },
     { id: 'focus', label: 'تمرکز پومودورو', icon: Timer },
     { id: 'habits', label: 'تحلیلگر عادت‌ها', icon: Brain },
     { id: 'career', label: 'اهداف و رشد شغلی', icon: Compass },
@@ -540,21 +577,7 @@ export const MainLayout: React.FC = () => {
 
                 {/* Subscription Pro Badge or Upgrade Button */}
                 {isPro ? (
-                  <div
-                    className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-amber-500/15 via-yellow-500/15 to-amber-500/15 border border-amber-500/35 text-amber-700 text-[10px] sm:text-[11px] font-black flex-shrink-0 shadow-2xs"
-                    title="اشتراک ویژه فعال است"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
-                    <span>
-                      {currentUser?.role === 'admin'
-                        ? 'مدیر (Ultra)'
-                        : currentUser?.subscription?.planType === '6_months'
-                        ? 'اولترا (Ultra)'
-                        : currentUser?.subscription?.planType === '1_month'
-                        ? 'پلاس (Plus)'
-                        : 'پرو (Pro)'}
-                    </span>
-                  </div>
+                  <SubscriptionBadge user={currentUser} size="sm" />
                 ) : (
                   <button
                     type="button"
@@ -1232,6 +1255,9 @@ export const MainLayout: React.FC = () => {
       <NotificationCenterModal
         isOpen={isNotificationCenterOpen}
         onClose={() => setIsNotificationCenterOpen(false)}
+        notifications={notifications}
+        onMarkAllAsRead={handleMarkAllNotifsRead}
+        onClearAll={handleClearAllNotifs}
         onOpenTask={(_taskId) => {
           setActiveTab('tasks');
         }}

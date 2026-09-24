@@ -163,12 +163,30 @@ if ($action === 'set_subscription' || ($input['action'] ?? '') === 'set_subscrip
         jsonResponse(['error' => 'دسترسی فقط برای مدیر سیستم مجاز است.'], 403);
     }
     $targetId = $input['userId'] ?? $_GET['user_id'] ?? '';
-    $plan = ($input['plan'] ?? '') === 'pro' ? 'pro' : 'free';
+    $rawPlan = strtolower(trim((string)($input['plan'] ?? '')));
+    $plan = in_array($rawPlan, ['plus', 'pro', 'ultra']) ? $rawPlan : ($rawPlan === 'free' ? 'free' : 'pro');
     $planType = $input['planType'] ?? null;
     $expiresAt = $input['expiresAt'] ?? null;
 
     $updated = $db->setUserSubscription($targetId, $plan, $planType, $expiresAt);
     if ($updated) {
+        // Send in-app notification to the upgraded user!
+        if ($plan !== 'free') {
+            $planName = ($plan === 'ultra' || $planType === '6_months') ? 'اولترا (Ultra)' : (($plan === 'plus' || $planType === '1_month') ? 'پلاس (Plus)' : 'پرو (Pro)');
+            $planSymbol = ($plan === 'ultra' || $planType === '6_months') ? '💎' : (($plan === 'plus' || $planType === '1_month') ? '➕' : '⭐');
+            if (!isset($db->data['notifications'])) $db->data['notifications'] = [];
+            $db->data['notifications'][] = [
+                'id' => 'notif_sub_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4),
+                'userId' => $targetId,
+                'title' => "تبریک! اشتراک شما به {$planName} ارتقا یافت {$planSymbol}",
+                'message' => "حساب کاربری شما با موفقیت فعال شد و نماد ویژه {$planSymbol} در پروفایل شما ثبت گردید. هم‌اکنون به کلیه امکانات نامحدود دسترسی دارید.",
+                'type' => 'info',
+                'timestamp' => date('Y-m-d H:i:s'),
+                'read' => false,
+            ];
+            $db->saveJson();
+        }
+
         jsonResponse([
             'message' => 'وضعیت اشتراک کاربر با موفقیت تغییر یافت.',
             'plan' => $plan,

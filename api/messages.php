@@ -142,6 +142,22 @@ if ($method === 'POST') {
         'read' => false,
     ];
     $dbObj->data['messages'][] = $newMsg;
+
+    // Send in-app notification to receiver
+    if (!isset($dbObj->data['notifications'])) $dbObj->data['notifications'] = [];
+    $previewText = mb_substr($text, 0, 70) . (mb_strlen($text) > 70 ? '...' : '');
+    $dbObj->data['notifications'][] = [
+        'id' => 'notif_msg_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4),
+        'userId' => $receiverId,
+        'title' => "پیام جدید از {$currentUser['name']} 💬",
+        'message' => $previewText,
+        'type' => 'info',
+        'timestamp' => date('Y-m-d H:i:s'),
+        'read' => false,
+        'senderId' => $myId,
+        'senderName' => $currentUser['name'],
+    ];
+
     $dbObj->saveJson();
     jsonResponse(['message' => 'پیام با موفقیت ارسال شد.', 'data' => $newMsg], 201);
 }

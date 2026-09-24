@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import { UserAvatar } from './UserAvatar';
+import { SubscriptionBadge } from './SubscriptionBadge';
 import { IRAN_PROVINCES, POPULAR_JOBS } from '../utils/iranLocations';
 import { sounds } from '../utils/sound';
 import type { UserTimeline } from '../types';
@@ -275,17 +276,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
             <div>
               <div className="text-xs font-black text-slate-900 flex items-center gap-2">
                 <span>سطح اشتراک شما:</span>
-                <span className={isPro ? 'text-amber-600 font-black' : 'text-slate-600 font-bold'}>
-                  {isPro
-                    ? `اشتراک ویژه فعال است ⭐ (${
-                        currentUser?.subscription?.planType === '6_months'
-                          ? 'پلن اولترا Ultra'
-                          : currentUser?.subscription?.planType === '3_months'
-                          ? 'پلن پرو Pro'
-                          : 'پلن پلاس Plus'
-                      })`
-                    : 'پلن رایگان (حداکثر ۵ تسک و ۱ پروژه)'}
-                </span>
+                {isPro ? (
+                  <SubscriptionBadge user={currentUser} size="sm" />
+                ) : (
+                  <span className="text-slate-600 font-bold">پلن رایگان (حداکثر ۵ تسک و ۱ پروژه)</span>
+                )}
               </div>
               <p className="text-[10px] text-slate-500">
                 {isPro

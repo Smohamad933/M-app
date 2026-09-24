@@ -531,6 +531,14 @@ export const TeamProjectsView: React.FC = () => {
     );
   }
 
+  // Strict visibility filter: ONLY projects where current user is creator or an invited member
+  const myVisibleProjects = projects.filter((proj) => {
+    if (!currentUser) return false;
+    if (proj.creatorId === currentUser.id) return true;
+    const memberIds = Array.isArray(proj.memberIds) ? proj.memberIds : [];
+    return memberIds.includes(currentUser.id) || (currentUser.username && memberIds.includes(currentUser.username));
+  });
+
   // View: Grid of all Team Projects
   return (
     <div className="space-y-6 animate-in fade-in pb-16" dir="rtl">
@@ -567,12 +575,12 @@ export const TeamProjectsView: React.FC = () => {
       </div>
 
       {/* Projects Bento Grid */}
-      {projects.length === 0 ? (
+      {myVisibleProjects.length === 0 ? (
         <div className="py-16 text-center p-8 bg-white dark:bg-zinc-900 rounded-3xl border border-dashed border-slate-200 dark:border-zinc-800 space-y-4">
           <FolderKanban className="w-10 h-10 text-slate-300 dark:text-zinc-600 mx-auto" />
-          <h3 className="text-sm font-black text-slate-800 dark:text-zinc-200">هنوز هیچ پروژه تیمی ایجاد نشده است</h3>
+          <h3 className="text-sm font-black text-slate-800 dark:text-zinc-200">هنوز در هیچ پروژه تیمی عضو نیستید</h3>
           <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
-            با ایجاد اولین پروژه تیمی، می‌توانید همکاران را دعوت کرده، تسک‌های مربوطه را به آن متصل کنید و چت تیمی داشته باشید.
+            با ایجاد اولین پروژه تیمی یا دریافت دعوت‌نامه از همکاران، پروژه‌های مربوطه در این بخش نمایش داده می‌شوند.
           </p>
           <button
             onClick={openCreateDialog}
@@ -584,7 +592,7 @@ export const TeamProjectsView: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((proj) => {
+          {myVisibleProjects.map((proj) => {
             const projectTasks = tasks.filter((t) => t.projectId === proj.id);
             const total = projectTasks.length;
             const done = projectTasks.filter((t) => t.completed).length;

@@ -46,8 +46,7 @@ if ($method === 'POST' && ($action === 'messages' || ($input['action'] ?? '') ==
 
 // GET /api/projects.php -> List user's team projects
 if ($method === 'GET') {
-    $isAdmin = ($currentUser['role'] === 'admin');
-    $projects = $db->getAllTeamProjects($currentUser['id'], $isAdmin);
+    $projects = $db->getAllTeamProjects($currentUser['id'], false);
     jsonResponse(['projects' => $projects]);
 }
 

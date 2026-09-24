@@ -100,6 +100,21 @@ if ($method === 'POST') {
         ];
 
         $dbObj->data['friend_requests'][] = $newReq;
+
+        // Send in-app notification to receiver
+        if (!isset($dbObj->data['notifications'])) $dbObj->data['notifications'] = [];
+        $dbObj->data['notifications'][] = [
+            'id' => 'notif_freq_' . $newReq['id'],
+            'userId' => $toUserId,
+            'title' => 'درخواست دوستی و همکاری جدید 👥',
+            'message' => "{$currentUser['name']} (@{$currentUser['username']}) برای شما درخواست همکاری ارسال کرد.",
+            'type' => 'friend',
+            'timestamp' => date('Y-m-d H:i:s'),
+            'read' => false,
+            'userId' => $myId,
+            'userName' => $currentUser['name'],
+        ];
+
         $dbObj->saveJson();
         jsonResponse(['message' => 'درخواست دوستی و همکاری ارسال شد.', 'request' => $newReq], 201);
     }

@@ -70,7 +70,7 @@ class TaskRoozDB {
                 'globalSettings' => [
                     'broadcastNotice' => [
                         'enabled' => true,
-                        'title' => 'خوش‌آمدید به سامانه تسک‌روز',
+                        'title' => 'خوش‌آمدید به سامانه بگ تایم (Bag Time)',
                         'message' => 'سامانه متمرکز برنامه‌ریزی روزانه، پومودورو تیمی و پایش بهره‌وری آماده استفاده است.',
                         'type' => 'info',
                     ],
@@ -1335,26 +1335,33 @@ class TaskRoozDB {
     }
 
     public function getAllTeamProjects($userId = null, $isAdmin = false) {
+        $filterProjects = function($list) use ($userId) {
+            if (empty($userId)) return $list;
+            return array_values(array_filter($list, function($p) use ($userId) {
+                if (($p['creatorId'] ?? '') === $userId) return true;
+                $mIds = $p['memberIds'] ?? [];
+                if (is_array($mIds) && in_array($userId, $mIds)) return true;
+                return false;
+            }));
+        };
+
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
                 $stmt = $this->pdo->query("SELECT id, name, description, color, icon, creator_id as creatorId, creator_name as creatorName, member_ids_json, created_at as createdAt FROM projects ORDER BY created_at DESC");
                 $rows = $stmt->fetchAll();
                 if ($rows) {
-                    return array_map(function($p) {
+                    $all = array_map(function($p) {
                         $p['memberIds'] = !empty($p['member_ids_json']) ? json_decode($p['member_ids_json'], true) : [];
                         return $p;
                     }, $rows);
+                    return $filterProjects($all);
                 }
             } catch (Exception $e) {}
         }
 
         $this->loadJson();
         $projects = $this->data['projects'] ?? [];
-        if ($isAdmin || empty($userId)) return $projects;
-
-        return array_values(array_filter($projects, function($p) use ($userId) {
-            return ($p['creatorId'] ?? '') === $userId || in_array($userId, $p['memberIds'] ?? []);
-        }));
+        return $filterProjects($projects);
     }
 
     public function getTeamProject($id) {

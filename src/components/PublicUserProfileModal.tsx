@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTask } from '../context/TaskContext';
 import { UserAvatar } from './UserAvatar';
+import { SubscriptionBadge } from './SubscriptionBadge';
 import { toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import type { User } from '../types';
@@ -13,7 +14,6 @@ import {
   Check,
   CheckCircle2,
   FolderKanban,
-  Sparkles,
   Copy,
   Info,
   AtSign,
@@ -154,18 +154,12 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
                 {user.name}
               </h3>
               {user.role === 'admin' ? (
-                <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/25 text-indigo-300 border border-indigo-500/40 text-[10px] font-black inline-flex items-center whitespace-nowrap">
-                  مدیر سیستم
+                <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/25 text-indigo-300 border border-indigo-500/40 text-[10px] font-black inline-flex items-center gap-1 whitespace-nowrap">
+                  <span>🛡️</span>
+                  <span>مدیر سیستم</span>
                 </span>
               ) : isPro ? (
-                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/25 text-amber-300 border border-amber-500/40 text-[10px] font-black inline-flex items-center gap-1 whitespace-nowrap">
-                  <Sparkles className="w-3 h-3 text-amber-400" />
-                  {user.subscription?.planType === '6_months'
-                    ? 'اولترا'
-                    : user.subscription?.planType === '3_months'
-                    ? 'پرو'
-                    : 'پلاس'}
-                </span>
+                <SubscriptionBadge user={user} size="sm" />
               ) : null}
             </div>
 

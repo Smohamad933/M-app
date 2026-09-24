@@ -162,7 +162,7 @@ export interface DailyNote {
 export type ProDurationPlan = '1_month' | '3_months' | '6_months';
 
 export interface UserSubscription {
-  plan: 'free' | 'pro';
+  plan: 'free' | 'plus' | 'pro' | 'ultra';
   planType?: ProDurationPlan;
   activatedAt?: string;
   expiresAt?: string | null;

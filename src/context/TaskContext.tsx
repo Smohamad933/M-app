@@ -191,7 +191,7 @@ interface TaskContextType {
   isPro: boolean;
   setUserSubscription: (
     userId: string,
-    plan: 'free' | 'pro',
+    plan: 'free' | 'plus' | 'pro' | 'ultra',
     planType?: '1_month' | '3_months' | '6_months',
     expiresAt?: string
   ) => Promise<void>;
@@ -775,7 +775,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setUserSubscription = async (
     userId: string,
-    plan: 'free' | 'pro',
+    plan: 'free' | 'plus' | 'pro' | 'ultra',
     planType?: '1_month' | '3_months' | '6_months',
     expiresAt?: string
   ) => {
@@ -783,15 +783,17 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isTargetMe = (u: User) =>
       u.id === userId || (u.username && u.username.toLowerCase() === userId.toLowerCase());
 
+    const isPremium = plan !== 'free';
+
     setUsers((prev) =>
       prev.map((u) =>
         isTargetMe(u)
           ? {
               ...u,
-              status: plan === 'pro' ? 'active' : u.status,
+              status: isPremium ? 'active' : u.status,
               subscription: {
                 plan,
-                planType: planType || (plan === 'pro' ? '3_months' : undefined),
+                planType: planType || (plan === 'ultra' ? '6_months' : plan === 'plus' ? '1_month' : '3_months'),
                 activatedAt: new Date().toISOString(),
                 expiresAt,
               },
@@ -804,10 +806,10 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         prev
           ? {
               ...prev,
-              status: plan === 'pro' ? 'active' : prev.status,
+              status: isPremium ? 'active' : prev.status,
               subscription: {
                 plan,
-                planType: planType || (plan === 'pro' ? '3_months' : undefined),
+                planType: planType || (plan === 'ultra' ? '6_months' : plan === 'plus' ? '1_month' : '3_months'),
                 activatedAt: new Date().toISOString(),
                 expiresAt,
               },

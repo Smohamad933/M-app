@@ -196,6 +196,7 @@ interface AppData {
     text: string;
     createdAt: string;
   }>;
+  notifications?: any[];
 }
 
 const DB_FILE = path.resolve(process.cwd(), 'data/db.json');
@@ -284,7 +285,7 @@ const INITIAL_DATA: AppData = {
   globalSettings: {
     broadcastNotice: {
       enabled: true,
-      title: 'خوش‌آمدید به سامانه تسک‌روز',
+      title: 'خوش‌آمدید به سامانه بگ تایم (Bag Time)',
       message: 'سامانه متمرکز برنامه‌ریزی روزانه، پومودورو تیمی و پایش بهره‌وری آماده استفاده است.',
       type: 'info',
       updatedAt: new Date().toISOString(),
@@ -1097,12 +1098,29 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           sendJson(res, { error: 'کاربر پیدا نشد.' }, 404);
           return true;
         }
+        const resolvedPlan = ['plus', 'pro', 'ultra'].includes(plan) ? plan : (plan === 'free' ? 'free' : 'pro');
         target.subscription = {
-          plan: plan === 'pro' ? 'pro' : 'free',
-          planType: planType || (plan === 'pro' ? '1_month' : undefined),
+          plan: resolvedPlan,
+          planType: planType || (resolvedPlan === 'ultra' ? '6_months' : resolvedPlan === 'plus' ? '1_month' : '3_months'),
           activatedAt: new Date().toISOString(),
           expiresAt: expiresAt || null,
         };
+
+        if (resolvedPlan !== 'free') {
+          if (!db.notifications) db.notifications = [];
+          const planName = (resolvedPlan === 'ultra' || planType === '6_months') ? 'اولترا (Ultra)' : ((resolvedPlan === 'plus' || planType === '1_month') ? 'پلاس (Plus)' : 'پرو (Pro)');
+          const planSymbol = (resolvedPlan === 'ultra' || planType === '6_months') ? '💎' : ((resolvedPlan === 'plus' || planType === '1_month') ? '➕' : '⭐');
+          db.notifications.unshift({
+            id: 'notif_sub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            userId: target.id,
+            title: `تبریک! اشتراک شما به ${planName} ارتقا یافت ${planSymbol}`,
+            message: `حساب کاربری شما با موفقیت فعال شد و نماد ویژه ${planSymbol} در پروفایل شما ثبت گردید. هم‌اکنون به تمامی امکانات نامحدود دسترسی دارید.`,
+            type: 'info',
+            timestamp: new Date().toISOString(),
+            read: false,
+          });
+        }
+
         writeDb(db);
         sendJson(res, { message: 'اشتراک کاربر به‌روزرسانی شد.', subscription: target.subscription });
         return true;
@@ -1552,9 +1570,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
 
-      const isAdmin = currentUser.role === 'admin';
       const visible = db.projects.filter(
-        (p) => isAdmin || p.creatorId === currentUser.id || (p.memberIds && p.memberIds.includes(currentUser.id))
+        (p) => p.creatorId === currentUser.id || (p.memberIds && p.memberIds.includes(currentUser.id))
       );
 
       const enriched = visible.map((p) => {
@@ -2365,6 +2382,21 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
         if (!db.friend_requests) db.friend_requests = [];
         db.friend_requests.push(newReq);
+
+        // Add notification for receiver
+        if (!db.notifications) db.notifications = [];
+        db.notifications.unshift({
+          id: 'notif_freq_' + newReq.id,
+          userId: toUserId,
+          title: 'درخواست دوستی و همکاری جدید 👥',
+          message: `${currentUser.name} برای شما درخواست همکاری ارسال کرد.`,
+          type: 'friend',
+          timestamp: new Date().toISOString(),
+          read: false,
+          senderId: myId,
+          userName: currentUser.name,
+        });
+
         writeDb(db);
         sendJson(res, { message: 'درخواست با موفقیت ارسال شد.', request: newReq }, 201);
         return true;
@@ -2508,9 +2540,82 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       };
       if (!db.messages) db.messages = [];
       db.messages.push(newMsg);
+
+      // Add notification for message recipient
+      if (!db.notifications) db.notifications = [];
+      db.notifications.unshift({
+        id: 'notif_msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        userId: receiverId,
+        title: `پیام جدید از ${currentUser.name} 💬`,
+        message: text.slice(0, 70) + (text.length > 70 ? '...' : ''),
+        type: 'info',
+        timestamp: new Date().toISOString(),
+        read: false,
+        senderId: myId,
+        senderName: currentUser.name,
+      });
+
       writeDb(db);
       sendJson(res, { message: 'پیام ارسال شد.', data: newMsg }, 201);
       return true;
+    }
+  }
+
+  // 16. User Notifications (/api/notifications)
+  if (pathname.startsWith('/api/notifications')) {
+    if (!currentUser) {
+      sendJson(res, { error: 'ابتدا وارد حساب کاربری خود شوید.' }, 401);
+      return true;
+    }
+    const myId = currentUser.id;
+    if (!db.notifications) db.notifications = [];
+
+    if (method === 'GET') {
+      const userNotifs = db.notifications.filter((n: any) => n.userId === myId);
+
+      // Also include pending friend requests if not already included
+      const friendReqs = (db.friend_requests || []).filter((r: any) => r.toUserId === myId && r.status === 'pending');
+      friendReqs.forEach((fr: any) => {
+        const id = 'notif_freq_' + fr.id;
+        if (!userNotifs.some((n: any) => n.id === id)) {
+          userNotifs.unshift({
+            id,
+            userId: myId,
+            title: 'درخواست دوستی و همکاری جدید 👥',
+            message: `${fr.fromUserName || 'کاربر'} برای شما درخواست همکاری ارسال کرد.`,
+            type: 'friend',
+            timestamp: fr.createdAt,
+            read: false,
+            senderId: fr.fromUserId,
+            userName: fr.fromUserName,
+          });
+        }
+      });
+
+      sendJson(res, { notifications: userNotifs });
+      return true;
+    }
+
+    if (method === 'POST') {
+      const body = await parseJsonBody(req);
+      const action = urlObj.searchParams.get('action') || body.action;
+      if (action === 'read' || action === 'mark_read') {
+        const notifId = body.id || urlObj.searchParams.get('id');
+        db.notifications.forEach((n: any) => {
+          if (n.userId === myId && (!notifId || n.id === notifId)) {
+            n.read = true;
+          }
+        });
+        writeDb(db);
+        sendJson(res, { message: 'اعلان‌ها خوانده شدند.' });
+        return true;
+      }
+      if (action === 'clear' || action === 'delete_all') {
+        db.notifications = db.notifications.filter((n: any) => n.userId !== myId);
+        writeDb(db);
+        sendJson(res, { message: 'اعلان‌ها پاک شدند.' });
+        return true;
+      }
     }
   }
 

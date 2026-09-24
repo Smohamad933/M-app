@@ -5,6 +5,7 @@ import { toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import { APP_TEXTS, APP_TEXT_SECTIONS } from '../utils/appTexts';
 import { UserAvatar } from './UserAvatar';
+import { SubscriptionBadge } from './SubscriptionBadge';
 import type { User, GlobalSystemSettings, AppDeveloper } from '../types';
 import {
   Users,
@@ -186,13 +187,13 @@ export const UserManagementView: React.FC = () => {
 
   const handleUpdateSubscription = async (
     userId: string,
-    plan: 'free' | 'pro',
+    plan: 'free' | 'plus' | 'pro' | 'ultra',
     planType: '1_month' | '3_months' | '6_months' = '1_month'
   ) => {
     setUpdatingSubUserId(userId);
     try {
       let expiresAt: string | undefined;
-      if (plan === 'pro') {
+      if (plan !== 'free') {
         const now = new Date();
         const days = planType === '6_months' ? 180 : planType === '3_months' ? 90 : 30;
         now.setDate(now.getDate() + days);
@@ -202,9 +203,13 @@ export const UserManagementView: React.FC = () => {
       await setUserSubscription(userId, plan, planType, expiresAt);
       sounds.playComplete();
       const planName =
-        planType === '6_months' ? 'اولترا (Ultra)' : planType === '3_months' ? 'پرو (Pro)' : 'پلاس (Plus)';
+        planType === '6_months' || plan === 'ultra'
+          ? 'اولترا (Ultra) 💎'
+          : planType === '3_months' || plan === 'pro'
+          ? 'پرو (Pro) ⭐'
+          : 'پلاس (Plus) ➕';
       setSubNotice(
-        plan === 'pro'
+        plan !== 'free'
           ? `اشتراک ویژه ${planName} برای کاربر با موفقیت فعال شد.`
           : 'اشتراک کاربر به نسخه رایگان تغییر یافت.'
       );
@@ -1147,10 +1152,7 @@ export const UserManagementView: React.FC = () => {
                               <span>دمو کامیونیتی (Beta) 🚀</span>
                             </span>
                           ) : isUserPro ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
-                              <Sparkles className="w-3 h-3 text-amber-400" />
-                              <span>{u.subscription?.planType === '6_months' ? 'اولترا (Ultra)' : u.subscription?.planType === '3_months' ? 'پرو (Pro)' : 'پلاس (Plus)'}</span>
-                            </span>
+                            <SubscriptionBadge user={u} size="sm" />
                           ) : (
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/50">
                               کاربر عادی (رایگان)
@@ -3032,19 +3034,20 @@ export const UserManagementView: React.FC = () => {
               <button
                 type="button"
                 disabled={updatingSubUserId === subscriptionModalUser.id}
-                onClick={() => handleUpdateSubscription(subscriptionModalUser.id, 'pro', '1_month')}
-                className="w-full p-3.5 rounded-2xl bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/80 hover:border-amber-500/50 text-right flex items-center justify-between transition-all cursor-pointer group shadow-2xs"
+                onClick={() => handleUpdateSubscription(subscriptionModalUser.id, 'plus', '1_month')}
+                className="w-full p-3.5 rounded-2xl bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/80 hover:border-emerald-500/50 text-right flex items-center justify-between transition-all cursor-pointer group shadow-2xs"
               >
                 <div>
-                  <div className="text-xs font-black text-white group-hover:text-amber-300">
-                    پلن ۱: پلاس Plus (۱ ماهه - ۳۰ روز)
+                  <div className="text-xs font-black text-white group-hover:text-emerald-300 flex items-center gap-2">
+                    <span>پلن ۱: پلاس Plus (۱ ماهه - ۳۰ روز)</span>
+                    <span className="text-[11px]">➕</span>
                   </div>
                   <div className="text-[10px] text-zinc-400 mt-0.5">
-                    دسترسی اقتصادی استاندارد به تسک‌ها و پروژه‌ها
+                    نماد پلاس ➕ در پروفایل، تسک‌ها و پروژه‌های تیمی
                   </div>
                 </div>
-                <span className="px-3 py-1.5 rounded-xl bg-zinc-700 text-zinc-200 text-[10px] font-bold group-hover:bg-amber-500 group-hover:text-black transition-colors">
-                  فعال‌سازی پلاس ⚡
+                <span className="px-3 py-1.5 rounded-xl bg-zinc-700 text-zinc-200 text-[10px] font-bold group-hover:bg-emerald-500 group-hover:text-black transition-colors">
+                  فعال‌سازی پلاس ➕
                 </span>
               </button>
 
@@ -3062,7 +3065,7 @@ export const UserManagementView: React.FC = () => {
                     </span>
                   </div>
                   <div className="text-[10px] text-zinc-400 mt-0.5">
-                    پلن طلایی حرفه‌ای با ۲۰٪ تخفیف اقتصادی
+                    نماد ستاره ⭐ در پروفایل، پلن طلایی حرفه‌ای
                   </div>
                 </div>
                 <span className="px-3 py-1.5 rounded-xl bg-amber-500 text-black text-[10px] font-black group-hover:bg-amber-400 transition-colors">
@@ -3073,21 +3076,21 @@ export const UserManagementView: React.FC = () => {
               <button
                 type="button"
                 disabled={updatingSubUserId === subscriptionModalUser.id}
-                onClick={() => handleUpdateSubscription(subscriptionModalUser.id, 'pro', '6_months')}
-                className="w-full p-3.5 rounded-2xl bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/80 hover:border-amber-500/50 text-right flex items-center justify-between transition-all cursor-pointer group shadow-2xs"
+                onClick={() => handleUpdateSubscription(subscriptionModalUser.id, 'ultra', '6_months')}
+                className="w-full p-3.5 rounded-2xl bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/80 hover:border-cyan-500/50 text-right flex items-center justify-between transition-all cursor-pointer group shadow-2xs"
               >
                 <div>
-                  <div className="text-xs font-black text-white group-hover:text-amber-300 flex items-center gap-2">
+                  <div className="text-xs font-black text-white group-hover:text-cyan-300 flex items-center gap-2">
                     <span>پلن ۳: اولترا Ultra (۶ ماهه - ۱۸۰ روز)</span>
-                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-black">
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-black">
                       ۳۵٪ تخفیف 💎
                     </span>
                   </div>
                   <div className="text-[10px] text-zinc-400 mt-0.5">
-                    کامل‌ترین و اقتصادی‌ترین بسته ویژه نامحدود
+                    نماد الماس 💎 در پروفایل، کامل‌ترین بسته نامحدود
                   </div>
                 </div>
-                <span className="px-3 py-1.5 rounded-xl bg-zinc-700 text-zinc-200 text-[10px] font-bold group-hover:bg-amber-500 group-hover:text-black transition-colors">
+                <span className="px-3 py-1.5 rounded-xl bg-zinc-700 text-zinc-200 text-[10px] font-bold group-hover:bg-cyan-500 group-hover:text-black transition-colors">
                   فعال‌سازی اولترا 💎
                 </span>
               </button>

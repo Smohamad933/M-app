@@ -1237,7 +1237,7 @@ export const api = {
   // ── Subscription Management ──
   async setUserSubscription(
     userId: string,
-    plan: 'free' | 'pro',
+    plan: 'free' | 'plus' | 'pro' | 'ultra',
     planType?: '1_month' | '3_months' | '6_months',
     expiresAt?: string
   ): Promise<void> {
@@ -1251,7 +1251,7 @@ export const api = {
               ...u,
               subscription: {
                 plan,
-                planType: planType || (plan === 'pro' ? '3_months' : undefined),
+                planType: planType || (plan === 'ultra' ? '6_months' : plan === 'plus' ? '1_month' : '3_months'),
                 activatedAt: new Date().toISOString(),
                 expiresAt,
               },
@@ -1378,5 +1378,33 @@ export const api = {
       body: JSON.stringify({ projectId, text }),
     });
     return res.data;
+  },
+
+  // ── User Notifications ──
+  async getNotifications(): Promise<any[]> {
+    try {
+      const res = await request<{ notifications: any[] }>('api/notifications.php');
+      return Array.isArray(res.notifications) ? res.notifications : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async markNotificationsRead(id?: string): Promise<void> {
+    try {
+      await request('api/notifications.php', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'read', id }),
+      });
+    } catch {}
+  },
+
+  async clearNotifications(): Promise<void> {
+    try {
+      await request('api/notifications.php', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'clear' }),
+      });
+    } catch {}
   },
 };
