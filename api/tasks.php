@@ -29,6 +29,7 @@ if ($method === 'GET') {
 
 // POST /api/tasks -> Create task
 if ($method === 'POST') {
+    requireVerifiedUser();
     $input = getJsonInput();
     $title = trim($input['title'] ?? '');
     $date = trim($input['date'] ?? date('Y-m-d'));

@@ -47,15 +47,34 @@ async function loadPopup() {
     const input = document.getElementById('popupInput');
     const title = input.value.trim();
     if (!title) return;
-    tasks.unshift({
+    const newTask = {
       id: 'task_' + Date.now(),
       title,
       priority: 'medium',
       completed: false
-    });
+    };
+    tasks.unshift(newTask);
     await Storage.set('tasks', tasks);
     input.value = '';
     loadPopup();
+
+    // Push to server if account is connected
+    const account = await Storage.get('auth_account', null);
+    if (account && account.token) {
+      const baseUrl = (account.serverUrl || 'https://taskrooz.mohusyn.ir').replace(/\/+$/, '');
+      fetch(`${baseUrl}/api/tasks.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${account.token}`,
+        },
+        body: JSON.stringify({
+          title: newTask.title,
+          priority: 'medium',
+          date: new Date().toISOString().split('T')[0],
+        }),
+      }).catch(() => {});
+    }
   });
 
   document.getElementById('openNewTab').addEventListener('click', (e) => {

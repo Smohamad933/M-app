@@ -1,6 +1,6 @@
 /**
  * Bag Time Personal Assistant - New Tab Engine
- * 100% Offline-capable, zero external dependency
+ * 100% Offline-capable, zero external dependency, with Google search & full account sync.
  */
 
 // Storage Abstraction (chrome.storage.local or localStorage fallback)
@@ -118,212 +118,441 @@ const PERSIAN_WEEKDAYS = [
   'یک‌شنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'
 ];
 
-const QUOTES = [
-  '«انگیزه چیزی است که شما را شروع می‌کند؛ عادت چیزی است که شما را ادامه می‌دهد.»',
-  '«تمرکز یعنی نه گفتن به صد ایده خوب دیگر برای انجام یک کار عالی.»',
-  '«برنامه‌ریزی، آوردن آینده به زمان حال است تا بتوانید کاری برای آن انجام دهید.»',
-  '«یک ساعت تمرکز عمیق، با ارزش‌تر از هشت ساعت کار همراه با حواس‌پرتی است.»',
-  '«پشتکار، عامل تفاوت بین پیروزی و شکست در اهداف روزانه است.»',
-];
+function getJalaliDateString() {
+  const now = new Date();
+  const [jy, jm, jd] = gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  const weekday = PERSIAN_WEEKDAYS[now.getDay()];
+  const monthName = PERSIAN_MONTHS[jm - 1];
+  return `${weekday}، ${toPersianDigits(jd)} ${monthName} ${toPersianDigits(jy)}`;
+}
 
-// App State
+// Search Engines Configuration
+const SEARCH_ENGINES = {
+  google: {
+    name: 'گوگل',
+    icon: '🌐',
+    url: 'https://www.google.com/search?q=',
+    placeholder: 'جستجو در گوگل یا وارد کردن آدرس وبسایت...',
+  },
+  bing: {
+    name: 'بینگ',
+    icon: '🔷',
+    url: 'https://www.bing.com/search?q=',
+    placeholder: 'جستجو در مایکروسافت بینگ...',
+  },
+  duckduckgo: {
+    name: 'داک‌داک‌گو',
+    icon: '🦆',
+    url: 'https://duckduckgo.com/?q=',
+    placeholder: 'جستجوی خصوصی در DuckDuckGo...',
+  },
+  yahoo: {
+    name: 'یاهو',
+    icon: '🟣',
+    url: 'https://search.yahoo.com/search?p=',
+    placeholder: 'جستجو در یاهو...',
+  },
+  ecosia: {
+    name: 'اکوزیا',
+    icon: '🌱',
+    url: 'https://www.ecosia.org/search?q=',
+    placeholder: 'جستجو و کاشت درخت با Ecosia...',
+  },
+};
+
+// State
 let tasks = [];
 let currentFilter = 'all';
 let timelineSchedule = {};
-let timerInterval = null;
-let timerSecondsLeft = 25 * 60;
-let isTimerRunning = false;
+let pomodoroSecondsLeft = 25 * 60;
+let pomodoroTimer = null;
+let pomodoroIsRunning = false;
+let currentSearchEngine = 'google';
+let currentAccount = null; // { user, token, serverUrl }
 
 // DOM Elements
-const liveClockEl = document.getElementById('liveClock');
-const liveDateEl = document.getElementById('liveDate');
-const greetingTextEl = document.getElementById('greetingText');
-const tasksListEl = document.getElementById('tasksList');
-const tasksCountBadgeEl = document.getElementById('tasksCountBadge');
-const progressBarEl = document.getElementById('progressBar');
-const progressStatsEl = document.getElementById('progressStats');
+const liveClock = document.getElementById('liveClock');
+const liveDate = document.getElementById('liveDate');
+const greetingText = document.getElementById('greetingText');
+const progressStats = document.getElementById('progressStats');
+const progressBar = document.getElementById('progressBar');
+const tasksCountBadge = document.getElementById('tasksCountBadge');
+const tasksList = document.getElementById('tasksList');
 const addTaskForm = document.getElementById('addTaskForm');
 const taskInput = document.getElementById('taskInput');
 const prioritySelect = document.getElementById('prioritySelect');
-const timelineScrollEl = document.getElementById('timelineScroll');
-const timerDisplayEl = document.getElementById('timerDisplay');
+const timelineScroll = document.getElementById('timelineScroll');
+const timerDisplay = document.getElementById('timerDisplay');
 const timerToggleBtn = document.getElementById('timerToggleBtn');
 const timerResetBtn = document.getElementById('timerResetBtn');
 const timerBreakBtn = document.getElementById('timerBreakBtn');
 const notesArea = document.getElementById('notesArea');
-const notesSavedTag = document.getElementById('notesSavedTag');
 const notesCharCount = document.getElementById('notesCharCount');
 const copyNotesBtn = document.getElementById('copyNotesBtn');
-const dailyQuoteEl = document.getElementById('dailyQuote');
+const heroSearchForm = document.getElementById('heroSearchForm');
+const heroSearchInput = document.getElementById('heroSearchInput');
+const searchEngineBadge = document.getElementById('searchEngineBadge');
+const searchEngineIcon = document.getElementById('searchEngineIcon');
+const searchEngineName = document.getElementById('searchEngineName');
+const accountBox = document.getElementById('accountBox');
+const loginModal = document.getElementById('loginModal');
+const closeLoginModalBtn = document.getElementById('closeLoginModalBtn');
+const extLoginForm = document.getElementById('extLoginForm');
+const extServerUrl = document.getElementById('extServerUrl');
+const extUsername = document.getElementById('extUsername');
+const extPassword = document.getElementById('extPassword');
+const extLoginError = document.getElementById('extLoginError');
 
-// 1. Clock & Date
+// Clock & Date updater
 function updateClock() {
   const now = new Date();
   const h = String(now.getHours()).padStart(2, '0');
   const m = String(now.getMinutes()).padStart(2, '0');
   const s = String(now.getSeconds()).padStart(2, '0');
-  liveClockEl.textContent = `${h}:${m}:${s}`;
+  liveClock.textContent = `${toPersianDigits(h)}:${toPersianDigits(m)}:${toPersianDigits(s)}`;
 
-  const [jy, jm, jd] = gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
-  const dayName = PERSIAN_WEEKDAYS[now.getDay()];
-  const monthName = PERSIAN_MONTHS[jm - 1];
-  liveDateEl.textContent = `${dayName} ${toPersianDigits(jd)} ${monthName} ${toPersianDigits(jy)}`;
-
-  // Greeting update
   const hour = now.getHours();
-  let greet = 'روز بخیر!';
-  if (hour >= 5 && hour < 12) greet = 'صبح بخیر! روز پر انرژی و موفقی پیش رو داشته باشید.';
-  else if (hour >= 12 && hour < 16) greet = 'ظهر بخیر! وقت مرور اولویت‌های امروز است.';
-  else if (hour >= 16 && hour < 20) greet = 'عصر بخیر! چقدر از کارهای امروز انجام شد؟';
-  else greet = 'شب بخیر! وقت مرور دستاوردها و آماده‌سازی ذهن برای فرداست.';
-  greetingTextEl.textContent = greet;
+  if (hour >= 5 && hour < 12) {
+    greetingText.textContent = 'صبح بخیر! روز پرانرژی و موفقی پیش رو داشته باشید ☀️';
+  } else if (hour >= 12 && hour < 18) {
+    greetingText.textContent = 'عصر بخیر! چه کارهایی امروز در اولویت شما هستند؟ 🌿';
+  } else {
+    greetingText.textContent = 'شب بخیر! مرور دستاوردها و برنامه‌ریزی برای فردا 🌙';
+  }
 }
 
-// 2. Tasks Rendering & Management
-function updateProgress() {
-  const total = tasks.length;
-  const completed = tasks.filter((t) => t.completed).length;
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-  progressBarEl.style.width = pct + '%';
-  progressStatsEl.textContent = `${toPersianDigits(completed)} از ${toPersianDigits(total)} (${toPersianDigits(pct)}٪)`;
-  tasksCountBadgeEl.textContent = `${toPersianDigits(total)} تسک`;
+// ── Search Engine Functionality ──
+function setSearchEngine(engineKey) {
+  if (!SEARCH_ENGINES[engineKey]) engineKey = 'google';
+  currentSearchEngine = engineKey;
+  Storage.set('search_engine', engineKey);
+
+  const engine = SEARCH_ENGINES[engineKey];
+  if (searchEngineIcon) searchEngineIcon.textContent = engine.icon;
+  if (searchEngineName) searchEngineName.textContent = engine.name;
+  if (heroSearchInput) heroSearchInput.placeholder = engine.placeholder;
+
+  document.querySelectorAll('.engine-pill').forEach((pill) => {
+    if (pill.dataset.engine === engineKey) {
+      pill.classList.add('active');
+    } else {
+      pill.classList.remove('active');
+    }
+  });
 }
 
-function renderTasks() {
-  let filtered = tasks;
-  if (currentFilter === 'pending') filtered = tasks.filter((t) => !t.completed);
-  if (currentFilter === 'completed') filtered = tasks.filter((t) => t.completed);
+function handleSearchSubmit(e) {
+  e.preventDefault();
+  const query = (heroSearchInput.value || '').trim();
+  if (!query) return;
 
-  if (filtered.length === 0) {
-    tasksListEl.innerHTML = `
-      <div class="empty-state">
-        ${currentFilter === 'completed' ? 'هنوز تسکی انجام نشده است.' : 'هیچ تسکی در این لیست وجود ندارد.'}
-      </div>
-    `;
-    updateProgress();
+  // Direct URL navigation check
+  const isUrl = /^https?:\/\//i.test(query) || /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/.test(query);
+  if (isUrl) {
+    const targetUrl = /^https?:\/\//i.test(query) ? query : `https://${query}`;
+    window.location.href = targetUrl;
     return;
   }
 
-  tasksListEl.innerHTML = filtered
-    .map(
-      (t) => `
-      <div class="task-item ${t.completed ? 'completed' : ''}" data-id="${t.id}">
-        <div class="task-left">
-          <input type="checkbox" class="task-checkbox" ${t.completed ? 'checked' : ''} />
-          <span class="task-title">${escapeHtml(t.title)}</span>
-        </div>
-        <div class="task-right">
-          <span class="priority-tag priority-${t.priority}">
-            ${t.priority === 'high' ? 'فوری' : t.priority === 'low' ? 'عادی' : 'متوسط'}
-          </span>
-          <button type="button" class="delete-btn" title="حذف تسک">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-          </button>
-        </div>
+  const engine = SEARCH_ENGINES[currentSearchEngine] || SEARCH_ENGINES.google;
+  window.location.href = `${engine.url}${encodeURIComponent(query)}`;
+}
+
+// ── Server Synchronization & Account ──
+async function syncWithServer() {
+  if (!currentAccount || !currentAccount.token) return;
+  const baseUrl = (currentAccount.serverUrl || 'https://taskrooz.mohusyn.ir').replace(/\/+$/, '');
+
+  try {
+    // 1. Fetch tasks from server
+    const res = await fetch(`${baseUrl}/api/tasks.php`, {
+      headers: {
+        'Authorization': `Bearer ${currentAccount.token}`,
+        'X-Auth-Token': currentAccount.token,
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.tasks)) {
+        // Map server tasks to extension tasks format
+        tasks = data.tasks.map((t) => ({
+          id: t.id,
+          title: t.title,
+          priority: t.priority || 'medium',
+          completed: Boolean(t.completed),
+          date: t.date,
+          timeBlock: t.timeBlock,
+        }));
+        await Storage.set('tasks', tasks);
+        renderTasks();
+      }
+    }
+  } catch (err) {
+    console.warn('Sync with server failed, running offline:', err);
+  }
+}
+
+async function renderAccountUI() {
+  currentAccount = await Storage.get('auth_account', null);
+  if (!accountBox) return;
+
+  if (currentAccount && currentAccount.user) {
+    const userName = currentAccount.user.name || currentAccount.user.username || 'کاربر بگ تایم';
+    accountBox.innerHTML = `
+      <div class="account-badge-box">
+        <span class="sync-indicator-dot" title="همگام‌سازی زنده با سرور فعال است"></span>
+        <span style="color: #1e1b4b;">${userName}</span>
+        <button type="button" id="extManualSyncBtn" style="border: none; background: none; cursor: pointer; color: #4f46e5; font-size: 0.75rem; font-weight: 800;" title="همگام‌سازی مجدد">🔄</button>
+        <button type="button" id="extLogoutBtn" style="border: none; background: none; cursor: pointer; color: #e11d48; font-size: 0.75rem; font-weight: 800;" title="خروج از حساب">خروج</button>
       </div>
-    `
-    )
-    .join('');
+    `;
+
+    document.getElementById('extManualSyncBtn')?.addEventListener('click', async () => {
+      await syncWithServer();
+      AudioFeedback.playCheck();
+      alert('اطلاعات با موفقیت با سرور همگام‌سازی شد!');
+    });
+
+    document.getElementById('extLogoutBtn')?.addEventListener('click', async () => {
+      if (confirm('آیا از خروج از حساب کاربری بگ تایم اطمینان دارید؟')) {
+        await Storage.set('auth_account', null);
+        currentAccount = null;
+        renderAccountUI();
+      }
+    });
+  } else {
+    accountBox.innerHTML = `
+      <button type="button" id="openLoginModalBtn" class="btn btn-outline" style="font-size: 0.75rem; padding: 0.45rem 0.85rem;">
+        🔑 اتصال به حساب کاربری
+      </button>
+    `;
+    document.getElementById('openLoginModalBtn')?.addEventListener('click', () => {
+      if (loginModal) loginModal.style.display = 'flex';
+    });
+  }
+}
+
+// ── Tasks Rendering & Management ──
+function renderTasks() {
+  const filtered = tasks.filter((t) => {
+    if (currentFilter === 'pending') return !t.completed;
+    if (currentFilter === 'completed') return t.completed;
+    return true;
+  });
+
+  tasksList.innerHTML = '';
+  tasksCountBadge.textContent = `${toPersianDigits(filtered.length)} تسک`;
+
+  if (filtered.length === 0) {
+    tasksList.innerHTML = `
+      <div style="text-align: center; padding: 2.5rem 1rem; color: #94a3b8; font-size: 0.85rem;">
+        ${currentFilter === 'completed' ? 'هنوز تسکی انجام نشده است.' : 'هیچ تسکی برای نمایش وجود ندارد. یکی اضافه کنید! ✨'}
+      </div>
+    `;
+  } else {
+    filtered.forEach((t) => {
+      const div = document.createElement('div');
+      div.className = `task-item ${t.completed ? 'completed' : ''}`;
+      div.innerHTML = `
+        <div class="task-checkbox ${t.completed ? 'checked' : ''}" data-id="${t.id}">
+          ${t.completed ? '✓' : ''}
+        </div>
+        <div class="task-title-text">${escapeHtml(t.title)}</div>
+        <span class="priority-tag priority-${t.priority}">
+          ${t.priority === 'high' ? 'فوری' : t.priority === 'low' ? 'عادی' : 'متوسط'}
+        </span>
+        <button type="button" class="task-delete-btn" data-id="${t.id}" title="حذف تسک">✕</button>
+      `;
+      tasksList.appendChild(div);
+    });
+  }
+
+  // Bind actions
+  tasksList.querySelectorAll('.task-checkbox').forEach((box) => {
+    box.addEventListener('click', () => toggleTask(box.dataset.id));
+  });
+
+  tasksList.querySelectorAll('.task-delete-btn').forEach((btn) => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      deleteTask(btn.dataset.id);
+    });
+  });
 
   updateProgress();
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+async function toggleTask(id) {
+  const task = tasks.find((t) => t.id === id);
+  if (!task) return;
+  task.completed = !task.completed;
+  if (task.completed) AudioFeedback.playCheck();
+  await Storage.set('tasks', tasks);
+  renderTasks();
+
+  // Push toggle to server if connected
+  if (currentAccount && currentAccount.token) {
+    const baseUrl = (currentAccount.serverUrl || 'https://taskrooz.mohusyn.ir').replace(/\/+$/, '');
+    fetch(`${baseUrl}/api/tasks.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentAccount.token}`,
+      },
+      body: JSON.stringify({ action: 'toggle', id: task.id }),
+    }).catch(() => {});
+  }
 }
 
-// 3. Hourly Timeline
+async function deleteTask(id) {
+  tasks = tasks.filter((t) => t.id !== id);
+  await Storage.set('tasks', tasks);
+  renderTasks();
+
+  if (currentAccount && currentAccount.token) {
+    const baseUrl = (currentAccount.serverUrl || 'https://taskrooz.mohusyn.ir').replace(/\/+$/, '');
+    fetch(`${baseUrl}/api/tasks.php?action=delete&id=${encodeURIComponent(id)}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${currentAccount.token}`,
+      },
+    }).catch(() => {});
+  }
+}
+
+function updateProgress() {
+  const total = tasks.length;
+  const done = tasks.filter((t) => t.completed).length;
+  const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+  progressStats.textContent = `${toPersianDigits(done)} از ${toPersianDigits(total)} (${toPersianDigits(percent)}٪)`;
+  progressBar.style.width = `${percent}%`;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ── Hourly Timeline ──
 function renderTimeline() {
-  const currentHour = new Date().getHours();
   const hours = [];
   for (let h = 7; h <= 23; h++) {
-    hours.push(h);
+    hours.push(`${String(h).padStart(2, '0')}:00`);
   }
 
-  timelineScrollEl.innerHTML = hours
-    .map((h) => {
-      const timeStr = `${String(h).padStart(2, '0')}:00`;
-      const isCurrent = h === currentHour;
-      const val = timelineSchedule[timeStr] || '';
-      return `
-      <div class="timeline-row ${isCurrent ? 'current-hour' : ''}">
-        <span class="timeline-time">${timeStr}</span>
-        <input
-          type="text"
-          class="timeline-input"
-          data-time="${timeStr}"
-          value="${escapeHtml(val)}"
-          placeholder="برنامه این ساعت (کاری، مطالعه، ورزش...)"
-        />
-        ${isCurrent ? '<span class="timeline-now-badge">هم‌اکنون</span>' : ''}
-      </div>
+  timelineScroll.innerHTML = '';
+  hours.forEach((slot) => {
+    const row = document.createElement('div');
+    row.className = 'timeline-slot';
+    const text = timelineSchedule[slot] || '';
+    row.innerHTML = `
+      <div class="slot-time">${toPersianDigits(slot)}</div>
+      <input
+        type="text"
+        class="slot-input"
+        data-slot="${slot}"
+        value="${escapeHtml(text)}"
+        placeholder="ثبت کار، جلسه یا هدف این ساعت..."
+      />
     `;
-    })
-    .join('');
+    timelineScroll.appendChild(row);
+  });
+
+  timelineScroll.querySelectorAll('.slot-input').forEach((inp) => {
+    inp.addEventListener('change', async () => {
+      const slot = inp.dataset.slot;
+      timelineSchedule[slot] = inp.value.trim();
+      await Storage.set('timeline', timelineSchedule);
+    });
+  });
 }
 
-// 4. Pomodoro Timer
-function formatTimer(sec) {
-  const m = String(Math.floor(sec / 60)).padStart(2, '0');
-  const s = String(sec % 60).padStart(2, '0');
-  return `${m}:${s}`;
+// ── Pomodoro Timer ──
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function updateTimerDisplay() {
-  timerDisplayEl.textContent = formatTimer(timerSecondsLeft);
+function renderTimer() {
+  timerDisplay.textContent = formatTime(pomodoroSecondsLeft);
 }
 
-function toggleTimer() {
-  if (isTimerRunning) {
-    clearInterval(timerInterval);
-    isTimerRunning = false;
-    timerToggleBtn.textContent = 'شروع';
-    timerToggleBtn.classList.remove('btn-outline');
-    timerToggleBtn.classList.add('btn-primary');
-  } else {
-    isTimerRunning = true;
-    timerToggleBtn.textContent = 'توقف';
-    timerToggleBtn.classList.remove('btn-primary');
-    timerToggleBtn.classList.add('btn-outline');
-    timerInterval = setInterval(() => {
-      if (timerSecondsLeft > 0) {
-        timerSecondsLeft--;
-        updateTimerDisplay();
-      } else {
-        clearInterval(timerInterval);
-        isTimerRunning = false;
-        timerToggleBtn.textContent = 'شروع';
-        AudioFeedback.playBell();
-        alert('زمان تمرکز به پایان رسید! تبریک، وقت یک استراحت کوتاه است.');
-      }
-    }, 1000);
-  }
+function startTimer() {
+  if (pomodoroIsRunning) return;
+  pomodoroIsRunning = true;
+  timerToggleBtn.textContent = 'توقف';
+  timerToggleBtn.style.background = '#e11d48';
+
+  pomodoroTimer = setInterval(() => {
+    if (pomodoroSecondsLeft <= 1) {
+      clearInterval(pomodoroTimer);
+      pomodoroIsRunning = false;
+      pomodoroSecondsLeft = 0;
+      renderTimer();
+      timerToggleBtn.textContent = 'شروع مجدد';
+      timerToggleBtn.style.background = '#4f46e5';
+      AudioFeedback.playBell();
+      alert('🎉 زمان تمرکز عمیق پومودورو به پایان رسید! وقت استراحت است.');
+      return;
+    }
+    pomodoroSecondsLeft -= 1;
+    renderTimer();
+  }, 1000);
 }
 
-// Initial Setup
+function pauseTimer() {
+  clearInterval(pomodoroTimer);
+  pomodoroIsRunning = false;
+  timerToggleBtn.textContent = 'ادامه';
+  timerToggleBtn.style.background = '#4f46e5';
+}
+
+// ── Initialize App ──
 async function init() {
   updateClock();
   setInterval(updateClock, 1000);
 
-  // Daily Quote
-  const dayIdx = new Date().getDate() % QUOTES.length;
-  dailyQuoteEl.textContent = QUOTES[dayIdx];
+  liveDate.textContent = getJalaliDateString();
+
+  // Load Search Engine
+  const savedEngine = await Storage.get('search_engine', 'google');
+  setSearchEngine(savedEngine);
+
+  // Search Engine Pills listener
+  document.querySelectorAll('.engine-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      setSearchEngine(pill.dataset.engine);
+    });
+  });
+
+  // Search Engine Badge toggle
+  if (searchEngineBadge) {
+    searchEngineBadge.addEventListener('click', () => {
+      const keys = Object.keys(SEARCH_ENGINES);
+      const nextIdx = (keys.indexOf(currentSearchEngine) + 1) % keys.length;
+      setSearchEngine(keys[nextIdx]);
+    });
+  }
+
+  // Hero Search Form
+  if (heroSearchForm) {
+    heroSearchForm.addEventListener('submit', handleSearchSubmit);
+  }
+
+  // Keyboard shortcut '/' to focus search
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== heroSearchInput && document.activeElement !== taskInput && document.activeElement !== notesArea) {
+      e.preventDefault();
+      heroSearchInput.focus();
+    }
+  });
 
   // Load Tasks
-  const savedTasks = await Storage.get('tasks', null);
-  if (savedTasks && Array.isArray(savedTasks)) {
-    tasks = savedTasks;
-  } else {
-    // Initial friendly starter tasks
-    tasks = [
-      { id: '1', title: 'مرور اولویت‌های مهم روز و زمان‌بندی', priority: 'high', completed: false },
-      { id: '2', title: 'یک پارت تمرکز ۲۵ دقیقه‌ای (پومودورو)', priority: 'medium', completed: false },
-      { id: '3', title: 'یادداشت‌برداری دستاوردهای امروز', priority: 'low', completed: false },
-    ];
-    await Storage.set('tasks', tasks);
-  }
+  tasks = (await Storage.get('tasks', [])) || [];
   renderTasks();
 
   // Load Timeline
@@ -335,9 +564,15 @@ async function init() {
   notesArea.value = savedNotes;
   notesCharCount.textContent = `${toPersianDigits(savedNotes.length)} کاراکتر`;
 
+  // Render Account Widget
+  await renderAccountUI();
+
+  // Initial Sync with server if logged in
+  await syncWithServer();
+
   // Filter Buttons
   document.querySelectorAll('.filter-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', () => {
       document.querySelectorAll('.filter-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       currentFilter = btn.dataset.filter;
@@ -360,85 +595,130 @@ async function init() {
     await Storage.set('tasks', tasks);
     taskInput.value = '';
     renderTasks();
-  });
+    AudioFeedback.playCheck();
 
-  // Task Clicks (toggle / delete)
-  tasksListEl.addEventListener('click', async (e) => {
-    const item = e.target.closest('.task-item');
-    if (!item) return;
-    const id = item.dataset.id;
-    const task = tasks.find((t) => t.id === id);
-    if (!task) return;
-
-    if (e.target.closest('.delete-btn')) {
-      tasks = tasks.filter((t) => t.id !== id);
-      await Storage.set('tasks', tasks);
-      renderTasks();
-      return;
-    }
-
-    if (e.target.classList.contains('task-checkbox') || e.target.closest('.task-left')) {
-      task.completed = !task.completed;
-      if (task.completed) {
-        AudioFeedback.playCheck();
-      }
-      await Storage.set('tasks', tasks);
-      renderTasks();
+    // Push new task to server
+    if (currentAccount && currentAccount.token) {
+      const baseUrl = (currentAccount.serverUrl || 'https://taskrooz.mohusyn.ir').replace(/\/+$/, '');
+      fetch(`${baseUrl}/api/tasks.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentAccount.token}`,
+        },
+        body: JSON.stringify({
+          title: newTask.title,
+          priority: newTask.priority,
+          date: new Date().toISOString().split('T')[0],
+        }),
+      }).catch(() => {});
     }
   });
 
-  // Timeline Change
-  timelineScrollEl.addEventListener('input', async (e) => {
-    if (e.target.classList.contains('timeline-input')) {
-      const time = e.target.dataset.time;
-      timelineSchedule[time] = e.target.value;
-      await Storage.set('timeline', timelineSchedule);
+  // Notes Auto-Save
+  let notesSaveTimeout = null;
+  notesArea.addEventListener('input', () => {
+    const text = notesArea.value;
+    notesCharCount.textContent = `${toPersianDigits(text.length)} کاراکتر`;
+    clearTimeout(notesSaveTimeout);
+    notesSaveTimeout = setTimeout(async () => {
+      await Storage.set('notes', text);
+    }, 400);
+  });
+
+  copyNotesBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(notesArea.value);
+    copyNotesBtn.textContent = 'کپی شد! ✓';
+    setTimeout(() => {
+      copyNotesBtn.textContent = 'کپی یادداشت';
+    }, 2000);
+  });
+
+  // Pomodoro Controls
+  timerToggleBtn.addEventListener('click', () => {
+    if (pomodoroIsRunning) {
+      pauseTimer();
+    } else {
+      startTimer();
     }
   });
 
-  // Timer Buttons
-  timerToggleBtn.addEventListener('click', toggleTimer);
   timerResetBtn.addEventListener('click', () => {
-    clearInterval(timerInterval);
-    isTimerRunning = false;
-    timerSecondsLeft = 25 * 60;
-    updateTimerDisplay();
+    pauseTimer();
+    pomodoroSecondsLeft = 25 * 60;
+    renderTimer();
     timerToggleBtn.textContent = 'شروع';
-    timerToggleBtn.classList.remove('btn-outline');
-    timerToggleBtn.classList.add('btn-primary');
   });
+
   timerBreakBtn.addEventListener('click', () => {
-    clearInterval(timerInterval);
-    isTimerRunning = false;
-    timerSecondsLeft = 5 * 60;
-    updateTimerDisplay();
+    pauseTimer();
+    pomodoroSecondsLeft = 5 * 60;
+    renderTimer();
     timerToggleBtn.textContent = 'شروع استراحت';
   });
 
-  // Notes Auto-save
-  let saveNotesTimer = null;
-  notesArea.addEventListener('input', () => {
-    notesSavedTag.textContent = 'در حال ذخیره...';
-    notesSavedTag.style.color = '#f59e0b';
-    notesCharCount.textContent = `${toPersianDigits(notesArea.value.length)} کاراکتر`;
-    clearTimeout(saveNotesTimer);
-    saveNotesTimer = setTimeout(async () => {
-      await Storage.set('notes', notesArea.value);
-      notesSavedTag.textContent = '✓ ذخیره‌شده خودکار';
-      notesSavedTag.style.color = '#10b981';
-    }, 500);
-  });
+  renderTimer();
 
-  // Copy Notes
-  copyNotesBtn.addEventListener('click', () => {
-    if (!notesArea.value.trim()) return;
-    navigator.clipboard.writeText(notesArea.value);
-    const prev = copyNotesBtn.textContent;
-    copyNotesBtn.textContent = '✓ کپی شد';
-    setTimeout(() => {
-      copyNotesBtn.textContent = prev;
-    }, 2000);
-  });
+  // Modal Listeners
+  if (closeLoginModalBtn) {
+    closeLoginModalBtn.addEventListener('click', () => {
+      if (loginModal) loginModal.style.display = 'none';
+    });
+  }
+
+  if (loginModal) {
+    loginModal.addEventListener('click', (e) => {
+      if (e.target === loginModal) loginModal.style.display = 'none';
+    });
+  }
+
+  // Account Login Form
+  if (extLoginForm) {
+    extLoginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const serverUrl = extServerUrl.value.trim().replace(/\/+$/, '');
+      const username = extUsername.value.trim();
+      const password = extPassword.value.trim();
+
+      extLoginError.style.display = 'none';
+      const submitBtn = document.getElementById('extLoginSubmitBtn');
+      if (submitBtn) submitBtn.textContent = 'در حال ارتباط و ورود...';
+
+      try {
+        const res = await fetch(`${serverUrl}/api/auth.php?action=login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.token) {
+          throw new Error(data.error || 'نام کاربری یا کلمه عبور نادرست است.');
+        }
+
+        // Save account
+        const accountData = {
+          token: data.token,
+          user: data.user,
+          serverUrl,
+        };
+        await Storage.set('auth_account', accountData);
+        currentAccount = accountData;
+
+        if (loginModal) loginModal.style.display = 'none';
+        await renderAccountUI();
+        await syncWithServer();
+        AudioFeedback.playCheck();
+        alert(`خوش آمدید ${data.user?.name || data.user?.username}! حساب شما متصل و تسک‌ها همگام‌سازی شدند.`);
+      } catch (err) {
+        extLoginError.textContent = err.message || 'خطا در ارتباط با سرور بگ تایم.';
+        extLoginError.style.display = 'block';
+      } finally {
+        if (submitBtn) submitBtn.textContent = 'ورود و دریافت کارهای من';
+      }
+    });
+  }
 }
 
+// Start on DOM ready
 document.addEventListener('DOMContentLoaded', init);

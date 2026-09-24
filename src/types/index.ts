@@ -26,7 +26,7 @@ export interface User {
   username: string;
   name: string;
   role: UserRole;
-  status?: 'active' | 'pending_approval' | 'suspended';
+  status?: 'active' | 'pending_approval' | 'pending_verification' | 'suspended';
   isDemo?: boolean;
   avatar?: string; // data URL (base64) — uploaded profile photo
   phone?: string;

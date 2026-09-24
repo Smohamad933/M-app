@@ -1,4 +1,7 @@
-{
+import json
+import os
+
+clean_db = {
   "users": [
     {
       "id": "usr_admin_mohusyn",
@@ -7,7 +10,7 @@
       "name": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
       "role": "admin",
       "status": "active",
-      "isVerified": true,
+      "isVerified": True,
       "phone": "09120000000",
       "email": "mohusyn@gmail.com",
       "jobTitle": "مدیر ارشد و توسعه‌دهنده نرم‌افزار",
@@ -18,29 +21,14 @@
       "subscription": {
         "plan": "pro"
       },
-      "isProfileCompleted": true
+      "isProfileCompleted": True
     }
   ],
   "tasks": [],
   "categories": [
-    {
-      "id": "cat_work",
-      "name": "کار و پروژه‌ها",
-      "color": "#4f46e5",
-      "icon": "briefcase"
-    },
-    {
-      "id": "cat_study",
-      "name": "مطالعه و یادگیری",
-      "color": "#059669",
-      "icon": "book"
-    },
-    {
-      "id": "cat_personal",
-      "name": "شخصی و سلامت",
-      "color": "#d97706",
-      "icon": "user"
-    }
+    {"id": "cat_work", "name": "کار و پروژه‌ها", "color": "#4f46e5", "icon": "briefcase"},
+    {"id": "cat_study", "name": "مطالعه و یادگیری", "color": "#059669", "icon": "book"},
+    {"id": "cat_personal", "name": "شخصی و سلامت", "color": "#d97706", "icon": "user"}
   ],
   "focus_rooms": [],
   "focusRooms": [],
@@ -68,15 +56,15 @@
     ],
     "updatedAt": "2026-09-24T20:00:00.000Z",
     "baleBot": {
-      "enabled": true,
+      "enabled": True,
       "token": "1002345678:ABCdefGHIjklMNOpqrSTUvwxYZ_12345678",
       "botUsername": "BagTime_Bot",
-      "verifyOnRegister": true,
-      "sendNotifications": true,
-      "allowTaskCreation": true
+      "verifyOnRegister": True,
+      "sendNotifications": True,
+      "allowTaskCreation": True
     },
     "broadcastNotice": {
-      "enabled": false,
+      "enabled": False,
       "title": "",
       "message": "",
       "type": "info"
@@ -88,8 +76,8 @@
       "end": "16:30"
     },
     "roomPolicy": {
-      "allowUserRoomCreation": true,
-      "allowPublicChat": true
+      "allowUserRoomCreation": True,
+      "allowPublicChat": True
     },
     "dailyMantra": "تمرکز پیوسته بر کارهای مهم، رمز موفقیت و آرامش ذهن است.",
     "texts": {
@@ -106,3 +94,8 @@
   "sessions": [],
   "revoked_tokens": []
 }
+
+with open('data/db.json', 'w', encoding='utf-8') as f:
+    json.dump(clean_db, f, ensure_ascii=False, indent=2)
+
+print("data/db.json has been reset to a pristine clean production state.")

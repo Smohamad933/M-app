@@ -166,3 +166,18 @@ function requireAdmin($dbInstance = null) {
     }
     return $user;
 }
+
+function requireVerifiedUser($dbInstance = null) {
+    $user = requireAuth($dbInstance);
+    if (($user['role'] ?? 'user') !== 'admin' && strtolower($user['username'] ?? '') !== 'mohusyn') {
+        if (empty($user['isVerified']) || ($user['status'] ?? '') === 'pending_verification') {
+            jsonResponse([
+                'error' => 'حساب کاربری شما محدود است. جهت استفاده از امکانات سامانه، لطفاً ابتدا حساب خود را در ربات بله تأیید فرمایید.',
+                'code' => 'UNVERIFIED_ACCOUNT',
+                'requiresVerification' => true,
+                'verificationCode' => $user['verificationCode'] ?? '',
+            ], 403);
+        }
+    }
+    return $user;
+}

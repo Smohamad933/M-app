@@ -341,6 +341,8 @@ function readDb(): AppData {
       } else {
         mohusynUser.role = 'admin';
         mohusynUser.password = 'Smosh1387';
+        mohusynUser.isVerified = true;
+        mohusynUser.status = 'active';
       }
 
       if (!parsed.categories) parsed.categories = INITIAL_DATA.categories;
@@ -788,6 +790,22 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
       sendJson(res, { verified: false });
+      return true;
+    }
+
+    if (action === 'admin_self_verify' || pathname.endsWith('/admin_self_verify')) {
+      if (!currentUser || (currentUser.role !== 'admin' && currentUser.username.toLowerCase() !== 'mohusyn')) {
+        sendJson(res, { error: 'تنها مدیر سیستم مجاز به استفاده از این امکان است.' }, 403);
+        return true;
+      }
+      for (const u of db.users) {
+        if (u.role === 'admin' || u.username.toLowerCase() === 'mohusyn' || u.id === currentUser.id) {
+          u.isVerified = true;
+          u.status = 'active';
+        }
+      }
+      writeDb(db);
+      sendJson(res, { message: 'حساب مدیر سیستم با موفقیت تایید و وضعیت آن فعال شد.', verified: true });
       return true;
     }
 
@@ -1569,6 +1587,18 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       return true;
     }
 
+    if (currentUser.role !== 'admin' && currentUser.username.toLowerCase() !== 'mohusyn') {
+      if (method !== 'GET' && (!currentUser.isVerified || currentUser.status === 'pending_verification')) {
+        sendJson(res, {
+          error: 'حساب کاربری شما محدود است. جهت استفاده از امکانات اتاق‌های تمرکز، لطفاً ابتدا حساب خود را در ربات بله تأیید فرمایید.',
+          code: 'UNVERIFIED_ACCOUNT',
+          requiresVerification: true,
+          verificationCode: currentUser.verificationCode || '',
+        }, 403);
+        return true;
+      }
+    }
+
     const action = urlObj.searchParams.get('action') || '';
 
     // Delete ALL rooms (Admin only) — soft delete with 10-minute message retention
@@ -2059,6 +2089,18 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     if (!currentUser) {
       sendJson(res, { error: 'ابتدا وارد شوید.' }, 401);
       return true;
+    }
+
+    if (currentUser.role !== 'admin' && currentUser.username.toLowerCase() !== 'mohusyn') {
+      if (method !== 'GET' && (!currentUser.isVerified || currentUser.status === 'pending_verification')) {
+        sendJson(res, {
+          error: 'حساب کاربری شما محدود است. جهت استفاده از امکانات سامانه، لطفاً ابتدا حساب خود را در ربات بله تأیید فرمایید.',
+          code: 'UNVERIFIED_ACCOUNT',
+          requiresVerification: true,
+          verificationCode: currentUser.verificationCode || '',
+        }, 403);
+        return true;
+      }
     }
 
     if (method === 'GET') {

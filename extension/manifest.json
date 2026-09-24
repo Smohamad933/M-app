@@ -24,6 +24,10 @@
   "permissions": [
     "storage"
   ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "assistant@bagtime.ir",

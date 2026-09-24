@@ -150,6 +150,22 @@ if ($action === 'check_verification') {
     jsonResponse(['verified' => false]);
 }
 
+// INSTANT ADMIN VERIFY
+if ($action === 'admin_self_verify') {
+    $currentUser = getCurrentUser();
+    if (!$currentUser || (($currentUser['role'] ?? '') !== 'admin' && strtolower($currentUser['username'] ?? '') !== 'mohusyn')) {
+        jsonResponse(['error' => 'تنها مدیر سیستم مجاز به استفاده از این امکان است.'], 403);
+    }
+    foreach ($db->data['users'] as &$u) {
+        if (($u['role'] ?? '') === 'admin' || strtolower($u['username'] ?? '') === 'mohusyn' || $u['id'] === $currentUser['id']) {
+            $u['isVerified'] = true;
+            $u['status'] = 'active';
+        }
+    }
+    $db->saveJson();
+    jsonResponse(['message' => 'حساب مدیر سیستم با موفقیت تایید و وضعیت آن فعال شد.', 'verified' => true]);
+}
+
 // MANUAL / FALLBACK VERIFY (ADMIN ONLY)
 if ($action === 'manual_verify') {
     $admin = requireAdmin();

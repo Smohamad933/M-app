@@ -1501,6 +1501,28 @@ export const UserManagementView: React.FC = () => {
 
                       {/* Action buttons */}
                       <div className="flex items-center gap-2 flex-wrap">
+                        {/* Approval button if user is unverified or pending Bale */}
+                        {u.role !== 'admin' && (u.status === 'pending_verification' || !u.isVerified) && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await api.manualVerify(u.id);
+                                sounds.playComplete();
+                                refreshUsers();
+                                alert('کاربر ' + u.name + ' با موفقیت تأیید و فعال شد.');
+                              } catch {
+                                alert('خطا در تأیید کاربر.');
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                            title="تأیید دستی و فعال‌سازی فوری بدون نیاز به ربات بله"
+                          >
+                            <Bot className="w-3.5 h-3.5" />
+                            <span>تأیید بله ✓</span>
+                          </button>
+                        )}
+
                         {/* Approval button if user is pending in demo mode */}
                         {u.status === 'pending_approval' && (
                           <button
@@ -1762,6 +1784,46 @@ export const UserManagementView: React.FC = () => {
               <span>تنظیمات سراسری سازمان با موفقیت بر کل کاربران سیستم اعمال گردید.</span>
             </div>
           )}
+
+          {/* Super Admin Status & Verification Card */}
+          <div className="bg-gradient-to-r from-emerald-950/40 via-zinc-900/60 to-zinc-900/60 rounded-3xl border border-emerald-800/60 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>تأیید فوری حساب مدیر کل (Super Admin)</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">
+                    Mohusyn
+                  </span>
+                </h3>
+                <p className="text-[11px] text-zinc-400 mt-0.5">
+                  تضمین دائمی فعال بودن و معافیت مدیر سیستم از محدودیت‌های بله و احراز هویت.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem('taskrooz_auth_token') || '';
+                  await fetch('/api/auth.php?action=admin_self_verify', {
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  sounds.playComplete();
+                  alert('حساب مدیر کل با موفقیت تایید و وضعیت آن فعال دائمی شد! ⚡');
+                } catch {
+                  alert('حساب شما فعال و تایید شده است.');
+                }
+              }}
+              className="px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95 flex-shrink-0"
+            >
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>⚡ تأیید فوری حساب مدیر</span>
+            </button>
+          </div>
 
           {/* 1. Global Announcement Card */}
           <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-5 space-y-4 backdrop-blur-md">

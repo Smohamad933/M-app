@@ -76,8 +76,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Wifi,
+  Bot,
+  ShieldAlert,
 } from 'lucide-react';
 import { MandatorySyncModal } from './MandatorySyncModal';
+import { BaleVerificationModal } from './BaleVerificationModal';
 
 export const MainLayout: React.FC = () => {
   const {
@@ -135,6 +138,7 @@ export const MainLayout: React.FC = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState<boolean>(false);
 
   // New interactive states
+  const [isBaleModalOpen, setIsBaleModalOpen] = useState(false);
   const [isExtensionModalOpen, setIsExtensionModalOpen] = useState(false);
   const [isAiAgentModalOpen, setIsAiAgentModalOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
@@ -844,6 +848,35 @@ export const MainLayout: React.FC = () => {
 
           {/* Main Body */}
           <main className="flex-1 p-4 sm:p-7 space-y-6 max-w-7xl w-full mx-auto pb-24 lg:pb-10 min-w-0">
+            {/* Unverified User Restriction Banner */}
+            {currentUser && currentUser.role !== 'admin' && currentUser.username?.toLowerCase() !== 'mohusyn' && (!currentUser.isVerified || currentUser.status === 'pending_verification') && (
+              <div className="p-4 rounded-3xl border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 shadow-sm animate-in slide-in-from-top-2">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-2xl bg-amber-100 text-amber-700 flex-shrink-0 mt-0.5">
+                    <ShieldAlert className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-xs text-amber-900">حساب کاربری شما محدود است (نیازمند تایید شماره)</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-200/60 text-amber-800 font-bold">محدودیت دسترسی</span>
+                    </div>
+                    <p className="text-xs mt-1 leading-relaxed text-amber-800">
+                      جهت باز شدن دسترسی به تمامی امکانات بگ تایم، ایجاد تسک و اتاق‌های گفتگوی زنده، لطفاً حساب خود را با ربات بله تایید فرمایید.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsBaleModalOpen(true)}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-[#00b884] hover:bg-[#00a375] text-white text-xs font-black shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all flex-shrink-0"
+                >
+                  <Bot className="w-4 h-4" />
+                  <span>تأیید فوری با ربات بله</span>
+                </button>
+              </div>
+            )}
+
             {/* Global Announcement Banner from Admin (Mohusyn) */}
             {globalSettings?.broadcastNotice?.enabled && globalSettings.broadcastNotice.message && (
               <div
@@ -1425,6 +1458,21 @@ export const MainLayout: React.FC = () => {
         isOpen={isSyncModalOpen || isMandatorySyncDue}
         onClose={() => setIsSyncModalOpen(false)}
       />
+
+      {/* Bale Verification Modal for Restricted Users */}
+      {isBaleModalOpen && currentUser && (
+        <BaleVerificationModal
+          data={{
+            userId: currentUser.id,
+            username: currentUser.username,
+            phone: currentUser.phone || '',
+            verificationCode: currentUser.verificationCode || '',
+            baleBotUsername: globalSettings?.baleBot?.botUsername || 'BagTime_Bot',
+            baleBotLink: `https://ble.ir/${(globalSettings?.baleBot?.botUsername || 'BagTime_Bot').replace(/^@/, '')}?start=verify_${currentUser.verificationCode || ''}`,
+          }}
+          onClose={() => setIsBaleModalOpen(false)}
+        />
+      )}
 
       {/* Colleague or Self Public Profile Card */}
       {(inspectedUser || viewingPublicUser) && (
