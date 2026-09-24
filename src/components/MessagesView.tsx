@@ -44,7 +44,12 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   const loadConversations = async () => {
     try {
       const res = await api.getConversations();
-      setConversations(res);
+      setConversations((prev) => {
+        if (prev.length === res.length && JSON.stringify(prev) === JSON.stringify(res)) {
+          return prev;
+        }
+        return res;
+      });
     } catch {
       // ignore
     }
@@ -55,7 +60,16 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     if (!activePartner) return;
     try {
       const msgs = await api.getDirectMessages(activePartner.id);
-      setMessages(msgs);
+      setMessages((prev) => {
+        if (prev.length === msgs.length) {
+          const prevLast = prev[prev.length - 1];
+          const nextLast = msgs[msgs.length - 1];
+          if (prevLast?.id === nextLast?.id && prevLast?.read === nextLast?.read) {
+            return prev;
+          }
+        }
+        return msgs;
+      });
     } catch {
       // ignore
     }
@@ -128,7 +142,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
       return;
     }
     loadMessages();
-    const interval = setInterval(loadMessages, 3000);
+    const interval = setInterval(loadMessages, 4500);
     return () => clearInterval(interval);
   }, [activePartner?.id]);
 
@@ -142,13 +156,26 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     const text = inputText.trim();
     if (!text || !activePartner || isSending) return;
 
+    sounds.playPop();
     setInputText('');
     setIsSending(true);
 
+    // Instant optimistic render in UI (0ms delay!)
+    const tempMsg: DirectChatMessage = {
+      id: 'opt_' + Date.now(),
+      senderId: currentUser?.id || 'me',
+      senderName: currentUser?.name || 'من',
+      senderAvatar: currentUser?.avatar || null,
+      receiverId: activePartner.id,
+      text,
+      createdAt: new Date().toISOString(),
+      read: false,
+    };
+    setMessages((prev) => [...prev, tempMsg]);
+
     try {
       const sent = await api.sendDirectMessage(activePartner.id, text);
-      sounds.playPop();
-      setMessages((prev) => [...prev, sent]);
+      setMessages((prev) => prev.map((m) => (m.id === tempMsg.id ? sent : m)));
       // Update conversations preview
       setConversations((prev) => {
         const existing = prev.find((c) => c.partnerId === activePartner.id);

@@ -81,7 +81,7 @@ class TaskRoozDB {
                     'dailyMantra' => 'تمرکز پیوسته بر کارهای با اولویت بالا و پرهیز از چندوظیفگی',
                 ],
                 'custom_fonts' => [],
-            ];;
+            ];
     }
 
     /** True when a valid database file exists on disk */

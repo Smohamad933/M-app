@@ -1018,19 +1018,19 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Background polling for users directory & subscription changes (every 3.5s for all users)
+    // Background polling for users directory & subscription changes (every 25s for all users)
     let userPoll: any = null;
     if (currentUser) {
-      userPoll = setInterval(refreshUsers, 3500);
+      userPoll = setInterval(refreshUsers, 25000);
     }
 
-    // Background sync for team project tasks and live progress (every 3 seconds)
+    // Background sync for team project tasks and live progress (every 12 seconds)
     let taskPoll: any = null;
     if (currentUser) {
       taskPoll = setInterval(() => {
         refreshTasks();
         refreshProjects();
-      }, 3000);
+      }, 12000);
     }
 
     return () => {

@@ -97,17 +97,26 @@ export const UpgradeToProModal: React.FC<UpgradeToProModalProps> = ({ isOpen, on
 
     setIsSubmitting(true);
     try {
-      // Find admin user to send the payment message to
-      const adminId = 'usr_admin_mohusyn';
-      const text = `🔔 درخواست فعال‌سازی اشتراک ویژه (Pro)\nکاربر: ${currentUser?.name} (@${currentUser?.username} - شناسه: #${currentUser?.numericId || '—'})\n📌 پلن انتخابی: ${selectedPlan.title} (${selectedPlan.price})\nشماره پیگیری / اطلاعات کارت: ${transactionRef}\nتوضیحات: ${receiptNote || '—'}`;
-      
-      await api.sendDirectMessage(adminId, text);
+      const planKey = selectedPlan.id === '6_months' ? 'ultra' : selectedPlan.id === '1_month' ? 'plus' : 'pro';
+      await api.submitPayment({
+        plan: planKey,
+        planType: selectedPlan.id,
+        amount: selectedPlan.price,
+        trackingCode: transactionRef.trim(),
+        paymentMethod: 'card_to_card',
+        note: receiptNote.trim(),
+      });
+
+      // Also send direct message to admin
+      try {
+        const text = `🔔 فیش واریز جدید ثبت شد:\nکاربر: ${currentUser?.name} (@${currentUser?.username})\nطرح: ${selectedPlan.title} (${selectedPlan.price})\nکد پیگیری: ${transactionRef}\nتوضیح: ${receiptNote || '—'}`;
+        await api.sendDirectMessage('usr_admin_mohusyn', text);
+      } catch {}
+
       setIsSent(true);
       sounds.playComplete();
-    } catch {
-      // Fallback: still show sent notice so user is assured
-      setIsSent(true);
-      sounds.playComplete();
+    } catch (err: any) {
+      alert(err.message || 'خطا در ثبت اطلاعات پرداخت');
     } finally {
       setIsSubmitting(false);
     }

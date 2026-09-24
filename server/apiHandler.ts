@@ -197,6 +197,7 @@ interface AppData {
     createdAt: string;
   }>;
   notifications?: any[];
+  payments?: any[];
 }
 
 const DB_FILE = path.resolve(process.cwd(), 'data/db.json');
@@ -2616,6 +2617,143 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         sendJson(res, { message: 'اعلان‌ها پاک شدند.' });
         return true;
       }
+    }
+  }
+
+  // 17. Subscription Payments & Orders (/api/payments)
+  if (pathname.startsWith('/api/payments')) {
+    if (!currentUser) {
+      sendJson(res, { error: 'ابتدا وارد شوید.' }, 401);
+      return true;
+    }
+    const myId = currentUser.id;
+    const isAdmin = currentUser.role === 'admin';
+    if (!db.payments) db.payments = [];
+
+    if (method === 'GET') {
+      const isAll = isAdmin && (urlObj.searchParams.get('action') === 'all' || urlObj.searchParams.has('all'));
+      const list = isAll
+        ? db.payments
+        : db.payments.filter((p: any) => p.userId === myId);
+      sendJson(res, { payments: list });
+      return true;
+    }
+
+    if (method === 'POST') {
+      const body = await parseJsonBody(req);
+      const action = urlObj.searchParams.get('action') || body.action;
+
+      if (action === 'approve') {
+        if (!isAdmin) {
+          sendJson(res, { error: 'دسترسی فقط برای مدیر مجاز است.' }, 403);
+          return true;
+        }
+        const payment = db.payments.find((p: any) => p.id === body.paymentId);
+        if (!payment) {
+          sendJson(res, { error: 'تراکنش یافت نشد.' }, 404);
+          return true;
+        }
+        payment.status = 'approved';
+        payment.approvedAt = new Date().toISOString();
+
+        const targetUser = db.users.find((u: any) => u.id === payment.userId);
+        if (targetUser) {
+          const plan = payment.plan || 'pro';
+          const planType = payment.planType || '3_months';
+          const days = (plan === 'ultra' || planType === '6_months') ? 180 : ((plan === 'plus' || planType === '1_month') ? 30 : 90);
+          const expiresAt = new Date(Date.now() + days * 86400000).toISOString();
+          targetUser.subscription = {
+            plan,
+            planType,
+            activatedAt: new Date().toISOString(),
+            expiresAt,
+          };
+
+          if (!db.notifications) db.notifications = [];
+          const planSymbol = (plan === 'ultra' || planType === '6_months') ? '💎' : ((plan === 'plus' || planType === '1_month') ? '➕' : '⭐');
+          const planName = (plan === 'ultra' || planType === '6_months') ? 'اولترا (Ultra)' : ((plan === 'plus' || planType === '1_month') ? 'پلاس (Plus)' : 'پرو (Pro)');
+          db.notifications.unshift({
+            id: 'notif_sub_ok_' + Date.now(),
+            userId: targetUser.id,
+            title: `پرداخت تأیید و اشتراک ${planName} فعال شد ${planSymbol}`,
+            message: `پرداخت شما با موفقیت تأیید شد و نماد ${planSymbol} به همراه تمامی دسترسی‌ها فعال گردید.`,
+            type: 'info',
+            timestamp: new Date().toISOString(),
+            read: false,
+          });
+        }
+        writeDb(db);
+        sendJson(res, { message: 'پرداخت با موفقیت تأیید و کاربر ارتقا یافت.' });
+        return true;
+      }
+
+      if (action === 'reject') {
+        if (!isAdmin) {
+          sendJson(res, { error: 'دسترسی فقط برای مدیر مجاز است.' }, 403);
+          return true;
+        }
+        const payment = db.payments.find((p: any) => p.id === body.paymentId);
+        if (!payment) {
+          sendJson(res, { error: 'تراکنش یافت نشد.' }, 404);
+          return true;
+        }
+        payment.status = 'rejected';
+        payment.rejectReason = body.reason || 'عدم تطابق فیش واریزی';
+        payment.rejectedAt = new Date().toISOString();
+        writeDb(db);
+        sendJson(res, { message: 'تراکنش رد شد.' });
+        return true;
+      }
+
+      // Submit payment receipt
+      const plan = body.plan || 'pro';
+      const planType = body.planType || '3_months';
+      const trackingCode = (body.trackingCode || '').trim();
+      if (!trackingCode) {
+        sendJson(res, { error: 'کد پیگیری الزامی است.' }, 400);
+        return true;
+      }
+
+      const planLabel = (planType === '6_months' || plan === 'ultra')
+        ? 'اولترا (Ultra) 💎'
+        : ((planType === '1_month' || plan === 'plus') ? 'پلاس (Plus) ➕' : 'پرو (Pro) ⭐');
+
+      const newPay = {
+        id: 'pay_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        userId: myId,
+        userName: currentUser.name,
+        userUsername: currentUser.username || '',
+        plan,
+        planType,
+        planLabel,
+        amount: body.amount || 'طبق تعرفه',
+        trackingCode,
+        paymentMethod: body.paymentMethod || 'card_to_card',
+        note: body.note || '',
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      };
+
+      db.payments.unshift(newPay);
+
+      // Notification for admin
+      const admin = db.users.find((u: any) => u.username?.toLowerCase() === 'mohusyn');
+      if (admin) {
+        if (!db.notifications) db.notifications = [];
+        db.notifications.unshift({
+          id: 'notif_admin_pay_' + Date.now(),
+          userId: admin.id,
+          title: `واریزی جدید برای ${planLabel} 💳`,
+          message: `کاربر ${currentUser.name} پرداخت با کد پیگیری ${trackingCode} ثبت کرد.`,
+          type: 'info',
+          timestamp: new Date().toISOString(),
+          read: false,
+        });
+      }
+
+      writeDb(db);
+      sendJson(res, { message: 'رسید پرداخت با موفقیت ثبت شد.', payment: newPay }, 201);
+      return true;
     }
   }
 

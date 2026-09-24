@@ -4,17 +4,18 @@
       "id": "usr_admin_mohusyn",
       "username": "Mohusyn",
       "password": "Smosh1387",
-      "name": "مدیر سیستم",
+      "name": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
       "role": "admin",
       "phone": "09120000000",
-      "email": "admin@taskrooz.local",
+      "email": "admin@mohusyn.ir",
       "province": "تهران",
       "city": "تهران",
-      "jobTitle": "مدیر کل سامانه",
-      "createdAt": "2026-09-22T00:00:00.000Z",
+      "jobTitle": "مدیر سامانه بگ تایم",
+      "createdAt": "2026-09-24T00:00:00.000Z",
       "numericId": 1000,
       "subscription": {
-        "plan": "pro"
+        "plan": "ultra",
+        "planType": "6_months"
       },
       "isProfileCompleted": true
     }
@@ -44,132 +45,71 @@
     },
     {
       "id": "cat-health",
-      "name": "ورزش و سلامتی",
-      "color": "#f43f5e",
-      "icon": "Activity",
-      "isDefault": true
-    },
-    {
-      "id": "cat-shopping",
-      "name": "خرید و منزل",
-      "color": "#0ea5e9",
-      "icon": "ShoppingCart",
+      "name": "سلامت و ورزش",
+      "color": "#ef4444",
+      "icon": "Heart",
       "isDefault": true
     },
     {
       "id": "cat-finance",
-      "name": "امور مالی",
+      "name": "مالی و اقتصادی",
       "color": "#8b5cf6",
-      "icon": "CreditCard",
+      "icon": "DollarSign",
+      "isDefault": true
+    },
+    {
+      "id": "cat-routine",
+      "name": "روتین روزانه",
+      "color": "#06b6d4",
+      "icon": "CheckCircle",
       "isDefault": true
     }
   ],
-  "focus_rooms": [
-    {
-      "id": "room_deepwork",
-      "name": "اتاق تمرکز عمیق (دیپ ورک)",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1790168504030,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۸:۳۰",
-          "lastPing": 1790168504030
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_init_1",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق تمرکز عمیق آماده است. کار روی مهم‌ترین تسک روز را آغاز کنید! 🎯",
-          "timestamp": "۰۸:۳۰"
-        }
-      ],
-      "createdAt": "2026-09-23T13:01:44.030Z"
-    },
-    {
-      "id": "room_dev",
-      "name": "اتاق توسعه محصول و برنامه‌نویسی",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 3000,
-      "breakDuration": 600,
-      "timeLeft": 3000,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1790168504030,
-      "participants": [],
-      "messages": [
-        {
-          "id": "msg_init_2",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق توسعه محصول آماده است. برنامه‌نویسی با بازه‌های ۵۰ دقیقه‌ای! 💻",
-          "timestamp": "۰۹:۰۰"
-        }
-      ],
-      "createdAt": "2026-09-23T13:01:44.030Z"
-    }
-  ],
+  "focus_rooms": [],
   "projects": [],
   "goals": [],
   "dailyNotes": [],
   "personalityResults": [],
-  "globalSettings": {
-    "appBranding": {
-      "appName": "تسک‌روز",
-      "logoDataUrl": null,
-      "defaultAvatarDataUrl": null
-    },
-    "jobCategories": [
-      "مهندس نرم‌افزار و برنامه‌نویس",
-      "طراح رابط و تجربه کاربری (UI/UX)",
-      "مدیر محصول و اسکرام مستر",
-      "کارشناس هوش مصنوعی و داده",
-      "متخصص دیجیتال مارکتینگ و سئو",
-      "مدیر مالی و حسابداری"
-    ],
-    "dailyMantra": "تمرکز پیوسته بر کارهای با اولویت بالا و پیشرفت روزانه",
-    "broadcastNotice": {
-      "enabled": false,
-      "title": "",
-      "message": "",
-      "type": "info"
-    },
-    "texts": {
-      "appName": "تسک‌روز"
-    },
-    "updatedAt": "2026-09-22T00:00:00.000Z",
-    "appDevelopers": [
-      {
-        "id": "dev_mohusyn",
-        "name": "Mohusyn",
-        "role": "توسعه‌دهنده ارشد و معمار سیستم",
-        "avatarUrl": null,
-        "bio": "طراح، برنامه‌نویس و سازنده تسک‌روز",
-        "link": ""
-      }
-    ],
-    "subscriptionInfo": {
-      "cardNumber": "۶۰۳۷-۹۹۷۹-۵۰۵۰-۱۲۳۴",
-      "bankName": "بانک ملی ایران",
-      "ownerName": "مدیر سیستم (Mohusyn)",
-      "monthlyPrice": "۲۹۰,۰۰۰ تومان",
-      "supportContact": "پشتیبانی تلگرام/ایتا: @mohusyn_support"
-    }
-  },
   "custom_fonts": [],
   "friendships": [],
   "friend_requests": [],
   "messages": [],
-  "project_messages": []
+  "project_messages": [],
+  "notifications": [],
+  "payments": [],
+  "globalSettings": {
+    "broadcastNotice": {
+      "enabled": true,
+      "title": "خوش‌آمدید به سامانه بگ تایم (Bag Time)",
+      "message": "سامانه متمرکز برنامه‌ریزی روزانه، پومودورو تیمی و پایش بهره‌وری آماده استفاده است.",
+      "type": "info",
+      "updatedAt": "2026-09-24T00:00:00.000Z"
+    },
+    "enforcedTheme": "system",
+    "enforcedFont": "vazirmatn",
+    "defaultDailyFocusMinutes": 90,
+    "workHoursPolicy": {
+      "start": "08:30",
+      "end": "17:00"
+    },
+    "roomPolicy": {
+      "allowUserRoomCreation": true,
+      "allowPublicChat": true
+    },
+    "dailyMantra": "تمرکز پیوسته بر کارهای با اولویت بالا و پرهیز از چندوظیفگی",
+    "appBranding": {
+      "appName": "بگ تایم (Bag Time)",
+      "logoDataUrl": null,
+      "defaultAvatarDataUrl": null,
+      "pwaIconDataUrl": null
+    },
+    "subscriptionInfo": {
+      "cardNumber": "۶۰۳۷-۹۹۷۹-۵۰۵۰-۱۲۳۴",
+      "bankName": "بانک ملی ایران",
+      "ownerName": "سید محمدحسین شیخ الاسلامی",
+      "cardHolder": "سید محمدحسین شیخ الاسلامی",
+      "monthlyPrice": "۲۹۰,۰۰۰ تومان",
+      "supportContact": "ارسال رسید به تلگرام: @Mohusyn_ir"
+    }
+  }
 }

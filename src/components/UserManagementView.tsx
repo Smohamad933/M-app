@@ -175,10 +175,68 @@ export const UserManagementView: React.FC = () => {
   } = useTask();
 
   // Active view tab inside Admin Panel
-  const [adminTab, setAdminTab] = useState<'users' | 'settings' | 'texts' | 'developers' | 'apk'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'payments' | 'settings' | 'texts' | 'developers' | 'apk'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const pendingUsers = users.filter((u) => u.status === 'pending_approval');
   const [planFilter, setPlanFilter] = useState<'all' | 'pro' | 'free'>('all');
+
+  // Payments management state
+  const [paymentsList, setPaymentsList] = useState<any[]>([]);
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false);
+  const [processingPaymentId, setProcessingPaymentId] = useState<string | null>(null);
+
+  const loadPayments = async () => {
+    setIsLoadingPayments(true);
+    try {
+      const data = await api.getPayments(true);
+      setPaymentsList(data);
+    } catch {} finally {
+      setIsLoadingPayments(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPayments();
+  }, []);
+
+  useEffect(() => {
+    if (adminTab === 'payments') {
+      loadPayments();
+    }
+  }, [adminTab]);
+
+  const handleApprovePayment = async (paymentId: string) => {
+    if (!window.confirm('آیا از تأیید این واریزی و فعال‌سازی فوری اشتراک کاربر اطمینان دارید؟')) return;
+    setProcessingPaymentId(paymentId);
+    try {
+      await api.approvePayment(paymentId);
+      sounds.playComplete();
+      await loadPayments();
+      await refreshUsers();
+      alert('پرداخت با موفقیت تأیید شد و اشتراک کاربر فعال گردید! 🎉');
+    } catch (err: any) {
+      alert(err.message || 'خطا در تأیید پرداخت');
+    } finally {
+      setProcessingPaymentId(null);
+    }
+  };
+
+  const handleRejectPayment = async (paymentId: string) => {
+    const reason = prompt('علت رد پرداخت را وارد کنید (اختیاری):', 'عدم تطابق فیش واریزی یا شماره پیگیری');
+    if (reason === null) return;
+    setProcessingPaymentId(paymentId);
+    try {
+      await api.rejectPayment(paymentId, reason);
+      sounds.playPop();
+      await loadPayments();
+    } catch (err: any) {
+      alert(err.message || 'خطا در رد پرداخت');
+    } finally {
+      setProcessingPaymentId(null);
+    }
+  };
+
+  const pendingPaymentsCount = paymentsList.filter((p) => p.status === 'pending').length;
 
   // Subscription management state
   const [subscriptionModalUser, setSubscriptionModalUser] = useState<User | null>(null);
@@ -797,6 +855,23 @@ export const UserManagementView: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setAdminTab('payments')}
+          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            adminTab === 'payments'
+              ? 'bg-amber-500 text-black shadow-xs font-black'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <CreditCard className="w-3.5 h-3.5" />
+          <span>مدیریت تراکنش‌ها و واریزی‌ها</span>
+          {pendingPaymentsCount > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-black animate-pulse">
+              {toPersianDigits(pendingPaymentsCount)}
+            </span>
+          )}
+        </button>
+
+        <button
           onClick={() => setAdminTab('settings')}
           className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'settings'
@@ -1324,6 +1399,164 @@ export const UserManagementView: React.FC = () => {
                 );
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: PAYMENTS & SUBSCRIPTION ORDERS */}
+      {adminTab === 'payments' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Header & Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800 flex items-center justify-between">
+              <div>
+                <div className="text-xs text-zinc-400">کل تراکنش‌های ثبت‌شده</div>
+                <div className="text-2xl font-black text-white mt-1">{toPersianDigits(paymentsList.length)}</div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center text-zinc-300">
+                <CreditCard className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="p-4 bg-zinc-900/60 rounded-2xl border border-amber-500/30 flex items-center justify-between">
+              <div>
+                <div className="text-xs text-amber-400 font-bold">در انتظار بررسی و تأیید ⏳</div>
+                <div className="text-2xl font-black text-amber-300 mt-1">{toPersianDigits(pendingPaymentsCount)}</div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                <Clock className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="p-4 bg-zinc-900/60 rounded-2xl border border-emerald-500/30 flex items-center justify-between">
+              <div>
+                <div className="text-xs text-emerald-400 font-bold">تأیید و فعال شده ✅</div>
+                <div className="text-2xl font-black text-emerald-300 mt-1">
+                  {toPersianDigits(paymentsList.filter((p) => p.status === 'approved').length)}
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Payments List */}
+          <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-amber-400" />
+                <h3 className="text-sm font-black text-white">لیست فیش‌ها و واریزی‌های کاربران</h3>
+              </div>
+              <button
+                type="button"
+                onClick={loadPayments}
+                disabled={isLoadingPayments}
+                className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingPayments ? 'animate-spin' : ''}`} />
+                <span>بروزرسانی</span>
+              </button>
+            </div>
+
+            {paymentsList.length === 0 ? (
+              <div className="py-14 text-center text-zinc-500 space-y-2">
+                <CreditCard className="w-10 h-10 mx-auto text-zinc-600" />
+                <p className="text-xs font-bold">هنوز هیچ فیش یا تراکنش پرداختی از سوی کاربران ثبت نشده است.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {paymentsList.map((pay) => {
+                  const isPending = pay.status === 'pending';
+                  const isApproved = pay.status === 'approved';
+
+                  return (
+                    <div
+                      key={pay.id}
+                      className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                        isPending
+                          ? 'bg-amber-950/15 border-amber-500/40 shadow-sm'
+                          : isApproved
+                          ? 'bg-emerald-950/10 border-emerald-500/30'
+                          : 'bg-zinc-900/40 border-zinc-800 opacity-70'
+                      }`}
+                    >
+                      {/* Left: User & Plan info */}
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-white text-xs flex-shrink-0">
+                          {pay.userName?.charAt(0) || 'ک'}
+                        </div>
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-black text-xs text-white">{pay.userName}</span>
+                            <span className="font-mono text-[10px] text-zinc-400">@{pay.userUsername}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              {pay.planLabel || pay.plan}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-[11px] text-zinc-300 flex-wrap">
+                            <span>مبلغ: <strong className="text-white font-mono">{pay.amount}</strong></span>
+                            <span>روش: <strong className="text-zinc-200">{pay.paymentMethod === 'online_gateway' ? 'درگاه آنلاین' : 'کارت به کارت'}</strong></span>
+                            <span className="text-zinc-400 font-mono text-[10px]">{pay.createdAt?.slice(0, 16)}</span>
+                          </div>
+
+                          <div className="p-2 bg-zinc-950/60 rounded-xl border border-zinc-800 text-[11px] font-mono text-amber-300 flex items-center gap-2">
+                            <span className="text-zinc-400 font-sans">کد پیگیری / ۴ رقم کارت:</span>
+                            <strong className="tracking-wider text-white text-xs">{pay.trackingCode}</strong>
+                          </div>
+
+                          {pay.note && (
+                            <p className="text-[10px] text-zinc-400 italic">
+                              توضیح کاربر: {pay.note}
+                            </p>
+                          )}
+                          {pay.rejectReason && (
+                            <p className="text-[10px] text-rose-400">
+                              علت رد: {pay.rejectReason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Actions */}
+                      <div className="flex items-center gap-2 flex-shrink-0 justify-end pt-2 md:pt-0 border-t md:border-t-0 border-zinc-800">
+                        {isPending ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={processingPaymentId === pay.id}
+                              onClick={() => handleApprovePayment(pay.id)}
+                              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              <span>{processingPaymentId === pay.id ? 'در حال ثبت...' : 'تأیید و ارتقای فوری 🚀'}</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={processingPaymentId === pay.id}
+                              onClick={() => handleRejectPayment(pay.id)}
+                              className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer"
+                            >
+                              <span>رد فیش ❌</span>
+                            </button>
+                          </>
+                        ) : isApproved ? (
+                          <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <span>تأیید و فعال شد</span>
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 text-xs font-bold">
+                            رد شده
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

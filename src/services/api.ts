@@ -1407,4 +1407,43 @@ export const api = {
       });
     } catch {}
   },
+
+  // ── Subscription Payments & Receipts ──
+  async submitPayment(data: {
+    plan: 'plus' | 'pro' | 'ultra';
+    planType: '1_month' | '3_months' | '6_months';
+    amount?: string;
+    trackingCode: string;
+    paymentMethod?: 'card_to_card' | 'online_gateway';
+    note?: string;
+  }): Promise<any> {
+    const res = await request<{ payment: any; message: string }>('api/payments.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'submit', ...data }),
+    });
+    return res.payment;
+  },
+
+  async getPayments(all = false): Promise<any[]> {
+    try {
+      const res = await request<{ payments: any[] }>(`api/payments.php${all ? '?action=all' : ''}`);
+      return Array.isArray(res.payments) ? res.payments : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async approvePayment(paymentId: string): Promise<any> {
+    return await request('api/payments.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'approve', paymentId }),
+    });
+  },
+
+  async rejectPayment(paymentId: string, reason?: string): Promise<any> {
+    return await request('api/payments.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'reject', paymentId, reason }),
+    });
+  },
 };

@@ -42,7 +42,16 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
     if (!friendId) return;
     try {
       const msgs = await api.getDirectMessages(friendId);
-      setMessages(msgs);
+      setMessages((prev) => {
+        if (prev.length === msgs.length) {
+          const prevLast = prev[prev.length - 1];
+          const nextLast = msgs[msgs.length - 1];
+          if (prevLast?.id === nextLast?.id && prevLast?.read === nextLast?.read) {
+            return prev;
+          }
+        }
+        return msgs;
+      });
     } catch {
       // ignore
     }
@@ -51,7 +60,7 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
   useEffect(() => {
     if (!isOpen || !friendId) return;
     loadMessages();
-    const timer = setInterval(loadMessages, 3000);
+    const timer = setInterval(loadMessages, 4500);
     return () => clearInterval(timer);
   }, [isOpen, friendId]);
 
