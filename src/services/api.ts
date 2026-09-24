@@ -800,7 +800,7 @@ export const api = {
     return DEFAULT_GLOBAL_SETTINGS;
   },
 
-  async saveGlobalSettings(settings: GlobalSystemSettings): Promise<void> {
+  async saveGlobalSettings(settings: Partial<GlobalSystemSettings>): Promise<void> {
     await request('api/settings.php?action=global', {
       method: 'POST',
       body: JSON.stringify(settings),
@@ -1162,9 +1162,16 @@ export const api = {
   },
 
   async deleteTeamProject(id: string): Promise<void> {
-    await request(`api/projects.php?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
+    try {
+      await request(`api/projects.php?id=${encodeURIComponent(id)}&action=delete`, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete', id }),
+      });
+    } catch {
+      await request(`api/projects.php?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    }
   },
 
   // Career Goals (Stored on Central Server)
@@ -1376,9 +1383,16 @@ export const api = {
   },
 
   async removeFriend(friendId: string): Promise<any> {
-    return await request(`api/friends.php?id=${encodeURIComponent(friendId)}`, {
-      method: 'DELETE',
-    });
+    try {
+      return await request(`api/friends.php?id=${encodeURIComponent(friendId)}&action=delete`, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete', friendId, id: friendId }),
+      });
+    } catch {
+      return await request(`api/friends.php?id=${encodeURIComponent(friendId)}`, {
+        method: 'DELETE',
+      });
+    }
   },
 
   // ── Direct P2P Messaging ──
@@ -1460,7 +1474,7 @@ export const api = {
     planType: '1_month' | '3_months' | '6_months';
     amount?: string;
     trackingCode: string;
-    paymentMethod?: 'card_to_card' | 'online_gateway';
+    paymentMethod?: 'card_to_card' | 'online_gateway' | 'request_card';
     note?: string;
   }): Promise<any> {
     const res = await request<{ payment: any; message: string }>('api/payments.php', {

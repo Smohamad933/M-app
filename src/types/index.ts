@@ -338,4 +338,5 @@ export interface GlobalSystemSettings {
     monthlyPrice?: string;
     supportContact?: string;
   };
+  focusPlaylist?: any[];
 }

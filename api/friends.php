@@ -179,11 +179,29 @@ if ($method === 'POST') {
     }
 }
 
-// 4. DELETE /api/friends.php?id=FRIEND_USER_ID
-if ($method === 'DELETE' || ($method === 'POST' && ($input['action'] ?? '') === 'delete')) {
-    $friendId = $_GET['id'] ?? $input['friendId'] ?? $input['id'] ?? '';
+// 4. DELETE /api/friends.php?id=FRIEND_USER_ID (and POST action=delete)
+$isFriendDelete = ($method === 'DELETE') ||
+    ($method === 'POST' && (
+        $action === 'delete' ||
+        $action === 'remove' ||
+        ($input['action'] ?? '') === 'delete' ||
+        ($input['action'] ?? '') === 'remove' ||
+        ($_GET['_method'] ?? '') === 'DELETE' ||
+        ($_POST['_method'] ?? '') === 'DELETE'
+    ));
+
+if ($isFriendDelete) {
+    $friendId = $_GET['id'] ?? $input['friendId'] ?? $input['id'] ?? $_POST['id'] ?? '';
     if (!empty($friendId) && isset($dbObj->data['friendships'])) {
-        $dbObj->data['friendships'] = array_values(array_filter($dbObj->data['friendships'], function($f) use ($myId, $friendId) {
+        $isAdmin = ($currentUser['role'] === 'admin' || strtolower($currentUser['username'] ?? '') === 'mohusyn' || ($currentUser['id'] ?? '') === 'usr_admin_mohusyn');
+        $dbObj->data['friendships'] = array_values(array_filter($dbObj->data['friendships'], function($f) use ($myId, $friendId, $isAdmin) {
+            if ($isAdmin) {
+                return !(($f['user1Id'] === $myId && $f['user2Id'] === $friendId) ||
+                         ($f['user2Id'] === $myId && $f['user1Id'] === $friendId) ||
+                         ($f['user1Id'] === $friendId && $f['user2Id'] === $myId) ||
+                         ($f['user1Id'] === $friendId) ||
+                         ($f['user2Id'] === $friendId));
+            }
             return !(($f['user1Id'] === $myId && $f['user2Id'] === $friendId) || ($f['user2Id'] === $myId && $f['user1Id'] === $friendId));
         }));
         $dbObj->saveJson();

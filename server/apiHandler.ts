@@ -1689,7 +1689,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     // Delete team project
-    if (method === 'DELETE') {
+    if (method === 'DELETE' || (method === 'POST' && (urlObj.searchParams.get('action') === 'delete' || urlObj.searchParams.get('_method') === 'DELETE'))) {
       const pathParts = urlObj.pathname.split('/').filter(Boolean);
       const pathId = pathParts.length > 1 && pathParts[pathParts.length - 1] !== 'projects' ? pathParts[pathParts.length - 1] : null;
       const id = urlObj.searchParams.get('id') || pathId;
@@ -1699,7 +1699,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
 
-      if (proj.creatorId !== currentUser.id && currentUser.role !== 'admin') {
+      const isAdmin = currentUser.role === 'admin' || currentUser.username === 'Mohusyn' || currentUser.id === 'usr_admin_mohusyn';
+      if (proj.creatorId !== currentUser.id && !isAdmin) {
         sendJson(res, { error: 'تنها ایجادکننده پروژه یا مدیر مجاز به حذف هستند.' }, 403);
         return true;
       }
@@ -2450,13 +2451,17 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       }
     }
 
-    // DELETE /api/friends?id=FRIEND_ID
-    if (method === 'DELETE') {
+    // DELETE /api/friends?id=FRIEND_ID (also handles POST action=delete)
+    if (method === 'DELETE' || (method === 'POST' && (urlObj.searchParams.get('action') === 'delete' || urlObj.searchParams.get('_method') === 'DELETE'))) {
       const friendId = urlObj.searchParams.get('id');
+      const isAdmin = currentUser.role === 'admin' || currentUser.username === 'Mohusyn' || currentUser.id === 'usr_admin_mohusyn';
       if (friendId && db.friendships) {
-        db.friendships = db.friendships.filter(
-          (f) => !(f.user1Id === myId && f.user2Id === friendId) && !(f.user2Id === myId && f.user1Id === friendId)
-        );
+        db.friendships = db.friendships.filter((f) => {
+          if (isAdmin) {
+            return !(f.user1Id === friendId || f.user2Id === friendId);
+          }
+          return !(f.user1Id === myId && f.user2Id === friendId) && !(f.user2Id === myId && f.user1Id === friendId);
+        });
         writeDb(db);
       }
       sendJson(res, { message: 'کاربر از لیست دوستان حذف شد.' });

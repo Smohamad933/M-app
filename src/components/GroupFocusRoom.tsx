@@ -30,6 +30,7 @@ import {
   SkipForward,
   Sliders,
   Check,
+  Upload,
 } from 'lucide-react';
 import { focusAudio, DEFAULT_FOCUS_TRACKS, type FocusTrack } from '../utils/focusAudio';
 
@@ -82,6 +83,15 @@ export const GroupFocusRoom: React.FC = () => {
   const [isMusicModalOpen, setIsMusicModalOpen] = useState(false);
   const [customAudioUrl, setCustomAudioUrl] = useState('');
   const [autoPlayWithTimer, setAutoPlayWithTimer] = useState(true);
+  const [newTrackTitle, setNewTrackTitle] = useState('');
+  const [newTrackArtist, setNewTrackArtist] = useState('');
+  const [isUploadingTrack, setIsUploadingTrack] = useState(false);
+
+  useEffect(() => {
+    if (globalSettings?.focusPlaylist && Array.isArray(globalSettings.focusPlaylist) && globalSettings.focusPlaylist.length > 0) {
+      setPlaylist(globalSettings.focusPlaylist);
+    }
+  }, [globalSettings?.focusPlaylist]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevMessagesCountRef = useRef<number>(0);
@@ -238,20 +248,86 @@ export const GroupFocusRoom: React.FC = () => {
     focusAudio.setTrack(track);
   };
 
-  const handleAddCustomTrack = (e: React.FormEvent) => {
+  const handleUploadAudioFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('audio/')) {
+      alert('لطفاً یک فایل صوتی معتبر (MP3, WAV, OGG, ...) انتخاب کنید.');
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      alert('حجم فایل صوتی نباید بیش از ۲۰ مگابایت باشد.');
+      return;
+    }
+
+    setIsUploadingTrack(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        const trackTitle = newTrackTitle.trim() || file.name.replace(/\.[^/.]+$/, '');
+        const trackArtist = newTrackArtist.trim() || 'آپلود شده توسط مدیر';
+
+        const newTrack: FocusTrack = {
+          id: `uploaded-${Date.now()}`,
+          title: trackTitle,
+          artist: trackArtist,
+          type: 'custom',
+          url: dataUrl,
+          tag: 'موزیک آپلودی 🎵',
+        };
+
+        const updated = [...playlist, newTrack];
+        setPlaylist(updated);
+        setNewTrackTitle('');
+        setNewTrackArtist('');
+
+        try {
+          await api.saveGlobalSettings({ focusPlaylist: updated });
+        } catch {}
+
+        handleSelectTrack(newTrack);
+        sounds.playComplete();
+        alert('موزیک با موفقیت آپلود و به پلی‌لیست اضافه شد!');
+        setIsUploadingTrack(false);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setIsUploadingTrack(false);
+      alert('خطا در خواندن فایل صوتی');
+    }
+  };
+
+  const handleDeleteTrack = async (trackId: string) => {
+    if (!window.confirm('آیا از حذف این قطعه از پلی‌لیست اطمینان دارید؟')) return;
+    const updated = playlist.filter((t) => t.id !== trackId);
+    const finalPlaylist = updated.length > 0 ? updated : DEFAULT_FOCUS_TRACKS;
+    setPlaylist(finalPlaylist);
+    try {
+      await api.saveGlobalSettings({ focusPlaylist: finalPlaylist });
+    } catch {}
+    sounds.playPop();
+  };
+
+  const handleAddCustomTrack = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customAudioUrl.trim()) return;
     const newTrack: FocusTrack = {
       id: `custom-${Date.now()}`,
-      title: 'موسیقی اختصاصی میزبان',
-      artist: 'استریم دلخواه آنلاین',
+      title: newTrackTitle.trim() || 'موسیقی دلخواه میزبان',
+      artist: newTrackArtist.trim() || 'استریم آنلاین',
       type: 'custom',
       url: customAudioUrl.trim(),
-      tag: 'اختصاصی 🔗',
+      tag: 'استریم 🔗',
     };
-    const updated = [newTrack, ...playlist].slice(0, 3);
+    const updated = [...playlist, newTrack];
     setPlaylist(updated);
     setCustomAudioUrl('');
+    setNewTrackTitle('');
+    setNewTrackArtist('');
+    try {
+      await api.saveGlobalSettings({ focusPlaylist: updated });
+    } catch {}
     handleSelectTrack(newTrack);
   };
 
@@ -1118,10 +1194,13 @@ export const GroupFocusRoom: React.FC = () => {
             </div>
 
             {/* Playlist list */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-zinc-700">قطعات پلی‌لیست (۱ تا ۳ آهنگ):</label>
-              {DEFAULT_FOCUS_TRACKS.map((t, idx) => {
+            <div className="space-y-2 max-h-56 overflow-y-auto no-scrollbar">
+              <label className="text-xs font-bold text-zinc-700">قطعات پلی‌لیست تمرکز ({toPersianDigits(playlist.length)} قطعه):</label>
+              {playlist.map((t, idx) => {
                 const isCurrent = activeFocusTrack.id === t.id;
+                const isCustom = t.type === 'custom' || t.id.startsWith('uploaded-');
+                const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'Mohusyn';
+
                 return (
                   <div
                     key={t.id}
@@ -1133,7 +1212,7 @@ export const GroupFocusRoom: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold ${
+                      <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                         isCurrent ? 'bg-purple-600 text-white' : 'bg-zinc-200 text-zinc-600'
                       }`}>
                         {toPersianDigits(idx + 1)}
@@ -1144,20 +1223,75 @@ export const GroupFocusRoom: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="text-[10px] px-2 py-0.5 rounded-lg bg-white/70 border border-zinc-200 text-zinc-700">
                         {t.tag}
                       </span>
                       {isCurrent && <Check className="w-4 h-4 text-purple-600" />}
+                      {isAdmin && isCustom && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTrack(t.id);
+                          }}
+                          className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
+                          title="حذف از پلی‌لیست"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
 
+            {/* Admin Upload Audio Section */}
+            {(currentUser?.role === 'admin' || currentUser?.username === 'Mohusyn') && (
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5 pt-3">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                  <span className="flex items-center gap-1.5 text-purple-700">
+                    <Upload className="w-3.5 h-3.5" />
+                    آپلود موزیک توسط مدیر سیستم:
+                  </span>
+                  <span className="text-[10px] text-slate-400">ذخیره در دیتابیس</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={newTrackTitle}
+                    onChange={(e) => setNewTrackTitle(e.target.value)}
+                    placeholder="عنوان موزیک..."
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-800 outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={newTrackArtist}
+                    onChange={(e) => setNewTrackArtist(e.target.value)}
+                    placeholder="نام هنرمند / گوینده..."
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-800 outline-none"
+                  />
+                </div>
+
+                <label className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs cursor-pointer shadow-xs transition-all">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{isUploadingTrack ? 'در حال بارگذاری فایل...' : 'انتخاب و آپلود فایل صوتی (MP3)'}</span>
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    disabled={isUploadingTrack}
+                    onChange={handleUploadAudioFile}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            )}
+
             {/* Add Custom Streaming Track Form */}
             <form onSubmit={handleAddCustomTrack} className="space-y-2 pt-2 border-t border-zinc-100">
-              <label className="text-xs font-bold text-zinc-700">افزودن لینک موزیک دلخواه میزبان:</label>
+              <label className="text-xs font-bold text-zinc-700">افزودن با لینک استریم صوتی:</label>
               <div className="flex gap-2">
                 <input
                   type="url"
@@ -1169,7 +1303,7 @@ export const GroupFocusRoom: React.FC = () => {
                 <button
                   type="submit"
                   disabled={!customAudioUrl.trim()}
-                  className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs cursor-pointer disabled:opacity-40 shadow-xs"
+                  className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs cursor-pointer disabled:opacity-40 shadow-xs"
                 >
                   افزودن
                 </button>

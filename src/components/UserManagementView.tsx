@@ -47,6 +47,8 @@ import {
   Copy,
   Package,
   CreditCard,
+  Music,
+  Upload,
 } from 'lucide-react';
 
 /**
@@ -233,6 +235,20 @@ export const UserManagementView: React.FC = () => {
       alert(err.message || 'خطا در رد پرداخت');
     } finally {
       setProcessingPaymentId(null);
+    }
+  };
+
+  const handleSendCardInChat = async (pay: any) => {
+    try {
+      const subInfo = (formSettings as any)?.subscriptionInfo;
+      const card = subInfo?.cardNumber || '۶۰۳۷-۹۹۷۹-۵۰۵۰-۱۲۳۴';
+      const bank = subInfo?.bankName || 'بانک ملی ایران';
+      const owner = subInfo?.cardHolder || subInfo?.ownerName || 'سید محمدحسین شیخ الاسلامی';
+      const text = `💳 سلام و درود خدمت شما بزرگوار.\nجهت فعال‌سازی طرح «${pay.planLabel || pay.plan}»، لطفاً مبلغ را به شماره کارت زیر واریز فرمایید:\n\nشماره کارت: ${card}\nبانک: ${bank}\nبه نام: ${owner}\n\nپس از واریز، شماره پیگیری یا ۴ رقم آخر کارت را ارسال فرمایید تا حسابتان فوراً فعال گردد. با تشکر!`;
+      await api.sendDirectMessage(pay.userId, text);
+      alert(`اطلاعات شماره کارت در چت با موفقیت برای کاربر ${pay.userName} ارسال شد.`);
+    } catch (err: any) {
+      alert(err.message || 'خطا در ارسال پیام به کاربر');
     }
   };
 
@@ -1525,6 +1541,15 @@ export const UserManagementView: React.FC = () => {
                           <>
                             <button
                               type="button"
+                              onClick={() => handleSendCardInChat(pay)}
+                              className="px-3 py-2 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                              title="ارسال مستقیم شماره کارت در چت به کاربر"
+                            >
+                              <CreditCard className="w-3.5 h-3.5" />
+                              <span>ارسال کارت در چت 💳</span>
+                            </button>
+                            <button
+                              type="button"
                               disabled={processingPaymentId === pay.id}
                               onClick={() => handleApprovePayment(pay.id)}
                               className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
@@ -2002,6 +2027,101 @@ export const UserManagementView: React.FC = () => {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-amber-500"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* CARD: FOCUS MUSIC PLAYLIST MANAGEMENT (آپلود و مدیریت موزیک تمرکز توسط مدیر) */}
+          <div className="p-5 sm:p-6 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center">
+                  <Music className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">مدیریت پلی‌لیست موسیقی تمرکز پومودورو (Focus Audio)</h3>
+                  <p className="text-xs text-zinc-400">آپلود و انتشار فایل‌های صوتی آرامش‌بخش برای تمام کاربران سامانه</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Existing Tracks in Playlist */}
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-zinc-300">لیست قطعات فعلی پلی‌لیست:</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {((formSettings as any).focusPlaylist || [
+                  { id: 'track-lofi', title: 'بیت‌های ملایم لوفای (Cozy Lofi)', artist: 'رادیو تمرکز عمیق بگ تایم' },
+                  { id: 'track-alpha', title: 'امواج آلفا ۵۲۸ هرتز (Alpha Waves)', artist: 'فرکانس تقویت تمرکز' },
+                  { id: 'track-rain', title: 'صدای باران ملایم و کافه آرام', artist: 'طبیعت و وایت‌نویز' },
+                ]).map((tr: any, idx: number) => (
+                  <div key={tr.id || idx} className="p-3 bg-zinc-950/80 rounded-2xl border border-zinc-800 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-300 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                        {toPersianDigits(idx + 1)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-white truncate">{tr.title}</div>
+                        <div className="text-[10px] text-zinc-400 truncate">{tr.artist}</div>
+                      </div>
+                    </div>
+                    {tr.id?.startsWith('uploaded-') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const curr = (formSettings as any).focusPlaylist || [];
+                          const updated = curr.filter((x: any) => x.id !== tr.id);
+                          setFormSettings({ ...formSettings, focusPlaylist: updated } as any);
+                        }}
+                        className="p-1 rounded-lg text-rose-400 hover:bg-rose-500/20 cursor-pointer"
+                        title="حذف"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Upload File Input */}
+            <div className="pt-2">
+              <label className="flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-zinc-950 border border-dashed border-purple-500/40 hover:border-purple-500/80 text-purple-300 font-bold text-xs cursor-pointer transition-all">
+                <Upload className="w-4 h-4 text-purple-400" />
+                <span>کلیک جهت آپلود مستقیم فایل صوتی جدید (MP3 / WAV / OGG)</span>
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 20 * 1024 * 1024) {
+                      alert('حجم فایل صوتی نباید بیش از ۲۰ مگابایت باشد.');
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const dataUrl = reader.result as string;
+                      const title = prompt('عنوان یا نام موزیک را وارد کنید:', file.name.replace(/\.[^/.]+$/, '')) || file.name;
+                      const artist = prompt('نام خواننده یا هنرمند:', 'آپلود شده توسط مدیر Mohusyn') || 'مدیر سیستم';
+                      const newTrack = {
+                        id: `uploaded-${Date.now()}`,
+                        title,
+                        artist,
+                        type: 'custom',
+                        url: dataUrl,
+                        tag: 'موزیک ادمین 🎵',
+                      };
+                      const curr = (formSettings as any).focusPlaylist || [];
+                      setFormSettings({
+                        ...formSettings,
+                        focusPlaylist: [...curr, newTrack],
+                      } as any);
+                      alert('قطعه صوتی با موفقیت اضافه شد! برای ذخیره دکمه «اعمال سراسری» پایین را بزنید.');
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                  className="hidden"
+                />
+              </label>
             </div>
           </div>
 

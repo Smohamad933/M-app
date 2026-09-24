@@ -281,12 +281,12 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
 
         {/* Dynamic Confidence & Motivational Banner */}
         {showTodayBanner && (
-          <div className="bg-[#121212] text-white rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 shadow-md animate-in fade-in">
+          <div className="bg-slate-50 border border-slate-200/90 text-slate-800 rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 shadow-2xs animate-in fade-in">
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <div className="w-7 h-7 rounded-full bg-[#00b884]/20 text-[#00b884] flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-3.5 h-3.5 fill-current" />
+              <div className="w-7 h-7 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-3.5 h-3.5" />
               </div>
-              <p className="text-[11px] font-bold leading-relaxed text-zinc-200 line-clamp-2">
+              <p className="text-[11px] font-bold leading-relaxed text-slate-700 line-clamp-2">
                 {motivationalMessage}
               </p>
             </div>
@@ -297,7 +297,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
                 sounds.playPop();
                 setShowTodayBanner(false);
               }}
-              className="w-5 h-5 rounded-full bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer"
+              className="w-5 h-5 rounded-full bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer"
               title="بستن"
             >
               <X className="w-3 h-3" />
@@ -379,15 +379,15 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
             const hasTasks = dayTasksList.length > 0;
             const allDone = hasTasks && dayTasksList.every((t) => t.completed);
 
-            let style = 'text-slate-800 hover:bg-slate-100';
+            let style = 'text-slate-700 hover:bg-slate-100';
             if (isSelected) {
-              style = 'bg-[#f95738] text-white shadow-md ring-2 ring-[#f95738]/20 font-black';
-            } else if (allDone) {
-              style = 'bg-[#00b884] text-white shadow-xs font-bold';
-            } else if (hasTasks) {
-              style = 'bg-[#121212] text-white shadow-xs font-bold';
+              style = 'bg-slate-900 text-white shadow-xs font-black';
             } else if (isToday) {
-              style = 'border-2 border-slate-900 text-slate-900 font-black';
+              style = 'bg-emerald-50 text-emerald-800 ring-1.5 ring-emerald-500 font-black';
+            } else if (allDone) {
+              style = 'bg-emerald-100/80 text-emerald-900 font-bold';
+            } else if (hasTasks) {
+              style = 'bg-slate-100 text-slate-900 font-bold hover:bg-slate-200';
             }
 
             return (
@@ -398,12 +398,12 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
                     sounds.playPop();
                     setSelectedDate(dayISO);
                   }}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${style}`}
+                  className={`w-8 h-8 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer relative text-xs ${style}`}
                   title={`${toPersianDigits(dayNum)} ${monthName} (${hasTasks ? `${dayTasksList.length} تسک` : 'بدون تسک'})`}
                 >
-                  {toPersianDigits(dayNum)}
+                  <span>{toPersianDigits(dayNum)}</span>
                   {hasTasks && !isSelected && !allDone && (
-                    <span className="w-1 h-1 rounded-full bg-[#f95738] absolute bottom-0.5 left-1/2 -translate-x-1/2" />
+                    <span className="w-1 h-1 rounded-full bg-slate-400 absolute bottom-1" />
                   )}
                 </button>
               </div>
@@ -411,66 +411,69 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
           })}
 
           {/* Trailing padding days */}
-          <div className="h-8 rounded-xl pattern-hatched opacity-60 m-0.5" />
-          <div className="h-8 rounded-xl pattern-hatched opacity-60 m-0.5" />
+          <div className="h-8 rounded-xl bg-slate-50/60 m-0.5" />
+          <div className="h-8 rounded-xl bg-slate-50/60 m-0.5" />
         </div>
       </div>
 
       {/* 3. BOTTOM-LEFT: REAL TASK PROGRESS */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
+      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shadow-2xs">
               <BarChart3 className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-black text-base text-slate-900 tracking-tight">
-                پیشرفت واقعی تسک‌ها (Task Progress)
+              <h3 className="font-black text-sm text-slate-900 tracking-tight">
+                پیشرفت واقعی تسک‌ها
               </h3>
-              <span className="text-[10px] text-slate-400 font-bold">
-                محاسبه بلادرنگ درصد کارهای تکمیل‌شده روزها
+              <span className="text-[10px] text-slate-400 font-medium">
+                درصد کارهای تکمیل‌شده ۷ روز اخیر
               </span>
             </div>
           </div>
 
-          <span className="text-xs font-mono font-black text-slate-800 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200">
+          <span className="text-xs font-black text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200/80">
             امروز: {toPersianDigits(todayRate)}٪
           </span>
         </div>
 
         {/* Visual Bar Chart with Real Daily Completion Rates */}
-        <div className="h-48 flex items-end justify-between px-2 pt-6 pb-1">
+        <div className="h-44 flex items-end justify-between px-2 pt-4 pb-1">
           {progressStats.map((stat) => {
             const isToday = stat.isToday;
             const rate = stat.rate;
 
             if (isToday) {
               return (
-                <div key={stat.iso} className="flex flex-col items-center gap-1.5 -mt-6">
-                  <span className="bg-[#121212] text-white text-xs font-black px-2.5 py-1 rounded-full shadow-sm">
+                <div key={stat.iso} className="flex flex-col items-center gap-1.5">
+                  <span className="bg-slate-900 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
                     {toPersianDigits(rate)}٪
                   </span>
-                  <div className="w-11 sm:w-12 h-36 bg-[#121212] rounded-2xl flex flex-col items-center justify-center p-1 shadow-md relative">
-                    <span className="bg-[#f95738] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
-                      امروز
-                    </span>
+                  <div className="w-10 sm:w-11 h-28 bg-slate-900 rounded-2xl flex flex-col items-center justify-end p-1 shadow-xs relative overflow-hidden">
+                    <div
+                      className="w-full bg-emerald-500 rounded-xl transition-all duration-500"
+                      style={{ height: `${Math.max(10, rate)}%` }}
+                    />
                   </div>
                   <span className="text-xs font-black text-slate-900">{toPersianDigits(stat.dayNum)}</span>
                 </div>
               );
             }
 
-            const pillBg = rate >= 70 ? 'bg-[#00b884]' : rate > 0 ? 'bg-[#f95738]' : 'bg-slate-300';
-            const heightClass = rate > 75 ? 'h-28' : rate > 40 ? 'h-24' : rate > 0 ? 'h-18' : 'h-14';
-
             return (
-              <div key={stat.iso} className="flex flex-col items-center gap-2">
-                <span className={`${pillBg} text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs`}>
-                  +{toPersianDigits(rate)}٪
+              <div key={stat.iso} className="flex flex-col items-center gap-1.5">
+                <span className="text-slate-500 text-[10px] font-bold">
+                  {rate > 0 ? `${toPersianDigits(rate)}٪` : '—'}
                 </span>
-                <div className={`w-10 sm:w-11 ${heightClass} rounded-2xl pattern-hatched border border-slate-200/70`} />
-                <span className="text-xs font-bold text-slate-400">{toPersianDigits(stat.dayNum)}</span>
+                <div className="w-9 sm:w-10 h-28 bg-slate-100 border border-slate-200/70 rounded-2xl flex flex-col items-center justify-end p-1 overflow-hidden">
+                  <div
+                    className="w-full bg-slate-300 rounded-xl transition-all duration-500"
+                    style={{ height: `${Math.max(6, rate)}%` }}
+                  />
+                </div>
+                <span className="text-xs font-medium text-slate-500">{toPersianDigits(stat.dayNum)}</span>
               </div>
             );
           })}
@@ -508,23 +511,23 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
         <div className="relative h-48 flex flex-col justify-between py-2">
           {/* Real Live Vertical Hour Marker Line */}
           <div
-            className="absolute top-0 bottom-6 w-[2px] bg-[#f95738] z-10 flex flex-col items-center pointer-events-none transition-all duration-500"
+            className="absolute top-0 bottom-6 w-[2px] bg-emerald-600 z-10 flex flex-col items-center pointer-events-none transition-all duration-500"
             style={{ right: `${markerPercent}%` }}
           >
-            <div className="w-3 h-3 rounded-full border-2 border-[#f95738] bg-white -mt-1 shadow-xs" />
+            <div className="w-3 h-3 rounded-full border-2 border-emerald-600 bg-white -mt-1 shadow-xs" />
           </div>
 
-          {/* Background hatched zones for visual texture */}
-          <div className="absolute top-2 bottom-8 left-4 w-28 pattern-hatched rounded-xl opacity-60 pointer-events-none" />
+          {/* Background zone for visual texture */}
+          <div className="absolute top-2 bottom-8 left-4 w-28 bg-slate-50/70 rounded-xl pointer-events-none" />
 
           {/* Real or structured timed task bars */}
           {timedTasks.length > 0 ? (
             timedTasks.map((t, idx) => {
               const colors = [
-                'bg-[#f95738]',
-                'bg-[#00b884]',
-                'bg-[#6366f1]',
-                'bg-[#121212]',
+                'bg-slate-900',
+                'bg-emerald-600',
+                'bg-slate-800',
+                'bg-teal-700',
               ];
               const barColor = colors[idx % colors.length];
               const indentClasses = ['', 'pr-12', 'pr-24', 'pr-8'];
@@ -536,18 +539,18 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
                       sounds.playPop();
                       toggleTaskComplete(t.id);
                     }}
-                    className={`${barColor} text-white text-xs font-black px-5 py-2.5 rounded-full shadow-xs cursor-pointer hover:opacity-90 transition-opacity truncate max-w-[280px] flex items-center gap-1.5`}
+                    className={`${barColor} text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs cursor-pointer hover:opacity-90 transition-opacity truncate max-w-[280px] flex items-center gap-1.5`}
                     title={t.title}
                   >
                     <span>{t.time ? toPersianDigits(t.time) : ''}</span>
                     <span className="truncate">{t.title}</span>
-                    {t.completed && <Check className="w-3 h-3 stroke-[3]" />}
+                    {t.completed && <Check className="w-3 h-3 stroke-[2.5]" />}
                   </div>
                 </div>
               );
             })
           ) : (
-            <div className="h-32 flex flex-col items-center justify-center text-center p-4 rounded-2xl border border-dashed border-slate-200/80 bg-[#f8fafc] space-y-1">
+            <div className="h-32 flex flex-col items-center justify-center text-center p-4 rounded-2xl border border-dashed border-slate-200/80 bg-slate-50/50 space-y-1">
               <Clock className="w-6 h-6 text-slate-300" />
               <span className="text-xs font-black text-slate-700">تسک ساعت‌داری برای امروز ثبت نشده است</span>
               <span className="text-[10px] text-slate-400">کارهای ساعت‌دار به صورت خودکار در این نوار گانت زمان‌بندی می‌شوند.</span>
@@ -555,12 +558,12 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
           )}
 
           {/* X-axis time marks */}
-          <div className="flex items-center justify-between text-xs font-black text-slate-400 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-400 pt-2 border-t border-slate-100">
             <span>۱۲:۰۰</span>
             <span>۱۳:۰۰</span>
             <span>۱۴:۰۰</span>
             <span>۱۵:۰۰</span>
-            <span className={currentHour === 16 ? 'text-[#f95738] font-black' : ''}>۱۶:۰۰</span>
+            <span className={currentHour === 16 ? 'text-emerald-700 font-black' : ''}>۱۶:۰۰</span>
             <span>۱۷:۰۰</span>
             <span>۱۸:۰۰</span>
           </div>

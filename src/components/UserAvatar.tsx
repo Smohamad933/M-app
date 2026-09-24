@@ -42,7 +42,6 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   const finalName = name || user?.name || '?';
   const finalAvatar = avatar || user?.avatar || null;
   const firstChar = finalName.trim().charAt(0);
-  const roundedClass = className.includes('rounded-') ? '' : 'rounded-full';
   const resolvedSize = PRESET_SIZES[size] || (size.includes('w-') ? size : 'w-11 h-11 text-sm');
 
   const meta = getPlanMetadata(subscription, role);
@@ -61,14 +60,14 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
 
   if (finalAvatar && typeof finalAvatar === 'string' && finalAvatar.startsWith('data:image/')) {
     return (
-      <div className={`relative inline-block flex-shrink-0 select-none ${className}`}>
+      <div className={`relative inline-flex items-center justify-center flex-shrink-0 select-none rounded-full ${className}`}>
         <div
-          className={`${resolvedSize} ${roundedClass} overflow-hidden border-2 border-[#00b884] shadow-xs flex-shrink-0 relative`}
+          className={`${resolvedSize} rounded-full overflow-hidden border-2 border-emerald-500/80 shadow-xs flex-shrink-0 relative`}
         >
           <img
             src={finalAvatar}
             alt={finalName}
-            className="w-full h-full object-cover block"
+            className="w-full h-full object-cover block rounded-full"
           />
         </div>
         {renderBadge()}
@@ -78,14 +77,14 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
 
   if (fallbackImage && typeof fallbackImage === 'string' && fallbackImage.startsWith('data:image/')) {
     return (
-      <div className={`relative inline-block flex-shrink-0 select-none ${className}`}>
+      <div className={`relative inline-flex items-center justify-center flex-shrink-0 select-none rounded-full ${className}`}>
         <div
-          className={`${resolvedSize} ${roundedClass} overflow-hidden border-2 border-[#00b884] shadow-xs flex-shrink-0 relative opacity-95`}
+          className={`${resolvedSize} rounded-full overflow-hidden border-2 border-emerald-500/80 shadow-xs flex-shrink-0 relative opacity-95`}
         >
           <img
             src={fallbackImage}
             alt={finalName}
-            className="w-full h-full object-cover block"
+            className="w-full h-full object-cover block rounded-full"
           />
         </div>
         {renderBadge()}
@@ -94,9 +93,9 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   }
 
   return (
-    <div className={`relative inline-block flex-shrink-0 select-none ${className}`}>
+    <div className={`relative inline-flex items-center justify-center flex-shrink-0 select-none rounded-full ${className}`}>
       <div
-        className={`${resolvedSize} ${roundedClass} bg-gradient-to-tr from-[#00b884] to-emerald-600 border-2 border-white shadow-xs text-white font-bold flex items-center justify-center flex-shrink-0`}
+        className={`${resolvedSize} rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 border-2 border-white shadow-xs text-white font-bold flex items-center justify-center flex-shrink-0`}
       >
         {firstChar}
       </div>

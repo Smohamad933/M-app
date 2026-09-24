@@ -73,6 +73,7 @@ import {
   MessageSquare,
   ChevronDown,
   ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 export const MainLayout: React.FC = () => {
@@ -123,6 +124,8 @@ export const MainLayout: React.FC = () => {
   const [isFontModalOpen, setIsFontModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [inspectedUser, setInspectedUser] = useState<User | null>(null);
+  // Desktop Sidebar collapsed by default (icon-only mode)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState<boolean>(false);
 
   // New interactive states
   const [isAiAgentModalOpen, setIsAiAgentModalOpen] = useState(false);
@@ -266,225 +269,314 @@ export const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#e4e9f2] text-slate-900 p-0 sm:p-4 lg:p-6 flex items-stretch justify-center antialiased selection:bg-[#121212] selection:text-white w-full overflow-x-hidden font-sans">
-      {/* Floating Main Application Shell with high contrast */}
-      <div className="bg-[#f1f4f8] rounded-none sm:rounded-[36px] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.08)] border-0 sm:border border-slate-300/80 w-full max-w-[1600px] flex flex-col lg:flex-row overflow-hidden min-h-screen sm:min-h-[92vh] relative">
-        
-        {/* 1. DESKTOP SIDEBAR */}
-        <aside className="hidden lg:flex w-72 bg-white border-l border-slate-200/90 flex-col justify-between p-6 z-20 select-none sticky top-0 h-[92vh] flex-shrink-0 min-h-0 overflow-y-auto no-scrollbar shadow-xs">
-          <div className="flex flex-col min-h-0 flex-1">
-            {/* Brand Logo & App Name */}
-            <div className="flex items-center gap-3">
+    <div className="h-screen w-screen overflow-hidden bg-[#edf1f7] text-slate-900 flex flex-row antialiased selection:bg-[#121212] selection:text-white font-sans">
+      {/* 1. DESKTOP SIDEBAR - STAYS 100% FIXED ON THE SIDE */}
+      <aside
+        className={`hidden lg:flex flex-col justify-between bg-white border-l border-slate-200/90 z-30 select-none flex-shrink-0 h-screen transition-all duration-300 ease-in-out shadow-xs sticky top-0 overflow-y-auto no-scrollbar ${
+          isSidebarExpanded ? 'w-64 p-5' : 'w-20 p-3 items-center'
+        }`}
+      >
+        <div className="flex flex-col min-h-0 flex-1 w-full">
+          {/* Brand Logo, App Name & Expand/Collapse Toggle */}
+          <div className={`flex items-center gap-2.5 pb-4 border-b border-slate-100 ${isSidebarExpanded ? 'justify-between' : 'flex-col justify-center'}`}>
+            <div
+              onClick={() => {
+                sounds.playPop();
+                setActiveTab('dashboard');
+              }}
+              className="flex items-center gap-2.5 cursor-pointer group"
+              title={appName}
+            >
               {appLogo ? (
                 <img src={appLogo} alt={appName} className="w-9 h-9 rounded-2xl object-cover shadow-xs border border-slate-100" />
               ) : (
-                <TaskMasterHexagon size={38} />
+                <TaskMasterHexagon size={36} />
               )}
-              <h1 className="font-black text-xl text-slate-900 tracking-tight flex items-center gap-1">
-                <span>{appName}</span>
-                <span className="text-[#00b884]">.</span>
-              </h1>
+              {isSidebarExpanded && (
+                <h1 className="font-black text-lg text-slate-900 tracking-tight flex items-center gap-1">
+                  <span>{appName}</span>
+                  <span className="text-[#00b884]">.</span>
+                </h1>
+              )}
             </div>
 
-            {/* Hero Greeting Headline */}
-            <div className="mt-7 mb-6">
-              <h2 className="text-xl font-black text-slate-900 leading-snug">
+            {/* Expand / Collapse Button */}
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setIsSidebarExpanded(!isSidebarExpanded);
+              }}
+              className={`p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-all cursor-pointer ${
+                !isSidebarExpanded ? 'w-10 h-10 flex items-center justify-center' : ''
+              }`}
+              title={isSidebarExpanded ? 'جمع کردن سایدبار' : 'گسترش سایدبار'}
+            >
+              {isSidebarExpanded ? (
+                <ChevronRight className="w-4 h-4" />
+              ) : (
+                <ChevronLeft className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+
+          {/* Hero Greeting Headline (shown only when expanded) */}
+          {isSidebarExpanded && (
+            <div className="mt-4 mb-3 animate-in fade-in">
+              <h2 className="text-base font-black text-slate-900 leading-snug">
                 روزت رو شروع کن <br />
                 و پرانرژی باش ✌️
               </h2>
             </div>
+          )}
 
-            {/* MENU Label */}
-            <div className="text-[11px] font-black tracking-widest text-slate-400 uppercase mb-2.5 px-2">
+          {/* MENU Label */}
+          {isSidebarExpanded && (
+            <div className="text-[10px] font-black tracking-widest text-slate-400 uppercase my-2 px-1">
               MENU
             </div>
+          )}
 
-            {/* Navigation Links */}
-            <nav className="space-y-1 flex-1 min-h-0 overflow-y-auto no-scrollbar -mx-1 px-1">
-              {navItems.map((item) => {
-                if (item.adminOnly && !isAdmin) return null;
-                const isActive = activeTab === item.id;
-                const Icon = item.icon;
+          {/* Navigation Links */}
+          <nav className={`space-y-1 flex-1 min-h-0 overflow-y-auto no-scrollbar py-2 ${isSidebarExpanded ? '-mx-1 px-1' : 'w-full flex flex-col items-center'}`}>
+            {navItems.map((item) => {
+              if (item.adminOnly && !isAdmin) return null;
+              const isActive = activeTab === item.id;
+              const Icon = item.icon;
 
+              if (!isSidebarExpanded) {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    onClick={() => {
+                      sounds.playPop();
+                      setActiveTab(item.id);
+                    }}
+                    title={item.label}
+                    className={`w-12 h-11 rounded-2xl flex items-center justify-center relative transition-all cursor-pointer group ${
                       isActive
-                        ? 'bg-emerald-500/10 text-emerald-800 border border-emerald-500/25 shadow-xs font-black'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                        ? 'bg-emerald-500/15 text-emerald-800 border border-emerald-500/30 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <Icon className={`w-4 h-4 ${isActive ? 'text-[#00b884] stroke-[2.5]' : 'text-slate-500 stroke-2'}`} />
-                      <span>{item.label}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      {item.badge !== undefined && item.badge > 0 && (
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                          isActive ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-800'
-                        }`}>
-                          {toPersianDigits(item.badge)}
-                        </span>
-                      )}
-                      {isActive && (
-                        <span className="w-1.5 h-3.5 rounded-full bg-[#00b884]" />
-                      )}
-                    </div>
+                    <Icon className={`w-5 h-5 ${isActive ? 'text-emerald-700 stroke-[2.5]' : 'stroke-2'}`} />
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center shadow-xs">
+                        {toPersianDigits(item.badge)}
+                      </span>
+                    )}
+                    {isActive && (
+                      <span className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-emerald-600" />
+                    )}
                   </button>
                 );
-              })}
-            </nav>
+              }
 
-            {/* Real Colleagues / Friends Section */}
-            {friendsList.length > 0 ? (
-              <div className="pt-4 mt-2 border-t border-slate-100 space-y-3">
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    sounds.playPop();
+                    setActiveTab(item.id);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-emerald-500/10 text-emerald-800 border border-emerald-500/25 shadow-xs font-black'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-[#00b884] stroke-[2.5]' : 'text-slate-500 stroke-2'}`} />
+                    <span className="truncate">{item.label}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                        isActive ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        {toPersianDigits(item.badge)}
+                      </span>
+                    )}
+                    {isActive && (
+                      <span className="w-1.5 h-3.5 rounded-full bg-[#00b884]" />
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Real Colleagues / Friends Section */}
+          {friendsList.length > 0 ? (
+            <div className={`pt-3 border-t border-slate-100 ${isSidebarExpanded ? 'space-y-2' : 'w-full flex flex-col items-center'}`}>
+              {isSidebarExpanded ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      setActiveTab('friends');
+                    }}
+                    className="w-full flex items-center justify-between hover:bg-slate-50 p-2 rounded-2xl transition-colors text-right cursor-pointer"
+                  >
+                    <div className="flex items-center -space-x-2 space-x-reverse">
+                      {friendsList.slice(0, 4).map((f) => (
+                        <div key={f.id} className="relative">
+                          <UserAvatar
+                            name={f.name}
+                            avatar={f.avatar}
+                            size="w-6 h-6 rounded-full text-[9px]"
+                            className="border-2 border-white shadow-xs"
+                          />
+                        </div>
+                      ))}
+                      {friendsList.length > 4 && (
+                        <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-600 flex items-center justify-center">
+                          +{toPersianDigits(friendsList.length - 4)}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+                      <span>همکاران ({toPersianDigits(friendsList.length)})</span>
+                      <span className="text-slate-400">‹</span>
+                    </span>
+                  </button>
+
+                  {/* Direct quick chat with active colleague */}
+                  <div
+                    onClick={() => {
+                      sounds.playPop();
+                      setDirectChatUser({
+                        id: friendsList[0].id,
+                        name: friendsList[0].name,
+                        username: friendsList[0].username,
+                        avatar: friendsList[0].avatar,
+                        role: friendsList[0].jobTitle || 'همکار',
+                        status: 'online',
+                      });
+                    }}
+                    className="p-2.5 bg-slate-50 border border-slate-200/80 hover:border-slate-300 rounded-2xl space-y-1.5 text-right cursor-pointer transition-all hover:shadow-xs group"
+                    title={`چت با ${friendsList[0].name}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800">
+                        <UserAvatar
+                          name={friendsList[0].name}
+                          avatar={friendsList[0].avatar}
+                          size="w-5 h-5 rounded-full text-[9px]"
+                        />
+                        <span className="truncate max-w-[90px]">{friendsList[0].name}</span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      </div>
+                      <div className="text-[9px] text-slate-400 group-hover:text-slate-800 font-bold">
+                        گفتگو 💬
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
                 <button
                   type="button"
                   onClick={() => {
                     sounds.playPop();
                     setActiveTab('friends');
                   }}
-                  className="w-full flex items-center justify-between hover:bg-slate-50 p-2 rounded-2xl transition-colors text-right cursor-pointer"
+                  className="w-12 h-11 rounded-2xl flex items-center justify-center relative text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
+                  title={`همکاران (${toPersianDigits(friendsList.length)})`}
                 >
-                  <div className="flex items-center -space-x-2 space-x-reverse">
-                    {friendsList.slice(0, 4).map((f) => (
-                      <div key={f.id} className="relative">
-                        <UserAvatar
-                          name={f.name}
-                          avatar={f.avatar}
-                          size="w-7 h-7 rounded-full text-[10px]"
-                          className="border-2 border-white shadow-xs"
-                        />
-                      </div>
-                    ))}
-                    {friendsList.length > 4 && (
-                      <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-600 flex items-center justify-center">
-                        +{toPersianDigits(friendsList.length - 4)}
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
-                    <span>همکاران ({toPersianDigits(friendsList.length)})</span>
-                    <span className="text-slate-400">‹</span>
+                  <Users className="w-5 h-5" />
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-emerald-600 text-white text-[8px] font-black flex items-center justify-center">
+                    {toPersianDigits(friendsList.length)}
                   </span>
                 </button>
-
-                {/* Direct quick chat with active colleague */}
-                <div
-                  onClick={() => {
-                    sounds.playPop();
-                    setDirectChatUser({
-                      id: friendsList[0].id,
-                      name: friendsList[0].name,
-                      username: friendsList[0].username,
-                      avatar: friendsList[0].avatar,
-                      role: friendsList[0].jobTitle || 'همکار',
-                      status: 'online',
-                    });
-                  }}
-                  className="p-3 bg-[#f8fafc] border border-slate-200/80 hover:border-slate-300 rounded-2xl space-y-2 text-right cursor-pointer transition-all hover:shadow-xs group"
-                  title={`چت با ${friendsList[0].name}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800">
-                      <UserAvatar
-                        name={friendsList[0].name}
-                        avatar={friendsList[0].avatar}
-                        size="w-5 h-5 rounded-full text-[9px]"
-                      />
-                      <span className="truncate max-w-[100px]">{friendsList[0].name}</span>
-                      <span className="w-2 h-2 rounded-full bg-[#00b884]" />
-                    </div>
-                    <div className="text-[10px] text-slate-400 group-hover:text-slate-800 font-bold">
-                      گفتگو 💬
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-slate-500 truncate">
-                    کلیک برای گفتگو با {friendsList[0].name}...
-                  </p>
-                </div>
-              </div>
-            ) : (
-              /* Clean empty state for fresh install: no fake Michie, no fake +10 avatars */
+              )}
+            </div>
+          ) : (
+            <div className={`pt-3 border-t border-slate-100 ${isSidebarExpanded ? '' : 'w-full flex justify-center'}`}>
               <button
                 type="button"
                 onClick={() => {
                   sounds.playPop();
                   setActiveTab('friends');
                 }}
-                className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between hover:bg-slate-50 p-2.5 rounded-2xl transition-colors text-right cursor-pointer group w-full"
+                className={`flex items-center hover:bg-slate-50 rounded-2xl transition-colors cursor-pointer ${
+                  isSidebarExpanded ? 'p-2.5 justify-between w-full' : 'w-12 h-11 justify-center'
+                }`}
+                title="یافتن و افزودن همکاران"
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-500 flex items-center justify-center group-hover:bg-[#00b884]/15 group-hover:text-[#00895f] transition-colors">
+                  <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-500 flex items-center justify-center">
                     <Users className="w-4 h-4 stroke-[2]" />
                   </div>
-                  <div className="text-right">
-                    <div className="text-xs font-black text-slate-800">همکاران</div>
-                    <div className="text-[10px] text-slate-400">یافتن و افزودن همکاران ‹</div>
-                  </div>
+                  {isSidebarExpanded && (
+                    <div className="text-right">
+                      <div className="text-xs font-black text-slate-800">همکاران</div>
+                      <div className="text-[10px] text-slate-400">یافتن و افزودن ‹</div>
+                    </div>
+                  )}
                 </div>
-                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                  ۰
-                </span>
               </button>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
 
-          {/* Sidebar Footer */}
-          <div className="space-y-1.5 pt-4 mt-2 border-t border-slate-100 text-xs flex-shrink-0">
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setIsFontModalOpen(true);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-bold text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
-              >
-                <Type className="w-4 h-4 text-indigo-500" />
-                <span>فونت کل سیستم</span>
-              </button>
-            )}
-
-            {/* View My Public Profile Button */}
-            {currentUser && (
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setViewingPublicUser(currentUser);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-bold text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
-                title="مشاهده نحوه نمایش پروفایل شما برای سایر همکاران"
-              >
-                <Eye className="w-4 h-4 text-indigo-500" />
-                <span>پروفایل من (دید همکاران)</span>
-              </button>
-            )}
-
+        {/* Sidebar Footer */}
+        <div className={`space-y-1.5 pt-3 border-t border-slate-100 text-xs flex-shrink-0 ${isSidebarExpanded ? 'w-full' : 'w-full flex flex-col items-center'}`}>
+          {isAdmin && (
             <button
               type="button"
-              onClick={logout}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-bold text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
+              onClick={() => {
+                sounds.playPop();
+                setIsFontModalOpen(true);
+              }}
+              className={`flex items-center gap-2.5 rounded-xl font-bold text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer ${
+                isSidebarExpanded ? 'w-full px-3 py-2 text-xs' : 'w-10 h-10 justify-center'
+              }`}
+              title="فونت کل سیستم"
             >
-              <LogOut className="w-4 h-4" />
-              <span>خروج از حساب</span>
+              <Type className="w-4 h-4 text-indigo-500" />
+              {isSidebarExpanded && <span>فونت کل سیستم</span>}
             </button>
+          )}
 
-            <div className="pt-1.5 px-1 text-[10px] text-slate-400 font-mono">
-              {getText('footerCredits')}
-            </div>
-          </div>
-        </aside>
+          {/* View My Public Profile Button */}
+          {currentUser && (
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setViewingPublicUser(currentUser);
+              }}
+              className={`flex items-center gap-2.5 rounded-xl font-bold text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer ${
+                isSidebarExpanded ? 'w-full px-3 py-2' : 'w-10 h-10 justify-center'
+              }`}
+              title="مشاهده پروفایل شما (دید همکاران)"
+            >
+              <Eye className="w-4 h-4 text-slate-600" />
+              {isSidebarExpanded && <span>پروفایل من (دید همکاران)</span>}
+            </button>
+          )}
 
-        {/* 2. MAIN CONTENT AREA */}
-        <div className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden min-h-full">
-          {/* Top Header Bar */}
-          <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-3 sm:px-6 py-2.5 sm:py-3.5 sticky top-0 z-30 flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={logout}
+            className={`flex items-center gap-2.5 rounded-xl font-bold text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer ${
+              isSidebarExpanded ? 'w-full px-3 py-2 text-xs' : 'w-10 h-10 justify-center'
+            }`}
+            title="خروج از حساب"
+          >
+            <LogOut className="w-4 h-4" />
+            {isSidebarExpanded && <span>خروج از حساب</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* 2. MAIN CONTENT AREA - STAYS SOLID & INDEPENDENT */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-[#f4f7fa]">
+        {/* Top Header Bar - 100% FIXED AT TOP */}
+        <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 py-2.5 sm:py-3.5 sticky top-0 z-20 flex-shrink-0 flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
               {/* Left/Start Actions on Mobile & Desktop Search Bar */}
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 {/* Mobile Menu Button */}
@@ -626,7 +718,7 @@ export const MainLayout: React.FC = () => {
                       avatar={currentUser.avatar}
                       fallbackImage={defaultAvatar}
                       size="w-7 h-7 sm:w-8 sm:h-8 rounded-full text-xs"
-                      className="border-2 border-[#00b884]"
+                      className="rounded-full ring-2 ring-emerald-500/20"
                     />
                     <div className="hidden sm:flex flex-col text-right leading-tight">
                       <span className="font-extrabold text-xs text-slate-900 truncate max-w-[110px]">
@@ -1092,7 +1184,6 @@ export const MainLayout: React.FC = () => {
             )}
           </main>
         </div>
-      </div>
 
       {/* Mobile Bottom Navigation (screens < 1024px) */}
       <BottomNav />
@@ -1147,7 +1238,7 @@ export const MainLayout: React.FC = () => {
                       avatar={currentUser.avatar}
                       fallbackImage={defaultAvatar}
                       size="w-10 h-10 rounded-full text-xs"
-                      className="border-2 border-emerald-500 shadow-2xs"
+                      className="rounded-full ring-2 ring-emerald-500/20 shadow-2xs"
                     />
                     <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-200" />
                   </div>
