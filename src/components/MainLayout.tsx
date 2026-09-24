@@ -573,7 +573,7 @@ export const MainLayout: React.FC = () => {
       </aside>
 
       {/* 2. MAIN CONTENT AREA - STAYS SOLID & INDEPENDENT */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-[#f4f7fa]">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto bg-[#f4f7fa]">
         {/* Top Header Bar - 100% FIXED AT TOP */}
         <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 py-2.5 sm:py-3.5 sticky top-0 z-20 flex-shrink-0 flex flex-col gap-2">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
