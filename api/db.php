@@ -301,20 +301,13 @@ class TaskRoozDB {
         $encoded = json_encode($this->data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         if (!$encoded) return;
 
-        $pathsToSave = array_unique([
-            dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json',
-            __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json',
-            __DIR__ . DIRECTORY_SEPARATOR . 'db.json',
-        ]);
-
-        foreach ($pathsToSave as $p) {
-            $dir = dirname($p);
-            if (!is_dir($dir)) {
-                @mkdir($dir, 0777, true);
-            }
-            @file_put_contents($p, $encoded, LOCK_EX);
-            @chmod($p, 0666);
+        $primaryPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json';
+        $dir = dirname($primaryPath);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
         }
+        @file_put_contents($primaryPath, $encoded, LOCK_EX);
+        @chmod($primaryPath, 0666);
     }
 
     // --- User Operations (MySQL + JSON Dual Sync) ---

@@ -742,12 +742,13 @@ export const UserManagementView: React.FC = () => {
   // Job Categories Management State in Global Settings
   const [newJobCategory, setNewJobCategory] = useState('');
 
-  // Auto-refresh users when admin opens this tab + poll every 3s + storage event sync!
+  // Auto-refresh users when admin opens this tab + poll every 20s + storage event sync!
   useEffect(() => {
     refreshUsers();
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       refreshUsers();
-    }, 3000);
+    }, 20000);
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'taskrooz_sync_signal' || e.key === 'taskrooz_users_local') {

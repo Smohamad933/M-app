@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type {
   Task,
   Category,
@@ -311,13 +311,13 @@ function injectFontLink(font: SystemFontOption) {
 }
 
 export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => api.getCachedUser());
   const [users, setUsers] = useState<User[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [projects, setProjects] = useState<TeamProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => !api.getCachedUser() && Boolean(api.getAuthToken()));
 
   // Custom fonts & Global settings
   const [customFonts, setCustomFonts] = useState<SystemFontOption[]>(() => {
@@ -528,6 +528,52 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('taskrooz_settings', JSON.stringify({ ...settings, theme: 'light' }));
     } catch {}
   }, [settings]);
+
+  // Periodic Task Reminder & Bale Notification Dispatcher
+  const remindedTaskIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const checkDueReminders = async () => {
+      if (!currentUser) return;
+      const now = new Date();
+      const currentHours = String(now.getHours()).padStart(2, '0');
+      const currentMins = String(now.getMinutes()).padStart(2, '0');
+      const nowTimeStr = `${currentHours}:${currentMins}`;
+      const todayDateStr = now.toISOString().slice(0, 10);
+
+      const dueTasks = tasks.filter((t) => {
+        if (t.completed) return false;
+        if (t.date && t.date !== todayDateStr) return false;
+        if (!t.time) return false;
+        if (remindedTaskIdsRef.current.has(t.id)) return false;
+
+        return t.time === nowTimeStr;
+      });
+
+      for (const t of dueTasks) {
+        remindedTaskIdsRef.current.add(t.id);
+        sounds.playWarning();
+
+        // Dispatch to Bale if user has Bale connected and enabled
+        if (currentUser.baleChatId && currentUser.baleNotificationsEnabled !== false) {
+          try {
+            await api.testBaleNotification({
+              userId: currentUser.id,
+              title: `⏰ یادآوری تسک: ${t.title}`,
+              message: `کاربر گرامی ${currentUser.name}، زمان انجام وظیفه «${t.title}» فرا رسیده است (ساعت ${t.time}).\nجهت ثبت گزارش و بررسی به اپلیکیشن بگ تایم مراجعه فرمایید.`,
+            });
+          } catch {
+            // Ignore background error
+          }
+        }
+      }
+    };
+
+    const interval = setInterval(checkDueReminders, 30000);
+    return () => clearInterval(interval);
+  }, [currentUser, tasks]);
 
   // Refresh active room data
   const refreshActiveRoom = useCallback(async () => {
@@ -915,10 +961,13 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshTasks();
   };
 
-  // Load initial data
+  // Load initial data (Fast, Offline-first, Parallelized)
   useEffect(() => {
     async function init() {
-      setIsLoading(true);
+      // If we don't have a cached user, show brief loading while checking token
+      if (!api.getCachedUser() && api.getAuthToken()) {
+        setIsLoading(true);
+      }
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const inviteRoom = urlParams.get('room') || urlParams.get('room_id');
@@ -926,12 +975,13 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           sessionStorage.setItem('taskrooz_pending_room', inviteRoom);
         }
 
+        // Fast user verification
         const user = await api.getCurrentUser();
         if (user) {
           setCurrentUser(user);
           if (inviteRoom) {
             sessionStorage.removeItem('taskrooz_pending_room');
-            await joinFocusRoom(inviteRoom);
+            joinFocusRoom(inviteRoom).catch(() => {});
           }
         }
 
@@ -961,10 +1011,30 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           remoteFonts.forEach(injectFontLink);
         } catch {}
       } catch (e) {
-        console.error('Initialization error:', e);
+        console.error('Initialization user check error:', e);
       } finally {
+        // Drop the loading screen immediately so the app is accessible instantly!
         setIsLoading(false);
       }
+
+      // Concurrently load all other data in PARALLEL in background
+      Promise.allSettled([
+        api.getCategories().then((cats) => setCategories(cats)),
+        refreshProjects(),
+        api.getGoals().then((gList) => setGoals(gList)),
+        api.getPersonalityResult().then((pRes) => setPersonalityResult(pRes)),
+        api.getDailyNotes().then((notes) => setDailyNotes(notes)),
+        api.getGlobalSettings().then((gSettings) => {
+          setGlobalSettings(gSettings);
+          if (gSettings.enforcedFont) {
+            setSystemFontState(gSettings.enforcedFont);
+          }
+        }),
+        api.fetchCustomFonts().then((remoteFonts) => {
+          setCustomFonts(remoteFonts);
+          remoteFonts.forEach(injectFontLink);
+        }),
+      ]);
     }
     init();
   }, []);

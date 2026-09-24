@@ -478,6 +478,7 @@ export const api = {
         body: JSON.stringify({ username: cleanUser, password: cleanPass }),
       });
       setAuthToken(data.token);
+      this.setCachedUser(data.user);
       return data;
     } catch (err: any) {
       // If IIS returned 405 Method Not Allowed or blocked POST, retry via GET request
@@ -487,6 +488,7 @@ export const api = {
           { method: 'GET' }
         );
         setAuthToken(data.token);
+        this.setCachedUser(data.user);
         return data;
       } catch (retryErr: any) {
         // Fallback for Super Admin Mohusyn so the owner is NEVER locked out of their app
@@ -500,6 +502,7 @@ export const api = {
           };
           const token = btoa('usr_admin_mohusyn:' + Date.now());
           setAuthToken(token);
+          this.setCachedUser(adminUser);
           return { user: adminUser, token };
         }
         throw new Error(err.message || 'نام کاربری یا کلمه عبور نادرست است.');
@@ -509,15 +512,30 @@ export const api = {
 
   async getCurrentUser(): Promise<User | null> {
     const token = getAuthToken();
-    if (!token) return null;
+    if (!token) {
+      this.setCachedUser(null);
+      return null;
+    }
 
     try {
-      const data = await request<{ authenticated: boolean; user?: User }>('api/auth.php?action=me');
-      if (data.authenticated && data.user) return data.user;
+      // 1.8-second timeout controller so app NEVER hangs on loading
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 1800) : null;
+      const data = await request<{ authenticated: boolean; user?: User }>('api/auth.php?action=me', {
+        signal: controller?.signal,
+      });
+      if (timeoutId) clearTimeout(timeoutId);
+      if (data.authenticated && data.user) {
+        this.setCachedUser(data.user);
+        return data.user;
+      }
       removeAuthToken();
+      this.setCachedUser(null);
       return null;
     } catch {
-      removeAuthToken();
+      // If network fails or times out, fallback to local cached user immediately
+      const cached = this.getCachedUser();
+      if (cached) return cached;
       return null;
     }
   },
@@ -529,6 +547,7 @@ export const api = {
       // ignore
     }
     removeAuthToken();
+    this.setCachedUser(null);
   },
 
   // Active Sessions & Device Management ("نشست‌های فعال و انداختن بیرون دستگاه")
