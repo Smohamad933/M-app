@@ -14,7 +14,7 @@ if (!empty($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'])) {
     $method = strtoupper($_POST['_method']);
 }
 
-$input = getJsonInput();
+$input = array_merge($_GET, $_POST, getJsonInput());
 $action = $_GET['action'] ?? $input['action'] ?? '';
 
 /**

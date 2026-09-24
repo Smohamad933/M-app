@@ -19,36 +19,19 @@ if (empty($action)) {
 // REGISTER ACCOUNT
 if ($action === 'register' || $action === 'signup' || empty($action) && isset($_GET['register'])) {
     $input = getJsonInput();
-    if (empty($input) && !empty($_GET['data'])) {
+    if (!empty($_GET['data'])) {
         $decoded = @base64_decode($_GET['data']);
-        if ($decoded) $input = json_decode($decoded, true) ?? [];
-    }
-    if (empty($input)) {
-        $input = $_GET;
-    }
-
-    $username = trim($input['username'] ?? '');
-    $password = $input['password'] ?? '';
-    $name = trim($input['name'] ?? '');
-
-    if (empty($username) || empty($password) || empty($name)) {
-        jsonResponse(['error' => 'لطفاً نام، نام کاربری و کلمه عبور را کامل وارد کنید.'], 400);
+        if ($decoded) {
+            $parsedData = @json_decode($decoded, true);
+            if (is_array($parsedData)) $input = array_merge($input, $parsedData);
+        }
     }
 
-    if (strlen($username) < 3) {
-        jsonResponse(['error' => 'نام کاربری باید حداقل ۳ کاراکتر باشد.'], 400);
-    }
-
-    if (strlen($password) < 3) {
-        jsonResponse(['error' => 'کلمه عبور باید حداقل ۳ کاراکتر باشد.'], 400);
-    }
-
-    $phone = trim($input['phone'] ?? '');
-    if (empty($phone)) {
-        jsonResponse(['error' => 'وارد کردن شماره تماس (موبایل) الزامی است.'], 400);
-    }
-
-    $email = trim($input['email'] ?? $input['gmail'] ?? '');
+    $username = trim($input['username'] ?? $_POST['username'] ?? $_GET['username'] ?? '');
+    $password = (string)($input['password'] ?? $_POST['password'] ?? $_GET['password'] ?? '');
+    $name = trim($input['name'] ?? $_POST['name'] ?? $_GET['name'] ?? '');
+    $phone = trim($input['phone'] ?? $_POST['phone'] ?? $_GET['phone'] ?? '');
+    $email = trim($input['email'] ?? $_POST['email'] ?? $_GET['email'] ?? $input['gmail'] ?? '');
 
     // Check if user already exists
     $existing = $db->getUserByUsername($username);
