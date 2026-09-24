@@ -12,9 +12,215 @@
         "plan": "pro"
       },
       "isProfileCompleted": true
+    },
+    {
+      "id": "usr_1790279256831_msc5",
+      "numericId": 1001,
+      "username": "test_user_1790279256830",
+      "password": "TestPassword123",
+      "name": "تست کننده سیستم",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "267596",
+      "phone": "09126711710",
+      "email": "tester_1790279256830@taskrooz.local",
+      "province": "اصفهان",
+      "city": "اصفهان",
+      "birthDate": "1375/02/10",
+      "jobTitle": "مهندس ارشد نرم‌افزار",
+      "skills": [
+        "TypeScript",
+        "React",
+        "Docker"
+      ],
+      "dailyTimeline": {
+        "wakeUp": "06:00",
+        "workStart": "08:00",
+        "lunch": "13:00",
+        "gym": "17:30",
+        "sleep": "23:00"
+      },
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": true,
+      "createdAt": "2026-09-24T19:47:36.831Z"
+    },
+    {
+      "id": "usr_1790279256880_u31n",
+      "numericId": 1002,
+      "username": "regular_user_1790279256879",
+      "password": "Password123!",
+      "name": "کاربر معمولی بدون دسترسی",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "482228",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-09-24T19:47:36.880Z"
+    },
+    {
+      "id": "usr_1790279256934_cezc",
+      "numericId": 1003,
+      "username": "user_target_1790279256933",
+      "password": "TargetPass123",
+      "name": "کاربر هدف انتصاب تسک",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "472872",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-09-24T19:47:36.934Z"
+    },
+    {
+      "id": "usr_1790279256961_o9hg",
+      "numericId": 1004,
+      "username": "live_member_1790279256960",
+      "password": "MemberPass123",
+      "name": "عضو تازه پیوسته به سامانه",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "676786",
+      "city": "شیراز",
+      "jobTitle": "کارشناس تضمین کیفیت (QA)",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-09-24T19:47:36.961Z"
+    },
+    {
+      "id": "usr_1790279256983_qtb4",
+      "numericId": 1005,
+      "username": "reza_test_1790279256982",
+      "password": "RezaPassword123",
+      "name": "رضا",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "834940",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-09-24T19:47:36.983Z"
+    },
+    {
+      "id": "usr_1790279256996_ea1b",
+      "numericId": 1006,
+      "username": "student_1790279256995",
+      "password": "StudentPass123",
+      "name": "سارا احمدی",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "477036",
+      "phone": "09125464253",
+      "email": "student_1790279256995@taskrooz.local",
+      "birthDate": "1381/06/20",
+      "jobTitle": "کارشناس هوش مصنوعی",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-09-24T19:47:36.996Z"
+    },
+    {
+      "id": "usr_1790279257035_bswi",
+      "numericId": 1007,
+      "username": "noadmin_1790279257034",
+      "password": "Pass123!",
+      "name": "کاربر بدون دسترسی",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "486570",
+      "phone": "09125511238",
+      "email": "noadmin_1790279257034@taskrooz.local",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-09-24T19:47:37.035Z"
+    },
+    {
+      "id": "usr_1790279257133_67r1",
+      "numericId": 1008,
+      "username": "bale_strict_1790279257132",
+      "password": "StrictPass123!",
+      "name": "کاربر آزمون بله",
+      "role": "user",
+      "status": "pending_verification",
+      "isDemo": false,
+      "isVerified": false,
+      "verificationCode": "557066",
+      "phone": "09121379604",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-09-24T19:47:37.133Z"
+    },
+    {
+      "id": "usr_1790279280383_utfz",
+      "numericId": 1009,
+      "username": "curl_user_1",
+      "password": "Password123!",
+      "name": "تست کاربر",
+      "role": "user",
+      "status": "pending_verification",
+      "isDemo": false,
+      "isVerified": false,
+      "verificationCode": "458233",
+      "phone": "09121111111",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-09-24T19:48:00.383Z"
     }
   ],
-  "tasks": [],
+  "tasks": [
+    {
+      "id": "task_1790279256998_ek4e0",
+      "userId": "usr_1790279256996_ea1b",
+      "projectId": null,
+      "title": "تکمیل ماژول شبکه عصبی",
+      "date": "1405-01-01",
+      "time": "14:00",
+      "durationMinutes": 0,
+      "completed": false,
+      "priority": "high",
+      "categoryId": "cat-work",
+      "isPinned": false,
+      "focusMinutesSpent": 0,
+      "subtasks": [],
+      "createdAt": "2026-09-24T19:47:36.998Z"
+    }
+  ],
   "categories": [
     {
       "id": "cat-work",
@@ -61,6 +267,194 @@
   ],
   "focus_rooms": [
     {
+      "id": "room_hc4xet",
+      "name": "اتاق آزمایشی حذف کلی",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1790279257032,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۱۹:۴۷",
+          "lastPing": 1790279257032
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1790279257032",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق آزمایشی حذف کلی» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
+          "timestamp": "۱۹:۴۷"
+        },
+        {
+          "id": "msg_delall_1790279257_zzvj",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
+        }
+      ],
+      "createdAt": "2026-09-24T19:47:37.032Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
+    },
+    {
+      "id": "room_atxz0o",
+      "name": "اتاق تمرکز و مطالعه مشترک",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1790279256988,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۱۹:۴۷",
+          "lastPing": 1790279256988
+        },
+        {
+          "userId": "usr_1790279256983_qtb4",
+          "userName": "رضا",
+          "isHost": false,
+          "joinedAt": "۱۹:۴۷",
+          "lastPing": 1790279256991
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1790279256988",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق تمرکز و مطالعه مشترک» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
+          "timestamp": "۱۹:۴۷"
+        },
+        {
+          "id": "msg_join_1790279256991",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "رضا به اتاق پیوست.",
+          "timestamp": "۱۹:۴۷"
+        },
+        {
+          "id": "msg_delall_1790279257_q0fn",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
+        }
+      ],
+      "createdAt": "2026-09-24T19:47:36.988Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
+    },
+    {
+      "id": "room_dynamic_1790279256979",
+      "name": "اتاق تمرکز مشترک",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1790279256980,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۱۹:۴۷",
+          "lastPing": 1790279256981
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1790279256980",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
+          "timestamp": "۱۹:۴۷"
+        },
+        {
+          "id": "msg_join_1790279256981",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
+          "timestamp": "۱۹:۴۷"
+        },
+        {
+          "id": "msg_delall_1790279257_zy7n",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
+        }
+      ],
+      "createdAt": "2026-09-24T19:47:36.980Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
+    },
+    {
+      "id": "room_ql0hhw",
+      "name": "اتاق تمرکز برنامه‌نویسان ارشد",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1790279256895,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۱۹:۴۷",
+          "lastPing": 1790279256889
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1790279256889",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق تمرکز برنامه‌نویسان ارشد» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
+          "timestamp": "۱۹:۴۷"
+        },
+        {
+          "id": "msg_1790279256892_6cqa",
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "text": "سلام به همگی، تمرکز ۲۵ دقیقه‌ای را آغاز می‌کنیم! 🎯",
+          "timestamp": "۱۹:۴۷"
+        },
+        {
+          "id": "msg_del_1790279256897",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط سید محمدحسین شیخ الاسلامی (Mohusyn) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه در سرور محفوظ مانده و سپس به طور کامل پاکسازی خواهند شد.",
+          "timestamp": "۱۹:۴۷"
+        }
+      ],
+      "createdAt": "2026-09-24T19:47:36.889Z",
+      "isDeleted": true,
+      "deletedAt": 1790279256
+    },
+    {
       "id": "room_g1ry5s",
       "name": "اتاق تمرکز و مطالعه مشترک",
       "hostId": "usr_admin_mohusyn",
@@ -101,9 +495,18 @@
           "userName": "سیستم",
           "text": "رضا به اتاق پیوست.",
           "timestamp": "۱۳:۰۲"
+        },
+        {
+          "id": "msg_delall_1790279257_j93m",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T13:02:11.851Z"
+      "createdAt": "2026-09-21T13:02:11.851Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dynamic_1789995731840",
@@ -139,9 +542,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۱۳:۰۲"
+        },
+        {
+          "id": "msg_delall_1790279257_z1ng",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T13:02:11.842Z"
+      "createdAt": "2026-09-21T13:02:11.842Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_qod088",
@@ -184,9 +596,18 @@
           "userName": "سیستم",
           "text": "رضا به اتاق پیوست.",
           "timestamp": "۱۱:۴۶"
+        },
+        {
+          "id": "msg_delall_1790279257_uvo2",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T11:46:25.808Z"
+      "createdAt": "2026-09-21T11:46:25.808Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dynamic_1789991185799",
@@ -222,9 +643,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۱۱:۴۶"
+        },
+        {
+          "id": "msg_delall_1790279257_g7ec",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T11:46:25.800Z"
+      "createdAt": "2026-09-21T11:46:25.800Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_u248v9",
@@ -267,9 +697,18 @@
           "userName": "سیستم",
           "text": "رضا به اتاق پیوست.",
           "timestamp": "۱۱:۲۰"
+        },
+        {
+          "id": "msg_delall_1790279257_xiii",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T11:20:01.371Z"
+      "createdAt": "2026-09-21T11:20:01.371Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dynamic_1789989601352",
@@ -305,9 +744,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۱۱:۲۰"
+        },
+        {
+          "id": "msg_delall_1790279257_ojk2",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T11:20:01.353Z"
+      "createdAt": "2026-09-21T11:20:01.353Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_nyzt9q",
@@ -350,9 +798,18 @@
           "userName": "سیستم",
           "text": "رضا به اتاق پیوست.",
           "timestamp": "۱۰:۴۶"
+        },
+        {
+          "id": "msg_delall_1790279257_otc4",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T10:46:14.757Z"
+      "createdAt": "2026-09-21T10:46:14.757Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dynamic_1789987574749",
@@ -388,9 +845,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۱۰:۴۶"
+        },
+        {
+          "id": "msg_delall_1790279257_p01w",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T10:46:14.750Z"
+      "createdAt": "2026-09-21T10:46:14.750Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_hg1fqm",
@@ -433,9 +899,18 @@
           "userName": "سیستم",
           "text": "رضا به اتاق پیوست.",
           "timestamp": "۱۰:۳۷"
+        },
+        {
+          "id": "msg_delall_1790279257_o1h3",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T10:37:27.465Z"
+      "createdAt": "2026-09-21T10:37:27.465Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dynamic_1789987047456",
@@ -471,9 +946,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۱۰:۳۷"
+        },
+        {
+          "id": "msg_delall_1790279257_45r1",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T10:37:27.458Z"
+      "createdAt": "2026-09-21T10:37:27.458Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_foca6o",
@@ -516,9 +1000,18 @@
           "userName": "سیستم",
           "text": "رضا به اتاق پیوست.",
           "timestamp": "۱۰:۳۶"
+        },
+        {
+          "id": "msg_delall_1790279257_oce0",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T10:36:14.166Z"
+      "createdAt": "2026-09-21T10:36:14.166Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dynamic_1789986974159",
@@ -554,9 +1047,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۱۰:۳۶"
+        },
+        {
+          "id": "msg_delall_1790279257_nwpm",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T10:36:14.160Z"
+      "createdAt": "2026-09-21T10:36:14.160Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_jeqxnj",
@@ -599,9 +1101,18 @@
           "userName": "سیستم",
           "text": "رضا به اتاق پیوست.",
           "timestamp": "۱۰:۲۴"
+        },
+        {
+          "id": "msg_delall_1790279257_760b",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T10:24:22.661Z"
+      "createdAt": "2026-09-21T10:24:22.661Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dynamic_1789986262638",
@@ -637,9 +1148,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۱۰:۲۴"
+        },
+        {
+          "id": "msg_delall_1790279257_daqv",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T10:24:22.639Z"
+      "createdAt": "2026-09-21T10:24:22.639Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dynamic_1789986235059",
@@ -675,9 +1195,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۱۰:۲۳"
+        },
+        {
+          "id": "msg_delall_1790279257_s6nd",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T10:23:55.060Z"
+      "createdAt": "2026-09-21T10:23:55.060Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dynamic_1789984039262",
@@ -713,9 +1242,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۰۹:۴۷"
+        },
+        {
+          "id": "msg_delall_1790279257_u2o3",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T09:47:19.263Z"
+      "createdAt": "2026-09-21T09:47:19.263Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dynamic_1789983202888",
@@ -751,9 +1289,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۰۹:۳۳"
+        },
+        {
+          "id": "msg_delall_1790279257_685p",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T09:33:22.889Z"
+      "createdAt": "2026-09-21T09:33:22.889Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dynamic_1789977926020",
@@ -789,9 +1336,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۰۸:۰۵"
+        },
+        {
+          "id": "msg_delall_1790279257_t5sn",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T08:05:26.020Z"
+      "createdAt": "2026-09-21T08:05:26.020Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "اتاق_طراحی_محصول",
@@ -827,9 +1383,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۰۸:۰۴"
+        },
+        {
+          "id": "msg_delall_1790279257_rzqb",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T08:04:29.613Z"
+      "createdAt": "2026-09-21T08:04:29.613Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dev",
@@ -865,9 +1430,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۰۸:۰۴"
+        },
+        {
+          "id": "msg_delall_1790279257_3az1",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T08:04:29.610Z"
+      "createdAt": "2026-09-21T08:04:29.610Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dynamic_1789977853403",
@@ -903,9 +1477,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۰۸:۰۴"
+        },
+        {
+          "id": "msg_delall_1790279257_6x4h",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T08:04:13.403Z"
+      "createdAt": "2026-09-21T08:04:13.403Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_dynamic_1789977824509",
@@ -941,9 +1524,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۰۸:۰۳"
+        },
+        {
+          "id": "msg_delall_1790279257_qzfu",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T08:03:44.510Z"
+      "createdAt": "2026-09-21T08:03:44.510Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_deepwork",
@@ -962,7 +1554,7 @@
           "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
           "isHost": true,
           "joinedAt": "۰۸:۰۳",
-          "lastPing": 1789995731839
+          "lastPing": 1790279256978
         }
       ],
       "messages": [
@@ -979,9 +1571,18 @@
           "userName": "سیستم",
           "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
           "timestamp": "۰۸:۰۳"
+        },
+        {
+          "id": "msg_delall_1790279257_6yvw",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T08:03:44.508Z"
+      "createdAt": "2026-09-21T08:03:44.508Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     },
     {
       "id": "room_pgeesu",
@@ -1024,14 +1625,35 @@
           "userName": "سیستم",
           "text": "Test به اتاق پیوست.",
           "timestamp": "۰۷:۵۱"
+        },
+        {
+          "id": "msg_delall_1790279257_354i",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۴۷"
         }
       ],
-      "createdAt": "2026-09-21T07:51:39.994Z"
+      "createdAt": "2026-09-21T07:51:39.994Z",
+      "isDeleted": true,
+      "deletedAt": 1790279257
     }
   ],
   "projects": [],
   "goals": [],
-  "dailyNotes": [],
+  "dailyNotes": [
+    {
+      "id": "note_1790279256871_fhwz",
+      "userId": "usr_admin_mohusyn",
+      "date": "2026-09-21",
+      "content": "امروز جلسات تیمی فشرده بود اما کارهای اصلی با دقت انجام شد.",
+      "habitsCompleted": [
+        "water",
+        "workout"
+      ],
+      "updatedAt": "2026-09-24T19:47:36.871Z"
+    }
+  ],
   "personalityResults": [
     {
       "id": "pers_1789976262306_ju6y",
@@ -1047,7 +1669,7 @@
         "اختصاص بلوک‌های تمرکز عمیق ۹۰ دقیقه‌ای در ساعات آغازین صبح",
         "حذف اعلان‌های پیام‌رسان‌ها در زمان کار با کد و طراحی معماری"
       ],
-      "completedAt": "2026-09-21T13:02:11.794Z"
+      "completedAt": "2026-09-24T19:47:36.947Z"
     }
   ],
   "globalSettings": {
@@ -1056,7 +1678,35 @@
       "مشاور حقوقی و مالکیت فکری",
       "متخصص DevOps و کلود"
     ],
-    "updatedAt": "2026-09-21T13:02:11.872Z"
+    "updatedAt": "2026-09-24T19:47:37.083Z",
+    "baleBot": {
+      "enabled": true,
+      "token": "1002345678:ABCdefGHIjklMNOpqrSTUvwxYZ_12345678",
+      "botUsername": "BagTime_Bot",
+      "verifyOnRegister": true,
+      "sendNotifications": true,
+      "allowTaskCreation": true
+    },
+    "broadcastNotice": {
+      "enabled": true,
+      "title": "جلسه اضطراری توسعه فنی",
+      "message": "تمامی اعضا راس ساعت ۱۷ در اتاق تمرکز حضور به هم رسانند.",
+      "type": "urgent"
+    },
+    "enforcedFont": "cairo",
+    "defaultDailyFocusMinutes": 120,
+    "workHoursPolicy": {
+      "start": "08:00",
+      "end": "16:30"
+    },
+    "roomPolicy": {
+      "allowUserRoomCreation": true,
+      "allowPublicChat": true
+    },
+    "dailyMantra": "تمرکز تیمی حداکثری و تحقق اهداف فصلی",
+    "texts": {
+      "appName": ""
+    }
   },
   "custom_fonts": [
     {
@@ -1178,6 +1828,16 @@
       "description": "فونت آپلود شده در تست یکپارچه",
       "isCustom": true,
       "createdAt": "2026-09-21T13:02:11.831Z"
+    },
+    {
+      "id": "font_1790279256970_i5sd",
+      "name": "ساحل بولد سفارشی",
+      "family": "SahelBoldCustom",
+      "fontUrl": "/fonts/Sahel-Bold.woff2",
+      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
+      "description": "فونت آپلود شده در تست یکپارچه",
+      "isCustom": true,
+      "createdAt": "2026-09-24T19:47:36.970Z"
     }
   ],
   "friendships": [],
@@ -1198,7 +1858,19 @@
       "ip": "127.0.0.1",
       "location": "ایران",
       "createdAt": "2026-09-24T19:37:15.464Z",
-      "lastActive": "2026-09-24T19:37:15.511Z"
+      "lastActive": "2026-09-24T19:47:37.123Z"
+    },
+    {
+      "id": "sess_7573725f3137",
+      "userId": "usr_1790279257044_2h5d",
+      "token": "dXNyXzE3OTAyNzkyNTcwNDRfMmg1ZDoxNzkwMjc5MjU3MDU2",
+      "device": "رایانه شخصی (PC)",
+      "browser": "مرورگر وب",
+      "isMobile": false,
+      "ip": "127.0.0.1",
+      "location": "اصفهان",
+      "createdAt": "2026-09-24T19:47:37.056Z",
+      "lastActive": "2026-09-24T19:48:02.885Z"
     }
   ],
   "revoked_tokens": [

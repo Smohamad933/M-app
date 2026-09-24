@@ -118,7 +118,24 @@ export const LoginScreen: React.FC = () => {
           setLoading(false);
           return;
         }
-        await login(username.trim(), password);
+        try {
+          await login(username.trim(), password);
+        } catch (loginErr: any) {
+          if (loginErr?.requiresVerification && loginErr?.userId) {
+            setBaleVerificationData({
+              userId: loginErr.userId,
+              username: username.trim(),
+              phone: loginErr.phone || '',
+              verificationCode: loginErr.verificationCode,
+              baleBotUsername: loginErr.baleBotUsername || 'BagTime_Bot',
+              baleBotLink: loginErr.baleBotLink || `https://ble.ir/BagTime_Bot?start=verify_${loginErr.verificationCode}`,
+            });
+            setError(null);
+            setLoading(false);
+            return;
+          }
+          throw loginErr;
+        }
       } else {
         // Fast, frictionless registration
         if (!name.trim() || !username.trim() || !password.trim()) {

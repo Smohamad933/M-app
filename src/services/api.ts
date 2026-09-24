@@ -81,8 +81,8 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
     'سایر / فریلنسر آزاد',
   ],
   baleBot: {
-    enabled: false,
-    token: '',
+    enabled: true,
+    token: '1002345678:ABCdefGHIjklMNOpqrSTUvwxYZ_12345678',
     botUsername: 'BagTime_Bot',
     verifyOnRegister: true,
     sendNotifications: true,
@@ -290,7 +290,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     }
 
     if (!res.ok) {
-      throw new Error(data.error || 'خطایی در پردازش اطلاعات در سرور رخ داد.');
+      const err: any = new Error(data.error || 'خطایی در پردازش اطلاعات در سرور رخ داد.');
+      if (typeof data === 'object') {
+        Object.assign(err, data);
+      }
+      throw err;
     }
 
     if (isGet) {
@@ -355,9 +359,17 @@ export const api = {
       dailyTimeline: data.dailyTimeline || {},
     };
 
-    let res: { user: User; token: string; message: string };
+    let res: {
+      user: User;
+      token?: string | null;
+      message: string;
+      requiresVerification?: boolean;
+      verificationCode?: string;
+      baleBotUsername?: string;
+      baleBotLink?: string;
+    };
     try {
-      res = await request<{ user: User; token: string; message: string }>('api/auth.php?action=register', {
+      res = await request<typeof res>('api/auth.php?action=register', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
@@ -375,7 +387,7 @@ export const api = {
           province: payload.province,
           jobTitle: payload.jobTitle,
         });
-        res = await request<{ user: User; token: string; message: string }>(
+        res = await request<typeof res>(
           `api/auth.php?${queryParams.toString()}`,
           { method: 'GET' }
         );
@@ -383,7 +395,7 @@ export const api = {
         // Retry 2: Send via base64 encoded data parameter
         try {
           const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-          res = await request<{ user: User; token: string; message: string }>(
+          res = await request<typeof res>(
             `api/auth.php?action=register&data=${encodeURIComponent(encodedData)}`,
             { method: 'GET' }
           );
@@ -422,7 +434,17 @@ export const api = {
       }
     }
 
-    setAuthToken(res.token);
+    // If Bale verification is required, do NOT set auth token or log in!
+    if (res?.requiresVerification) {
+      return res as any;
+    }
+
+    if (res?.token) {
+      setAuthToken(res.token);
+      if (res.user) {
+        this.setCachedUser(res.user);
+      }
+    }
     broadcastSync('USER_REGISTERED', res.user);
     try {
       const raw = localStorage.getItem('taskrooz_registered_users');
@@ -437,9 +459,16 @@ export const api = {
 
   async checkVerification(userId: string): Promise<{ verified: boolean; user?: User; token?: string }> {
     try {
-      return await request<{ verified: boolean; user?: User; token?: string }>(
+      const res = await request<{ verified: boolean; user?: User; token?: string }>(
         `api/auth.php?action=check_verification&userId=${encodeURIComponent(userId)}`
       );
+      if (res.verified && res.token) {
+        setAuthToken(res.token);
+        if (res.user) {
+          this.setCachedUser(res.user);
+        }
+      }
+      return res;
     } catch {
       return { verified: false };
     }
@@ -521,6 +550,9 @@ export const api = {
       this.setCachedUser(data.user);
       return data;
     } catch (err: any) {
+      if (err?.requiresVerification) {
+        throw err;
+      }
       // If IIS returned 405 Method Not Allowed or blocked POST, retry via GET request
       try {
         const data = await request<{ user: User; token: string; message: string }>(
@@ -531,6 +563,9 @@ export const api = {
         this.setCachedUser(data.user);
         return data;
       } catch (retryErr: any) {
+        if (retryErr?.requiresVerification) {
+          throw retryErr;
+        }
         // Fallback for Super Admin Mohusyn so the owner is NEVER locked out of their app
         if (isMohusyn) {
           const adminUser: User = {

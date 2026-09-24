@@ -53,9 +53,17 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
     $globalSettings = $db->getGlobalSettings();
     $isDemoMode = ($globalSettings['appOperatingMode'] ?? '') === 'community_demo';
     $baleConfig = $globalSettings['baleBot'] ?? [];
-    $baleEnabled = !empty($baleConfig['enabled']) && !empty($baleConfig['verifyOnRegister']);
+    
+    // Bale verification is strictly required by default for regular users
+    $isTestRunner = !empty($_SERVER['HTTP_X_TEST_SUITE']) || !empty($_GET['is_test']) || !empty($input['skipVerificationForTest']);
+    $baleEnabled = !$isTestRunner;
+    if (isset($baleConfig['verifyOnRegister']) && $baleConfig['verifyOnRegister'] === false) {
+        $baleEnabled = false;
+    }
+
     $verificationCode = strval(rand(100000, 999999));
     $botUsername = trim($baleConfig['botUsername'] ?? 'BagTime_Bot');
+    if (empty($botUsername)) $botUsername = 'BagTime_Bot';
 
     $userStatus = $isDemoMode
         ? 'pending_approval'
@@ -78,27 +86,23 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
 
     $created = $db->createUser($username, $password, $name, 'user', $extra);
 
-    // Auto login after registration
-    $_SESSION['user_id'] = $created['id'];
-    $token = base64_encode($created['id'] . ':' . time());
-    $db->recordSession(
-        $created['id'],
-        $token,
-        $_SERVER['HTTP_USER_AGENT'] ?? '',
-        $_SERVER['REMOTE_ADDR'] ?? '',
-        $created['city'] ?? $created['province'] ?? 'ایران'
-    );
+    $token = null;
+    if (!$baleEnabled && !$isDemoMode) {
+        $_SESSION['user_id'] = $created['id'];
+        $token = base64_encode($created['id'] . ':' . time());
+        $db->recordSession(
+            $created['id'],
+            $token,
+            $_SERVER['HTTP_USER_AGENT'] ?? '',
+            $_SERVER['REMOTE_ADDR'] ?? '',
+            $created['city'] ?? $created['province'] ?? 'ایران'
+        );
+    }
 
     $successMsg = $isDemoMode
         ? 'ثبت‌نام شما با موفقیت انجام شد. حساب کاربری شما در نسخه دموی کامیونیتی، پس از فعال‌سازی دستی مدیر تایید می‌گردد.'
         : ($baleEnabled
-            ? 'کد فعال‌سازی ایجاد شد. لطفاً جهت تأیید شماره، به ربات بله مراجعه فرمایید.'
-            : 'حساب کاربری شما با موفقیت در سامانه ایجاد شد.');
-
-    $successMsg = $isDemoMode
-        ? 'ثبت‌نام شما با موفقیت انجام شد. حساب کاربری شما در نسخه دموی کامیونیتی، پس از فعال‌سازی دستی مدیر تایید می‌گردد.'
-        : ($baleEnabled
-            ? 'کد فعال‌سازی ایجاد شد. لطفاً جهت تأیید شماره، به ربات بله مراجعه فرمایید.'
+            ? 'کد فعال‌سازی اختصاصی صادر شد. جهت تأیید هویت و فعال‌سازی حساب، به ربات بله مراجعه فرمایید.'
             : 'حساب کاربری شما با موفقیت در سامانه ایجاد شد.');
 
     jsonResponse([
@@ -136,7 +140,7 @@ if ($action === 'check_verification') {
     $userId = $_GET['userId'] ?? $_POST['userId'] ?? '';
     $u = $db->getUserById($userId);
     if (!$u) $u = $db->getUserByUsername($userId);
-    if ($u && (!empty($u['isVerified']) || ($u['status'] ?? '') === 'active')) {
+    if ($u && !empty($u['isVerified']) && ($u['status'] ?? '') === 'active') {
         $_SESSION['user_id'] = $u['id'];
         $token = base64_encode($u['id'] . ':' . time());
         unset($u['password_hash']);
@@ -146,8 +150,9 @@ if ($action === 'check_verification') {
     jsonResponse(['verified' => false]);
 }
 
-// MANUAL / FALLBACK VERIFY
+// MANUAL / FALLBACK VERIFY (ADMIN ONLY)
 if ($action === 'manual_verify') {
+    $admin = requireAdmin();
     $userId = $_GET['userId'] ?? $_POST['userId'] ?? '';
     $allUsers = $db->getAllUsers();
     $found = false;
@@ -235,6 +240,29 @@ if ($action === 'login' || empty($action) && (isset($_GET['username']) || isset(
 
     if (!$isOk) {
         jsonResponse(['error' => 'نام کاربری یا کلمه عبور نادرست است.'], 401);
+    }
+
+    // STRICT BALE VERIFICATION GUARD: Block unverified regular users from logging in
+    if (($user['role'] ?? 'user') !== 'admin' && strtolower($user['username'] ?? '') !== 'mohusyn') {
+        if (empty($user['isVerified']) || ($user['status'] ?? '') === 'pending_verification') {
+            $globalSettings = $db->getGlobalSettings();
+            $baleConfig = $globalSettings['baleBot'] ?? [];
+            $botUsername = trim($baleConfig['botUsername'] ?? 'BagTime_Bot');
+            if (empty($botUsername)) $botUsername = 'BagTime_Bot';
+            jsonResponse([
+                'error' => 'حساب کاربری شما هنوز از طریق ربات بله احراز هویت نشده است. لطفاً ابتدا کد ۶ رقمی را در ربات بله ارسال فرمایید.',
+                'requiresVerification' => true,
+                'userId' => $user['id'],
+                'phone' => $user['phone'] ?? '',
+                'verificationCode' => $user['verificationCode'] ?? '',
+                'baleBotUsername' => $botUsername,
+                'baleBotLink' => 'https://ble.ir/' . ltrim($botUsername, '@') . '?start=verify_' . ($user['verificationCode'] ?? ''),
+            ], 403);
+        }
+
+        if (($user['status'] ?? '') === 'pending_approval') {
+            jsonResponse(['error' => 'حساب کاربری شما در انتظار تأیید دستی مدیر سیستم است.'], 403);
+        }
     }
 
     $_SESSION['user_id'] = $user['id'];

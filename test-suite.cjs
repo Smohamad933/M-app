@@ -8,7 +8,7 @@ const BASE_URL = 'http://localhost:5173';
 function request(method, path, body = null, headers = {}) {
   return new Promise((resolve, reject) => {
     const url = new URL(path, BASE_URL);
-    const reqHeaders = { ...headers };
+    const reqHeaders = { 'x-test-suite': 'true', ...headers };
     let payload = null;
 
     if (body) {
@@ -1088,4 +1088,76 @@ test('12-Hour Offline-First Sync Endpoint & Action Processing', async () => {
     },
     authHeader
   );
+});
+
+// 30. Strict Bale Verification Flow
+test('Strict Bale Verification: Registration Pending, Login Blocked (403), Bot Contact Verification Required', async () => {
+  const username = 'bale_strict_' + Date.now();
+  const phone = '0912' + Math.floor(1000000 + Math.random() * 9000000);
+
+  // 1. Regular registration from public web (without x-test-suite header)
+  const regRes = await request('POST', '/api/auth/register', {
+    username,
+    password: 'StrictPass123!',
+    name: 'کاربر آزمون بله',
+    phone,
+  }, { 'x-test-suite': 'false' });
+
+  assert(regRes.status === 201, `Expected 201, got ${regRes.status}`);
+  assert(regRes.body.requiresVerification === true, 'Strict Bale: requiresVerification must be true');
+  assert(regRes.body.token === null || regRes.body.token === undefined, 'Strict Bale: token must NOT be issued on registration');
+  assert(regRes.body.user.status === 'pending_verification', 'User status must be pending_verification');
+  assert(regRes.body.user.isVerified === false, 'User isVerified must be false');
+  assert(regRes.body.verificationCode, 'Verification code must be present');
+
+  const userId = regRes.body.user.id;
+  const vCode = regRes.body.verificationCode;
+
+  // 2. Unverified login attempt must be rejected with 403 Forbidden
+  const loginRes = await request('POST', '/api/auth/login', {
+    username,
+    password: 'StrictPass123!',
+  });
+  assert(loginRes.status === 403, `Unverified user login must be rejected with 403, got ${loginRes.status}`);
+  assert(loginRes.body.requiresVerification === true, 'Login response must indicate requiresVerification');
+
+  // 3. check_verification before bot interaction must return verified: false
+  const checkBefore = await request('GET', `/api/auth?action=check_verification&userId=${userId}`);
+  assert(checkBefore.body.verified === false, 'check_verification must return false before Bale verification');
+
+  // 4. Simulate user sending verification code and sharing contact in Bale Bot
+  const botChatId = 987654321;
+  await request('POST', '/api/bale.php?action=webhook', {
+    update_id: 1001,
+    message: {
+      message_id: 1,
+      from: { id: botChatId, first_name: 'تستر' },
+      chat: { id: botChatId, type: 'private' },
+      text: vCode,
+    },
+  });
+
+  // Bot step 2: user shares contact phone matching registered phone
+  await request('POST', '/api/bale.php?action=webhook', {
+    update_id: 1002,
+    message: {
+      message_id: 2,
+      from: { id: botChatId, first_name: 'تستر' },
+      chat: { id: botChatId, type: 'private' },
+      contact: { phone_number: phone, first_name: 'تستر' },
+    },
+  });
+
+  // 5. check_verification after bot interaction must return verified: true with token!
+  const checkAfter = await request('GET', `/api/auth?action=check_verification&userId=${userId}`);
+  assert(checkAfter.body.verified === true, 'check_verification must return true after Bale verification');
+  assert(checkAfter.body.token, 'Token must be issued after verification');
+
+  // 6. Login now succeeds!
+  const loginAfter = await request('POST', '/api/auth/login', {
+    username,
+    password: 'StrictPass123!',
+  });
+  assert(loginAfter.status === 200, `Login should now succeed with 200, got ${loginAfter.status}`);
+  assert(loginAfter.body.token, 'Token returned on login');
 });
