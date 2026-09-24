@@ -296,6 +296,11 @@ if ($method === 'GET') {
         performBulkDelete($db, $_GET['ids'] ?? '', $currentUser);
     }
 
+    // All subsequent GET operations (report, export_csv, list all users) require admin authorization
+    if (!$isAdmin) {
+        jsonResponse(['error' => 'دسترسی فقط برای مدیر کل مجاز است.'], 403);
+    }
+
     if ($action === 'report') {
         $targetId = $_GET['user_id'] ?? $_GET['id'] ?? '';
         if (empty($targetId)) {
@@ -386,6 +391,11 @@ if ($method === 'POST') {
         performBulkDelete($db, $input['ids'] ?? ($_GET['ids'] ?? ''), $currentUser);
     }
 
+    // Creating or modifying arbitrary users requires admin privileges
+    if (!$isAdmin) {
+        jsonResponse(['error' => 'دسترسی فقط برای مدیر کل مجاز است.'], 403);
+    }
+
     // IIS 405 resilience: admin user-update fallback for servers that block the PUT verb
     if (($input['action'] ?? '') === 'update_user') {
         $id = $input['id'] ?? '';
@@ -446,6 +456,9 @@ if ($method === 'POST') {
 
 // PUT /api/users -> Update user
 if ($method === 'PUT') {
+    if (!$isAdmin) {
+        jsonResponse(['error' => 'دسترسی فقط برای مدیر کل مجاز است.'], 403);
+    }
     $input = getJsonInput();
     $id = $input['id'] ?? '';
     $name = trim($input['name'] ?? '');
