@@ -235,14 +235,14 @@ class TaskRoozDB {
             try {
                 $stmt = $this->pdo->prepare("SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?) LIMIT 1");
                 $stmt->execute([$id, $id]);
-                 = ->fetch();
-                if () {
+                $u = $stmt->fetch();
+                if ($u) {
                     if (!empty($u['skills_json'])) $u['skills'] = json_decode($u['skills_json'], true);
                     if (!empty($u['timeline_json'])) $u['dailyTimeline'] = json_decode($u['timeline_json'], true);
                     if (isset($u['birth_date']) && !isset($u['birthDate'])) $u['birthDate'] = $u['birth_date'];
                     if (isset($u['job_title']) && !isset($u['jobTitle'])) $u['jobTitle'] = $u['job_title'];
                     $u['isProfileCompleted'] = !empty($u['is_profile_completed']) || ($u['role'] === 'admin') || (!empty($u['birthDate']) && !empty($u['city']));
-                    return ;
+                    return $u;
                 }
             } catch (Exception $e) {}
         }
