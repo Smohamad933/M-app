@@ -105,6 +105,8 @@ if ($method === 'POST') {
                 'type' => 'info',
                 'timestamp' => date('Y-m-d H:i:s'),
                 'read' => false,
+                'senderId' => $myId,
+                'senderName' => $currentUser['name'],
             ];
         }
 

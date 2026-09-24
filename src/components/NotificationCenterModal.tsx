@@ -23,6 +23,8 @@ export interface AppNotification {
   taskId?: string;
   userId?: string;
   userName?: string;
+  senderId?: string;
+  senderName?: string;
 }
 
 interface NotificationCenterModalProps {
@@ -132,14 +134,51 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
 
     if (onNotificationClick) {
       onNotificationClick(n);
-    } else {
-      if (n.type === 'friend' && n.userId && onOpenChat) {
-        onOpenChat(n.userId, n.userName || 'همکار');
-        onClose();
-      } else if (n.type === 'task' && onOpenTask) {
-        onOpenTask(n.taskId || '');
-        onClose();
+      return;
+    }
+
+    // 1. Direct Chat Navigation: messages, deposits, peer requests
+    const isChatMessage =
+      n.title.includes('پیام جدید') ||
+      n.title.includes('واریزی') ||
+      n.message.includes('پیام') ||
+      n.type === 'friend' ||
+      Boolean(n.senderId);
+
+    if (isChatMessage && onOpenChat) {
+      let targetId = n.senderId || (n.type === 'friend' ? n.userId : undefined);
+      let targetName = n.senderName || n.userName;
+
+      // Extract username from message "@username" if targetId is missing
+      if (!targetId) {
+        const mUser = n.message.match(/@([A-Za-z0-9_-]+)/);
+        if (mUser) {
+          targetId = mUser[1];
+          if (!targetName) targetName = mUser[1];
+        }
       }
+
+      // Extract sender name from title "پیام جدید از <نام>"
+      if (!targetId) {
+        const mTitle = n.title.match(/پیام جدید از ([^💬\n\r]+)/);
+        if (mTitle) {
+          targetName = mTitle[1].trim();
+          targetId = targetName;
+        }
+      }
+
+      if (targetId) {
+        onOpenChat(targetId, targetName || 'کاربر');
+        onClose();
+        return;
+      }
+    }
+
+    // 2. Task Navigation
+    if (n.type === 'task' && onOpenTask) {
+      onOpenTask(n.taskId || '');
+      onClose();
+      return;
     }
   };
 

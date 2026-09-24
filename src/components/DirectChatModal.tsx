@@ -113,7 +113,8 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
     try {
       const days = planType === '6_months' ? 180 : planType === '3_months' ? 90 : 30;
       const expiresAt = new Date(Date.now() + days * 86400000).toISOString();
-      await setUserSubscription(friendId, 'pro', planType, expiresAt);
+      const planKey = planType === '6_months' ? 'ultra' : planType === '1_month' ? 'plus' : 'pro';
+      await setUserSubscription(friendId, planKey, planType, expiresAt);
       sounds.playComplete();
 
       const confirmationText = `✅ اشتراک ویژه «${planLabel}» شما با موفقیت تأیید و در سیستم فعال گردید. از امکانات تسک‌روز لذت ببرید! ⭐`;
@@ -205,9 +206,10 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
             }
 
             const targetUserInDirectory = users.find((u) => u.id === friendId) || friend;
+            const targetPlan = (targetUserInDirectory?.subscription?.plan || '').toLowerCase();
             const isTargetPro =
               targetUserInDirectory?.role === 'admin' ||
-              targetUserInDirectory?.subscription?.plan === 'pro';
+              (targetPlan !== '' && targetPlan !== 'free');
 
             return (
               <div

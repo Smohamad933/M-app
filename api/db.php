@@ -292,29 +292,16 @@ class TaskRoozDB {
 
     public function saveJson() {
         if (!is_array($this->data)) return;
-        $this->saveUsers();
-        $this->saveTasks();
-        $this->saveMessages();
-        $this->saveNotifications();
-        $this->saveSettings();
-
-        $encoded = json_encode($this->data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        $encoded = json_encode($this->data, JSON_UNESCAPED_UNICODE);
         if (!$encoded) return;
 
-        $pathsToSave = array_unique([
-            dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json',
-            __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json',
-            __DIR__ . DIRECTORY_SEPARATOR . 'db.json',
-        ]);
-
-        foreach ($pathsToSave as $p) {
-            $dir = dirname($p);
-            if (!is_dir($dir)) {
-                @mkdir($dir, 0777, true);
-            }
-            @file_put_contents($p, $encoded, LOCK_EX);
-            @chmod($p, 0666);
+        $primaryPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json';
+        $dir = dirname($primaryPath);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
         }
+        @file_put_contents($primaryPath, $encoded, LOCK_EX);
+        @chmod($primaryPath, 0666);
     }
 
     // --- User Operations (MySQL + JSON Dual Sync) ---
@@ -578,16 +565,20 @@ class TaskRoozDB {
     public function setUserSubscription($userId, $plan, $planType = null, $expiresAt = null) {
         $this->loadJson();
         $updated = false;
+        $cleanPlan = strtolower(trim((string)$plan));
+        $resolvedPlan = in_array($cleanPlan, ['plus', 'pro', 'ultra']) ? $cleanPlan : ($cleanPlan === 'free' ? 'free' : 'pro');
+        $resolvedPlanType = $planType ?: ($resolvedPlan === 'ultra' ? '6_months' : ($resolvedPlan === 'plus' ? '1_month' : '3_months'));
+
         if (isset($this->data['users'])) {
             foreach ($this->data['users'] as &$u) {
                 if ($u['id'] === $userId || (isset($u['username']) && strtolower($u['username']) === strtolower($userId))) {
                     $u['subscription'] = [
-                        'plan' => $plan === 'pro' ? 'pro' : 'free',
-                        'planType' => $planType,
+                        'plan' => $resolvedPlan,
+                        'planType' => $resolvedPlanType,
                         'activatedAt' => date('Y-m-d H:i:s'),
                         'expiresAt' => $expiresAt,
                     ];
-                    if ($plan === 'pro') {
+                    if ($resolvedPlan !== 'free') {
                         $u['status'] = 'active';
                     }
                     $updated = true;
@@ -596,6 +587,7 @@ class TaskRoozDB {
             }
         }
         if ($updated) {
+            $this->saveUsers();
             $this->saveJson();
         }
         return $updated;

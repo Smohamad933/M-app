@@ -1378,7 +1378,26 @@ export const MainLayout: React.FC = () => {
           setActiveTab('tasks');
         }}
         onOpenChat={(userId, userName) => {
-          setDirectChatUser({ id: userId, name: userName, status: 'online' });
+          const cleanId = String(userId).trim();
+          const cleanName = String(userName).trim();
+          const found = users.find(
+            (u) =>
+              u.id === cleanId ||
+              (u.username && u.username.toLowerCase() === cleanId.toLowerCase()) ||
+              (u.name && u.name.trim().toLowerCase() === cleanName.toLowerCase()) ||
+              (u.name && cleanName.includes(u.name.trim()))
+          );
+          if (found) {
+            setDirectChatUser({
+              id: found.id,
+              name: found.name,
+              username: found.username,
+              avatar: found.avatar,
+              status: 'online',
+            });
+          } else {
+            setDirectChatUser({ id: cleanId, name: cleanName, status: 'online' });
+          }
         }}
       />
 

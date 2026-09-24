@@ -82,7 +82,8 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
     }
   };
 
-  const isPro = user.role === 'admin' || user.subscription?.plan === 'pro';
+  const userPlanStr = (user.subscription?.plan || '').toLowerCase();
+  const isPro = user.role === 'admin' || (userPlanStr !== '' && userPlanStr !== 'free');
 
   return (
     <div

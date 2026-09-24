@@ -60,7 +60,8 @@ function callBaleApi($token, $method, $params = []) {
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
         }
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; BagTimeBot/1.0)');
@@ -80,7 +81,7 @@ function callBaleApi($token, $method, $params = []) {
         'http' => [
             'method' => !empty($params) ? 'POST' : 'GET',
             'header' => "Content-Type: application/json; charset=utf-8\r\nAccept: application/json\r\nUser-Agent: BagTimeBot/1.0\r\n",
-            'timeout' => 15,
+            'timeout' => 3,
             'ignore_errors' => true,
         ],
         'ssl' => [

@@ -5,7 +5,7 @@ import { toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import { APP_TEXTS, APP_TEXT_SECTIONS } from '../utils/appTexts';
 import { UserAvatar } from './UserAvatar';
-import { SubscriptionBadge } from './SubscriptionBadge';
+import { SubscriptionBadge, getPlanMetadata } from './SubscriptionBadge';
 import type { User, GlobalSystemSettings, AppDeveloper } from '../types';
 import {
   Users,
@@ -280,8 +280,8 @@ export const UserManagementView: React.FC = () => {
         expiresAt = now.toISOString();
       }
 
-      await setUserSubscription(userId, plan, planType, expiresAt);
-      sounds.playComplete();
+      // Close modal immediately and show notice instantly for snappy UX!
+      setSubscriptionModalUser(null);
       const planName =
         planType === '6_months' || plan === 'ultra'
           ? 'اولترا (Ultra) 💎'
@@ -294,7 +294,10 @@ export const UserManagementView: React.FC = () => {
           : 'اشتراک کاربر به نسخه رایگان تغییر یافت.'
       );
       setTimeout(() => setSubNotice(null), 3500);
-      setSubscriptionModalUser(null);
+
+      // Perform update (TaskContext updates users state optimistically!)
+      await setUserSubscription(userId, plan, planType, expiresAt);
+      sounds.playComplete();
     } catch (err: any) {
       alert(err.message || 'خطا در تغییر اشتراک کاربر');
     } finally {
@@ -752,12 +755,13 @@ export const UserManagementView: React.FC = () => {
   // Job Categories Management State in Global Settings
   const [newJobCategory, setNewJobCategory] = useState('');
 
-  // Auto-refresh users when admin opens this tab + poll every 3s + storage event sync!
+  // Auto-refresh users when admin opens this tab + poll every 20s + storage event sync!
   useEffect(() => {
     refreshUsers();
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       refreshUsers();
-    }, 3000);
+    }, 20000);
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'taskrooz_sync_signal' || e.key === 'taskrooz_users_local') {
@@ -1123,16 +1127,16 @@ export const UserManagementView: React.FC = () => {
             </div>
 
             <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800/80 hover:border-zinc-700 transition-colors">
-              <div className="text-xs text-zinc-400 mb-1">اشتراک ویژه Pro ⭐</div>
+              <div className="text-xs text-zinc-400 mb-1">اشتراک‌های ویژه ⭐ 💎 ➕</div>
               <div className="text-2xl font-black text-amber-400">
-                {toPersianDigits(users.filter((u) => u.role === 'admin' || u.subscription?.plan === 'pro').length)}
+                {toPersianDigits(users.filter((u) => u.role === 'admin' || (u.subscription?.plan && u.subscription?.plan !== 'free')).length)}
               </div>
             </div>
 
             <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800/80 hover:border-zinc-700 transition-colors">
               <div className="text-xs text-zinc-400 mb-1">کاربران پلن رایگان</div>
               <div className="text-2xl font-black text-slate-300">
-                {toPersianDigits(users.filter((u) => u.role !== 'admin' && u.subscription?.plan !== 'pro').length)}
+                {toPersianDigits(users.filter((u) => u.role !== 'admin' && (!u.subscription?.plan || u.subscription?.plan === 'free')).length)}
               </div>
             </div>
 
@@ -1315,7 +1319,7 @@ export const UserManagementView: React.FC = () => {
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>اشتراک ویژه Pro ({toPersianDigits(users.filter((u) => u.role === 'admin' || u.subscription?.plan === 'pro').length)})</span>
+              <span>اشتراک‌های ویژه ({toPersianDigits(users.filter((u) => u.role === 'admin' || (u.subscription?.plan && u.subscription?.plan !== 'free')).length)})</span>
             </button>
 
             <button
@@ -1327,7 +1331,7 @@ export const UserManagementView: React.FC = () => {
                   : 'bg-zinc-900/60 text-zinc-400 border border-zinc-800 hover:text-white'
               }`}
             >
-              پلن رایگان ({toPersianDigits(users.filter((u) => u.role !== 'admin' && u.subscription?.plan !== 'pro').length)})
+              پلن رایگان ({toPersianDigits(users.filter((u) => u.role !== 'admin' && (!u.subscription?.plan || u.subscription?.plan === 'free')).length)})
             </button>
           </div>
 
@@ -1365,8 +1369,10 @@ export const UserManagementView: React.FC = () => {
             <div className="divide-y divide-zinc-800/60">
               {users
                 .filter((u) => {
-                  if (planFilter === 'pro') return u.role === 'admin' || u.subscription?.plan === 'pro';
-                  if (planFilter === 'free') return u.role !== 'admin' && u.subscription?.plan !== 'pro';
+                  const planKey = (u.subscription?.plan || '').toLowerCase();
+                  const isPrem = u.role === 'admin' || (planKey !== '' && planKey !== 'free');
+                  if (planFilter === 'pro') return isPrem;
+                  if (planFilter === 'free') return !isPrem;
                   return true;
                 })
                 .map((u) => {
@@ -1375,7 +1381,8 @@ export const UserManagementView: React.FC = () => {
                 const done = u.completedTasks || 0;
                 const percent = total > 0 ? Math.round((done / total) * 100) : 0;
                 const skills = Array.isArray(u.skills) ? u.skills : [];
-                const isUserPro = u.role === 'admin' || u.subscription?.plan === 'pro';
+                const planKey = (u.subscription?.plan || '').toLowerCase();
+                const isUserPremium = u.role === 'admin' || (planKey !== '' && planKey !== 'free');
 
                 return (
                   <div
@@ -1418,7 +1425,7 @@ export const UserManagementView: React.FC = () => {
                               <Sparkles className="w-3 h-3 text-emerald-400" />
                               <span>دمو کامیونیتی (Beta) 🚀</span>
                             </span>
-                          ) : isUserPro ? (
+                          ) : isUserPremium ? (
                             <SubscriptionBadge user={u} size="sm" />
                           ) : (
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/50">
@@ -1533,19 +1540,19 @@ export const UserManagementView: React.FC = () => {
                             disabled={updatingSubUserId === u.id}
                             onClick={() => setSubscriptionModalUser(u)}
                             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50 ${
-                              isUserPro
+                              isUserPremium
                                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
                                 : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 hover:text-white'
                             }`}
-                            title="تنظیم و تغییر دوره اشتراک Pro کاربر"
+                            title="تنظیم و تغییر دوره اشتراک کاربر"
                           >
                             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                             <span>
                               {updatingSubUserId === u.id
                                 ? 'در حال ثبت...'
-                                : isUserPro
-                                ? 'مدیریت Pro ⭐'
-                                : 'فعال‌سازی Pro ⭐'}
+                                : isUserPremium
+                                ? `مدیریت (${getPlanMetadata(u.subscription).symbol || '⭐'})`
+                                : 'فعال‌سازی اشتراک ⭐'}
                             </span>
                           </button>
                         )}

@@ -224,7 +224,8 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     try {
       const days = planType === '6_months' ? 180 : planType === '3_months' ? 90 : 30;
       const expiresAt = new Date(Date.now() + days * 86400000).toISOString();
-      await setUserSubscription(target.id, 'pro', planType, expiresAt);
+      const planKey = planType === '6_months' ? 'ultra' : planType === '1_month' ? 'plus' : 'pro';
+      await setUserSubscription(target.id, planKey, planType, expiresAt);
       sounds.playComplete();
 
       // Automatically send an official confirmation reply in the chat
@@ -568,9 +569,10 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
                     const targetUser = isMe ? currentUser : (users.find((u) => u.id === m.senderId) || activePartner);
                     const targetUserInDirectory = users.find((u) => u.id === targetUser?.id) || targetUser;
+                    const targetPlan = (targetUserInDirectory?.subscription?.plan || '').toLowerCase();
                     const isTargetPro =
                       targetUserInDirectory?.role === 'admin' ||
-                      targetUserInDirectory?.subscription?.plan === 'pro';
+                      (targetPlan !== '' && targetPlan !== 'free');
 
                     return (
                       <div
