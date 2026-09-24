@@ -2644,6 +2644,57 @@ export const UserManagementView: React.FC = () => {
                 <Package className="w-4 h-4 text-indigo-400" />
                 <span>دانلود سورس کامل پروژه (Zip)</span>
               </a>
+
+              <a
+                href="/TaskRooz.exe"
+                download="TaskRooz.exe"
+                className="px-4 py-2.5 rounded-xl bg-blue-600/30 hover:bg-blue-600/40 text-blue-300 border border-blue-500/40 font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                title="دانلود نسخه اجرایی دسکتاپ ویندوز"
+              >
+                <Download className="w-4 h-4 text-blue-400" />
+                <span>دانلود نسخه ویندوز (TaskRooz.exe) 💻</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Android Keystore & Signing Package Key (کلید رسمی پکیج) */}
+          <div className="p-6 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">اطلاعات کلید پکیج و امضای اندروید (APK Release Keystore)</h4>
+                  <p className="text-[11px] text-zinc-400">مشخصات کلید رسمی جهت امضا و انتشار در کافه‌بازار، مایکت و گوگل‌پلی</p>
+                </div>
+              </div>
+
+              <a
+                href="/bagtime-release.keystore"
+                download="bagtime-release.keystore"
+                className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>دانلود فایل کلید (bagtime-release.keystore) 🔑</span>
+              </a>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 bg-zinc-950/80 rounded-2xl border border-zinc-800 space-y-1">
+                <span className="text-[11px] text-zinc-400">نام پکیج اندروید (Package Name):</span>
+                <div className="font-mono font-bold text-emerald-400" dir="ltr">com.bagtime.app</div>
+              </div>
+              <div className="p-3 bg-zinc-950/80 rounded-2xl border border-zinc-800 space-y-1">
+                <span className="text-[11px] text-zinc-400">نام مستعار کلید (Key Alias) و پسورد:</span>
+                <div className="font-mono font-bold text-amber-300" dir="ltr">alias: bagtime_key | pass: bagtime123456</div>
+              </div>
+              <div className="p-3 bg-zinc-950/80 rounded-2xl border border-zinc-800 space-y-1 md:col-span-2">
+                <span className="text-[11px] text-zinc-400">اثر انگشت SHA-256 (Fingerprint):</span>
+                <div className="font-mono text-[11px] text-white break-all select-all bg-zinc-900 p-2 rounded-xl" dir="ltr">
+                  A2:95:D5:4A:00:AF:02:65:34:48:5E:8F:FD:5D:89:A7:CA:E4:CE:B4:0D:2B:67:48:AD:DA:1A:3D:30:FA:08:46
+                </div>
+              </div>
             </div>
           </div>
 

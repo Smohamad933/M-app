@@ -33,6 +33,7 @@ import { NotificationCenterModal, type AppNotification } from './NotificationCen
 import { UpgradeToProModal } from './UpgradeToProModal';
 import { FirstLoginProfileModal } from './FirstLoginProfileModal';
 import { PublicUserProfileModal } from './PublicUserProfileModal';
+import { OfflineSyncManager } from './OfflineSyncManager';
 import { SubscriptionBadge } from './SubscriptionBadge';
 import { api } from '../services/api';
 import type { User } from '../types';
@@ -639,6 +640,9 @@ export const MainLayout: React.FC = () => {
                     ))}
                   </select>
                 )}
+
+                {/* 12-Hour Mandatory Offline Sync Indicator & Enforcement */}
+                <OfflineSyncManager />
 
                 {/* Share Button (desktop/tablet) */}
                 <button

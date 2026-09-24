@@ -2762,6 +2762,58 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
   }
 
+  // 18. Bulk Offline/Online 12-Hour Sync (/api/sync)
+  if (pathname.startsWith('/api/sync')) {
+    if (!currentUser) {
+      sendJson(res, { error: 'ابتدا وارد حساب کاربری خود شوید.' }, 401);
+      return true;
+    }
+    const myId = currentUser.id;
+
+    if (method === 'POST') {
+      const body = await parseJsonBody(req);
+      const offlineTasks = Array.isArray(body.tasks) ? body.tasks : [];
+      let count = 0;
+
+      if (!db.tasks) db.tasks = [];
+      const taskMap = new Map(db.tasks.map((t, idx) => [t.id, idx]));
+
+      for (const ot of offlineTasks) {
+        if (!ot.id) continue;
+        ot.userId = myId;
+        if (taskMap.has(ot.id)) {
+          const idx = taskMap.get(ot.id)!;
+          db.tasks[idx] = { ...db.tasks[idx], ...ot };
+        } else {
+          db.tasks.push(ot);
+        }
+        count++;
+      }
+      writeDb(db);
+
+      const myTasks = db.tasks.filter((t) => t.userId === myId);
+      sendJson(res, {
+        success: true,
+        message: `همگام‌سازی با موفقیت انجام شد (${count} مورد ذخیره شد).`,
+        syncedAt: new Date().toISOString(),
+        serverTimestamp: Date.now(),
+        tasks: myTasks,
+        projects: (db.projects || []).filter((p) => p.creatorId === myId || (p.memberIds || []).includes(myId)),
+      });
+      return true;
+    }
+
+    if (method === 'GET') {
+      const myTasks = (db.tasks || []).filter((t) => t.userId === myId);
+      sendJson(res, {
+        serverTimestamp: Date.now(),
+        serverTime: new Date().toISOString(),
+        tasks: myTasks,
+      });
+      return true;
+    }
+  }
+
   sendJson(res, { error: 'آدرس نامعتبر است.' }, 404);
   return true;
 }

@@ -1506,4 +1506,12 @@ export const api = {
       body: JSON.stringify({ action: 'reject', paymentId, reason }),
     });
   },
+
+  // ── 12-Hour Mandatory Offline Sync ──
+  async syncOfflineData(tasks: any[]): Promise<{ success: boolean; tasks?: any[]; syncedAt?: string }> {
+    return await request('api/sync.php', {
+      method: 'POST',
+      body: JSON.stringify({ tasks }),
+    });
+  },
 };
