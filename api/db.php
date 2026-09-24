@@ -14,6 +14,7 @@ class TaskRoozDB {
     private $pdo = null;
     private $jsonFile = null;
     public $data = [];
+    public $installed = false; // true only when a real db.json file was found on disk
 
     private function __construct() {
         // Attempt MySQL connection if available
@@ -38,36 +39,9 @@ class TaskRoozDB {
     }
 
     // --- JSON Storage Helpers ---
-    public function loadJson() {
-        $candidatePaths = [
-            dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json',
-            __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json',
-            __DIR__ . DIRECTORY_SEPARATOR . 'db.json',
-            sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'taskrooz_db.json'
-        ];
-
-        $content = null;
-        $foundPath = null;
-        foreach ($candidatePaths as $p) {
-            if (file_exists($p) && filesize($p) > 10) {
-                $raw = @file_get_contents($p);
-                if (!empty($raw)) {
-                    $parsed = @json_decode($raw, true);
-                    if (is_array($parsed) && isset($parsed['users'])) {
-                        $content = $parsed;
-                        $foundPath = $p;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if ($content) {
-            $this->data = $content;
-            $this->jsonFile = $foundPath;
-        } else {
-            // Default seed
-            $this->data = [
+    /** Default seed data (used by forceInstall) */
+    public function defaultSeed() {
+        return [
                 'users' => [
                     [
                         'id' => 'usr_admin_mohusyn',
@@ -96,7 +70,7 @@ class TaskRoozDB {
                 'globalSettings' => [
                     'broadcastNotice' => [
                         'enabled' => true,
-                        'title' => 'خوش‌آمدید به سامانه تسک‌روز',
+                        'title' => 'خوش‌آمدید به سامانه بگ تایم (Bag Time)',
                         'message' => 'سامانه متمرکز برنامه‌ریزی روزانه، پومودورو تیمی و پایش بهره‌وری آماده استفاده است.',
                         'type' => 'info',
                     ],
@@ -108,8 +82,117 @@ class TaskRoozDB {
                 ],
                 'custom_fonts' => [],
             ];
+    }
+
+    /** True when a valid database file exists on disk */
+    public function isInstalled() {
+        return $this->installed;
+    }
+
+    /** One-click install: write the default database file to disk */
+    public function forceInstall() {
+        $this->data = $this->defaultSeed();
+        if (empty($this->jsonFile)) {
+            $this->jsonFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json';
+        }
+        $this->saveJson();
+        $this->installed = true;
+        return true;
+    }
+
+    public function loadJson() {
+        $candidatePaths = [
+            dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json',
+            __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'db.json',
+            __DIR__ . DIRECTORY_SEPARATOR . 'db.json',
+            sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'taskrooz_db.json'
+        ];
+
+        $content = null;
+        $foundPath = null;
+        $modularDataDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+
+        // Check if modular databases exist (data/users.json, data/tasks.json, etc.)
+        if (file_exists($modularDataDir . DIRECTORY_SEPARATOR . 'users.json')) {
+            $uRaw = @file_get_contents($modularDataDir . DIRECTORY_SEPARATOR . 'users.json');
+            $uParsed = $uRaw ? @json_decode($uRaw, true) : null;
+            if (is_array($uParsed) && isset($uParsed['users'])) {
+                $content = $this->defaultSeed();
+                $content['users'] = $uParsed['users'] ?? [];
+                $content['friendships'] = $uParsed['friendships'] ?? [];
+                $content['friend_requests'] = $uParsed['friend_requests'] ?? [];
+
+                if (file_exists($modularDataDir . DIRECTORY_SEPARATOR . 'tasks.json')) {
+                    $tRaw = @file_get_contents($modularDataDir . DIRECTORY_SEPARATOR . 'tasks.json');
+                    $tParsed = $tRaw ? @json_decode($tRaw, true) : null;
+                    if (is_array($tParsed)) {
+                        $content['tasks'] = $tParsed['tasks'] ?? [];
+                        if (!empty($tParsed['categories'])) $content['categories'] = $tParsed['categories'];
+                        if (!empty($tParsed['projects'])) $content['projects'] = $tParsed['projects'];
+                        if (!empty($tParsed['goals'])) $content['goals'] = $tParsed['goals'];
+                        if (!empty($tParsed['dailyNotes'])) $content['dailyNotes'] = $tParsed['dailyNotes'];
+                        if (!empty($tParsed['personalityResults'])) $content['personalityResults'] = $tParsed['personalityResults'];
+                    }
+                }
+
+                if (file_exists($modularDataDir . DIRECTORY_SEPARATOR . 'messages.json')) {
+                    $mRaw = @file_get_contents($modularDataDir . DIRECTORY_SEPARATOR . 'messages.json');
+                    $mParsed = $mRaw ? @json_decode($mRaw, true) : null;
+                    if (is_array($mParsed)) {
+                        $content['messages'] = $mParsed['messages'] ?? [];
+                        $content['project_messages'] = $mParsed['project_messages'] ?? [];
+                        $content['focus_rooms'] = $mParsed['focus_rooms'] ?? [];
+                    }
+                }
+
+                if (file_exists($modularDataDir . DIRECTORY_SEPARATOR . 'notifications.json')) {
+                    $nRaw = @file_get_contents($modularDataDir . DIRECTORY_SEPARATOR . 'notifications.json');
+                    $nParsed = $nRaw ? @json_decode($nRaw, true) : null;
+                    if (is_array($nParsed)) {
+                        $content['notifications'] = $nParsed['notifications'] ?? [];
+                        $content['payments'] = $nParsed['payments'] ?? [];
+                    }
+                }
+
+                if (file_exists($modularDataDir . DIRECTORY_SEPARATOR . 'settings.json')) {
+                    $sRaw = @file_get_contents($modularDataDir . DIRECTORY_SEPARATOR . 'settings.json');
+                    $sParsed = $sRaw ? @json_decode($sRaw, true) : null;
+                    if (is_array($sParsed)) {
+                        if (!empty($sParsed['globalSettings'])) $content['globalSettings'] = $sParsed['globalSettings'];
+                        if (!empty($sParsed['custom_fonts'])) $content['custom_fonts'] = $sParsed['custom_fonts'];
+                    }
+                }
+
+                $foundPath = $modularDataDir . DIRECTORY_SEPARATOR . 'users.json';
+            }
+        }
+
+        if (!$content) {
+            foreach ($candidatePaths as $p) {
+                if (file_exists($p) && filesize($p) > 10) {
+                    $raw = @file_get_contents($p);
+                    if (!empty($raw)) {
+                        $parsed = @json_decode($raw, true);
+                        if (is_array($parsed) && isset($parsed['users'])) {
+                            $content = $parsed;
+                            $foundPath = $p;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($content) {
+            $this->data = $content;
+            $this->jsonFile = $foundPath;
+            $this->installed = true;
+        } else {
+            // In-memory default seed ONLY. The file is NOT created silently:
+            // the app shows a clear "database not installed" panel and the
+            // admin can trigger api/install.php (one-click install) instead.
+            $this->data = $this->defaultSeed();
             $this->jsonFile = $candidatePaths[0];
-            $this->saveJson();
         }
 
         // Ensure all top-level keys exist
@@ -151,8 +234,70 @@ class TaskRoozDB {
         }
     }
 
+    public function saveUsers() {
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        $payload = [
+            'users' => $this->data['users'] ?? [],
+            'friendships' => $this->data['friendships'] ?? [],
+            'friend_requests' => $this->data['friend_requests'] ?? [],
+        ];
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'users.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    }
+
+    public function saveTasks() {
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        $payload = [
+            'tasks' => $this->data['tasks'] ?? [],
+            'categories' => $this->data['categories'] ?? [],
+            'projects' => $this->data['projects'] ?? [],
+            'goals' => $this->data['goals'] ?? [],
+            'dailyNotes' => $this->data['dailyNotes'] ?? [],
+            'personalityResults' => $this->data['personalityResults'] ?? [],
+        ];
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'tasks.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    }
+
+    public function saveMessages() {
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        $payload = [
+            'messages' => $this->data['messages'] ?? [],
+            'project_messages' => $this->data['project_messages'] ?? [],
+            'focus_rooms' => $this->data['focus_rooms'] ?? [],
+        ];
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'messages.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    }
+
+    public function saveNotifications() {
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        $payload = [
+            'notifications' => $this->data['notifications'] ?? [],
+            'payments' => $this->data['payments'] ?? [],
+        ];
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'notifications.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    }
+
+    public function saveSettings() {
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        $payload = [
+            'globalSettings' => $this->data['globalSettings'] ?? [],
+            'custom_fonts' => $this->data['custom_fonts'] ?? [],
+        ];
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'settings.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    }
+
     public function saveJson() {
         if (!is_array($this->data)) return;
+        $this->saveUsers();
+        $this->saveTasks();
+        $this->saveMessages();
+        $this->saveNotifications();
+        $this->saveSettings();
+
         $encoded = json_encode($this->data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         if (!$encoded) return;
 
@@ -215,6 +360,13 @@ class TaskRoozDB {
                 if ($u) {
                     if (!empty($u['skills_json'])) $u['skills'] = json_decode($u['skills_json'], true);
                     if (!empty($u['timeline_json'])) $u['dailyTimeline'] = json_decode($u['timeline_json'], true);
+                    if (isset($u['birth_date']) && !isset($u['birthDate'])) $u['birthDate'] = $u['birth_date'];
+                    if (isset($u['job_title']) && !isset($u['jobTitle'])) $u['jobTitle'] = $u['job_title'];
+                    if (isset($u['verification_code']) && !isset($u['verificationCode'])) $u['verificationCode'] = $u['verification_code'];
+                    if (isset($u['is_verified']) && !isset($u['isVerified'])) $u['isVerified'] = !empty($u['is_verified']);
+                    if (isset($u['bale_chat_id']) && !isset($u['baleChatId'])) $u['baleChatId'] = $u['bale_chat_id'];
+                    if (isset($u['bale_username']) && !isset($u['baleUsername'])) $u['baleUsername'] = $u['bale_username'];
+                    $u['isProfileCompleted'] = !empty($u['is_profile_completed']) || ($u['role'] === 'admin') || (!empty($u['birthDate']) && !empty($u['city']));
                     return $u;
                 }
             } catch (Exception $e) {}
@@ -256,13 +408,28 @@ class TaskRoozDB {
             $role = 'user';
         }
 
+        $maxNum = 1000;
+        foreach ($this->getAllUsers() as $existingU) {
+            if (!empty($existingU['numericId']) && is_numeric($existingU['numericId'])) {
+                $maxNum = max($maxNum, (int)$existingU['numericId']);
+            }
+        }
+        $numericId = ($role === 'admin' && $usernameLower === 'mohusyn') ? 1000 : ($maxNum + 1);
+        $isCompleted = !empty($birthDate) && !empty($jobTitle) && !empty($city);
+
+        $status = $extra['status'] ?? 'active';
+        $isDemo = !empty($extra['isDemo']);
+
         $userObj = [
             'id' => $id,
+            'numericId' => $numericId,
             'username' => $usernameClean,
             'password' => $password,
             'password_hash' => $hash,
             'name' => trim($name),
             'role' => $role,
+            'status' => $status,
+            'isDemo' => $isDemo,
             'phone' => $phone,
             'email' => $email,
             'province' => $province,
@@ -271,6 +438,12 @@ class TaskRoozDB {
             'jobTitle' => $jobTitle,
             'skills' => is_array($skills) ? $skills : [],
             'dailyTimeline' => is_array($timeline) ? $timeline : [],
+            'subscription' => ['plan' => $role === 'admin' ? 'pro' : 'free'],
+            'isProfileCompleted' => $role === 'admin' || $isCompleted,
+            'verificationCode' => $extra['verificationCode'] ?? null,
+            'isVerified' => !empty($extra['isVerified']),
+            'baleChatId' => $extra['baleChatId'] ?? null,
+            'baleUsername' => $extra['baleUsername'] ?? null,
             'createdAt' => $now,
             'totalTasks' => 0,
             'completedTasks' => 0,
@@ -311,6 +484,12 @@ class TaskRoozDB {
             }
         }
         if ($existingIdx >= 0) {
+            if (isset($this->data['users'][$existingIdx]['subscription'])) {
+                $userObj['subscription'] = $this->data['users'][$existingIdx]['subscription'];
+            }
+            if (isset($this->data['users'][$existingIdx]['status'])) {
+                $userObj['status'] = $this->data['users'][$existingIdx]['status'];
+            }
             $this->data['users'][$existingIdx] = array_merge($this->data['users'][$existingIdx], $userObj);
             $userObj = $this->data['users'][$existingIdx];
         } else {
@@ -328,7 +507,7 @@ class TaskRoozDB {
                 $stmt = $this->pdo->query("
                     SELECT 
                         u.id, u.username, u.name, u.role, u.phone, u.email, u.province, u.city,
-                        u.birth_date as birthDate, u.job_title as jobTitle, u.skills_json, u.timeline_json,
+                        u.birth_date as birthDate, u.job_title as jobTitle, u.skills_json, u.timeline_json, u.avatar,
                         u.created_at as createdAt,
                         COUNT(t.id) as totalTasks,
                         SUM(CASE WHEN t.completed = 1 THEN 1 ELSE 0 END) as completedTasks
@@ -371,6 +550,7 @@ class TaskRoozDB {
 
             $res[] = [
                 'id' => $u['id'],
+                'numericId' => $u['numericId'] ?? 1000,
                 'username' => $u['username'],
                 'name' => $u['name'],
                 'role' => $u['role'] ?? 'user',
@@ -380,8 +560,12 @@ class TaskRoozDB {
                 'city' => $u['city'] ?? '',
                 'birthDate' => $u['birthDate'] ?? $u['birth_date'] ?? '',
                 'jobTitle' => $u['jobTitle'] ?? $u['job_title'] ?? '',
+                'avatar' => $u['avatar'] ?? null,
                 'skills' => $u['skills'] ?? [],
                 'dailyTimeline' => $u['dailyTimeline'] ?? [],
+                'status' => $u['status'] ?? 'active',
+                'isDemo' => !empty($u['isDemo']),
+                'subscription' => $u['subscription'] ?? ['plan' => (($u['role'] ?? '') === 'admin' ? 'pro' : 'free')],
                 'createdAt' => $u['createdAt'] ?? $u['created_at'] ?? date('Y-m-d H:i:s'),
                 'totalTasks' => $total,
                 'completedTasks' => $done,
@@ -389,6 +573,206 @@ class TaskRoozDB {
             ];
         }
         return $res;
+    }
+
+    public function setUserSubscription($userId, $plan, $planType = null, $expiresAt = null) {
+        $this->loadJson();
+        $updated = false;
+        if (isset($this->data['users'])) {
+            foreach ($this->data['users'] as &$u) {
+                if ($u['id'] === $userId || (isset($u['username']) && strtolower($u['username']) === strtolower($userId))) {
+                    $u['subscription'] = [
+                        'plan' => $plan === 'pro' ? 'pro' : 'free',
+                        'planType' => $planType,
+                        'activatedAt' => date('Y-m-d H:i:s'),
+                        'expiresAt' => $expiresAt,
+                    ];
+                    if ($plan === 'pro') {
+                        $u['status'] = 'active';
+                    }
+                    $updated = true;
+                    break;
+                }
+            }
+        }
+        if ($updated) {
+            $this->saveJson();
+        }
+        return $updated;
+    }
+
+    public function addNotification($userId, $title, $message, $type = 'info', $extra = []) {
+        $this->loadJson();
+        if (!isset($this->data['notifications'])) {
+            $this->data['notifications'] = [];
+        }
+        $notifId = 'notif_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4);
+        $newNotif = array_merge([
+            'id' => $notifId,
+            'userId' => $userId,
+            'title' => $title,
+            'message' => $message,
+            'type' => $type,
+            'timestamp' => date('Y-m-d H:i:s'),
+            'read' => false,
+        ], $extra);
+        $this->data['notifications'][] = $newNotif;
+        $this->saveJson();
+
+        // Automatically dispatch to Bale Messenger if user or admin has Bale enabled!
+        if (file_exists(__DIR__ . '/bale.php')) {
+            require_once __DIR__ . '/bale.php';
+            sendBaleNotificationToUser($userId, $title, $message);
+        }
+
+        return $newNotif;
+    }
+
+    public function parseUserAgentInfo($ua = '') {
+        if (empty($ua)) $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $device = 'رایانه شخصی (PC)';
+        $browser = 'مرورگر وب';
+        $isMobile = false;
+
+        if (stripos($ua, 'BagTimeExtension') !== false || stripos($ua, 'BagTime-Assistant') !== false) {
+            $browser = 'افزونه دستیار نیوتَب بگ تایم';
+        } elseif (stripos($ua, 'Edg/') !== false || stripos($ua, 'Edge/') !== false) {
+            $browser = 'مایکروسافت اج (Microsoft Edge)';
+        } elseif (stripos($ua, 'Chrome/') !== false) {
+            $browser = 'گوگل کروم (Google Chrome)';
+        } elseif (stripos($ua, 'Firefox/') !== false) {
+            $browser = 'موزیلا فایرفاکس (Mozilla Firefox)';
+        } elseif (stripos($ua, 'Safari/') !== false && stripos($ua, 'Chrome/') === false) {
+            $browser = 'اپل سافاری (Safari)';
+        } elseif (stripos($ua, 'Opera') !== false || stripos($ua, 'OPR/') !== false) {
+            $browser = 'مرورگر اپرا (Opera)';
+        }
+
+        if (stripos($ua, 'Android') !== false) {
+            $device = 'گوشی هوشمند (اندروید)';
+            $isMobile = true;
+        } elseif (stripos($ua, 'iPhone') !== false) {
+            $device = 'گوشی اپل آیفون (iOS)';
+            $isMobile = true;
+        } elseif (stripos($ua, 'iPad') !== false) {
+            $device = 'تبلت آیپد (iPadOS)';
+            $isMobile = true;
+        } elseif (stripos($ua, 'Windows NT 10.0') !== false) {
+            $device = 'ویندوز ۱۰ / ۱۱';
+        } elseif (stripos($ua, 'Windows NT 6.3') !== false || stripos($ua, 'Windows NT 6.2') !== false || stripos($ua, 'Windows NT 6.1') !== false) {
+            $device = 'ویندوز ۷ / ۸';
+        } elseif (stripos($ua, 'Macintosh') !== false || stripos($ua, 'Mac OS X') !== false) {
+            $device = 'رایانه اپل (macOS)';
+        } elseif (stripos($ua, 'Linux') !== false) {
+            $device = 'سیستم لینوکس (Linux)';
+        }
+
+        return [
+            'device' => $device,
+            'browser' => $browser,
+            'isMobile' => $isMobile
+        ];
+    }
+
+    public function getSessionsForUser($userId, $currentToken = '') {
+        $this->loadJson();
+        if (!isset($this->data['sessions']) || !is_array($this->data['sessions'])) {
+            $this->data['sessions'] = [];
+        }
+        $res = [];
+        foreach ($this->data['sessions'] as $s) {
+            if ($s['userId'] === $userId) {
+                $isCurrent = (!empty($currentToken) && !empty($s['token']) && $s['token'] === $currentToken);
+                $sCopy = $s;
+                $sCopy['isCurrent'] = $isCurrent;
+                unset($sCopy['token']); // Hide secret token from payload
+                $res[] = $sCopy;
+            }
+        }
+        return $res;
+    }
+
+    public function recordSession($userId, $token, $ua = '', $ip = '', $location = '') {
+        $this->loadJson();
+        if (!isset($this->data['sessions']) || !is_array($this->data['sessions'])) {
+            $this->data['sessions'] = [];
+        }
+        $parsed = $this->parseUserAgentInfo($ua);
+        $sessionId = 'sess_' . substr(md5($userId . ':' . $token), 0, 12);
+        
+        $found = false;
+        foreach ($this->data['sessions'] as &$s) {
+            if ($s['token'] === $token || $s['id'] === $sessionId) {
+                $s['lastActive'] = date('Y-m-d H:i:s');
+                if (!empty($ip)) $s['ip'] = $ip;
+                $found = true;
+                break;
+            }
+        }
+        if (!$found) {
+            $this->data['sessions'][] = [
+                'id' => $sessionId,
+                'userId' => $userId,
+                'token' => $token,
+                'device' => $parsed['device'],
+                'browser' => $parsed['browser'],
+                'isMobile' => $parsed['isMobile'],
+                'ip' => !empty($ip) ? $ip : '127.0.0.1',
+                'location' => !empty($location) ? $location : 'ایران',
+                'createdAt' => date('Y-m-d H:i:s'),
+                'lastActive' => date('Y-m-d H:i:s')
+            ];
+            $this->saveJson();
+        }
+        return $sessionId;
+    }
+
+    public function terminateSession($userId, $sessionId) {
+        $this->loadJson();
+        if (!isset($this->data['sessions']) || !is_array($this->data['sessions'])) return false;
+        if (!isset($this->data['revoked_tokens']) || !is_array($this->data['revoked_tokens'])) {
+            $this->data['revoked_tokens'] = [];
+        }
+        $newSessions = [];
+        $terminated = false;
+        foreach ($this->data['sessions'] as $s) {
+            if ($s['userId'] === $userId && $s['id'] === $sessionId) {
+                if (!empty($s['token'])) {
+                    $this->data['revoked_tokens'][] = $s['token'];
+                }
+                $terminated = true;
+            } else {
+                $newSessions[] = $s;
+            }
+        }
+        $this->data['sessions'] = $newSessions;
+        $this->saveJson();
+        return $terminated;
+    }
+
+    public function terminateAllOtherSessions($userId, $currentToken = '') {
+        $this->loadJson();
+        if (!isset($this->data['sessions']) || !is_array($this->data['sessions'])) return false;
+        if (!isset($this->data['revoked_tokens']) || !is_array($this->data['revoked_tokens'])) {
+            $this->data['revoked_tokens'] = [];
+        }
+        $newSessions = [];
+        foreach ($this->data['sessions'] as $s) {
+            if ($s['userId'] === $userId) {
+                if (!empty($currentToken) && $s['token'] === $currentToken) {
+                    $newSessions[] = $s;
+                } else {
+                    if (!empty($s['token'])) {
+                        $this->data['revoked_tokens'][] = $s['token'];
+                    }
+                }
+            } else {
+                $newSessions[] = $s;
+            }
+        }
+        $this->data['sessions'] = $newSessions;
+        $this->saveJson();
+        return true;
     }
 
     public function updateUser($id, $name, $role, $password = null) {
@@ -425,20 +809,117 @@ class TaskRoozDB {
         return false;
     }
 
-    public function deleteUser($id) {
+    /**
+     * Update a user's own profile fields (name, contact info, avatar, routine...).
+     * $fields contains only whitelisted camelCase keys; optional $password rotates the credential.
+     * Mirrors updateUser() but for self-service profile editing (incl. avatar data URL).
+     */
+    public function updateUserProfile($id, $fields, $password = null) {
         if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $existing = null;
+                $stmt = $this->pdo->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
+                $stmt->execute([$id]);
+                $existing = $stmt->fetch() ?: [];
+
+                $name = $fields['name'] ?? ($existing['name'] ?? '');
+                $phone = $fields['phone'] ?? ($existing['phone'] ?? null);
+                $email = $fields['email'] ?? ($existing['email'] ?? null);
+                $province = $fields['province'] ?? ($existing['province'] ?? null);
+                $city = $fields['city'] ?? ($existing['city'] ?? null);
+                $birthDate = $fields['birthDate'] ?? ($existing['birth_date'] ?? null);
+                $jobTitle = $fields['jobTitle'] ?? ($existing['job_title'] ?? null);
+                $skills = json_encode($fields['skills'] ?? (empty($existing['skills_json']) ? [] : json_decode($existing['skills_json'], true)), JSON_UNESCAPED_UNICODE);
+                $timeline = json_encode($fields['dailyTimeline'] ?? (empty($existing['timeline_json']) ? [] : json_decode($existing['timeline_json'], true)), JSON_UNESCAPED_UNICODE);
+                $avatar = $fields['avatar'] ?? ($existing['avatar'] ?? null);
+
+                try {
+                    $stmt = $this->pdo->prepare("UPDATE users SET name = ?, phone = ?, email = ?, province = ?, city = ?, birth_date = ?, job_title = ?, skills_json = ?, timeline_json = ?, avatar = ? WHERE id = ?");
+                    $stmt->execute([trim((string)$name), $phone, $email, $province, $city, $birthDate, $jobTitle, $skills, $timeline, $avatar, $id]);
+                } catch (Exception $eCol) {
+                    // Older schema without the avatar column — retry without it
+                    $stmt = $this->pdo->prepare("UPDATE users SET name = ?, phone = ?, email = ?, province = ?, city = ?, birth_date = ?, job_title = ?, skills_json = ?, timeline_json = ? WHERE id = ?");
+                    $stmt->execute([trim((string)$name), $phone, $email, $province, $city, $birthDate, $jobTitle, $skills, $timeline, $id]);
+                }
+                if (!empty($password)) {
+                    $hash = password_hash($password, PASSWORD_DEFAULT);
+                    $stmt = $this->pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
+                    $stmt->execute([$hash, $id]);
+                }
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        foreach ($this->data['users'] as &$u) {
+            if ($u['id'] === $id) {
+                if (isset($fields['name'])) $u['name'] = trim($fields['name']);
+                foreach (['phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'avatar', 'baleChatId', 'baleUsername', 'baleNotifToken', 'baleNotificationsEnabled'] as $k) {
+                    if (array_key_exists($k, $fields)) $u[$k] = $fields[$k];
+                }
+                if (array_key_exists('skills', $fields)) $u['skills'] = is_array($fields['skills']) ? $fields['skills'] : [];
+                if (array_key_exists('dailyTimeline', $fields)) $u['dailyTimeline'] = is_array($fields['dailyTimeline']) ? $fields['dailyTimeline'] : [];
+                $u['isProfileCompleted'] = true;
+                if (!empty($password)) {
+                    $u['password'] = $password;
+                    $u['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
+                }
+                $this->saveJson();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function deleteUser($id) {
+        // Remove ALL data owned by this user so nothing is orphaned
+        // (UI promises "تمامی تسک‌های مربوطه نیز حذف خواهند شد")
+
+        // 1. MySQL cleanup
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                foreach (['tasks', 'career_goals', 'daily_notes', 'personality_results'] as $table) {
+                    $stmt = $this->pdo->prepare("DELETE FROM {$table} WHERE user_id = ?");
+                    $stmt->execute([$id]);
+                }
+            } catch (Exception $e) {}
             try {
                 $stmt = $this->pdo->prepare("DELETE FROM users WHERE id = ? AND LOWER(username) != 'mohusyn'");
                 $stmt->execute([$id]);
             } catch (Exception $e) {}
         }
 
+        // 2. JSON Storage cleanup
         $this->loadJson();
         $this->data['users'] = array_values(array_filter($this->data['users'], function($u) use ($id) {
             if (strtolower($u['username'] ?? '') === 'mohusyn' || $u['id'] === 'usr_admin_mohusyn') {
                 return true;
             }
             return $u['id'] !== $id;
+        }));
+        $this->data['tasks'] = array_values(array_filter($this->data['tasks'] ?? [], function($t) use ($id) {
+            $tUserId = $t['userId'] ?? $t['user_id'] ?? '';
+            return $tUserId !== $id;
+        }));
+        $this->data['goals'] = array_values(array_filter($this->data['goals'] ?? [], function($g) use ($id) {
+            return ($g['userId'] ?? '') !== $id;
+        }));
+        $this->data['dailyNotes'] = array_values(array_filter($this->data['dailyNotes'] ?? [], function($n) use ($id) {
+            return ($n['userId'] ?? '') !== $id;
+        }));
+        $this->data['personalityResults'] = array_values(array_filter($this->data['personalityResults'] ?? [], function($p) use ($id) {
+            return ($p['userId'] ?? '') !== $id;
+        }));
+        $this->data['friendships'] = array_values(array_filter($this->data['friendships'] ?? [], function($f) use ($id) {
+            return ($f['user1Id'] ?? '') !== $id && ($f['user2Id'] ?? '') !== $id;
+        }));
+        $this->data['friend_requests'] = array_values(array_filter($this->data['friend_requests'] ?? [], function($r) use ($id) {
+            return ($r['fromUserId'] ?? '') !== $id && ($r['toUserId'] ?? '') !== $id;
+        }));
+        $this->data['messages'] = array_values(array_filter($this->data['messages'] ?? [], function($m) use ($id) {
+            return ($m['senderId'] ?? '') !== $id && ($m['receiverId'] ?? '') !== $id;
+        }));
+        $this->data['notifications'] = array_values(array_filter($this->data['notifications'] ?? [], function($n) use ($id) {
+            return ($n['userId'] ?? '') !== $id;
         }));
         $this->saveJson();
         return true;
@@ -1092,6 +1573,43 @@ class TaskRoozDB {
         return true;
     }
 
+    public function deleteAllFocusRooms() {
+        // Admin emergency purge: soft-delete EVERY active room (messages kept 10 min
+        // per system retention policy, then purged automatically by purgeExpiredDeletedRooms)
+        $this->loadJson();
+        if (!isset($this->data['focus_rooms'])) return 0;
+
+        $now = time();
+        $count = 0;
+        foreach ($this->data['focus_rooms'] as &$r) {
+            if (!empty($r['isDeleted']) || !empty($r['is_deleted'])) continue;
+            $r['isDeleted'] = true;
+            $r['is_deleted'] = 1;
+            $r['deletedAt'] = $now;
+            $r['deleted_at'] = $now;
+            $r['isRunning'] = false;
+            $r['messages'][] = [
+                'id' => 'msg_' . $now . '_' . rand(10, 999),
+                'userId' => 'system',
+                'userName' => 'سیستم',
+                'text' => 'این اتاق توسط مدیر سیستم بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.',
+                'timestamp' => date('H:i'),
+            ];
+            $count++;
+        }
+        unset($r);
+
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("UPDATE focus_rooms SET is_deleted = 1, deleted_at = ?, is_running = 0 WHERE is_deleted = 0");
+                $stmt->execute([$now]);
+            } catch (Exception $e) {}
+        }
+
+        $this->saveJson();
+        return $count;
+    }
+
     // --- Team Projects ---
     public function createTeamProject($name, $description, $color, $icon, $creator, $memberIds = []) {
         $id = 'proj_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4);
@@ -1132,26 +1650,33 @@ class TaskRoozDB {
     }
 
     public function getAllTeamProjects($userId = null, $isAdmin = false) {
+        $filterProjects = function($list) use ($userId) {
+            if (empty($userId)) return $list;
+            return array_values(array_filter($list, function($p) use ($userId) {
+                if (($p['creatorId'] ?? '') === $userId) return true;
+                $mIds = $p['memberIds'] ?? [];
+                if (is_array($mIds) && in_array($userId, $mIds)) return true;
+                return false;
+            }));
+        };
+
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
                 $stmt = $this->pdo->query("SELECT id, name, description, color, icon, creator_id as creatorId, creator_name as creatorName, member_ids_json, created_at as createdAt FROM projects ORDER BY created_at DESC");
                 $rows = $stmt->fetchAll();
                 if ($rows) {
-                    return array_map(function($p) {
+                    $all = array_map(function($p) {
                         $p['memberIds'] = !empty($p['member_ids_json']) ? json_decode($p['member_ids_json'], true) : [];
                         return $p;
                     }, $rows);
+                    return $filterProjects($all);
                 }
             } catch (Exception $e) {}
         }
 
         $this->loadJson();
         $projects = $this->data['projects'] ?? [];
-        if ($isAdmin || empty($userId)) return $projects;
-
-        return array_values(array_filter($projects, function($p) use ($userId) {
-            return ($p['creatorId'] ?? '') === $userId || in_array($userId, $p['memberIds'] ?? []);
-        }));
+        return $filterProjects($projects);
     }
 
     public function getTeamProject($id) {

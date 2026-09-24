@@ -77,7 +77,7 @@ export const QuickAddBar: React.FC = () => {
     <div className="pt-2 pb-1">
       <form
         onSubmit={handleQuickAdd}
-        className="flex items-center gap-2 bg-zinc-900/90 p-1.5 pl-2.5 rounded-2xl border border-zinc-800 shadow-xs focus-within:border-zinc-600 transition-all"
+        className="flex items-center gap-2 bg-[#f8fafc] p-1.5 pl-2.5 rounded-2xl border border-slate-200/80 shadow-2xs focus-within:border-slate-400 focus-within:bg-white transition-all"
       >
         <button
           type="button"
@@ -85,7 +85,7 @@ export const QuickAddBar: React.FC = () => {
           className={`p-2 rounded-xl transition-all cursor-pointer ${
             isListening
               ? 'bg-rose-500 text-white animate-pulse'
-              : 'text-zinc-500 hover:text-white hover:bg-zinc-800'
+              : 'text-slate-400 hover:text-slate-700 hover:bg-slate-200/60'
           }`}
           title="تایپ صوتی تسک"
         >
@@ -97,13 +97,13 @@ export const QuickAddBar: React.FC = () => {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="افزودن سریع تسک جدید... (اینتر بزنید)"
-          className="flex-1 bg-transparent text-xs text-white placeholder-zinc-500 outline-hidden font-medium"
+          className="flex-1 bg-transparent text-xs text-slate-800 placeholder-slate-400 outline-hidden font-bold"
         />
 
         {text.trim() ? (
           <button
             type="submit"
-            className="p-2 bg-white hover:bg-zinc-200 text-zinc-950 rounded-xl shadow-xs transition-colors cursor-pointer"
+            className="p-2 bg-[#121212] hover:bg-black text-white rounded-xl shadow-xs transition-colors cursor-pointer"
             title="ثبت تسک"
           >
             <Send className="w-3.5 h-3.5 rotate-180" />
@@ -112,7 +112,7 @@ export const QuickAddBar: React.FC = () => {
           <button
             type="submit"
             disabled
-            className="p-2 text-zinc-600 rounded-xl cursor-not-allowed"
+            className="p-2 text-slate-300 rounded-xl cursor-not-allowed"
           >
             <Plus className="w-4 h-4" />
           </button>
@@ -120,7 +120,7 @@ export const QuickAddBar: React.FC = () => {
       </form>
 
       {voiceNotice && (
-        <div className="mt-1 px-2 text-[10px] font-semibold text-zinc-400 animate-in fade-in">
+        <div className="mt-1 px-2 text-[10px] font-semibold text-slate-500 animate-in fade-in">
           {voiceNotice}
         </div>
       )}

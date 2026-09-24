@@ -1,5 +1,7 @@
 // Comprehensive Integration and Stress Test Suite for TaskRooz
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 const BASE_URL = 'http://localhost:5173';
 
@@ -81,8 +83,8 @@ test('Regular User Registration Defaults to role: "user"', async () => {
     username: uniqueUser,
     password: 'TestPassword123',
     name: 'تست کننده سیستم',
-    phone: '09120001122',
-    email: 'tester@taskrooz.local',
+    phone: '0912' + Math.floor(1000000 + Math.random() * 9000000),
+    email: 'tester_' + Date.now() + '@taskrooz.local',
     province: 'اصفهان',
     city: 'اصفهان',
     birthDate: '1375/02/10',
@@ -269,28 +271,41 @@ test('Group Focus Room Lifecycle & Timer Sync', async () => {
 
 // Run all tests
 async function run() {
-  console.log(`Starting ${tests.length} automated integration tests...\n`);
-  let passed = 0;
-  let failed = 0;
-
-  for (const t of tests) {
-    try {
-      await t.fn();
-      console.log(`  ✓ PASS: ${t.name}`);
-      passed++;
-    } catch (err) {
-      console.error(`  ✗ FAIL: ${t.name}`);
-      console.error(`    -> ${err.message}\n`);
-      failed++;
-    }
+  const globalDbPath = path.join(__dirname, 'data', 'db.json');
+  const globalBackup = globalDbPath + '.suite_backup';
+  if (fs.existsSync(globalDbPath)) {
+    fs.copyFileSync(globalDbPath, globalBackup);
   }
 
-  console.log(`\n========================================`);
-  console.log(`Results: ${passed} passed, ${failed} failed`);
-  console.log(`========================================`);
+  try {
+    console.log(`Starting ${tests.length} automated integration tests...\n`);
+    let passed = 0;
+    let failed = 0;
 
-  if (failed > 0) {
-    process.exit(1);
+    for (const t of tests) {
+      try {
+        await t.fn();
+        console.log(`  ✓ PASS: ${t.name}`);
+        passed++;
+      } catch (err) {
+        console.error(`  ✗ FAIL: ${t.name}`);
+        console.error(`    -> ${err.message}\n`);
+        failed++;
+      }
+    }
+
+    console.log(`\n========================================`);
+    console.log(`Results: ${passed} passed, ${failed} failed`);
+    console.log(`========================================`);
+
+    if (failed > 0) {
+      process.exit(1);
+    }
+  } finally {
+    if (fs.existsSync(globalBackup)) {
+      fs.copyFileSync(globalBackup, globalDbPath);
+      fs.unlinkSync(globalBackup);
+    }
   }
 }
 
@@ -590,11 +605,13 @@ test('Multi-User Room Co-presence: Both Users in Same Room with Unified State', 
 test('Admin Can Read Comprehensive Performance Report of Other Users', async () => {
   // 1. Register a user with complete profile
   const reportUsername = 'student_' + Date.now();
+  const studentPhone = '0912' + Math.floor(1000000 + Math.random() * 9000000);
   const reg = await request('POST', '/api/auth?action=register', {
     username: reportUsername,
     password: 'StudentPass123',
     name: 'سارا احمدی',
-    phone: '09129876543',
+    phone: studentPhone,
+    email: 'student_' + Date.now() + '@taskrooz.local',
     birthDate: '1381/06/20',
     jobTitle: 'کارشناس هوش مصنوعی',
   });
@@ -618,7 +635,7 @@ test('Admin Can Read Comprehensive Performance Report of Other Users', async () 
   const reportRes = await request('GET', `/api/users?action=report&user_id=${studentId}`, null, adminHeader);
   assert(reportRes.status === 200, 'User report fetched successfully');
   assert(reportRes.body.user.name === 'سارا احمدی', 'Report belongs to student');
-  assert(reportRes.body.user.phone === '09129876543', 'Phone is included in report');
+  assert(reportRes.body.user.phone === studentPhone, 'Phone is included in report');
   assert(Array.isArray(reportRes.body.tasks), 'Tasks list returned in report');
   assert(reportRes.body.stats.totalTasks >= 1, 'Total tasks counted in report');
 });
@@ -645,3 +662,430 @@ test('Admin Global Settings Job Categories & Registration Integration', async ()
   assert(getRes.body.settings.jobCategories.includes('مهندس هوش مصنوعی و یادگیری عمیق'), 'New job category persisted');
 });
 
+// 17. User Deletion: no resurrection, related data cleaned, IIS-405 fallbacks
+test('User Deletion: Permanent Removal, Data Cleanup & IIS-405 Fallbacks', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  // Create two users via admin panel endpoint
+  const u1 = (await request('POST', '/api/users', {
+    username: 'delcheck_verb_' + Date.now(),
+    password: 'Pass123!',
+    name: 'کاربر حذف‌شده ۱',
+    role: 'user',
+  }, adminHeader)).body.user;
+  const u2 = (await request('POST', '/api/users', {
+    username: 'delcheck_fallback_' + Date.now(),
+    password: 'Pass123!',
+    name: 'کاربر حذف‌شده ۲',
+    role: 'user',
+  }, adminHeader)).body.user;
+
+  // Give u1 a task so we can verify cascade cleanup
+  await request('POST', '/api/tasks', {
+    title: 'تسک وابسته به کاربر حذف‌شده',
+    userId: u1.id,
+    date: '2026-09-21',
+    categoryId: 'cat-work',
+  }, adminHeader);
+
+  // Delete u1 via standard DELETE verb
+  const del1 = await request('DELETE', `/api/users?id=${u1.id}`, null, adminHeader);
+  assert(del1.status === 200, `DELETE verb should succeed, got ${del1.status}`);
+
+  // Delete u2 via IIS-405 fallback (GET ?action=delete)
+  const del2 = await request('GET', `/api/users?action=delete&id=${u2.id}`, null, adminHeader);
+  assert(del2.status === 200, `GET ?action=delete fallback should succeed, got ${del2.status}`);
+
+  // Both must be GONE from the server list (and stay gone on re-poll — no resurrection)
+  for (let i = 0; i < 2; i++) {
+    const list = await request('GET', '/api/users', null, adminHeader);
+    const found1 = list.body.users.some((u) => u.id === u1.id || u.username === u1.username);
+    const found2 = list.body.users.some((u) => u.id === u2.id || u.username === u2.username);
+    assert(!found1, 'Deleted user u1 must NOT reappear on poll (no resurrection)');
+    assert(!found2, 'Deleted user u2 must NOT reappear on poll (no resurrection)');
+  }
+
+  // Tasks of the deleted user must be gone too
+  const orphan = await request('GET', `/api/tasks?user_id=${u1.id}`, null, adminHeader);
+  assert(orphan.status === 200 && orphan.body.tasks.length === 0, 'Tasks of deleted user must be cascade-deleted');
+
+  // Super admin Mohusyn is protected from deletion
+  const delMohusyn = await request('DELETE', '/api/users?id=usr_admin_mohusyn', null, adminHeader);
+  assert(delMohusyn.status === 400, `Mohusyn account must be protected from deletion, got ${delMohusyn.status}`);
+});
+
+// 18. Admin "Delete All Rooms" endpoint
+test('Admin Delete All Focus Rooms', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  // Seed: create a room first
+  const roomRes = await request('POST', '/api/rooms', {
+    name: 'اتاق آزمایشی حذف کلی',
+    focusDuration: 1500,
+    breakDuration: 300,
+  }, adminHeader);
+  assert(roomRes.status === 201, 'Room created for delete-all test');
+
+  // Non-admin must be rejected
+  const regRes = await request('POST', '/api/auth/register', {
+    username: 'noadmin_' + Date.now(),
+    password: 'Pass123!',
+    name: 'کاربر بدون دسترسی',
+    phone: '0912' + Math.floor(1000000 + Math.random() * 9000000),
+    email: 'noadmin_' + Date.now() + '@taskrooz.local',
+  });
+  const noAdminHeader = { Authorization: `Bearer ${regRes.body.token}` };
+  const forbidden = await request('POST', '/api/rooms?action=delete_all', {}, noAdminHeader);
+  assert(forbidden.status === 403, `Non-admin delete_all must be 403, got ${forbidden.status}`);
+
+  // Admin wipes ALL rooms
+  const wipe = await request('POST', '/api/rooms?action=delete_all', {}, adminHeader);
+  assert(wipe.status === 200, `Admin delete_all should succeed, got ${wipe.status}`);
+  assert(wipe.body.deletedCount >= 1, 'At least the seeded room must be deleted');
+
+  // Room list must now be empty
+  const list = await request('GET', '/api/rooms?action=list', null, adminHeader);
+  assert(list.status === 200, 'Room list fetched after wipe');
+  assert(Array.isArray(list.body.rooms) && list.body.rooms.length === 0, 'No active rooms may remain after admin wipe');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// New features: self profile update (incl. avatar) + admin text manager
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TINY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+// 19. Self profile update: any user can edit own profile incl. photo + password
+test('Profile Self-Update: Avatar, Contact Fields & Password Rotation', async () => {
+  const regRes = await request('POST', '/api/auth/register', {
+    username: 'profile_test_' + Date.now(),
+    password: 'OldPass123!',
+    name: 'کاربر پروفایل',
+  });
+  assert(regRes.status === 201, `Register should succeed, got ${regRes.status}`);
+  const user = regRes.body.user;
+  const userHeader = { Authorization: `Bearer ${regRes.body.token}` };
+
+  // 1. Update own profile with avatar + fields
+  const upd = await request('PUT', '/api/users', {
+    action: 'update_profile',
+    name: 'کاربر پروفایل ویرایش‌شده',
+    phone: '09123456789',
+    email: 'profile@test.local',
+    province: 'اصفهان',
+    city: 'اصفهان',
+    jobTitle: 'تست‌نویس',
+    skills: ['React', 'PHP'],
+    avatar: TINY_PNG,
+  }, userHeader);
+  assert(upd.status === 200, `Self profile update should succeed, got ${upd.status}`);
+  assert(typeof upd.body.user.avatar === 'string' && upd.body.user.avatar.startsWith('data:image/'), 'Avatar data URL must be returned');
+  assert(upd.body.user.name === 'کاربر پروفایل ویرایش‌شده', 'Name must be updated');
+
+  // 2. Persisted: /me returns avatar
+  const me = await request('GET', '/api/auth?action=me', null, userHeader);
+  assert(me.status === 200 && me.body.authenticated === true, '/me must authenticate');
+  assert(me.body.user.avatar === TINY_PNG, 'Avatar must persist across /me');
+  assert(Array.isArray(me.body.user.skills) && me.body.user.skills.includes('React'), 'Skills must persist');
+
+  // 3. Empty string removes avatar
+  const remove = await request('PUT', '/api/users', { action: 'update_profile', avatar: '' }, userHeader);
+  assert(remove.status === 200, `Avatar removal should succeed, got ${remove.status}`);
+  const me2 = await request('GET', '/api/auth?action=me', null, userHeader);
+  assert(!me2.body.user.avatar, 'Avatar must be removed after empty-string update');
+
+  // 4. Password rotation via self profile update
+  const pw = await request('PUT', '/api/users', { action: 'update_profile', password: 'NewPass99!' }, userHeader);
+  assert(pw.status === 200, `Password change should succeed, got ${pw.status}`);
+  const loginNew = await request('POST', '/api/auth/login', { username: user.username, password: 'NewPass99!' });
+  assert(loginNew.status === 200, `Login with new password must work, got ${loginNew.status}`);
+
+  // 5. Invalid avatar rejected
+  const badAvatar = await request('PUT', '/api/users', { action: 'update_profile', avatar: 'not-a-data-url' }, userHeader);
+  assert(badAvatar.status === 400, `Invalid avatar must be 400, got ${badAvatar.status}`);
+
+  // Cleanup: admin deletes the test user
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+  const del = await request('GET', `/api/users?action=delete&id=${user.id}`, null, adminHeader);
+  assert(del.status === 200, `Cleanup delete should succeed, got ${del.status}`);
+});
+
+// 20. Self profile update is strictly own-account only
+test('Profile Self-Update Security: Cannot Edit Other Users', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  const regRes = await request('POST', '/api/auth/register', {
+    username: 'profile_sec_' + Date.now(),
+    password: 'Pass123!',
+    name: 'کاربر امنیتی',
+  });
+  const user = regRes.body.user;
+  const userHeader = { Authorization: `Bearer ${regRes.body.token}` };
+
+  // Non-admin targets another (admin) user id -> 403
+  const other = await request('PUT', '/api/users', {
+    action: 'update_profile',
+    id: adminLogin.body.user.id,
+    name: 'هاک نام مدیر',
+  }, userHeader);
+  assert(other.status === 403, `Editing another user must be 403, got ${other.status}`);
+
+  // Admin id must not be renamed
+  const list = await request('GET', '/api/users', null, adminHeader);
+  const mohusyn = list.body.users.find((u) => u.username === 'Mohusyn');
+  assert(mohusyn && mohusyn.name !== 'هاک نام مدیر', 'Admin name must be untouched');
+
+  // No authentication -> 401 (dev handler) 
+  const anon = await request('PUT', '/api/users', { action: 'update_profile', name: 'بی‌هویت' });
+  assert([401, 403].includes(anon.status), `Anonymous self-update must be rejected, got ${anon.status}`);
+
+  // Cleanup
+  const del = await request('GET', `/api/users?action=delete&id=${user.id}`, null, adminHeader);
+  assert(del.status === 200, `Cleanup delete should succeed, got ${del.status}`);
+});
+
+// 21. Admin Text Manager: app texts stored in global settings & readable
+test('Admin Text Manager: Editable App Texts in Global Settings', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  // Publish a custom text
+  const put = await request('POST', '/api/settings', {
+    texts: { appName: 'تسک‌روز آزمایشی', footerCredits: 'test-credits-۲۰۲۶' },
+  }, adminHeader);
+  assert(put.status === 200, `Settings save should succeed, got ${put.status}`);
+
+  const got = await request('GET', '/api/settings', null, adminHeader);
+  assert(got.status === 200, 'Settings fetch must succeed');
+  assert(got.body.settings.texts && got.body.settings.texts.appName === 'تسک‌روز آزمایشی', `Custom appName text must round-trip, got: ${JSON.stringify(got.body.settings.texts)}`);
+  assert(got.body.settings.texts.footerCredits === 'test-credits-۲۰۲۶', 'Custom footer text must round-trip');
+
+  // Blank value -> client falls back to built-in default (server keeps empty string)
+  const blank = await request('POST', '/api/settings', { texts: { appName: '' } }, adminHeader);
+  assert(blank.status === 200, 'Blank text save must succeed');
+  const got2 = await request('GET', '/api/settings', null, adminHeader);
+  assert(got2.body.settings.texts.appName === '', 'Blank text must be stored as empty string');
+});
+
+// 22. PWA: service worker, manifest and icons must be served
+test('PWA Assets: Service Worker, Manifest & Icons Served', async () => {
+  const sw = await new Promise((resolve) => {
+    const http = require('http');
+    http.get('http://localhost:5173/sw.js', (res) => {
+      let d = '';
+      res.on('data', (c) => (d += c));
+      res.on('end', () => resolve({ status: res.statusCode, body: d }));
+    }).on('error', () => resolve({ status: 0, body: '' }));
+  });
+  assert(sw.status === 200, `sw.js must be served, got ${sw.status}`);
+  assert(sw.body.includes("addEventListener('fetch'"), 'sw.js must contain a fetch handler');
+
+  const manifest = await request('GET', '/manifest.json');
+  assert(manifest.status === 200, `manifest.json must be served, got ${manifest.status}`);
+  const m = typeof manifest.body === 'string' ? JSON.parse(manifest.body) : manifest.body;
+  assert(m.name && m.start_url, 'manifest must have name and start_url');
+  assert(Array.isArray(m.icons) && m.icons.length >= 2, 'manifest must declare icons');
+  const pngIcons = m.icons.filter((i) => i.type === 'image/png');
+  assert(pngIcons.some((i) => i.sizes === '192x192') && pngIcons.some((i) => i.sizes === '512x512'),
+    'manifest must declare 192 and 512 PNG icons');
+
+  for (const icon of ['./icon-192.png', './icon-512.png', './icon-maskable-512.png']) {
+    const r = await new Promise((resolve) => {
+      const http = require('http');
+      http.get('http://localhost:5173/' + icon, (res) => {
+        res.resume();
+        res.on('end', () => resolve(res.statusCode));
+      }).on('error', () => resolve(0));
+    });
+    assert(r === 200, `${icon} must be served, got ${r}`);
+  }
+});
+
+// 23. Admin bulk delete: multi-select wipe with protections
+test('Admin Bulk Delete: Multi-select Wipe with Protections', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+  const adminId = adminLogin.body.user.id;
+
+  // Seed 3 disposable users
+  const ids = [];
+  for (let i = 0; i < 3; i++) {
+    const r = await request('POST', '/api/auth/register', {
+      username: 'bulk_' + i + '_' + Date.now(),
+      password: 'Pass123!',
+      name: 'کاربر گروهی ' + i,
+    });
+    assert(r.status === 201, `Seed user ${i} must register, got ${r.status}`);
+    ids.push(r.body.user.id);
+  }
+
+  // Non-admin bulk delete must be 403
+  const regRes = await request('POST', '/api/auth/register', {
+    username: 'bulk_no_' + Date.now(),
+    password: 'Pass123!',
+    name: 'کاربر بدون دسترسی',
+  });
+  const noAdminHeader = { Authorization: `Bearer ${regRes.body.token}` };
+  const forbidden = await request('POST', '/api/users?action=delete_many', { action: 'delete_many', ids }, noAdminHeader);
+  assert(forbidden.status === 403, `Non-admin bulk delete must be 403, got ${forbidden.status}`);
+
+  // Admin bulk: delete 2 of 3, plus own id (skipped) + unknown id (skipped)
+  const res = await request('POST', '/api/users?action=delete_many', {
+    action: 'delete_many',
+    ids: [ids[0], ids[1], adminId, 'nonexistent_user_999'],
+  }, adminHeader);
+  assert(res.status === 200, `Bulk delete should succeed, got ${res.status}`);
+  assert(res.body.deletedCount === 2, `Exactly 2 users must be deleted, got ${res.body.deletedCount}`);
+  assert(res.body.deleted.includes(ids[0]) && res.body.deleted.includes(ids[1]), 'The two seeded users must be in deleted list');
+  assert(res.body.skipped.length === 2, `Own admin + unknown id must be skipped, got ${res.body.skipped.length}`);
+
+  // Third user survives; deleted ones are gone
+  const list = await request('GET', '/api/users', null, adminHeader);
+  assert(list.body.users.some((u) => u.id === ids[2]), 'Third user must survive bulk delete');
+  assert(!list.body.users.some((u) => u.id === ids[0]), 'First user must be gone');
+  assert(!list.body.users.some((u) => u.id === ids[1]), 'Second user must be gone');
+
+  // Empty ids list -> 400
+  const empty = await request('POST', '/api/users?action=delete_many', { action: 'delete_many', ids: [] }, adminHeader);
+  assert(empty.status === 400, `Empty ids must be 400, got ${empty.status}`);
+
+  // Cleanup: remove the surviving user + the non-admin probe
+  const cleanup = await request('POST', '/api/users?action=delete_many', {
+    action: 'delete_many',
+    ids: [ids[2], regRes.body.user.id],
+  }, adminHeader);
+  assert(cleanup.status === 200 && cleanup.body.deletedCount === 2, 'Cleanup bulk delete must succeed');
+});
+
+// 28. Database install guard: 503 when data/db.json is missing + one-click install
+test('Database Install Guard: 503 When Missing + One-Click Install', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const dbPath = path.resolve(process.cwd(), 'data/db.json');
+  const backup = dbPath + '.test28_backup';
+  fs.copyFileSync(dbPath, backup);
+  try {
+    fs.unlinkSync(dbPath);
+
+    // Any API route must now answer 503 DB_NOT_INSTALLED (no silent auto-seed)
+    const blocked = await request('GET', '/api/tasks.php');
+    assert(blocked.status === 503, `Missing db must give 503, got ${blocked.status}`);
+    assert(blocked.body.code === 'DB_NOT_INSTALLED', `code must be DB_NOT_INSTALLED, got ${blocked.body.code}`);
+
+    // PWA manifest must keep working before installation
+    const manifest = await new Promise((resolve) => {
+      http.get(BASE_URL + '/manifest.php', (res) => {
+        let d = '';
+        res.on('data', (c) => (d += c));
+        res.on('end', () => resolve({ status: res.statusCode, body: d }));
+      }).on('error', () => resolve({ status: 0, body: '' }));
+    });
+    assert(manifest.status === 200, `manifest.php must work before install, got ${manifest.status}`);
+    assert(/"name":/.test(manifest.body), 'manifest must contain an app name');
+
+    // Health check reports not-installed
+    const health = await request('GET', '/api/install.php');
+    assert(health.status === 200, `install health must be 200, got ${health.status}`);
+    assert(health.body.installed === false, 'db must report installed=false before install');
+
+    // One-click install seeds the database file
+    const install = await request('POST', '/api/install.php');
+    assert(install.status === 200, `install must succeed, got ${install.status}`);
+    assert(install.body.installed === true, 'installed flag must be true after install');
+    assert(fs.existsSync(dbPath), 'db.json must be created by the install endpoint');
+
+    // API is fully operational again
+    const after = await request('GET', '/api/install.php');
+    assert(after.body.installed === true, 'db must report installed=true after install');
+    const login = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+    assert(login.status === 200, `login must work after fresh install, got ${login.status}`);
+  } finally {
+    // Restore the original development database
+    fs.copyFileSync(backup, dbPath);
+    fs.unlinkSync(backup);
+  }
+});
+
+test('12-Hour Offline-First Sync Endpoint & Action Processing', async () => {
+  // Login first to get authorization token
+  const login = await request('POST', '/api/auth/login', {
+    username: 'Mohusyn',
+    password: 'Smosh1387',
+  });
+  assert(login.status === 200, 'login must succeed');
+  const authHeader = { Authorization: 'Bearer ' + login.body.token };
+
+  // 1. Sync endpoint returns current timestamp & data when empty queue
+  const emptySync = await request(
+    'POST',
+    '/api/sync.php',
+    {
+      lastSyncTime: Date.now() - 3600000,
+      actions: [],
+    },
+    authHeader
+  );
+  assert(emptySync.status === 200, `empty sync should be 200, got ${emptySync.status}`);
+  assert(emptySync.body.serverTimestamp, 'sync must return serverTimestamp');
+  assert(Array.isArray(emptySync.body.tasks), 'sync must return tasks array');
+
+  // 2. Client queued offline task action sync
+  const testOfflineId = 'offline_task_' + Date.now();
+  const pushSync = await request(
+    'POST',
+    '/api/sync.php',
+    {
+      lastSyncTime: Date.now() - 3600000 * 12,
+      actions: [
+        {
+          id: 'act_1',
+          type: 'create_task',
+          payload: {
+            id: testOfflineId,
+            title: 'Offline Queued Task',
+            userId: 'usr_admin',
+            category: 'personal',
+            date: '1405-01-01',
+            timeBlock: '10:00-11:00',
+          },
+          timestamp: Date.now() - 1000,
+        },
+        {
+          id: 'act_2',
+          type: 'toggle_task',
+          payload: { id: testOfflineId },
+          timestamp: Date.now() - 500,
+        },
+      ],
+    },
+    authHeader
+  );
+  assert(pushSync.status === 200, `pushSync should succeed with 200, got ${pushSync.status}`);
+  assert(pushSync.body.syncedActionsCount === 2, `expected 2 synced actions, got ${pushSync.body.syncedActionsCount}`);
+
+  const created = pushSync.body.tasks.find((t) => t.id === testOfflineId);
+  assert(created, 'created task must be present in sync result');
+  assert(created.completed === true, 'task should be completed due to action 2 toggle');
+
+  // Clean up test task
+  await request(
+    'POST',
+    '/api/sync.php',
+    {
+      lastSyncTime: Date.now(),
+      actions: [
+        {
+          id: 'act_3',
+          type: 'delete_task',
+          payload: { id: testOfflineId },
+          timestamp: Date.now(),
+        },
+      ],
+    },
+    authHeader
+  );
+});

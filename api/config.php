@@ -30,6 +30,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $db = TaskRoozDB::getInstance();
 $pdo = getMySQLPDO();
 
+// --- Database installation guard ---
+// If data/db.json was never shipped/installed, refuse to serve the app
+// silently. The frontend shows a clear "database not installed" panel.
+$_tr_script = basename($_SERVER['SCRIPT_NAME'] ?? '');
+$_tr_diagnostics_allowed = in_array($_tr_script, ['install.php', 'health.php'], true);
+if (!$db->isInstalled() && !$_tr_diagnostics_allowed) {
+    jsonResponse(['code' => 'DB_NOT_INSTALLED', 'error' => 'پایگاه داده نصب نیست — فایل data/db.json روی سرور یافت نشد.'], 503);
+}
+
 function jsonResponse($data, $status = 200) {
     http_response_code($status);
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
@@ -37,17 +46,66 @@ function jsonResponse($data, $status = 200) {
 }
 
 function getJsonInput() {
-    $raw = file_get_contents('php://input');
-    $parsed = json_decode($raw, true);
-    if (is_array($parsed)) return $parsed;
+    $raw = @file_get_contents('php://input');
+    if (!empty($raw)) {
+        $parsed = @json_decode($raw, true);
+        if (is_array($parsed)) return $parsed;
+    }
+    if (!empty($_POST['data'])) {
+        $parsed = @json_decode($_POST['data'], true);
+        if (is_array($parsed)) return $parsed;
+    }
+    if (!empty($_POST['payload'])) {
+        $parsed = @json_decode($_POST['payload'], true);
+        if (is_array($parsed)) return $parsed;
+    }
     if (!empty($_POST)) return $_POST;
+    if (!empty($_GET['data'])) {
+        $decoded = @base64_decode($_GET['data']);
+        if ($decoded) {
+            $parsed = @json_decode($decoded, true);
+            if (is_array($parsed)) return $parsed;
+        }
+        $parsed = @json_decode($_GET['data'], true);
+        if (is_array($parsed)) return $parsed;
+    }
     if (!empty($_GET)) return $_GET;
     return [];
+}
+
+function getAuthToken() {
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    $authHeader = $headers['Authorization'] 
+        ?? $headers['authorization'] 
+        ?? $headers['X-Auth-Token']
+        ?? $headers['x-auth-token']
+        ?? $_SERVER['HTTP_AUTHORIZATION'] 
+        ?? $_SERVER['HTTP_X_AUTH_TOKEN'] 
+        ?? $_GET['token'] 
+        ?? $_POST['token']
+        ?? '';
+
+    $token = '';
+    if (preg_match('/Bearer\s+(\S+)/i', $authHeader, $matches)) {
+        $token = $matches[1];
+    } elseif (!empty($authHeader)) {
+        $token = trim($authHeader);
+    }
+    return $token;
 }
 
 function getCurrentUser($dbInstance = null) {
     global $db;
     $storage = $dbInstance ?: $db;
+
+    $token = getAuthToken();
+
+    // Check if token was explicitly revoked / kicked out
+    if (!empty($token) && !empty($storage->data['revoked_tokens']) && is_array($storage->data['revoked_tokens'])) {
+        if (in_array($token, $storage->data['revoked_tokens'])) {
+            return null;
+        }
+    }
 
     // 1. Session check
     if (!empty($_SESSION['user_id'])) {
@@ -59,24 +117,7 @@ function getCurrentUser($dbInstance = null) {
         }
     }
 
-    // 2. Token check (IIS strips Authorization, so check X-Auth-Token, HTTP_X_AUTH_TOKEN, and ?token=)
-    $headers = function_exists('getallheaders') ? getallheaders() : [];
-    $authHeader = $headers['Authorization'] 
-        ?? $headers['authorization'] 
-        ?? $headers['X-Auth-Token']
-        ?? $headers['x-auth-token']
-        ?? $_SERVER['HTTP_AUTHORIZATION'] 
-        ?? $_SERVER['HTTP_X_AUTH_TOKEN'] 
-        ?? $_GET['token'] 
-        ?? '';
-
-    $token = '';
-    if (preg_match('/Bearer\s+(\S+)/i', $authHeader, $matches)) {
-        $token = $matches[1];
-    } elseif (!empty($authHeader)) {
-        $token = trim($authHeader);
-    }
-
+    // 2. Token check (IIS strips Authorization, so check X-Auth-Token, HTTP_X_AUTH_TOKEN, ?token=, and POST token)
     if (!empty($token)) {
         $decoded = @base64_decode($token);
         if ($decoded && strpos($decoded, ':') !== false) {

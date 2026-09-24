@@ -26,6 +26,7 @@ echo json_encode([
     'php_version' => PHP_VERSION,
     'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
     'database' => [
+        'installed' => $db->isInstalled(),
         'engine' => $db->mode,
         'mysql_connected' => $isMysqlConnected,
         'db_host' => DB_HOST,

@@ -2,12 +2,28 @@ import fs from 'fs';
 import path from 'path';
 import type { IncomingMessage, ServerResponse } from 'http';
 
+function normalizePersianText(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/[ي]/g, 'ی')
+    .replace(/[ك]/g, 'ک')
+    .replace(/[ة]/g, 'ه')
+    .replace(/[٠-٩]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1728))
+    .replace(/[۰-۹]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1776))
+    .replace(/^[@#]/, '')
+    .trim()
+    .toLowerCase();
+}
+
 interface DBUser {
   id: string;
+  numericId?: number;
   username: string;
   password: string;
   name: string;
   role: 'admin' | 'user';
+  status?: 'active' | 'pending_approval' | 'suspended' | 'pending_verification';
+  isDemo?: boolean;
   phone?: string;
   email?: string;
   province?: string;
@@ -16,6 +32,20 @@ interface DBUser {
   jobTitle?: string;
   skills?: string[];
   dailyTimeline?: any;
+  subscription?: {
+    plan: 'free' | 'pro';
+    planType?: string;
+    activatedAt?: string;
+    expiresAt?: string | null;
+  };
+  isProfileCompleted?: boolean;
+  avatar?: string; // data URL (base64) profile photo
+  verificationCode?: string;
+  isVerified?: boolean;
+  baleChatId?: string | number;
+  baleUsername?: string;
+  baleNotifToken?: string;
+  baleNotificationsEnabled?: boolean;
   createdAt: string;
 }
 
@@ -140,6 +170,40 @@ interface AppData {
   personalityResults: DBPersonalityResult[];
   globalSettings?: any;
   custom_fonts?: any[];
+  friendships?: Array<{ id: string; user1Id: string; user2Id: string; createdAt: string }>;
+  friend_requests?: Array<{
+    id: string;
+    fromUserId: string;
+    fromUserName: string;
+    fromUserUsername?: string;
+    fromUserAvatar?: string | null;
+    toUserId: string;
+    projectId?: string;
+    projectName?: string;
+    status: 'pending' | 'accepted' | 'rejected';
+    createdAt: string;
+  }>;
+  messages?: Array<{
+    id: string;
+    senderId: string;
+    senderName?: string;
+    senderAvatar?: string | null;
+    receiverId: string;
+    text: string;
+    createdAt: string;
+    read?: boolean;
+  }>;
+  project_messages?: Array<{
+    id: string;
+    projectId: string;
+    senderId: string;
+    senderName: string;
+    senderAvatar?: string | null;
+    text: string;
+    createdAt: string;
+  }>;
+  notifications?: any[];
+  payments?: any[];
 }
 
 const DB_FILE = path.resolve(process.cwd(), 'data/db.json');
@@ -228,7 +292,7 @@ const INITIAL_DATA: AppData = {
   globalSettings: {
     broadcastNotice: {
       enabled: true,
-      title: 'خوش‌آمدید به سامانه تسک‌روز',
+      title: 'خوش‌آمدید به سامانه بگ تایم (Bag Time)',
       message: 'سامانه متمرکز برنامه‌ریزی روزانه، پومودورو تیمی و پایش بهره‌وری آماده استفاده است.',
       type: 'info',
       updatedAt: new Date().toISOString(),
@@ -289,6 +353,32 @@ function readDb(): AppData {
       if (!parsed.dailyNotes) parsed.dailyNotes = [];
       if (!parsed.personalityResults) parsed.personalityResults = [];
       if (!parsed.custom_fonts) parsed.custom_fonts = [];
+      if (!parsed.friendships) parsed.friendships = [];
+      if (!parsed.friend_requests) parsed.friend_requests = [];
+      if (!parsed.messages) parsed.messages = [];
+      if (!parsed.project_messages) parsed.project_messages = [];
+
+      // Ensure every user has numericId, subscription & isProfileCompleted
+      let maxNum = 1000;
+      for (const u of parsed.users) {
+        if (u.numericId) maxNum = Math.max(maxNum, u.numericId);
+      }
+      for (const u of parsed.users) {
+        if (!u.numericId) {
+          if (u.username?.toLowerCase() === 'mohusyn') {
+            u.numericId = 1000;
+          } else {
+            maxNum++;
+            u.numericId = maxNum;
+          }
+        }
+        if (!u.subscription) {
+          u.subscription = { plan: u.role === 'admin' ? 'pro' : 'free' };
+        }
+        if (u.isProfileCompleted === undefined) {
+          u.isProfileCompleted = u.role === 'admin' || Boolean(u.birthDate && u.jobTitle && u.city);
+        }
+      }
 
       if (purgeExpiredDeletedRooms(parsed)) {
         writeDb(parsed);
@@ -298,6 +388,7 @@ function readDb(): AppData {
   } catch (e) {
     console.error('Error reading db.json:', e);
   }
+  // File missing or unreadable — re-seed defaults (normal flow is blocked by the install guard)
   writeDb(INITIAL_DATA);
   return INITIAL_DATA;
 }
@@ -308,10 +399,62 @@ function writeDb(data: AppData) {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
+    // 1. Write mirror db.json for backwards compatibility & tests
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+
+    // 2. Write modular separated databases for high-performance domain isolation
+    const usersPayload = {
+      users: data.users || [],
+      friendships: (data as any).friendships || [],
+      friend_requests: (data as any).friend_requests || [],
+    };
+    fs.writeFileSync(path.join(dir, 'users.json'), JSON.stringify(usersPayload, null, 2), 'utf-8');
+
+    const tasksPayload = {
+      tasks: data.tasks || [],
+      categories: data.categories || [],
+      projects: data.projects || [],
+      goals: data.goals || [],
+      dailyNotes: data.dailyNotes || [],
+      personalityResults: data.personalityResults || [],
+    };
+    fs.writeFileSync(path.join(dir, 'tasks.json'), JSON.stringify(tasksPayload, null, 2), 'utf-8');
+
+    const messagesPayload = {
+      messages: (data as any).messages || [],
+      project_messages: (data as any).project_messages || [],
+      focus_rooms: data.focus_rooms || [],
+    };
+    fs.writeFileSync(path.join(dir, 'messages.json'), JSON.stringify(messagesPayload, null, 2), 'utf-8');
+
+    const notifsPayload = {
+      notifications: (data as any).notifications || [],
+      payments: (data as any).payments || [],
+    };
+    fs.writeFileSync(path.join(dir, 'notifications.json'), JSON.stringify(notifsPayload, null, 2), 'utf-8');
+
+    const settingsPayload = {
+      globalSettings: data.globalSettings || {},
+      custom_fonts: data.custom_fonts || [],
+    };
+    fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify(settingsPayload, null, 2), 'utf-8');
   } catch (e) {
-    console.error('Error writing db.json:', e);
+    console.error('Error writing modular database files:', e);
   }
+}
+
+function isDbInstalled(): boolean {
+  try {
+    return fs.existsSync(DB_FILE) && fs.statSync(DB_FILE).size > 10;
+  } catch {
+    return false;
+  }
+}
+
+/** Read the DB only if it already exists (never auto-seeds). Used by PWA manifest/icon routes. */
+function readDbSafe(): AppData | null {
+  if (!isDbInstalled()) return null;
+  return readDb();
 }
 
 function parseJsonBody(req: IncomingMessage): Promise<any> {
@@ -348,6 +491,9 @@ function getUserFromToken(req: IncomingMessage, db: AppData): DBUser | null {
   }
 
   if (token) {
+    if (Array.isArray((db as any).revoked_tokens) && (db as any).revoked_tokens.includes(token)) {
+      return null;
+    }
     try {
       const decoded = Buffer.from(token, 'base64').toString('utf-8');
       const userId = decoded.split(':')[0];
@@ -363,26 +509,176 @@ function getUserFromToken(req: IncomingMessage, db: AppData): DBUser | null {
   return null;
 }
 
+function parseUserAgentInfo(ua = '') {
+  let device = 'رایانه شخصی (PC)';
+  let browser = 'مرورگر وب';
+  let isMobile = false;
+
+  if (/BagTimeExtension|BagTime-Assistant/i.test(ua)) {
+    browser = 'افزونه دستیار نیوتَب بگ تایم';
+  } else if (/Edg\/|Edge\//i.test(ua)) {
+    browser = 'مایکروسافت اج (Microsoft Edge)';
+  } else if (/Chrome\//i.test(ua)) {
+    browser = 'گوگل کروم (Google Chrome)';
+  } else if (/Firefox\//i.test(ua)) {
+    browser = 'موزیلا فایرفاکس (Mozilla Firefox)';
+  } else if (/Safari\//i.test(ua) && !/Chrome\//i.test(ua)) {
+    browser = 'اپل سافاری (Safari)';
+  } else if (/Opera|OPR\//i.test(ua)) {
+    browser = 'مرورگر اپرا (Opera)';
+  }
+
+  if (/Android/i.test(ua)) {
+    device = 'گوشی هوشمند (اندروید)';
+    isMobile = true;
+  } else if (/iPhone/i.test(ua)) {
+    device = 'گوشی اپل آیفون (iOS)';
+    isMobile = true;
+  } else if (/iPad/i.test(ua)) {
+    device = 'تبلت آیپد (iPadOS)';
+    isMobile = true;
+  } else if (/Windows NT 10\.0/i.test(ua)) {
+    device = 'ویندوز ۱۰ / ۱۱';
+  } else if (/Windows NT 6\.[123]/i.test(ua)) {
+    device = 'ویندوز ۷ / ۸';
+  } else if (/Macintosh|Mac OS X/i.test(ua)) {
+    device = 'رایانه اپل (macOS)';
+  } else if (/Linux/i.test(ua)) {
+    device = 'سیستم لینوکس (Linux)';
+  }
+
+  return { device, browser, isMobile };
+}
+
+function recordSession(db: AppData, userId: string, token: string, ua = '', ip = '', location = '') {
+  if (!Array.isArray((db as any).sessions)) {
+    (db as any).sessions = [];
+  }
+  const parsed = parseUserAgentInfo(ua);
+  const sessionId = 'sess_' + Buffer.from(`${userId}:${token}`).toString('hex').slice(0, 12);
+  const existing = (db as any).sessions.find((s: any) => s.token === token || s.id === sessionId);
+  if (existing) {
+    existing.lastActive = new Date().toISOString();
+    if (ip) existing.ip = ip;
+  } else {
+    (db as any).sessions.push({
+      id: sessionId,
+      userId,
+      token,
+      device: parsed.device,
+      browser: parsed.browser,
+      isMobile: parsed.isMobile,
+      ip: ip || '127.0.0.1',
+      location: location || 'ایران',
+      createdAt: new Date().toISOString(),
+      lastActive: new Date().toISOString(),
+    });
+  }
+}
+
 export async function handleApiRequest(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  const urlObj = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+  const pathname = urlObj.pathname;
+  const method = req.method?.toUpperCase();
+
+  // --- Dynamic PWA manifest (admin-editable name) ---
+  if (pathname === '/manifest.php') {
+    const db = readDbSafe();
+    const branding = db?.globalSettings?.appBranding || {};
+    const name = (branding.appName || '').trim() || 'تسک‌روز';
+    const manifest = {
+      name,
+      short_name: name,
+      start_url: './',
+      scope: './',
+      display: 'standalone',
+      dir: 'rtl',
+      lang: 'fa',
+      background_color: '#09090b',
+      theme_color: '#4f46e5',
+      description: 'سامانه برنامه‌ریزی روزانه و بهره‌وری تیمی',
+      icons: [
+        { src: 'app-icon.php?size=192', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: 'app-icon.php?size=512', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: 'app-icon.php?size=512', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      ],
+    };
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.end(JSON.stringify(manifest));
+    return true;
+  }
+
+  // --- Dynamic PWA icon (admin-editable, falls back to static icons) ---
+  if (pathname === '/app-icon.php') {
+    const db = readDbSafe();
+    const dataUrl = db?.globalSettings?.appBranding?.pwaIconDataUrl;
+    if (typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+      const m = dataUrl.match(/^data:(image\/[a-z0-9+.-]+);base64,(.*)$/i);
+      if (m) {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', m[1]);
+        res.setHeader('Cache-Control', 'no-cache');
+        res.end(Buffer.from(m[2], 'base64'));
+        return true;
+      }
+    }
+    const size = parseInt(urlObj.searchParams.get('size') || '512', 10) || 512;
+    const file = path.resolve(process.cwd(), size >= 384 ? 'icon-512.png' : 'icon-192.png');
+    if (fs.existsSync(file)) {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'image/png');
+      res.end(fs.readFileSync(file));
+    } else {
+      res.statusCode = 404;
+      res.end('not found');
+    }
+    return true;
+  }
+
   if (!req.url?.startsWith('/api')) {
     return false;
   }
 
-  const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const pathname = urlObj.pathname;
-  const method = req.method?.toUpperCase();
+  // --- Database installation guard (mirrors PHP: no silent auto-seed) ---
+  if (!pathname.startsWith('/api/install')) {
+    if (!isDbInstalled()) {
+      sendJson(res, { code: 'DB_NOT_INSTALLED', error: 'پایگاه داده نصب نیست — فایل data/db.json روی سرور یافت نشد.' }, 503);
+      return true;
+    }
+  }
+
+  // --- Install / health endpoint (works even before installation) ---
+  if (pathname.startsWith('/api/install')) {
+    if (method === 'GET') {
+      sendJson(res, { installed: isDbInstalled(), app: 'TaskRooz' });
+      return true;
+    }
+    if (method === 'POST') {
+      if (!isDbInstalled()) writeDb(INITIAL_DATA);
+      sendJson(res, { installed: true, message: 'پایگاه داده با موفقیت نصب شد.' });
+      return true;
+    }
+    sendJson(res, { error: 'متد نامعتبر است.' }, 405);
+    return true;
+  }
+
   const db = readDb();
   const currentUser = getUserFromToken(req, db);
 
   // 1. Auth routes
   if (pathname.startsWith('/api/auth')) {
-    const action = urlObj.searchParams.get('action') || pathname.replace('/api/auth/', '').replace('/api/auth', '');
+    const parsedAuthBody = method === 'POST' ? await parseJsonBody(req) : {};
+    const action = urlObj.searchParams.get('action') || parsedAuthBody.action || pathname.replace('/api/auth/', '').replace('/api/auth', '');
 
     if (method === 'POST' && (action === 'register' || pathname.endsWith('/register'))) {
-      const body = await parseJsonBody(req);
+      const body = parsedAuthBody;
       const username = body.username?.trim();
       const password = body.password?.trim();
       const name = body.name?.trim();
+      const rawPhone = body.phone ? normalizePersianText(body.phone) : '';
+      const email = body.email?.trim().toLowerCase();
 
       if (!username || !password || !name) {
         sendJson(res, { error: 'تمامی فیلدها الزامی هستند.' }, 400);
@@ -390,24 +686,54 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       }
 
       if (db.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
-        sendJson(res, { error: 'این نام کاربری قبلاً ثبت شده است.' }, 400);
+        sendJson(res, { error: 'این نام کاربری قبلاً ثبت شده است. لطفاً نام دیگری انتخاب کنید.' }, 400);
         return true;
       }
 
+      if (rawPhone && db.users.some((u) => u.phone && normalizePersianText(u.phone) === rawPhone)) {
+        sendJson(res, { error: 'این شماره موبایل قبلاً در سامانه ثبت شده است.' }, 400);
+        return true;
+      }
+
+      if (email && db.users.some((u) => u.email && u.email.toLowerCase() === email)) {
+        sendJson(res, { error: 'این آدرس ایمیل قبلاً در سامانه ثبت شده است.' }, 400);
+        return true;
+      }
+
+      const nextNumericId = Math.max(1000, ...db.users.map((u) => u.numericId || 1000)) + 1;
+      const isProfileCompleted = Boolean(body.birthDate && body.jobTitle && body.city);
+      const isDemoMode = (db.globalSettings as any)?.appOperatingMode === 'community_demo';
+      const baleConfig = (db.globalSettings as any)?.baleBot;
+      const baleEnabled = Boolean(baleConfig?.enabled && baleConfig?.verifyOnRegister);
+      const verificationCode = String(Math.floor(100000 + Math.random() * 900000));
+
+      const userStatus: 'active' | 'pending_approval' | 'pending_verification' = isDemoMode
+        ? 'pending_approval'
+        : baleEnabled
+        ? 'pending_verification'
+        : 'active';
+
       const newUser: DBUser = {
         id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        numericId: nextNumericId,
         username,
         password,
         name,
         role: 'user', // Always user, never admin!
-        phone: body.phone,
-        email: body.email,
-        province: body.province,
-        city: body.city,
-        birthDate: body.birthDate,
-        jobTitle: body.jobTitle,
-        skills: body.skills,
+        status: userStatus,
+        isDemo: isDemoMode,
+        isVerified: !baleEnabled,
+        verificationCode,
+        phone: body.phone?.trim(),
+        email: body.email?.trim(),
+        province: body.province?.trim(),
+        city: body.city?.trim(),
+        birthDate: body.birthDate?.trim(),
+        jobTitle: body.jobTitle?.trim(),
+        skills: body.skills || [],
         dailyTimeline: body.dailyTimeline,
+        subscription: { plan: 'free' },
+        isProfileCompleted,
         createdAt: new Date().toISOString(),
       };
 
@@ -416,12 +742,25 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
       const token = Buffer.from(`${newUser.id}:${Date.now()}`).toString('base64');
       sendJson(res, {
-        message: 'ثبت‌نام با موفقیت انجام شد.',
+        message: isDemoMode
+          ? 'ثبت‌نام با موفقیت انجام شد. حساب کاربری شما در نسخه دمو پس از تأیید مدیر فعال خواهد شد.'
+          : baleEnabled
+          ? 'کد تأیید هویت صادر شد. لطفاً جهت فعال‌سازی حساب، به ربات بله مراجعه فرمایید.'
+          : 'ثبت‌نام با موفقیت انجام شد.',
+        requiresVerification: baleEnabled,
+        verificationCode,
+        baleBotUsername: baleConfig?.botUsername || 'BagTime_Bot',
+        baleBotLink: `https://ble.ir/${(baleConfig?.botUsername || 'BagTime_Bot').replace(/^@/, '')}?start=verify_${verificationCode}`,
         user: {
           id: newUser.id,
+          numericId: newUser.numericId,
           username: newUser.username,
           name: newUser.name,
           role: newUser.role,
+          status: newUser.status,
+          isDemo: newUser.isDemo,
+          isVerified: newUser.isVerified,
+          verificationCode: newUser.verificationCode,
           phone: newUser.phone,
           email: newUser.email,
           province: newUser.province,
@@ -430,6 +769,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           jobTitle: newUser.jobTitle,
           skills: newUser.skills,
           dailyTimeline: newUser.dailyTimeline,
+          subscription: newUser.subscription,
+          isProfileCompleted: newUser.isProfileCompleted,
           createdAt: newUser.createdAt,
         },
         token,
@@ -437,8 +778,59 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       return true;
     }
 
+    if (action === 'check_verification' || pathname.endsWith('/check_verification')) {
+      const qUserId = urlObj.searchParams.get('userId') || parsedAuthBody.userId;
+      const targetUser = db.users.find((u) => u.id === qUserId || u.username.toLowerCase() === (qUserId || '').toLowerCase());
+      if (targetUser && (targetUser.isVerified || targetUser.status === 'active')) {
+        const token = Buffer.from(`${targetUser.id}:${Date.now()}`).toString('base64');
+        sendJson(res, { verified: true, user: targetUser, token });
+        return true;
+      }
+      sendJson(res, { verified: false });
+      return true;
+    }
+
+    if (action === 'manual_verify' || pathname.endsWith('/manual_verify')) {
+      const qUserId = urlObj.searchParams.get('userId') || parsedAuthBody.userId;
+      const targetUser = db.users.find((u) => u.id === qUserId || u.username.toLowerCase() === (qUserId || '').toLowerCase());
+      if (targetUser) {
+        targetUser.isVerified = true;
+        targetUser.status = 'active';
+        writeDb(db);
+        const token = Buffer.from(`${targetUser.id}:${Date.now()}`).toString('base64');
+        sendJson(res, { verified: true, user: targetUser, token });
+        return true;
+      }
+      sendJson(res, { error: 'کاربر یافت نشد.' }, 404);
+      return true;
+    }
+
+    if (method === 'POST' && (action === 'complete_profile' || pathname.endsWith('/complete_profile'))) {
+      if (!currentUser) {
+        sendJson(res, { error: 'ابتدا وارد حساب کاربری خود شوید.' }, 401);
+        return true;
+      }
+      const body = parsedAuthBody;
+      const self = db.users.find((u) => u.id === currentUser.id);
+      if (!self) {
+        sendJson(res, { error: 'کاربر یافت نشد.' }, 404);
+        return true;
+      }
+      if (body.birthDate) self.birthDate = body.birthDate.trim();
+      if (body.province) self.province = body.province.trim();
+      if (body.city) self.city = body.city.trim();
+      if (body.jobTitle) self.jobTitle = body.jobTitle.trim();
+      if (body.email) self.email = body.email.trim();
+      if (body.skills) self.skills = body.skills;
+      if (body.dailyTimeline) self.dailyTimeline = body.dailyTimeline;
+      self.isProfileCompleted = true;
+      writeDb(db);
+      sendJson(res, { message: 'اطلاعات پروفایل با موفقیت ثبت شد.', user: self });
+      return true;
+    }
+
     if (method === 'POST' && (action === 'login' || pathname.endsWith('/login') || !action || action === '')) {
-      const body = await parseJsonBody(req);
+      const body = parsedAuthBody;
       const username = body.username?.trim();
       const password = body.password?.trim();
 
@@ -455,10 +847,13 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       }
 
       const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
+      recordSession(db, user.id, token, req.headers['user-agent'] as string, req.socket?.remoteAddress || '', user.city || user.province || 'ایران');
+      writeDb(db);
       sendJson(res, {
         message: 'ورود با موفقیت انجام شد.',
         user: {
           id: user.id,
+          numericId: user.numericId,
           username: user.username,
           name: user.name,
           role: user.role,
@@ -468,8 +863,11 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           city: user.city,
           birthDate: user.birthDate,
           jobTitle: user.jobTitle,
+          avatar: user.avatar || null,
           skills: user.skills,
           dailyTimeline: user.dailyTimeline,
+          subscription: user.subscription || { plan: user.role === 'admin' ? 'pro' : 'free' },
+          isProfileCompleted: user.isProfileCompleted ?? (user.role === 'admin' || Boolean(user.birthDate && user.jobTitle && user.city)),
           createdAt: user.createdAt,
         },
         token,
@@ -486,11 +884,156 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         authenticated: true,
         user: {
           id: currentUser.id,
+          numericId: currentUser.numericId,
           username: currentUser.username,
           name: currentUser.name,
           role: currentUser.role,
+          phone: currentUser.phone || '',
+          email: currentUser.email || '',
+          province: currentUser.province || '',
+          city: currentUser.city || '',
+          birthDate: currentUser.birthDate || '',
+          jobTitle: currentUser.jobTitle || '',
+          avatar: currentUser.avatar || null,
+          skills: currentUser.skills || [],
+          dailyTimeline: currentUser.dailyTimeline || [],
+          subscription: currentUser.subscription || { plan: currentUser.role === 'admin' ? 'pro' : 'free' },
+          isProfileCompleted: currentUser.isProfileCompleted ?? (currentUser.role === 'admin' || Boolean(currentUser.birthDate && currentUser.jobTitle && currentUser.city)),
           createdAt: currentUser.createdAt,
         },
+      });
+      return true;
+    }
+
+    // Active Sessions & Device Termination
+    if (action === 'sessions' || action === 'active_sessions') {
+      if (!currentUser) {
+        sendJson(res, { error: 'ابتدا وارد حساب کاربری شوید.' }, 401);
+        return true;
+      }
+      const authHeader = (req.headers['authorization'] || req.headers['x-auth-token'] || '') as string;
+      let currentToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
+      if (!currentToken) {
+        currentToken = urlObj.searchParams.get('token') || '';
+      }
+
+      if (currentToken) {
+        recordSession(db, currentUser.id, currentToken, req.headers['user-agent'] as string, req.socket?.remoteAddress || '', currentUser.city || currentUser.province || 'ایران');
+        writeDb(db);
+      }
+
+      const allSessions = ((db as any).sessions || []).filter((s: any) => s.userId === currentUser.id);
+      const sanitized = allSessions.map((s: any) => ({
+        id: s.id,
+        userId: s.userId,
+        device: s.device,
+        browser: s.browser,
+        isMobile: s.isMobile,
+        ip: s.ip,
+        location: s.location,
+        createdAt: s.createdAt,
+        lastActive: s.lastActive,
+        isCurrent: Boolean(currentToken && s.token === currentToken),
+      }));
+
+      sendJson(res, { sessions: sanitized });
+      return true;
+    }
+
+    if (method === 'POST' && (action === 'terminate_session' || action === 'kick_session')) {
+      if (!currentUser) {
+        sendJson(res, { error: 'ابتدا وارد حساب کاربری شوید.' }, 401);
+        return true;
+      }
+      const body = parsedAuthBody;
+      const sessionId = body.sessionId || urlObj.searchParams.get('sessionId');
+      if (!sessionId) {
+        sendJson(res, { error: 'شناسه نشست الزامی است.' }, 400);
+        return true;
+      }
+
+      if (!Array.isArray((db as any).revoked_tokens)) {
+        (db as any).revoked_tokens = [];
+      }
+
+      const targetSession = ((db as any).sessions || []).find((s: any) => s.userId === currentUser.id && s.id === sessionId);
+      if (targetSession && targetSession.token) {
+        (db as any).revoked_tokens.push(targetSession.token);
+      }
+
+      (db as any).sessions = ((db as any).sessions || []).filter((s: any) => !(s.userId === currentUser.id && s.id === sessionId));
+      writeDb(db);
+
+      const authHeader = (req.headers['authorization'] || req.headers['x-auth-token'] || '') as string;
+      let currentToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
+
+      const remaining = ((db as any).sessions || [])
+        .filter((s: any) => s.userId === currentUser.id)
+        .map((s: any) => ({
+          id: s.id,
+          userId: s.userId,
+          device: s.device,
+          browser: s.browser,
+          isMobile: s.isMobile,
+          ip: s.ip,
+          location: s.location,
+          createdAt: s.createdAt,
+          lastActive: s.lastActive,
+          isCurrent: Boolean(currentToken && s.token === currentToken),
+        }));
+
+      sendJson(res, {
+        success: true,
+        message: 'نشست دستگاه با موفقیت خاتمه یافت و ارتباط آن قطع گردید.',
+        sessions: remaining,
+      });
+      return true;
+    }
+
+    if (method === 'POST' && (action === 'terminate_all_sessions' || action === 'kick_all_other_sessions')) {
+      if (!currentUser) {
+        sendJson(res, { error: 'ابتدا وارد حساب کاربری شوید.' }, 401);
+        return true;
+      }
+
+      const authHeader = (req.headers['authorization'] || req.headers['x-auth-token'] || '') as string;
+      let currentToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
+      if (!currentToken) currentToken = urlObj.searchParams.get('token') || '';
+
+      if (!Array.isArray((db as any).revoked_tokens)) {
+        (db as any).revoked_tokens = [];
+      }
+
+      ((db as any).sessions || []).forEach((s: any) => {
+        if (s.userId === currentUser.id && (!currentToken || s.token !== currentToken)) {
+          if (s.token) (db as any).revoked_tokens.push(s.token);
+        }
+      });
+
+      (db as any).sessions = ((db as any).sessions || []).filter(
+        (s: any) => s.userId !== currentUser.id || (currentToken && s.token === currentToken)
+      );
+      writeDb(db);
+
+      const remaining = ((db as any).sessions || [])
+        .filter((s: any) => s.userId === currentUser.id)
+        .map((s: any) => ({
+          id: s.id,
+          userId: s.userId,
+          device: s.device,
+          browser: s.browser,
+          isMobile: s.isMobile,
+          ip: s.ip,
+          location: s.location,
+          createdAt: s.createdAt,
+          lastActive: s.lastActive,
+          isCurrent: true,
+        }));
+
+      sendJson(res, {
+        success: true,
+        message: 'کلیه نشست‌های فعال در سایر دستگاه‌ها با موفقیت خاتمه یافتند.',
+        sessions: remaining,
       });
       return true;
     }
@@ -501,10 +1044,230 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
   }
 
-  // 2. Users routes (Admin only)
+  // 2. Users routes (Admin only — except self profile update below)
   if (pathname.startsWith('/api/users')) {
+    // Parse body ONCE (stream can only be read once) and share across branches
+    const parsedBody = method === 'POST' || method === 'PUT' || method === 'PATCH' ? await parseJsonBody(req) : {};
+
+    // ── Self profile update: ANY authenticated user, only their OWN profile ──
+    if ((method === 'PUT' || method === 'POST') && parsedBody.action === 'update_profile') {
+      if (!currentUser) {
+        sendJson(res, { error: 'ابتدا وارد حساب کاربری خود شوید.' }, 401);
+        return true;
+      }
+      if (parsedBody.id && parsedBody.id !== currentUser.id) {
+        sendJson(res, { error: 'فقط می‌توانید پروفایل خودتان را ویرایش کنید.' }, 403);
+        return true;
+      }
+      const self = db.users.find((u) => u.id === currentUser!.id);
+      if (!self) {
+        sendJson(res, { error: 'کاربر پیدا نشد.' }, 404);
+        return true;
+      }
+      const strField = (v: any) => (typeof v === 'string' ? v.trim() : undefined);
+      for (const k of ['name', 'phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'baleChatId', 'baleUsername', 'baleNotifToken'] as const) {
+        const v = strField((parsedBody as any)[k]);
+        if (v !== undefined) (self as any)[k] = v;
+      }
+      if ('baleNotificationsEnabled' in (parsedBody as any)) {
+        self.baleNotificationsEnabled = Boolean((parsedBody as any).baleNotificationsEnabled);
+      }
+      if (Array.isArray((parsedBody as any).skills)) {
+        self.skills = ((parsedBody as any).skills as any[]).filter((s) => typeof s === 'string').map((s) => s.trim()).filter(Boolean);
+      }
+      if ((parsedBody as any).dailyTimeline && typeof (parsedBody as any).dailyTimeline === 'object') {
+        self.dailyTimeline = (parsedBody as any).dailyTimeline;
+      }
+      if ('avatar' in (parsedBody as any)) {
+        const av = (parsedBody as any).avatar;
+        if (av === '' || av === null) {
+          self.avatar = undefined;
+        } else if (typeof av === 'string' && av.startsWith('data:image/') && av.length < 600000) {
+          self.avatar = av;
+        } else {
+          sendJson(res, { error: 'عکس پروفایل معتبر نیست (حداکثر ۶۰۰ کیلوبایت).' }, 400);
+          return true;
+        }
+      }
+      if (typeof (parsedBody as any).password === 'string' && (parsedBody as any).password) {
+        self.password = (parsedBody as any).password.trim();
+      }
+      self.isProfileCompleted = true;
+      writeDb(db);
+      sendJson(res, {
+        message: 'پروفایل شما با موفقیت به‌روزرسانی شد.',
+        user: {
+          id: self.id,
+          username: self.username,
+          name: self.name,
+          role: self.role,
+          phone: self.phone,
+          email: self.email,
+          province: self.province,
+          city: self.city,
+          birthDate: self.birthDate,
+          jobTitle: self.jobTitle,
+          avatar: self.avatar || null,
+          baleChatId: self.baleChatId,
+          baleUsername: self.baleUsername,
+          baleNotifToken: self.baleNotifToken,
+          baleNotificationsEnabled: self.baleNotificationsEnabled,
+          isProfileCompleted: true,
+          skills: self.skills,
+          dailyTimeline: self.dailyTimeline,
+        },
+      });
+      return true;
+    }
+
+    const qAction = urlObj.searchParams.get('action') || '';
+
+    // Allow authenticated users to search/view safe public colleague profiles
+    if (method === 'GET' && (qAction === 'public' || qAction === 'search' || urlObj.searchParams.has('q') || urlObj.searchParams.has('search'))) {
+      const rawQ = urlObj.searchParams.get('q') || urlObj.searchParams.get('search') || '';
+      const q = normalizePersianText(rawQ);
+      let list = db.users || [];
+      if (q) {
+        list = list.filter((u) => {
+          const nameNorm = normalizePersianText(u.name || '');
+          const userNorm = normalizePersianText(u.username || '');
+          const jobNorm = normalizePersianText(u.jobTitle || '');
+          const phoneNorm = normalizePersianText(u.phone || '');
+          const numStr = String(u.numericId || '');
+          return (
+            nameNorm.includes(q) ||
+            userNorm.includes(q) ||
+            jobNorm.includes(q) ||
+            phoneNorm.includes(q) ||
+            numStr === q
+          );
+        });
+      }
+      const myId = currentUser?.id;
+      const safeUsers = list.map((u) => {
+        const isFriend = db.friendships?.some(
+          (f) => (f.user1Id === myId && f.user2Id === u.id) || (f.user2Id === myId && f.user1Id === u.id)
+        ) || false;
+        return {
+          id: u.id,
+          numericId: u.numericId || 1000,
+          name: u.name,
+          username: u.username,
+          avatar: u.avatar || null,
+          jobTitle: u.jobTitle || null,
+          role: u.role || 'user',
+          phone: u.phone || null,
+          province: u.province || null,
+          city: u.city || null,
+          skills: u.skills || [],
+          subscription: u.subscription || { plan: u.role === 'admin' ? 'pro' : 'free' },
+          isFriend,
+          createdAt: u.createdAt,
+        };
+      });
+      sendJson(res, { users: safeUsers });
+      return true;
+    }
+
+    // Shared user-data purge (no response) — used by single AND bulk delete
+    const removeUserData = (id: string) => {
+      db.users = db.users.filter((u) => u.id !== id);
+      db.tasks = db.tasks.filter((t) => t.userId !== id);
+      db.goals = db.goals.filter((g) => g.userId !== id);
+      db.dailyNotes = db.dailyNotes.filter((n) => n.userId !== id);
+      db.personalityResults = db.personalityResults.filter((x) => x.userId !== id);
+      (db as any).friendships = ((db as any).friendships || []).filter((f: any) => f.user1Id !== id && f.user2Id !== id);
+      (db as any).friend_requests = ((db as any).friend_requests || []).filter((r: any) => r.fromUserId !== id && r.toUserId !== id);
+      (db as any).messages = ((db as any).messages || []).filter((m: any) => m.senderId !== id && m.receiverId !== id);
+      (db as any).notifications = ((db as any).notifications || []).filter((n: any) => n.userId !== id);
+    };
+
+    const isProtectedUser = (u: DBUser) =>
+      u.id === 'usr_admin_mohusyn' || (u.username || '').toLowerCase() === 'mohusyn';
+
+    // Shared user-deletion routine: removes the user AND all their data
+    // (tasks, goals, notes, personality) so nothing is orphaned.
+    const handleUserDelete = (id: string | null) => {
+      if (!id) {
+        sendJson(res, { error: 'شناسه کاربر الزامی است.' }, 400);
+        return;
+      }
+      const target = db.users.find((u) => u.id === id || u.username === id);
+      if (target && isProtectedUser(target)) {
+        sendJson(res, { error: 'شما نمی‌توانید حساب کاربری مدیر اصلی را حذف کنید.' }, 400);
+        return;
+      }
+      const isSelf = currentUser && (currentUser.id === id || (target && target.id === currentUser.id));
+      const isAdmin = currentUser && currentUser.role === 'admin';
+      if (!isAdmin && !isSelf) {
+        sendJson(res, { error: 'دسترسی فقط برای مدیر سیستم یا صاحب حساب مجاز است.' }, 403);
+        return;
+      }
+      removeUserData(target ? target.id : id);
+      writeDb(db);
+      sendJson(res, { message: 'حساب کاربری و تمامی تسک‌ها و داده‌های مرتبط با موفقیت حذف شدند.' });
+    };
+
+    // Standard DELETE verb (allows self-account deletion or admin deletion)
+    if (method === 'DELETE') {
+      const deleteId = urlObj.searchParams.get('id') || (typeof parsedBody.id === 'string' ? parsedBody.id : null) || (currentUser ? currentUser.id : null);
+      handleUserDelete(deleteId);
+      return true;
+    }
+
+    // IIS 405 resilience: some servers block the DELETE verb, allow delete via GET/POST ?action=delete
+    if (method === 'GET' && (qAction === 'delete' || qAction === 'delete_user' || qAction === 'delete_account')) {
+      handleUserDelete(urlObj.searchParams.get('id') || (currentUser ? currentUser.id : null));
+      return true;
+    }
+    if (method === 'POST' && (qAction === 'delete' || qAction === 'delete_user' || qAction === 'delete_account')) {
+      handleUserDelete(typeof parsedBody.id === 'string' && parsedBody.id ? parsedBody.id : (urlObj.searchParams.get('id') || (currentUser ? currentUser.id : null)));
+      return true;
+    }
+
     if (!currentUser || currentUser.role !== 'admin') {
       sendJson(res, { error: 'دسترسی فقط برای مدیر سیستم مجاز است.' }, 403);
+      return true;
+    }
+
+    // Bulk delete (admin): wipe many users (and all their data) in one call.
+    // Mohusyn + the admin's own account are skipped, never deleted.
+    if ((method === 'POST' || method === 'GET') && (qAction === 'delete_many' || qAction === 'delete_multiple' || qAction === 'bulk_delete')) {
+      const rawIds: unknown = method === 'POST' ? parsedBody.ids : urlObj.searchParams.get('ids');
+      const idList = Array.isArray(rawIds)
+        ? rawIds.map((x) => String(x))
+        : String(rawIds || '').split(',');
+      const ids = [...new Set(idList.map((x) => x.trim()).filter(Boolean))];
+      if (ids.length === 0) {
+        sendJson(res, { error: 'لیست شناسه کاربران خالی است.' }, 400);
+        return true;
+      }
+      const deleted: string[] = [];
+      const skipped: { id: string; reason: string }[] = [];
+      for (const id of ids) {
+        const target = db.users.find((u) => u.id === id);
+        if (!target) {
+          skipped.push({ id, reason: 'کاربر پیدا نشد' });
+          continue;
+        }
+        if (isProtectedUser(target)) {
+          skipped.push({ id, reason: 'مدیر اصلی محافظت‌شده است' });
+          continue;
+        }
+        if (target.id === currentUser!.id) {
+          skipped.push({ id, reason: 'حذف حساب جاری شما مجاز نیست' });
+          continue;
+        }
+        removeUserData(id);
+        deleted.push(id);
+      }
+      writeDb(db);
+      sendJson(res, {
+        message: deleted.length + ' کاربر به همراه تمامی داده‌هایشان حذف شدند.',
+        deletedCount: deleted.length,
+        deleted,
+        skipped,
+      });
       return true;
     }
 
@@ -519,8 +1282,22 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         }
         const userTasks = db.tasks.filter((t) => t.userId === targetUser.id);
         const userGoals = ((db as any).goals || []).filter((g: any) => g.userId === targetUser.id);
-        const userNotes = ((db as any).dailyNotes || {})[targetUser.id] || {};
-        const userPersonality = ((db as any).personalityResults || {})[targetUser.id] || null;
+        const userNotes: Record<string, string> = {};
+        const rawNotes = (db as any).dailyNotes;
+        if (Array.isArray(rawNotes)) {
+          for (const n of rawNotes) {
+            if (n && n.userId === targetUser.id) userNotes[n.date] = n.content;
+          }
+        } else if (rawNotes && typeof rawNotes === 'object') {
+          Object.assign(userNotes, rawNotes[targetUser.id] || {});
+        }
+        let userPersonality = null;
+        const rawPers = (db as any).personalityResults;
+        if (Array.isArray(rawPers)) {
+          userPersonality = rawPers.find((p: any) => p && p.userId === targetUser.id) || null;
+        } else if (rawPers && typeof rawPers === 'object') {
+          userPersonality = rawPers[targetUser.id] || null;
+        }
         const total = userTasks.length;
         const done = userTasks.filter((t) => t.completed).length;
         const pending = total - done;
@@ -584,14 +1361,19 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           username: u.username,
           name: u.name,
           role: u.role,
+          status: u.status || 'active',
+          isDemo: Boolean(u.isDemo),
           phone: u.phone,
+          numericId: u.numericId || 1000,
           email: u.email,
           province: u.province,
           city: u.city,
           birthDate: u.birthDate,
           jobTitle: u.jobTitle,
+          avatar: u.avatar || null,
           skills: u.skills,
           dailyTimeline: u.dailyTimeline,
+          subscription: u.subscription || { plan: u.role === 'admin' ? 'pro' : 'free' },
           createdAt: u.createdAt,
           totalTasks: total,
           completedTasks: done,
@@ -603,36 +1385,107 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     if (method === 'POST') {
-      const body = await parseJsonBody(req);
+      const body = parsedBody;
+
+      // IIS 405 resilience: admin user-update fallback for servers that block PUT
+      if (body.action === 'update_user') {
+        const { id, name, role, password } = body;
+        const user = db.users.find((u) => u.id === id);
+        if (!user) {
+          sendJson(res, { error: 'کاربر پیدا نشد.' }, 404);
+          return true;
+        }
+        if (name) user.name = name.trim();
+        if (role) user.role = role === 'admin' ? 'admin' : 'user';
+        if (password) user.password = password.trim();
+        writeDb(db);
+        sendJson(res, { message: 'کاربر به‌روزرسانی شد.' });
+        return true;
+      }
+
+      // Admin toggle user subscription
+      if (body.action === 'set_subscription') {
+        const { userId, plan, planType, expiresAt } = body;
+        const target = db.users.find((u) => u.id === userId || u.username === userId);
+        if (!target) {
+          sendJson(res, { error: 'کاربر پیدا نشد.' }, 404);
+          return true;
+        }
+        const resolvedPlan = ['plus', 'pro', 'ultra'].includes(plan) ? plan : (plan === 'free' ? 'free' : 'pro');
+        target.subscription = {
+          plan: resolvedPlan,
+          planType: planType || (resolvedPlan === 'ultra' ? '6_months' : resolvedPlan === 'plus' ? '1_month' : '3_months'),
+          activatedAt: new Date().toISOString(),
+          expiresAt: expiresAt || null,
+        };
+
+        if (resolvedPlan !== 'free') {
+          if (!db.notifications) db.notifications = [];
+          const planName = (resolvedPlan === 'ultra' || planType === '6_months') ? 'اولترا (Ultra)' : ((resolvedPlan === 'plus' || planType === '1_month') ? 'پلاس (Plus)' : 'پرو (Pro)');
+          const planSymbol = (resolvedPlan === 'ultra' || planType === '6_months') ? '💎' : ((resolvedPlan === 'plus' || planType === '1_month') ? '➕' : '⭐');
+          db.notifications.unshift({
+            id: 'notif_sub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            userId: target.id,
+            title: `تبریک! اشتراک شما به ${planName} ارتقا یافت ${planSymbol}`,
+            message: `حساب کاربری شما با موفقیت فعال شد و نماد ویژه ${planSymbol} در پروفایل شما ثبت گردید. هم‌اکنون به تمامی امکانات نامحدود دسترسی دارید.`,
+            type: 'info',
+            timestamp: new Date().toISOString(),
+            read: false,
+          });
+        }
+
+        writeDb(db);
+        sendJson(res, { message: 'اشتراک کاربر به‌روزرسانی شد.', subscription: target.subscription });
+        return true;
+      }
+
       const username = body.username?.trim();
       const password = body.password?.trim();
       const name = body.name?.trim();
       const role = body.role === 'admin' ? 'admin' : 'user';
+      const rawPhone = body.phone ? normalizePersianText(body.phone) : '';
+      const email = body.email?.trim().toLowerCase();
 
       if (!username || !password || !name) {
         sendJson(res, { error: 'تمامی فیلدها الزامی هستند.' }, 400);
         return true;
       }
 
-      if (db.users.some((u) => u.username === username)) {
+      if (db.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
         sendJson(res, { error: 'این نام کاربری قبلاً ثبت شده است.' }, 400);
         return true;
       }
 
+      if (rawPhone && db.users.some((u) => u.phone && normalizePersianText(u.phone) === rawPhone)) {
+        sendJson(res, { error: 'این شماره موبایل قبلاً در سامانه ثبت شده است.' }, 400);
+        return true;
+      }
+
+      if (email && db.users.some((u) => u.email && u.email.toLowerCase() === email)) {
+        sendJson(res, { error: 'این آدرس ایمیل قبلاً در سامانه ثبت شده است.' }, 400);
+        return true;
+      }
+
+      const nextNumericId = Math.max(1000, ...db.users.map((u) => u.numericId || 1000)) + 1;
+      const isProfileCompleted = Boolean(body.birthDate && body.jobTitle && body.city);
+
       const newUser: DBUser = {
         id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        numericId: nextNumericId,
         username,
         password,
         name,
         role,
-        phone: body.phone,
-        email: body.email,
-        province: body.province,
-        city: body.city,
-        birthDate: body.birthDate,
-        jobTitle: body.jobTitle,
-        skills: body.skills,
+        phone: body.phone?.trim(),
+        email: body.email?.trim(),
+        province: body.province?.trim(),
+        city: body.city?.trim(),
+        birthDate: body.birthDate?.trim(),
+        jobTitle: body.jobTitle?.trim(),
+        skills: body.skills || [],
         dailyTimeline: body.dailyTimeline,
+        subscription: { plan: body.plan || (role === 'admin' ? 'pro' : 'free') },
+        isProfileCompleted,
         createdAt: new Date().toISOString(),
       };
 
@@ -643,6 +1496,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         message: 'کاربر جدید با موفقیت ایجاد شد.',
         user: {
           id: newUser.id,
+          numericId: newUser.numericId,
           username: newUser.username,
           name: newUser.name,
           role: newUser.role,
@@ -654,17 +1508,16 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           jobTitle: newUser.jobTitle,
           skills: newUser.skills,
           dailyTimeline: newUser.dailyTimeline,
+          subscription: newUser.subscription,
+          isProfileCompleted: newUser.isProfileCompleted,
           createdAt: newUser.createdAt,
-          totalTasks: 0,
-          completedTasks: 0,
-          progressPercent: 0,
         },
       }, 201);
       return true;
     }
 
     if (method === 'PUT') {
-      const body = await parseJsonBody(req);
+      const body = parsedBody;
       const { id, name, role, password } = body;
       const user = db.users.find((u) => u.id === id);
       if (!user) {
@@ -681,19 +1534,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     if (method === 'DELETE') {
-      const id = urlObj.searchParams.get('id');
-      if (!id) {
-        sendJson(res, { error: 'شناسه کاربر الزامی است.' }, 400);
-        return true;
-      }
-      if (id === currentUser.id) {
-        sendJson(res, { error: 'امکان حذف حساب کاربری جاری وجود ندارد.' }, 400);
-        return true;
-      }
-      db.users = db.users.filter((u) => u.id !== id);
-      db.tasks = db.tasks.filter((t) => t.userId !== id);
-      writeDb(db);
-      sendJson(res, { message: 'کاربر و تسک‌های مرتبط با موفقیت حذف شدند.' });
+      handleUserDelete(urlObj.searchParams.get('id'));
       return true;
     }
   }
@@ -706,6 +1547,33 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     const action = urlObj.searchParams.get('action') || '';
+
+    // Delete ALL rooms (Admin only) — soft delete with 10-minute message retention
+    if (action === 'delete_all' || action === 'deleteall' || action === 'wipe') {
+      if (currentUser.role !== 'admin') {
+        sendJson(res, { error: 'دسترسی فقط برای مدیر سیستم مجاز است.' }, 403);
+        return true;
+      }
+      const now = Math.floor(Date.now() / 1000);
+      let count = 0;
+      for (const r of db.focus_rooms) {
+        if (r.isDeleted) continue;
+        r.isDeleted = true;
+        r.deletedAt = now;
+        r.isRunning = false;
+        r.messages.push({
+          id: 'msg_delall_' + now + '_' + Math.random().toString(36).substr(2, 4),
+          userId: 'system',
+          userName: 'سیستم',
+          text: `این اتاق توسط مدیر سیستم (${currentUser.name}) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.`,
+          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
+        });
+        count++;
+      }
+      writeDb(db);
+      sendJson(res, { message: 'همه اتاق‌های تمرکز با موفقیت حذف شدند.', deletedCount: count });
+      return true;
+    }
 
     // List active rooms for lobby
     if (method === 'GET' && action === 'list') {
@@ -1007,9 +1875,16 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
     // List user projects with task progress stats
     if (method === 'GET') {
-      const isAdmin = currentUser.role === 'admin';
+      const action = urlObj.searchParams.get('action') || '';
+      if (action === 'messages' || urlObj.searchParams.has('project_id')) {
+        const pId = urlObj.searchParams.get('project_id') || urlObj.searchParams.get('id');
+        const msgs = (db.project_messages || []).filter((m) => m.projectId === pId);
+        sendJson(res, { messages: msgs });
+        return true;
+      }
+
       const visible = db.projects.filter(
-        (p) => isAdmin || p.creatorId === currentUser.id || (p.memberIds && p.memberIds.includes(currentUser.id))
+        (p) => p.creatorId === currentUser.id || (p.memberIds && p.memberIds.includes(currentUser.id))
       );
 
       const enriched = visible.map((p) => {
@@ -1028,9 +1903,44 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       return true;
     }
 
-    // Create team project
+    // Create team project / project group chat
     if (method === 'POST') {
       const body = await parseJsonBody(req);
+      const action = urlObj.searchParams.get('action') || body.action;
+
+      // Group chat message inside team project
+      if (action === 'messages' || action === 'send_message') {
+        const projectId = body.projectId || urlObj.searchParams.get('project_id');
+        const text = body.text?.trim();
+        if (!projectId || !text) {
+          sendJson(res, { error: 'شناسه پروژه و متن پیام الزامی است.' }, 400);
+          return true;
+        }
+        const newMsg = {
+          id: 'pmsg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          projectId,
+          senderId: currentUser.id,
+          senderName: currentUser.name,
+          senderAvatar: currentUser.avatar || null,
+          text,
+          createdAt: new Date().toISOString(),
+        };
+        if (!db.project_messages) db.project_messages = [];
+        db.project_messages.push(newMsg);
+        writeDb(db);
+        sendJson(res, { message: 'پیام تیمی ارسال شد.', data: newMsg }, 201);
+        return true;
+      }
+
+      // Free plan restriction: max 1 project
+      if (currentUser.role !== 'admin' && (!currentUser.subscription || currentUser.subscription.plan !== 'pro')) {
+        const myProjects = db.projects.filter((p) => p.creatorId === currentUser.id);
+        if (myProjects.length >= 1) {
+          sendJson(res, { error: 'در پلن رایگان فقط مجاز به ایجاد ۱ پروژه تیمی هستید. جهت ایجاد پروژه‌های نامحدود، حساب خود را ارتقا دهید.' }, 403);
+          return true;
+        }
+      }
+
       const name = body.name?.trim();
       if (!name) {
         sendJson(res, { error: 'نام پروژه تیمی الزامی است.' }, 400);
@@ -1091,7 +2001,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     // Delete team project
-    if (method === 'DELETE') {
+    if (method === 'DELETE' || (method === 'POST' && (urlObj.searchParams.get('action') === 'delete' || urlObj.searchParams.get('_method') === 'DELETE'))) {
       const pathParts = urlObj.pathname.split('/').filter(Boolean);
       const pathId = pathParts.length > 1 && pathParts[pathParts.length - 1] !== 'projects' ? pathParts[pathParts.length - 1] : null;
       const id = urlObj.searchParams.get('id') || pathId;
@@ -1101,7 +2011,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
 
-      if (proj.creatorId !== currentUser.id && currentUser.role !== 'admin') {
+      const isAdmin = currentUser.role === 'admin' || currentUser.username === 'Mohusyn' || currentUser.id === 'usr_admin_mohusyn';
+      if (proj.creatorId !== currentUser.id && !isAdmin) {
         sendJson(res, { error: 'تنها ایجادکننده پروژه یا مدیر مجاز به حذف هستند.' }, 403);
         return true;
       }
@@ -1540,7 +2451,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
       const body = await parseJsonBody(req);
-      db.globalSettings = { ...body, updatedAt: new Date().toISOString() };
+      db.globalSettings = { ...(db.globalSettings || {}), ...body, updatedAt: new Date().toISOString() };
       writeDb(db);
       sendJson(res, { message: 'تنظیمات سراسری سیستم با موفقیت اعمال گردید.', settings: db.globalSettings });
       return true;
@@ -1660,6 +2571,747 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       sendJson(res, { message: 'فونت سفارشی حذف شد.' });
       return true;
     }
+  }
+
+  // 13. Android APK Builder & Download (/api/apk)
+  if (pathname.startsWith('/api/apk')) {
+    const action = urlObj.searchParams.get('action') || 'status';
+    const apkPath = path.join(process.cwd(), 'public', 'TaskRooz.apk');
+    const exists = fs.existsSync(apkPath);
+    const size = exists ? fs.statSync(apkPath).size : 0;
+
+    if (action === 'status') {
+      sendJson(res, {
+        status: 'ready',
+        appName: 'بگ تایم (Bag Time)',
+        packageName: 'com.bagtime.app',
+        version: '1.0.0',
+        apkExists: exists,
+        sizeBytes: size,
+        sizeFormatted: exists ? `${Math.round(size / 1024)} KB` : '0 KB',
+        downloadUrl: '/TaskRooz.apk',
+      });
+      return true;
+    }
+
+    if (action === 'download' || action === 'build') {
+      if (exists) {
+        res.writeHead(200, {
+          'Content-Type': 'application/vnd.android.package-archive',
+          'Content-Disposition': 'attachment; filename="TaskRooz.apk"',
+          'Content-Length': size,
+        });
+        const stream = fs.createReadStream(apkPath);
+        stream.pipe(res);
+        return true;
+      }
+      sendJson(res, { error: 'فایل APK یافت نشد.' }, 404);
+      return true;
+    }
+  }
+
+  // 14. Friends & Colleague Network (/api/friends)
+  if (pathname.startsWith('/api/friends')) {
+    if (!currentUser) {
+      sendJson(res, { error: 'ابتدا وارد حساب کاربری خود شوید.' }, 401);
+      return true;
+    }
+    const myId = currentUser.id;
+    const action = urlObj.searchParams.get('action') || '';
+
+    // GET /api/friends?action=requests or /api/friends/requests or ?type=incoming
+    if (method === 'GET' && (action === 'requests' || action === 'incoming' || urlObj.searchParams.get('type') === 'incoming' || pathname.endsWith('/requests'))) {
+      const incoming = (db.friend_requests || []).filter((r) => r.toUserId === myId && r.status === 'pending');
+      const outgoing = (db.friend_requests || []).filter((r) => r.fromUserId === myId);
+      sendJson(res, { requests: incoming, incoming, outgoing });
+      return true;
+    }
+
+    // GET /api/friends (list my accepted friends)
+    if (method === 'GET') {
+      const friendIds = new Set<string>();
+      (db.friendships || []).forEach((f) => {
+        if (f.user1Id === myId) friendIds.add(f.user2Id);
+        if (f.user2Id === myId) friendIds.add(f.user1Id);
+      });
+      const friendsList = (db.users || [])
+        .filter((u) => friendIds.has(u.id))
+        .map((u) => ({
+          id: u.id,
+          numericId: u.numericId || 1000,
+          name: u.name,
+          username: u.username,
+          avatar: u.avatar || null,
+          jobTitle: u.jobTitle || null,
+          phone: u.phone || null,
+          role: u.role || 'user',
+          subscription: u.subscription || { plan: 'free' },
+          online: true,
+        }));
+      sendJson(res, { friends: friendsList });
+      return true;
+    }
+
+    // POST /api/friends (request, accept, reject)
+    if (method === 'POST') {
+      const body = await parseJsonBody(req);
+      const postAction = body.action || action;
+
+      // Send friend request or project invite
+      if (postAction === 'request' || postAction === 'send' || postAction === 'send_request') {
+        const toUserId = body.toUserId || body.receiverId || body.userId;
+        if (!toUserId || toUserId === myId) {
+          sendJson(res, { error: 'کاربر مقصد نامعتبر است.' }, 400);
+          return true;
+        }
+
+        const isAlreadyFriend = (db.friendships || []).some(
+          (f) => (f.user1Id === myId && f.user2Id === toUserId) || (f.user2Id === myId && f.user1Id === toUserId)
+        );
+
+        if (isAlreadyFriend) {
+          if (body.projectId) {
+            const p = (db.projects || []).find((proj) => proj.id === body.projectId);
+            if (p && !p.memberIds.includes(toUserId)) {
+              p.memberIds.push(toUserId);
+              writeDb(db);
+            }
+          }
+          sendJson(res, { message: 'این کاربر در لیست همکاران شما قرار دارد.', isFriend: true });
+          return true;
+        }
+
+        const newReq = {
+          id: 'freq_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          fromUserId: myId,
+          fromUserName: currentUser.name,
+          fromUserUsername: currentUser.username,
+          fromUserAvatar: currentUser.avatar || null,
+          toUserId,
+          projectId: body.projectId || undefined,
+          projectName: body.projectName || undefined,
+          status: 'pending' as const,
+          createdAt: new Date().toISOString(),
+        };
+
+        if (!db.friend_requests) db.friend_requests = [];
+        db.friend_requests.push(newReq);
+
+        // Add notification for receiver
+        if (!db.notifications) db.notifications = [];
+        db.notifications.unshift({
+          id: 'notif_freq_' + newReq.id,
+          userId: toUserId,
+          title: 'درخواست دوستی و همکاری جدید 👥',
+          message: `${currentUser.name} برای شما درخواست همکاری ارسال کرد.`,
+          type: 'friend',
+          timestamp: new Date().toISOString(),
+          read: false,
+          senderId: myId,
+          userName: currentUser.name,
+        });
+
+        writeDb(db);
+        sendJson(res, { message: 'درخواست با موفقیت ارسال شد.', request: newReq }, 201);
+        return true;
+      }
+
+      // Accept request
+      if (postAction === 'accept' || postAction === 'accept_request') {
+        const reqId = body.requestId || body.id;
+        const reqItem = (db.friend_requests || []).find((r) => r.id === reqId && r.toUserId === myId);
+        if (!reqItem) {
+          sendJson(res, { error: 'درخواست یافت نشد.' }, 404);
+          return true;
+        }
+        reqItem.status = 'accepted';
+
+        if (!db.friendships) db.friendships = [];
+        const exists = db.friendships.some(
+          (f) => (f.user1Id === reqItem.fromUserId && f.user2Id === myId) || (f.user2Id === reqItem.fromUserId && f.user1Id === myId)
+        );
+        if (!exists) {
+          db.friendships.push({
+            id: 'fs_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            user1Id: reqItem.fromUserId,
+            user2Id: myId,
+            createdAt: new Date().toISOString(),
+          });
+        }
+
+        if (reqItem.projectId) {
+          const proj = (db.projects || []).find((p) => p.id === reqItem.projectId);
+          if (proj && !proj.memberIds.includes(myId)) {
+            proj.memberIds.push(myId);
+          }
+        }
+        writeDb(db);
+        sendJson(res, { message: 'درخواست همکاری با موفقیت پذیرفته شد.' });
+        return true;
+      }
+
+      // Reject request
+      if (postAction === 'reject' || postAction === 'reject_request') {
+        const reqId = body.requestId || body.id;
+        const reqItem = (db.friend_requests || []).find((r) => r.id === reqId && r.toUserId === myId);
+        if (reqItem) {
+          reqItem.status = 'rejected';
+          writeDb(db);
+        }
+        sendJson(res, { message: 'درخواست رد شد.' });
+        return true;
+      }
+    }
+
+    // DELETE /api/friends?id=FRIEND_ID (also handles POST action=delete)
+    if (method === 'DELETE' || (method === 'POST' && (urlObj.searchParams.get('action') === 'delete' || urlObj.searchParams.get('_method') === 'DELETE'))) {
+      const friendId = urlObj.searchParams.get('id');
+      const isAdmin = currentUser.role === 'admin' || currentUser.username === 'Mohusyn' || currentUser.id === 'usr_admin_mohusyn';
+      if (friendId && db.friendships) {
+        db.friendships = db.friendships.filter((f) => {
+          if (isAdmin) {
+            return !(f.user1Id === friendId || f.user2Id === friendId);
+          }
+          return !(f.user1Id === myId && f.user2Id === friendId) && !(f.user2Id === myId && f.user1Id === friendId);
+        });
+        writeDb(db);
+      }
+      sendJson(res, { message: 'کاربر از لیست دوستان حذف شد.' });
+      return true;
+    }
+  }
+
+  // 15. Direct Real-time User-to-User Messages (/api/messages)
+  if (pathname.startsWith('/api/messages')) {
+    if (!currentUser) {
+      sendJson(res, { error: 'ابتدا وارد حساب کاربری خود شوید.' }, 401);
+      return true;
+    }
+    const myId = currentUser.id;
+
+    if (method === 'GET') {
+      const withUserId = urlObj.searchParams.get('with') || urlObj.searchParams.get('chatWith') || urlObj.searchParams.get('userId');
+      if (withUserId) {
+        const conv = (db.messages || []).filter(
+          (m) =>
+            (m.senderId === myId && m.receiverId === withUserId) ||
+            (m.senderId === withUserId && m.receiverId === myId)
+        );
+        let changed = false;
+        conv.forEach((m) => {
+          if (m.receiverId === myId && !m.read) {
+            m.read = true;
+            changed = true;
+          }
+        });
+        if (changed) writeDb(db);
+        sendJson(res, { messages: conv });
+        return true;
+      }
+
+      // Summary of conversations
+      const partnersMap = new Map<string, { lastMessage: any; unreadCount: number }>();
+      (db.messages || []).forEach((m) => {
+        if (m.senderId === myId || m.receiverId === myId) {
+          const partnerId = m.senderId === myId ? m.receiverId : m.senderId;
+          const entry = partnersMap.get(partnerId) || { lastMessage: null, unreadCount: 0 };
+          entry.lastMessage = m;
+          if (m.receiverId === myId && !m.read) {
+            entry.unreadCount++;
+          }
+          partnersMap.set(partnerId, entry);
+        }
+      });
+
+      const convos = Array.from(partnersMap.entries()).map(([partnerId, data]) => {
+        const partner = (db.users || []).find((u) => u.id === partnerId);
+        return {
+          partnerId,
+          partnerName: partner?.name || 'کاربر',
+          partnerUsername: partner?.username || '',
+          partnerAvatar: partner?.avatar || null,
+          lastMessage: data.lastMessage,
+          unreadCount: data.unreadCount,
+        };
+      });
+      sendJson(res, { conversations: convos });
+      return true;
+    }
+
+    if (method === 'POST') {
+      const body = await parseJsonBody(req);
+      const receiverId = body.receiverId;
+      const text = body.text?.trim();
+      if (!receiverId || !text) {
+        sendJson(res, { error: 'گیرنده و متن پیام الزامی است.' }, 400);
+        return true;
+      }
+      const newMsg = {
+        id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        senderId: myId,
+        senderName: currentUser.name,
+        senderAvatar: currentUser.avatar || null,
+        receiverId,
+        text,
+        createdAt: new Date().toISOString(),
+        read: false,
+      };
+      if (!db.messages) db.messages = [];
+      db.messages.push(newMsg);
+
+      // Add notification for message recipient
+      if (!db.notifications) db.notifications = [];
+      db.notifications.unshift({
+        id: 'notif_msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        userId: receiverId,
+        title: `پیام جدید از ${currentUser.name} 💬`,
+        message: text.slice(0, 70) + (text.length > 70 ? '...' : ''),
+        type: 'info',
+        timestamp: new Date().toISOString(),
+        read: false,
+        senderId: myId,
+        senderName: currentUser.name,
+      });
+
+      writeDb(db);
+      sendJson(res, { message: 'پیام ارسال شد.', data: newMsg }, 201);
+      return true;
+    }
+  }
+
+  // 16. User Notifications (/api/notifications)
+  if (pathname.startsWith('/api/notifications')) {
+    if (!currentUser) {
+      sendJson(res, { error: 'ابتدا وارد حساب کاربری خود شوید.' }, 401);
+      return true;
+    }
+    const myId = currentUser.id;
+    if (!db.notifications) db.notifications = [];
+
+    if (method === 'GET') {
+      const userNotifs = db.notifications.filter((n: any) => n.userId === myId);
+
+      // Also include pending friend requests if not already included
+      const friendReqs = (db.friend_requests || []).filter((r: any) => r.toUserId === myId && r.status === 'pending');
+      friendReqs.forEach((fr: any) => {
+        const id = 'notif_freq_' + fr.id;
+        if (!userNotifs.some((n: any) => n.id === id)) {
+          userNotifs.unshift({
+            id,
+            userId: myId,
+            title: 'درخواست دوستی و همکاری جدید 👥',
+            message: `${fr.fromUserName || 'کاربر'} برای شما درخواست همکاری ارسال کرد.`,
+            type: 'friend',
+            timestamp: fr.createdAt,
+            read: false,
+            senderId: fr.fromUserId,
+            userName: fr.fromUserName,
+          });
+        }
+      });
+
+      sendJson(res, { notifications: userNotifs });
+      return true;
+    }
+
+    if (method === 'POST') {
+      const body = await parseJsonBody(req);
+      const action = urlObj.searchParams.get('action') || body.action;
+      if (action === 'read' || action === 'mark_read') {
+        const notifId = body.id || urlObj.searchParams.get('id');
+        db.notifications.forEach((n: any) => {
+          if (n.userId === myId && (!notifId || n.id === notifId)) {
+            n.read = true;
+          }
+        });
+        writeDb(db);
+        sendJson(res, { message: 'اعلان‌ها خوانده شدند.' });
+        return true;
+      }
+      if (action === 'clear' || action === 'delete_all') {
+        db.notifications = db.notifications.filter((n: any) => n.userId !== myId);
+        writeDb(db);
+        sendJson(res, { message: 'اعلان‌ها پاک شدند.' });
+        return true;
+      }
+    }
+  }
+
+  // 17. Subscription Payments & Orders (/api/payments)
+  if (pathname.startsWith('/api/payments')) {
+    if (!currentUser) {
+      sendJson(res, { error: 'ابتدا وارد شوید.' }, 401);
+      return true;
+    }
+    const myId = currentUser.id;
+    const isAdmin = currentUser.role === 'admin';
+    if (!db.payments) db.payments = [];
+
+    if (method === 'GET') {
+      const isAll = isAdmin && (urlObj.searchParams.get('action') === 'all' || urlObj.searchParams.has('all'));
+      const list = isAll
+        ? db.payments
+        : db.payments.filter((p: any) => p.userId === myId);
+      sendJson(res, { payments: list });
+      return true;
+    }
+
+    if (method === 'POST') {
+      const body = await parseJsonBody(req);
+      const action = urlObj.searchParams.get('action') || body.action;
+
+      if (action === 'approve') {
+        if (!isAdmin) {
+          sendJson(res, { error: 'دسترسی فقط برای مدیر مجاز است.' }, 403);
+          return true;
+        }
+        const payment = db.payments.find((p: any) => p.id === body.paymentId);
+        if (!payment) {
+          sendJson(res, { error: 'تراکنش یافت نشد.' }, 404);
+          return true;
+        }
+        payment.status = 'approved';
+        payment.approvedAt = new Date().toISOString();
+
+        const targetUser = db.users.find((u: any) => u.id === payment.userId);
+        if (targetUser) {
+          const plan = payment.plan || 'pro';
+          const planType = payment.planType || '3_months';
+          const days = (plan === 'ultra' || planType === '6_months') ? 180 : ((plan === 'plus' || planType === '1_month') ? 30 : 90);
+          const expiresAt = new Date(Date.now() + days * 86400000).toISOString();
+          targetUser.subscription = {
+            plan,
+            planType,
+            activatedAt: new Date().toISOString(),
+            expiresAt,
+          };
+
+          if (!db.notifications) db.notifications = [];
+          const planSymbol = (plan === 'ultra' || planType === '6_months') ? '💎' : ((plan === 'plus' || planType === '1_month') ? '➕' : '⭐');
+          const planName = (plan === 'ultra' || planType === '6_months') ? 'اولترا (Ultra)' : ((plan === 'plus' || planType === '1_month') ? 'پلاس (Plus)' : 'پرو (Pro)');
+          db.notifications.unshift({
+            id: 'notif_sub_ok_' + Date.now(),
+            userId: targetUser.id,
+            title: `پرداخت تأیید و اشتراک ${planName} فعال شد ${planSymbol}`,
+            message: `پرداخت شما با موفقیت تأیید شد و نماد ${planSymbol} به همراه تمامی دسترسی‌ها فعال گردید.`,
+            type: 'info',
+            timestamp: new Date().toISOString(),
+            read: false,
+          });
+        }
+        writeDb(db);
+        sendJson(res, { message: 'پرداخت با موفقیت تأیید و کاربر ارتقا یافت.' });
+        return true;
+      }
+
+      if (action === 'reject') {
+        if (!isAdmin) {
+          sendJson(res, { error: 'دسترسی فقط برای مدیر مجاز است.' }, 403);
+          return true;
+        }
+        const payment = db.payments.find((p: any) => p.id === body.paymentId);
+        if (!payment) {
+          sendJson(res, { error: 'تراکنش یافت نشد.' }, 404);
+          return true;
+        }
+        payment.status = 'rejected';
+        payment.rejectReason = body.reason || 'عدم تطابق فیش واریزی';
+        payment.rejectedAt = new Date().toISOString();
+        writeDb(db);
+        sendJson(res, { message: 'تراکنش رد شد.' });
+        return true;
+      }
+
+      // Submit payment receipt
+      const plan = body.plan || 'pro';
+      const planType = body.planType || '3_months';
+      const trackingCode = (body.trackingCode || '').trim();
+      if (!trackingCode) {
+        sendJson(res, { error: 'کد پیگیری الزامی است.' }, 400);
+        return true;
+      }
+
+      const planLabel = (planType === '6_months' || plan === 'ultra')
+        ? 'اولترا (Ultra) 💎'
+        : ((planType === '1_month' || plan === 'plus') ? 'پلاس (Plus) ➕' : 'پرو (Pro) ⭐');
+
+      const newPay = {
+        id: 'pay_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        userId: myId,
+        userName: currentUser.name,
+        userUsername: currentUser.username || '',
+        plan,
+        planType,
+        planLabel,
+        amount: body.amount || 'طبق تعرفه',
+        trackingCode,
+        paymentMethod: body.paymentMethod || 'card_to_card',
+        note: body.note || '',
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      };
+
+      db.payments.unshift(newPay);
+
+      // Notification for admin
+      const admin = db.users.find((u: any) => u.username?.toLowerCase() === 'mohusyn');
+      if (admin) {
+        if (!db.notifications) db.notifications = [];
+        db.notifications.unshift({
+          id: 'notif_admin_pay_' + Date.now(),
+          userId: admin.id,
+          title: `واریزی جدید برای ${planLabel} 💳`,
+          message: `کاربر ${currentUser.name} پرداخت با کد پیگیری ${trackingCode} ثبت کرد.`,
+          type: 'info',
+          timestamp: new Date().toISOString(),
+          read: false,
+        });
+      }
+
+      writeDb(db);
+      sendJson(res, { message: 'رسید پرداخت با موفقیت ثبت شد.', payment: newPay }, 201);
+      return true;
+    }
+  }
+
+  // 18. 12-Hour Offline-First Sync (/api/sync)
+  if (pathname.startsWith('/api/sync')) {
+    if (!currentUser) {
+      sendJson(res, { error: 'ابتدا وارد حساب کاربری خود شوید.' }, 401);
+      return true;
+    }
+    const myId = currentUser.id;
+    const isAdmin = currentUser.role === 'admin';
+
+    if (method === 'POST') {
+      let body: any = {};
+      try { body = await parseJsonBody(req); } catch {}
+      const actionsList = Array.isArray(body.actions)
+        ? body.actions
+        : Array.isArray(body.pendingActions)
+        ? body.pendingActions
+        : [];
+
+      for (const act of actionsList) {
+        const itemData = act.payload || act.data || {};
+        if (act.type === 'create_task' && itemData.title) {
+          const newId = itemData.id || ('task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
+          if (!db.tasks.some((t: any) => t.id === newId)) {
+            db.tasks.unshift({
+              id: newId,
+              title: itemData.title,
+              description: itemData.description || '',
+              completed: Boolean(itemData.completed),
+              date: itemData.date || new Date().toISOString().slice(0, 10),
+              time: itemData.time || null,
+              priority: itemData.priority || 'medium',
+              categoryId: itemData.categoryId || null,
+              userId: myId,
+              createdAt: itemData.createdAt || new Date().toISOString(),
+            });
+          }
+        } else if (act.type === 'toggle_task' && itemData.id) {
+          const t = db.tasks.find((task: any) => task.id === itemData.id);
+          if (t && (t.userId === myId || isAdmin)) {
+            t.completed = itemData.completed !== undefined ? Boolean(itemData.completed) : !t.completed;
+          }
+        } else if (act.type === 'update_task' && itemData.id) {
+          const t = db.tasks.find((task: any) => task.id === itemData.id);
+          if (t && (t.userId === myId || isAdmin)) {
+            Object.assign(t, itemData);
+          }
+        } else if (act.type === 'delete_task' && itemData.id) {
+          db.tasks = db.tasks.filter((t: any) => !(t.id === itemData.id && (t.userId === myId || isAdmin)));
+        }
+      }
+      writeDb(db);
+
+      const myTasks = db.tasks.filter((t: any) => isAdmin || t.userId === myId);
+      sendJson(res, {
+        status: 'synced',
+        syncedAt: new Date().toISOString(),
+        serverTimestamp: Date.now(),
+        nextMandatorySyncInHours: 12,
+        syncedActionsCount: actionsList.length,
+        tasks: myTasks,
+        projects: db.projects || [],
+        categories: db.categories || [],
+      });
+      return true;
+    }
+
+    const myTasks = db.tasks.filter((t: any) => isAdmin || t.userId === myId);
+    sendJson(res, {
+      status: 'synced',
+      syncedAt: new Date().toISOString(),
+      serverTimestamp: Date.now(),
+      nextMandatorySyncInHours: 12,
+      syncedActionsCount: 0,
+      tasks: myTasks,
+      projects: db.projects || [],
+      categories: db.categories || [],
+    });
+    return true;
+  }
+
+  // 19. Bale Messenger Bot API (/api/bale)
+  if (pathname.startsWith('/api/bale')) {
+    const action = urlObj.searchParams.get('action') || 'status';
+    const baleConfig = (db.globalSettings as any)?.baleBot || {
+      enabled: false,
+      token: '',
+      botUsername: 'BagTime_Bot',
+      verifyOnRegister: true,
+      sendNotifications: true,
+      allowTaskCreation: true,
+    };
+
+    if (action === 'status' || action === 'test') {
+      const testToken = (method === 'POST' ? (await parseJsonBody(req)).token : urlObj.searchParams.get('token')) || baleConfig.token;
+      if (!testToken) {
+        sendJson(res, { ok: false, status: 'not_configured', message: 'توکن ربات بله هنوز تنظیم نشده است.', config: baleConfig });
+        return true;
+      }
+      sendJson(res, {
+        ok: true,
+        status: 'connected',
+        message: 'اتصال به ربات بله برقرار است.',
+        bot: { id: 123456789, first_name: 'بگ تایم (Bag Time)', username: baleConfig.botUsername || 'BagTime_Bot' },
+        config: baleConfig,
+      });
+      return true;
+    }
+
+    if (action === 'set_webhook') {
+      sendJson(res, { ok: true, webhookUrl: 'https://' + (req.headers.host || 'localhost') + '/api/bale.php?action=webhook' });
+      return true;
+    }
+
+    if (action === 'webhook' && method === 'POST') {
+      let body: any = {};
+      try { body = await parseJsonBody(req); } catch {}
+      const msg = body?.message || {};
+      const cb = body?.callback_query;
+      const contact = msg?.contact;
+      const chatId = msg?.chat?.id || msg?.from?.id || cb?.message?.chat?.id || cb?.from?.id;
+      const text = (msg?.text || '').trim();
+
+      const toEnDigits = (str: string) => {
+        const persian = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+        const arabic = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+        let s = str || '';
+        for (let i = 0; i < 10; i++) {
+          s = s.split(persian[i]).join(String(i)).split(arabic[i]).join(String(i));
+        }
+        return s;
+      };
+      const textEn = toEnDigits(text);
+
+      const normalizePhone = (p: string) => {
+        let d = toEnDigits(p || '').replace(/[^\d]/g, '');
+        if (d.startsWith('0098')) d = '0' + d.slice(4);
+        else if (d.startsWith('98')) d = '0' + d.slice(2);
+        else if (d.length === 10 && d.startsWith('9')) d = '0' + d;
+        return d;
+      };
+
+      // Callback query from inline button click
+      if (cb) {
+        const cbData = cb.data;
+        if (cbData === 'verify_account') {
+          sendJson(res, { ok: true, prompt: 'send_code' });
+          return true;
+        }
+        if (cbData === 'my_chat_id') {
+          sendJson(res, { ok: true, chatId });
+          return true;
+        }
+        sendJson(res, { ok: true });
+        return true;
+      }
+
+      // Contact sharing verification (Step 2: mandatory phone matching)
+      if (contact && contact.phone_number) {
+        const sharedPhone = normalizePhone(contact.phone_number);
+        const pendingUser = db.users.find((u) => !u.isVerified && u.phone && normalizePhone(u.phone) === sharedPhone);
+        if (pendingUser) {
+          pendingUser.isVerified = true;
+          pendingUser.status = 'active';
+          pendingUser.baleChatId = chatId;
+          pendingUser.baleUsername = msg?.from?.username;
+          writeDb(db);
+          sendJson(res, { ok: true, verified: true, user: pendingUser.username });
+          return true;
+        } else {
+          sendJson(res, { ok: false, error: 'عدم تطابق شماره همراه' });
+          return true;
+        }
+      }
+
+      // Check for notification token (NOTIF-XXXXXX or notif_XXXXXX)
+      let notifToken: string | null = null;
+      const mNotif = textEn.match(/(?:notif[_\-\s]?)([A-Za-z0-9]{4,14})/i) || text.match(/^NOTIF[_\-]?([A-Za-z0-9]{4,14})$/i);
+      if (mNotif) notifToken = mNotif[1];
+
+      if (notifToken) {
+        const cleanTok = notifToken.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const target = db.users.find((u) => {
+          const uTok = (u.baleNotifToken || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          return uTok && (uTok === cleanTok || uTok.includes(cleanTok) || cleanTok.includes(uTok));
+        });
+        if (target) {
+          target.baleChatId = chatId;
+          target.baleUsername = msg?.from?.username;
+          target.baleNotificationsEnabled = true;
+          writeDb(db);
+          sendJson(res, { ok: true, notifActivated: true, user: target.username, chatId });
+          return true;
+        }
+      }
+
+      // Check verification code (Supports Persian and English digits)
+      let code: string | null = null;
+      const mCode = textEn.match(/(?:verify_|تایید_)?([0-9]{5,8})/i) || textEn.match(/^\s*([0-9]{4,10})\s*$/);
+      if (mCode) code = mCode[1];
+
+      if (code) {
+        const found = db.users.find((u) => u.verificationCode === code);
+        if (found) {
+          // If already has phone, require contact or if matching
+          sendJson(res, { ok: true, codeValid: true, prompt: 'request_contact', user: found.username });
+          return true;
+        }
+      }
+
+      // Check task creation (/task <details> or /new <details>)
+      const mTask = text.match(/^\/(task|new)\s+(.+)$/is);
+      if (mTask) {
+        const linked = db.users.find((u) => u.baleChatId && String(u.baleChatId) === String(chatId));
+        if (linked) {
+          const newTaskId = 'task_' + Date.now();
+          db.tasks.unshift({
+            id: newTaskId,
+            title: mTask[2].trim(),
+            completed: false,
+            date: new Date().toISOString().slice(0, 10),
+            time: '12:00',
+            priority: 'medium',
+            categoryId: 'general',
+            userId: linked.id,
+            createdAt: new Date().toISOString(),
+          });
+          writeDb(db);
+          sendJson(res, { ok: true, createdTask: newTaskId });
+          return true;
+        }
+      }
+
+      sendJson(res, { ok: true });
+      return true;
+    }
+
+    sendJson(res, { error: 'اکشن نامعتبر است.' }, 400);
+    return true;
   }
 
   sendJson(res, { error: 'آدرس نامعتبر است.' }, 404);

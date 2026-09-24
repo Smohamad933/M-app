@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>بگ تایم | دستیار شخصی و برنامه‌ریزی روزانه</title>
+  <link rel="stylesheet" href="newtab.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Top Header -->
+    <header class="header">
+      <div class="brand">
+        <img src="icons/icon-48.png" alt="Bag Time Logo" class="brand-icon">
+        <div>
+          <h1 class="brand-title">بگ تایم</h1>
+          <p class="brand-subtitle">دستیار شخصی و مدیریت زمان روزانه</p>
+        </div>
+      </div>
+
+      <div class="clock-widget">
+        <span id="liveClock" class="clock-time">00:00:00</span>
+        <span id="liveDate" class="clock-date">بارگذاری تاریخ...</span>
+      </div>
+
+      <div class="actions">
+        <a id="openWebAppBtn" href="https://taskrooz.mohusyn.ir" target="_blank" class="btn btn-primary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          <span>ورود به سامانه اصلی</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Daily Progress & Greeting Banner -->
+    <section class="banner">
+      <div>
+        <h2 id="greetingText" class="greeting-text">روز بخیر! چه کارهایی امروز در اولویت شما هستند؟</h2>
+        <p id="greetingMantra" class="greeting-sub">تمرکز پیوسته بر کارهای مهم، رمز موفقیت و آرامش ذهن است.</p>
+      </div>
+
+      <div class="progress-container">
+        <div class="progress-header">
+          <span>پیشرفت تسک‌های امروز</span>
+          <span id="progressStats">۰ از ۰ (۰٪)</span>
+        </div>
+        <div class="progress-track">
+          <div id="progressBar" class="progress-fill"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main 3-Column Bento Layout -->
+    <main class="main-grid">
+      <!-- COLUMN 1: Today's Tasks -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            <span>لیست کارهای امروز</span>
+          </div>
+          <span id="tasksCountBadge" class="card-badge">۰ تسک</span>
+        </div>
+
+        <!-- Quick Add Box -->
+        <form id="addTaskForm" class="task-input-box">
+          <input
+            type="text"
+            id="taskInput"
+            class="task-input"
+            placeholder="عنوان تسک جدید را بنویسید و اینتر بزنید..."
+            autocomplete="off"
+            required
+          />
+          <select id="prioritySelect" class="priority-select">
+            <option value="medium">متوسط</option>
+            <option value="high">فوری 🔥</option>
+            <option value="low">عادی</option>
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <span>+</span>
+            <span>افزودن</span>
+          </button>
+        </form>
+
+        <!-- Filter tabs -->
+        <div class="filters">
+          <button type="button" class="filter-btn active" data-filter="all">همه</button>
+          <button type="button" class="filter-btn" data-filter="pending">در انتظار</button>
+          <button type="button" class="filter-btn" data-filter="completed">انجام‌شده</button>
+        </div>
+
+        <!-- Task List -->
+        <div id="tasksList" class="tasks-list">
+          <!-- Rendered dynamically -->
+        </div>
+      </section>
+
+      <!-- COLUMN 2: Hourly Timeline -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>تایم‌لاین ساعتی روز</span>
+          </div>
+          <span class="card-badge">برنامه‌ریزی ساعات</span>
+        </div>
+
+        <div id="timelineScroll" class="timeline-scroll">
+          <!-- Rendered dynamically 07:00 to 23:00 -->
+        </div>
+      </section>
+
+      <!-- COLUMN 3: Productivity Tools (Pomodoro & Quick Notes) -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
+            <span>ابزارهای دستیار تمرکز</span>
+          </div>
+          <span class="card-badge">پومودورو و یادداشت</span>
+        </div>
+
+        <!-- Pomodoro Timer -->
+        <div class="timer-card">
+          <div style="font-size: 0.75rem; font-weight: 700; color: #7e22ce;">تایمر تمرکز هوشمند (Focus)</div>
+          <div id="timerDisplay" class="timer-display">25:00</div>
+          <div class="timer-controls">
+            <button type="button" id="timerToggleBtn" class="btn btn-primary btn-sm">شروع</button>
+            <button type="button" id="timerResetBtn" class="btn btn-outline btn-sm">بازنشانی</button>
+            <button type="button" id="timerBreakBtn" class="btn btn-outline btn-sm">استراحت ۵دقیقه</button>
+          </div>
+        </div>
+
+        <!-- Quick Notepad -->
+        <div style="margin-top: 0.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+            <span style="font-size: 0.8rem; font-weight: 700; color: #334155;">دفترچه یادداشت سریع امروز</span>
+            <span id="notesSavedTag" style="font-size: 0.68rem; color: #10b981; font-weight: 700;">✓ ذخیره‌شده خودکار</span>
+          </div>
+          <textarea
+            id="notesArea"
+            class="notes-textarea"
+            placeholder="ایده‌ها، شماره‌های تماس، نکات مهم و یادداشت‌های امروز را اینجا بنویسید..."
+          ></textarea>
+          <div class="notes-footer">
+            <span id="notesCharCount">۰ کاراکتر</span>
+            <button type="button" id="copyNotesBtn" class="btn btn-outline btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">
+              کپی یادداشت
+            </button>
+          </div>
+        </div>
+
+        <!-- Motivational Quote -->
+        <div class="quote-card">
+          💡 <span id="dailyQuote">«انگیزه چیزی است که شما را شروع می‌کند؛ عادت چیزی است که شما را ادامه می‌دهد.»</span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="newtab.js"></script>
+</body>
+</html>

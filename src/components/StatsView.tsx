@@ -55,24 +55,25 @@ export const StatsView: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6 pb-12">
-      <div>
-        <h2 className="text-base font-black text-white">
+    <div className="space-y-5 animate-in fade-in pb-16">
+      {/* Header Banner */}
+      <div className="bg-white p-5 sm:p-6 rounded-[28px] border border-slate-200/90 shadow-sm">
+        <h2 className="text-base sm:text-lg font-black text-slate-900">
           آمار عملکرد و بهره‌وری
         </h2>
-        <p className="text-xs text-zinc-400 mt-0.5">
-          تحلیل دستاوردهای روزانه و استریک فعالیت شما
+        <p className="text-xs text-slate-400 mt-0.5 font-medium">
+          تحلیل دستاوردهای روزانه، ساعات تمرکز و استریک فعالیت شما
         </p>
       </div>
 
       {/* Streak Hero Card */}
-      <div className="p-6 bg-zinc-900/70 rounded-3xl border border-zinc-800 space-y-3">
+      <div className="p-6 bg-[#121212] text-white rounded-[28px] shadow-md space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold px-3 py-1 rounded-full bg-zinc-800 text-zinc-200 border border-zinc-700/60 flex items-center gap-1.5">
-            <Flame className="w-4 h-4 text-orange-400 fill-orange-400 animate-pulse" />
+          <span className="text-xs font-black px-3 py-1 rounded-full bg-white/10 text-white border border-white/10 flex items-center gap-1.5">
+            <Flame className="w-4 h-4 text-[#f95738] fill-[#f95738] animate-pulse" />
             استریک فعالیت روزانه
           </span>
-          <span className="text-xs text-zinc-400 flex items-center gap-1">
+          <span className="text-xs text-slate-300 font-bold flex items-center gap-1">
             <Trophy className="w-3.5 h-3.5 text-amber-400" />
             بهترین رکورد: {toPersianDigits(streak.bestStreak)} روز
           </span>
@@ -82,78 +83,78 @@ export const StatsView: React.FC = () => {
           <span className="text-5xl font-black text-white tracking-tight">
             {toPersianDigits(streak.currentStreak)}
           </span>
-          <span className="text-base font-bold text-zinc-400">روز متوالی</span>
+          <span className="text-base font-bold text-slate-300">روز متوالی</span>
         </div>
 
-        <p className="text-xs text-zinc-400 leading-relaxed max-w-sm">
+        <p className="text-xs text-slate-400 leading-relaxed max-w-sm font-medium">
           پیوستگی کلید موفقیت است؛ انجام مداوم کارهای کوچک نتایج بزرگی در طول زمان می‌سازد.
         </p>
       </div>
 
       {/* 3 Metric Cards */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800 text-center">
-          <div className="w-8 h-8 rounded-xl bg-zinc-800 text-emerald-400 flex items-center justify-center mx-auto mb-2">
-            <CheckCircle className="w-4 h-4" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-sm text-center space-y-1">
+          <div className="w-9 h-9 rounded-2xl bg-[#00b884]/15 text-[#00895f] flex items-center justify-center mx-auto mb-2">
+            <CheckCircle className="w-5 h-5" />
           </div>
-          <div className="text-xl font-black text-white">
+          <div className="text-2xl font-black text-slate-900">
             {toPersianDigits(totalCompleted)}
           </div>
-          <div className="text-[10px] text-zinc-400 mt-0.5">تسک تکمیل‌شده</div>
+          <div className="text-xs text-slate-400 font-bold">تسک تکمیل‌شده</div>
         </div>
 
-        <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800 text-center">
-          <div className="w-8 h-8 rounded-xl bg-zinc-800 text-zinc-200 flex items-center justify-center mx-auto mb-2">
-            <TrendingUp className="w-4 h-4" />
+        <div className="p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-sm text-center space-y-1">
+          <div className="w-9 h-9 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-2">
+            <TrendingUp className="w-5 h-5" />
           </div>
-          <div className="text-xl font-black text-white">
+          <div className="text-2xl font-black text-slate-900">
             {toPersianDigits(overallRate)}٪
           </div>
-          <div className="text-[10px] text-zinc-400 mt-0.5">نرخ بهره‌وری</div>
+          <div className="text-xs text-slate-400 font-bold">نرخ بهره‌وری</div>
         </div>
 
-        <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800 text-center">
-          <div className="w-8 h-8 rounded-xl bg-zinc-800 text-amber-400 flex items-center justify-center mx-auto mb-2">
-            <Timer className="w-4 h-4" />
+        <div className="p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-sm text-center space-y-1">
+          <div className="w-9 h-9 rounded-2xl bg-[#f95738]/15 text-[#f95738] flex items-center justify-center mx-auto mb-2">
+            <Timer className="w-5 h-5" />
           </div>
-          <div className="text-xl font-black text-white">
+          <div className="text-2xl font-black text-slate-900">
             {toPersianDigits(Math.round(totalFocusMinutes / 60))}
           </div>
-          <div className="text-[10px] text-zinc-400 mt-0.5">ساعت تمرکز</div>
+          <div className="text-xs text-slate-400 font-bold">ساعت تمرکز</div>
         </div>
       </div>
 
       {/* Weekly Activity Chart */}
-      <div className="p-5 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-4">
+      <div className="p-5 sm:p-6 bg-white rounded-[28px] border border-slate-200/90 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
-            <Award className="w-4 h-4 text-zinc-400" />
-            فعالیت هفتگی
+          <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
+            <Award className="w-4 h-4 text-[#00b884]" />
+            <span>فعالیت هفتگی</span>
           </h3>
-          <span className="text-[10px] text-zinc-400 font-mono">۷ روز اخیر</span>
+          <span className="text-[11px] text-slate-400 font-bold font-mono">۷ روز اخیر</span>
         </div>
 
-        <div className="h-32 flex items-end justify-between gap-2 pt-4 px-1">
+        <div className="h-36 flex items-end justify-between gap-2 sm:gap-3 pt-4 px-2">
           {weekDaysData.map((d, idx) => {
             const heightPercent = Math.max((d.count / maxCount) * 100, 10);
             return (
               <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                <span className="text-[10px] font-bold text-zinc-400">
+                <span className="text-[10px] font-black text-slate-400">
                   {toPersianDigits(d.count)}
                 </span>
-                <div className="w-full max-w-[28px] bg-zinc-800 rounded-xl h-full flex items-end overflow-hidden">
+                <div className="w-full max-w-[32px] bg-slate-100 pattern-hatched rounded-2xl h-full flex items-end overflow-hidden p-0.5">
                   <div
                     className={`w-full rounded-xl transition-all duration-500 ${
                       d.isToday
-                        ? 'bg-white shadow-xs'
-                        : 'bg-zinc-600'
+                        ? 'bg-[#121212] shadow-xs'
+                        : 'bg-[#00b884]'
                     }`}
                     style={{ height: `${heightPercent}%` }}
                   />
                 </div>
                 <span
-                  className={`text-[10px] ${
-                    d.isToday ? 'font-bold text-white' : 'text-zinc-500'
+                  className={`text-[10px] sm:text-xs font-black ${
+                    d.isToday ? 'text-slate-900' : 'text-slate-400'
                   }`}
                 >
                   {d.dayLabel}
@@ -166,21 +167,21 @@ export const StatsView: React.FC = () => {
 
       {/* Productivity Tips */}
       <div className="space-y-3">
-        <h3 className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-          <Lightbulb className="w-4 h-4 text-amber-400" />
-          توصیه‌های بهبود مدیریت زمان
+        <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
+          <Lightbulb className="w-4 h-4 text-amber-500" />
+          <span>توصیه‌های بهبود مدیریت زمان</span>
         </h3>
 
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {productivityTips.map((tip, i) => (
             <div
               key={i}
-              className="p-3.5 bg-zinc-900/50 rounded-2xl border border-zinc-800/80 space-y-1"
+              className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-2xs space-y-1.5 hover:border-slate-300 transition-colors"
             >
-              <h4 className="text-xs font-bold text-white">
+              <h4 className="text-xs font-black text-slate-800">
                 💡 {tip.title}
               </h4>
-              <p className="text-[11px] text-zinc-400 leading-relaxed">
+              <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
                 {tip.text}
               </p>
             </div>

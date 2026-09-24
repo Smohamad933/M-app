@@ -1,24 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTask } from '../context/TaskContext';
-import { formatPersianDate, toPersianDigits, getTodayISO } from '../utils/persianDate';
+import {
+  toPersianDigits,
+  getTodayISO,
+  formatPersianDate,
+  isoToJalali,
+  jalaliToISO,
+} from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import {
-  CalendarDays,
   Clock,
+  Check,
   Plus,
-  CheckCircle2,
-  Circle,
-  AlertTriangle,
   ChevronRight,
   ChevronLeft,
-  BookOpen,
-  Droplets,
-  Activity,
-  Moon,
-  Sparkles,
-  Flame,
+  CalendarDays,
+  CheckCircle2,
   Zap,
 } from 'lucide-react';
+import type { Task } from '../types';
 
 export const HourlyPlannerView: React.FC = () => {
   const {
@@ -27,325 +27,426 @@ export const HourlyPlannerView: React.FC = () => {
     setSelectedDate,
     toggleTaskComplete,
     openCreateModal,
-    openIncompleteModal,
-    dailyNotes,
-    saveDailyNote,
   } = useTask();
 
-  const [currentHour, setCurrentHour] = useState<number>(new Date().getHours());
-  const [noteText, setNoteText] = useState<string>('');
-  const [habits, setHabits] = useState<Record<string, boolean>>(() => {
-    try {
-      const raw = localStorage.getItem(`taskrooz_habits_${selectedDate}`);
-      return raw ? JSON.parse(raw) : { water: false, study: false, exercise: false, focus: false, sleep: false };
-    } catch {
-      return { water: false, study: false, exercise: false, focus: false, sleep: false };
-    }
-  });
+  const todayISO = getTodayISO();
+  const activeDate = selectedDate || todayISO;
 
-  // Track live current hour
+  // Real live clock
+  const [now, setNow] = useState(new Date());
   useEffect(() => {
-    const tick = () => setCurrentHour(new Date().getHours());
-    const id = setInterval(tick, 60000);
-    return () => clearInterval(id);
+    const timer = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(timer);
   }, []);
 
-  // Sync daily note with selected date
-  useEffect(() => {
-    setNoteText(dailyNotes[selectedDate] || '');
-    try {
-      const raw = localStorage.getItem(`taskrooz_habits_${selectedDate}`);
-      setHabits(raw ? JSON.parse(raw) : { water: false, study: false, exercise: false, focus: false, sleep: false });
-    } catch {}
-  }, [selectedDate, dailyNotes]);
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
 
-  const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setNoteText(val);
-    saveDailyNote(selectedDate, val);
-  };
+  // Mode: Gantt timeline view vs 24h Blocks
+  const [viewMode, setViewMode] = useState<'gantt' | 'blocks'>('gantt');
 
-  const toggleHabit = (key: string) => {
+  // Tasks for the selected date
+  const dayTasks = useMemo(() => {
+    return tasks.filter((t) => t.date === activeDate);
+  }, [tasks, activeDate]);
+
+  // Navigate date
+  const changeDate = (days: number) => {
     sounds.playPop();
-    const updated = { ...habits, [key]: !habits[key] };
-    setHabits(updated);
-    try {
-      localStorage.setItem(`taskrooz_habits_${selectedDate}`, JSON.stringify(updated));
-    } catch {}
+    const [y, m, d] = isoToJalali(activeDate);
+    const newISO = jalaliToISO(y, m, d + days);
+    setSelectedDate(newISO);
   };
 
-  // Day navigation
-  const navigateDay = (offset: number) => {
-    sounds.playPop();
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + offset);
-    setSelectedDate(d.toISOString().slice(0, 10));
-  };
+  // Full day planning hours: 06:00 to 24:00 (18 hours)
+  const HOURS = useMemo(() => {
+    return Array.from({ length: 19 }, (_, i) => i + 6); // 6, 7, 8 ... 24
+  }, []);
 
-  const goToToday = () => {
-    sounds.playPop();
-    setSelectedDate(getTodayISO());
-  };
+  // Map tasks to their scheduled start hour
+  const tasksByHour = useMemo(() => {
+    const map: Record<number, Task[]> = {};
+    for (const h of HOURS) {
+      map[h] = [];
+    }
 
-  // Filter tasks for this day
-  const dayTasks = tasks.filter((t) => t.date === selectedDate);
-  const completedCount = dayTasks.filter((t) => t.completed).length;
-  const totalCount = dayTasks.length;
-  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-  const isToday = selectedDate === getTodayISO();
-
-  // 24-hour slots
-  const hours = Array.from({ length: 24 }, (_, i) => i);
-
-  // Group tasks by hour
-  const tasksByHour: Record<number, typeof dayTasks> = {};
-  hours.forEach((h) => {
-    tasksByHour[h] = [];
-  });
-
-  const unassignedTasks: typeof dayTasks = [];
-
-  dayTasks.forEach((t) => {
-    if (t.time) {
-      const parts = t.time.split(':');
-      const h = parseInt(parts[0], 10);
-      if (!isNaN(h) && tasksByHour[h]) {
-        tasksByHour[h].push(t);
-        return;
+    for (const task of dayTasks) {
+      if (task.time) {
+        const hourNum = parseInt(task.time.split(':')[0], 10);
+        if (map[hourNum]) {
+          map[hourNum].push(task);
+        } else {
+          const slot = Math.max(6, Math.min(24, hourNum));
+          if (!map[slot]) map[slot] = [];
+          map[slot].push(task);
+        }
       }
     }
-    unassignedTasks.push(t);
-  });
+    return map;
+  }, [dayTasks, HOURS]);
+
+  const totalDayTasks = dayTasks.length;
+  const completedDayTasks = dayTasks.filter((t) => t.completed).length;
+  const timedTasks = useMemo(() => {
+    return dayTasks.filter((t) => t.time).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  }, [dayTasks]);
+
+  // Live marker position across 06:00 to 24:00 (18 hours = 1080 minutes)
+  const totalMinutesFrom6 = (currentHour - 6) * 60 + currentMinute;
+  const markerPercent = Math.max(0, Math.min(100, Math.round((totalMinutesFrom6 / 1080) * 100)));
+
+  // Color schemes for Gantt tasks
+  const getTaskColor = (index: number, priority?: string) => {
+    if (priority === 'high') return 'bg-[#f95738] text-white';
+    const palette = [
+      'bg-[#00b884] text-white',
+      'bg-[#6366f1] text-white',
+      'bg-[#121212] text-white',
+      'bg-[#f95738] text-white',
+      'bg-[#0ea5e9] text-white',
+    ];
+    return palette[index % palette.length];
+  };
 
   return (
-    <div className="space-y-6 animate-in fade-in pb-16">
-      {/* 1. Header Bar: Date Switcher & Daily Progress */}
-      <div className="bg-zinc-900/70 p-4 sm:p-5 rounded-3xl border border-zinc-800 backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 w-full min-w-0 animate-in fade-in pb-16">
+      {/* 1. Header Toolbar with Date Navigator & View Switcher */}
+      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-white text-zinc-950 flex items-center justify-center font-bold shadow-xs">
-            <Clock className="w-6 h-6 stroke-[2.2]" />
+          <div className="w-12 h-12 rounded-2xl bg-[#121212] text-white flex items-center justify-center shadow-xs">
+            <Clock className="w-6 h-6 text-[#00b884]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-black text-white">
-                دیلی پلنر ساعتی
+              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                تایم‌لاین زمانی و دیلی پلنر (Task Timeline Planner)
               </h2>
-              {isToday && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
-                  امروز
-                </span>
-              )}
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#f95738]/10 text-[#f95738] border border-[#f95738]/20">
+                گانت ۲۴ ساعته
+              </span>
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5 font-medium">
-              برنامه‌ریزی دقیق ۲۴ ساعته روز، رصد پیشرفت و یادداشت‌ها
+            <p className="text-xs text-slate-500 font-bold mt-0.5">
+              زمان‌بندی بصری کارهای روزانه روی خط زمانی با نشانگر زنده ساعت جاری
             </p>
           </div>
         </div>
 
-        {/* Date Selector */}
-        <div className="flex items-center gap-2 self-start md:self-auto">
-          <button
-            onClick={() => navigateDay(1)}
-            className="p-2 rounded-xl bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 transition-colors cursor-pointer"
-            title="روز بعد"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+        {/* Date Navigator & Actions */}
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => changeDate(1)}
+              className="p-1.5 hover:bg-white rounded-xl text-slate-700 transition-colors cursor-pointer"
+              title="روز بعد"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            <span className="text-xs font-black text-slate-900 px-3 flex items-center gap-1.5">
+              <span>{formatPersianDate(activeDate, 'dayMonth')}</span>
+              {activeDate === todayISO && (
+                <span className="text-[#00895f] text-[10px] font-extrabold bg-[#00b884]/20 px-1.5 py-0.2 rounded-md">
+                  امروز
+                </span>
+              )}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => changeDate(-1)}
+              className="p-1.5 hover:bg-white rounded-xl text-slate-700 transition-colors cursor-pointer"
+              title="روز قبل"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => setViewMode('gantt')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                viewMode === 'gantt' ? 'bg-[#121212] text-white shadow-xs' : 'text-slate-600 hover:text-black'
+              }`}
+            >
+              نمودار گانت
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('blocks')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                viewMode === 'blocks' ? 'bg-[#121212] text-white shadow-xs' : 'text-slate-600 hover:text-black'
+              }`}
+            >
+              بلوک‌های ساعتی
+            </button>
+          </div>
 
           <button
-            onClick={goToToday}
-            className="px-3.5 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700/60 text-xs font-bold text-zinc-200 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
+            type="button"
+            onClick={() => {
+              sounds.playPop();
+              openCreateModal(activeDate);
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#121212] hover:bg-black text-white font-black text-xs shadow-sm transition-all cursor-pointer"
           >
-            <CalendarDays className="w-3.5 h-3.5 text-zinc-400" />
-            <span>{formatPersianDate(selectedDate, 'full')}</span>
-          </button>
-
-          <button
-            onClick={() => navigateDay(-1)}
-            className="p-2 rounded-xl bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 transition-colors cursor-pointer"
-            title="روز قبل"
-          >
-            <ChevronLeft className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+            <span>تسک جدید</span>
           </button>
         </div>
+      </div>
 
-        {/* Progress percent mini meter */}
-        <div className="flex items-center gap-3 bg-zinc-950/60 px-4 py-2 rounded-2xl border border-zinc-800">
-          <div className="text-left">
-            <div className="text-sm font-black text-white">
-              {toPersianDigits(progressPercent)}٪
-            </div>
-            <div className="text-[10px] text-zinc-400">
-              {toPersianDigits(completedCount)} از {toPersianDigits(totalCount)} کار
-            </div>
+      {/* 2. Top Metric Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex items-center justify-between">
+          <div>
+            <span className="text-xs text-slate-500 font-bold block">کل تسک‌های روز</span>
+            <span className="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">
+              {toPersianDigits(totalDayTasks)}
+            </span>
           </div>
-          <div className="w-16 h-2 rounded-full bg-zinc-800 overflow-hidden">
-            <div
-              className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
+          <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-700">
+            <CalendarDays className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex items-center justify-between">
+          <div>
+            <span className="text-xs text-slate-500 font-bold block">کارهای زمان‌بندی‌شده</span>
+            <span className="text-xl sm:text-2xl font-black text-[#00b884] mt-1 block">
+              {toPersianDigits(timedTasks.length)}
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#00895f] flex items-center justify-center">
+            <Clock className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex items-center justify-between">
+          <div>
+            <span className="text-xs text-slate-500 font-bold block">کارهای تکمیل‌شده</span>
+            <span className="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">
+              {toPersianDigits(completedDayTasks)}
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex items-center justify-between">
+          <div>
+            <span className="text-xs text-slate-500 font-bold block">ساعت جاری سیستم</span>
+            <span className="text-xl sm:text-2xl font-black text-[#f95738] mt-1 block font-mono">
+              {toPersianDigits(String(currentHour).padStart(2, '0'))}:{toPersianDigits(String(currentMinute).padStart(2, '0'))}
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-orange-50 text-[#f95738] flex items-center justify-center">
+            <Zap className="w-5 h-5" />
           </div>
         </div>
       </div>
 
-      {/* 2. Main Two-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (2 Cols): 24-Hour Timeline */}
-        <div className="lg:col-span-2 bg-zinc-900/60 rounded-3xl border border-zinc-800 p-4 sm:p-5 backdrop-blur-md space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
-            <span className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-zinc-400" />
-              تایم‌لاین ساعتی شبانه‌روز
-            </span>
-            <span className="text-[11px] text-zinc-400">
-              برای افزودن تسک روی هر ساعت کلیک کنید
-            </span>
+      {/* 3. VIEW 1: SIGNATURE HORIZONTAL GANTT TIMELINE (TaskMaster Style) */}
+      {viewMode === 'gantt' && (
+        <div className="bg-white rounded-[28px] p-5 sm:p-7 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div>
+              <h3 className="font-black text-sm sm:text-base text-slate-900">
+                خط زمانی افقی تسک‌ها (Horizontal Gantt Timeline)
+              </h3>
+              <p className="text-xs text-slate-400 font-bold mt-0.5">
+                نمودار شناور زمان‌بندی روز بر روی بازه ۱۸ ساعته (۰۶:۰۰ تا ۲۴:۰۰) همراه با پین نارنجی زمان اکنون
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#f95738] animate-pulse" />
+                ساعت اکنون ({toPersianDigits(String(currentHour).padStart(2, '0'))}:{toPersianDigits(String(currentMinute).padStart(2, '0'))})
+              </span>
+            </div>
           </div>
 
-          {/* Unassigned time tasks if any */}
-          {unassignedTasks.length > 0 && (
-            <div className="p-3 rounded-2xl bg-zinc-950/70 border border-zinc-800 space-y-2">
-              <div className="text-[11px] font-bold text-zinc-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                کارهای بدون ساعت مشخص این روز ({toPersianDigits(unassignedTasks.length)})
+          {/* Interactive Gantt Canvas */}
+          <div className="relative border border-slate-200/80 rounded-3xl bg-[#f8fafc] p-6 overflow-x-auto min-w-0">
+            {/* Background texture zones */}
+            <div className="absolute top-4 bottom-14 right-16 w-48 pattern-hatched rounded-2xl opacity-40 pointer-events-none" />
+            <div className="absolute top-4 bottom-14 left-24 w-64 pattern-hatched rounded-2xl opacity-40 pointer-events-none" />
+
+            {/* Live Vertical Current Time Pin */}
+            {activeDate === todayISO && currentHour >= 6 && currentHour <= 24 && (
+              <div
+                className="absolute top-0 bottom-10 w-[2px] bg-[#f95738] z-30 pointer-events-none transition-all duration-1000"
+                style={{ right: `${markerPercent}%` }}
+              >
+                <div className="w-4 h-4 rounded-full border-2 border-[#f95738] bg-white -mt-1 -mr-2 shadow-md flex items-center justify-center">
+                  <span className="w-2 h-2 rounded-full bg-[#f95738]" />
+                </div>
+                <div className="bg-[#f95738] text-white text-[9px] font-black px-2 py-0.5 rounded-md -mr-5 mt-1 shadow-sm font-mono whitespace-nowrap">
+                  اکنون {toPersianDigits(String(currentHour).padStart(2, '0'))}:{toPersianDigits(String(currentMinute).padStart(2, '0'))}
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {unassignedTasks.map((t) => (
-                  <div
-                    key={t.id}
-                    className="p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 flex items-center justify-between gap-2"
+            )}
+
+            {/* Horizontal Timeline Track */}
+            <div className="min-w-[950px] space-y-6 pt-2 pb-6">
+              {/* Tasks Gantt Lanes */}
+              {timedTasks.length > 0 ? (
+                <div className="space-y-4">
+                  {timedTasks.map((task, idx) => {
+                    const taskHour = parseInt((task.time || '12:00').split(':')[0], 10);
+                    const taskMinute = parseInt((task.time || '12:00').split(':')[1] || '0', 10);
+                    const minutesFrom6 = Math.max(0, (taskHour - 6) * 60 + taskMinute);
+                    const leftOffsetPercent = Math.min(85, Math.max(2, Math.round((minutesFrom6 / 1080) * 100)));
+                    const barColor = getTaskColor(idx, task.priority);
+
+                    return (
+                      <div key={task.id} className="relative h-12 flex items-center">
+                        {/* Guideline line */}
+                        <div className="absolute inset-x-0 h-[1px] bg-slate-200/60" />
+
+                        {/* Floating Task Bar */}
+                        <div
+                          onClick={() => {
+                            sounds.playPop();
+                            toggleTaskComplete(task.id);
+                          }}
+                          className={`absolute ${barColor} px-5 py-2.5 rounded-full shadow-md cursor-pointer hover:scale-102 active:scale-95 transition-all flex items-center gap-2.5 max-w-xs z-10`}
+                          style={{ right: `${leftOffsetPercent}%` }}
+                          title={`کلیک برای تغییر وضعیت: ${task.title}`}
+                        >
+                          <span className="font-mono text-[10px] font-black opacity-90">
+                            {task.time ? toPersianDigits(task.time) : ''}
+                          </span>
+                          <span className={`text-xs font-black truncate ${task.completed ? 'line-through opacity-75' : ''}`}>
+                            {task.title}
+                          </span>
+                          <div
+                            className={`w-4 h-4 rounded-full border border-white/50 flex items-center justify-center flex-shrink-0 ${
+                              task.completed ? 'bg-white text-slate-900' : 'bg-transparent'
+                            }`}
+                          >
+                            {task.completed && <Check className="w-3 h-3 stroke-[3]" />}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="h-44 flex flex-col items-center justify-center text-center p-6 rounded-3xl border border-dashed border-slate-200 bg-white/70 space-y-2">
+                  <Clock className="w-8 h-8 text-slate-300" />
+                  <span className="text-sm font-black text-slate-700">هنوز تسک ساعت‌داری برای این روز ثبت نشده است</span>
+                  <span className="text-xs text-slate-400 max-w-sm">
+                    با زدن روی دکمه «ثبت با AI» یا فرم دستی، کارهای امروز خود را ساعت‌بندی کنید تا در نوار گانت قرار گیرند.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openCreateModal(activeDate)}
+                    className="mt-2 px-4 py-2 bg-[#121212] hover:bg-black text-white text-xs font-black rounded-xl transition-colors cursor-pointer"
                   >
-                    <button
-                      onClick={() => toggleTaskComplete(t.id)}
-                      className="flex items-center gap-2 text-right min-w-0 flex-1 cursor-pointer"
+                    + افزودن اولین تسک ساعت‌دار
+                  </button>
+                </div>
+              )}
+
+              {/* X-Axis Hour Marks Ruler (06:00 to 24:00) */}
+              <div className="flex items-center justify-between text-xs font-black text-slate-400 pt-4 border-t border-slate-200/90">
+                {HOURS.filter((h) => h % 2 === 0).map((hour) => {
+                  const hourStr = `${String(hour).padStart(2, '0')}:۰۰`;
+                  const isCurrentHour = activeDate === todayISO && hour === currentHour;
+
+                  return (
+                    <span
+                      key={hour}
+                      className={`font-mono text-xs ${
+                        isCurrentHour ? 'text-[#f95738] font-black scale-110' : ''
+                      }`}
                     >
-                      {t.completed ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                      ) : (
-                        <Circle className="w-4 h-4 text-zinc-500 flex-shrink-0" />
-                      )}
-                      <span className={`text-xs truncate ${t.completed ? 'line-through text-zinc-500' : 'text-zinc-200'}`}>
-                        {t.title}
-                      </span>
-                    </button>
-                    {!t.completed && (
-                      <button
-                        onClick={() => openIncompleteModal(t)}
-                        className="p-1 rounded-lg text-zinc-400 hover:text-amber-400 hover:bg-zinc-800 text-[10px] flex items-center gap-1 cursor-pointer"
-                        title="ثبت دلیل عدم انجام"
-                      >
-                        <AlertTriangle className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                      {toPersianDigits(hourStr)}
+                    </span>
+                  );
+                })}
               </div>
             </div>
-          )}
+          </div>
+        </div>
+      )}
 
-          {/* Hourly Slots List */}
-          <div className="divide-y divide-zinc-800/60 max-h-[700px] overflow-y-auto pr-1">
-            {hours.map((hour) => {
-              const hourFormatted = `${hour.toString().padStart(2, '0')}:۰۰`;
-              const isCurrent = isToday && currentHour === hour;
-              const slotTasks = tasksByHour[hour] || [];
+      {/* 4. VIEW 2: 24-HOUR INTERACTIVE TIME BLOCKS */}
+      {viewMode === 'blocks' && (
+        <div className="bg-white rounded-[28px] p-5 sm:p-7 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="font-black text-sm sm:text-base text-slate-900">
+              بلوک‌های ساعتی روز (Time Blocking)
+            </h3>
+            <span className="text-xs text-slate-400 font-bold">کلیک روی هر بلوک برای افزودن یا تکمیل تسک</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {HOURS.map((hour) => {
+              const hourStr = `${String(hour).padStart(2, '0')}:۰۰`;
+              const hourTasks = tasksByHour[hour] || [];
+              const isCurrent = activeDate === todayISO && hour === currentHour;
 
               return (
                 <div
                   key={hour}
-                  className={`py-2.5 px-2 flex items-start gap-3 rounded-2xl transition-colors group relative ${
-                    isCurrent ? 'bg-indigo-950/20 border-r-2 border-r-indigo-500' : 'hover:bg-zinc-850/40'
+                  className={`p-4 rounded-2xl border transition-all ${
+                    isCurrent
+                      ? 'border-[#f95738] bg-orange-50/20 shadow-xs'
+                      : 'border-slate-200/90 bg-[#f8fafc] hover:bg-white hover:border-slate-300'
                   }`}
                 >
-                  {/* Hour badge */}
-                  <div className="w-16 flex-shrink-0 pt-0.5">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                     <span
-                      className={`text-xs font-mono font-bold px-2 py-0.5 rounded-lg border ${
-                        isCurrent
-                          ? 'bg-indigo-500 text-white border-indigo-400 font-black shadow-xs'
-                          : 'bg-zinc-800/80 text-zinc-400 border-zinc-700/50'
+                      className={`font-mono text-xs font-black ${
+                        isCurrent ? 'text-[#f95738]' : 'text-slate-800'
                       }`}
                     >
-                      {toPersianDigits(hourFormatted)}
+                      ساعت {toPersianDigits(hourStr)}
                     </span>
-                    {isCurrent && (
-                      <span className="block text-[9px] text-indigo-400 font-bold mt-0.5">
-                        ساعت فعلی
-                      </span>
-                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => openCreateModal(activeDate)}
+                      className="text-slate-400 hover:text-black p-1 rounded-lg"
+                      title="افزودن تسک در این ساعت"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
                   </div>
 
-                  {/* Tasks in this hour */}
-                  <div className="flex-1 min-w-0 space-y-1.5">
-                    {slotTasks.map((t) => (
-                      <div
-                        key={t.id}
-                        className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 ${
-                          t.completed
-                            ? 'bg-zinc-950/40 border-zinc-800/60 opacity-60'
-                            : 'bg-zinc-800/80 border-zinc-700/60 hover:border-zinc-500'
-                        }`}
-                      >
-                        <button
-                          onClick={() => toggleTaskComplete(t.id)}
-                          className="flex items-center gap-2.5 text-right min-w-0 flex-1 cursor-pointer"
-                        >
-                          {t.completed ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                          ) : (
-                            <Circle className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <span
-                              className={`text-xs font-bold block truncate ${
-                                t.completed ? 'line-through text-zinc-500' : 'text-zinc-100'
-                              }`}
-                            >
+                  <div className="pt-2.5 space-y-2 min-h-[48px]">
+                    {hourTasks.length > 0 ? (
+                      hourTasks.map((t, idx) => {
+                        const barColor = getTaskColor(idx, t.priority);
+
+                        return (
+                          <div
+                            key={t.id}
+                            onClick={() => {
+                              sounds.playPop();
+                              toggleTaskComplete(t.id);
+                            }}
+                            className={`${barColor} p-2 rounded-xl flex items-center justify-between gap-2 shadow-2xs cursor-pointer hover:opacity-90`}
+                          >
+                            <span className={`text-xs font-black truncate ${t.completed ? 'line-through opacity-75' : ''}`}>
                               {t.title}
                             </span>
-                            {t.reasonUncompleted && (
-                              <span className="text-[10px] text-amber-400 flex items-center gap-1 mt-0.5">
-                                <AlertTriangle className="w-2.5 h-2.5" />
-                                علت تعویق: {t.reasonUncompleted}
-                              </span>
-                            )}
+                            {t.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                           </div>
-                        </button>
-
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {t.priority === 'high' && (
-                            <span className="p-1 rounded bg-rose-500/20 text-rose-400" title="فوری">
-                              <Flame className="w-3 h-3" />
-                            </span>
-                          )}
-                          {t.priority === 'medium' && (
-                            <span className="p-1 rounded bg-amber-500/20 text-amber-400" title="مهم">
-                              <Zap className="w-3 h-3" />
-                            </span>
-                          )}
-
-                          {!t.completed && (
-                            <button
-                              onClick={() => openIncompleteModal(t)}
-                              className="px-2 py-1 rounded-lg bg-zinc-700/60 hover:bg-amber-950/40 text-zinc-300 hover:text-amber-300 text-[10px] font-bold transition-colors cursor-pointer"
-                              title="چرا این کار انجام نشد؟"
-                            >
-                              ثبت مانع
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* Quick Add Button for this hour */}
-                    {slotTasks.length === 0 && (
-                      <button
-                        onClick={() => openCreateModal(selectedDate, undefined, undefined)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] text-zinc-500 hover:text-zinc-200 flex items-center gap-1 py-1 cursor-pointer"
+                        );
+                      })
+                    ) : (
+                      <div
+                        onClick={() => openCreateModal(activeDate)}
+                        className="py-2 text-center text-slate-300 hover:text-slate-500 font-bold text-xs cursor-pointer"
                       >
-                        <Plus className="w-3 h-3" />
-                        <span>افزودن کار در ساعت {toPersianDigits(hourFormatted)}</span>
-                      </button>
+                        زمان آزاد • کلیک برای ثبت کار
+                      </div>
                     )}
                   </div>
                 </div>
@@ -353,123 +454,7 @@ export const HourlyPlannerView: React.FC = () => {
             })}
           </div>
         </div>
-
-        {/* Right Column (1 Col): Daily Notes & Habits */}
-        <div className="space-y-6">
-          {/* Daily Notes Card */}
-          <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-5 backdrop-blur-md space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-              <span className="text-xs font-black text-white flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-indigo-400" />
-                یادداشت‌ها و ارزیابی روزانه
-              </span>
-              <span className="text-[10px] text-zinc-500 font-mono">ذخیره خودکار</span>
-            </div>
-            <textarea
-              value={noteText}
-              onChange={handleNoteChange}
-              placeholder="نکات کلیدی امروز، ایده‌ها، درس‌آموخته‌ها و دستاوردهای روز خود را اینجا یادداشت کنید..."
-              rows={6}
-              className="w-full px-3.5 py-2.5 rounded-2xl bg-zinc-950/60 border border-zinc-800 text-zinc-200 text-xs outline-hidden focus:border-zinc-500 placeholder:text-zinc-600 resize-none leading-relaxed"
-            />
-          </div>
-
-          {/* Daily Habits Tracker Card */}
-          <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-5 backdrop-blur-md space-y-3.5">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-              <span className="text-xs font-black text-white flex items-center gap-2">
-                <Activity className="w-4 h-4 text-emerald-400" />
-                عادت‌های کلیدی امروز
-              </span>
-              <span className="text-[10px] text-zinc-400">
-                {toPersianDigits(Object.values(habits).filter(Boolean).length)} از ۵
-              </span>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <button
-                type="button"
-                onClick={() => toggleHabit('water')}
-                className={`w-full p-2.5 rounded-xl border flex items-center justify-between transition-colors cursor-pointer ${
-                  habits.water
-                    ? 'bg-sky-950/30 border-sky-800/60 text-sky-300'
-                    : 'bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Droplets className="w-4 h-4 text-sky-400" />
-                  <span>نوشیدن ۸ لیوان آب</span>
-                </div>
-                {habits.water ? <CheckCircle2 className="w-4 h-4 text-sky-400" /> : <Circle className="w-4 h-4 text-zinc-600" />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => toggleHabit('study')}
-                className={`w-full p-2.5 rounded-xl border flex items-center justify-between transition-colors cursor-pointer ${
-                  habits.study
-                    ? 'bg-amber-950/30 border-amber-800/60 text-amber-300'
-                    : 'bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-amber-400" />
-                  <span>۳۰ دقیقه مطالعه تخصصی</span>
-                </div>
-                {habits.study ? <CheckCircle2 className="w-4 h-4 text-amber-400" /> : <Circle className="w-4 h-4 text-zinc-600" />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => toggleHabit('exercise')}
-                className={`w-full p-2.5 rounded-xl border flex items-center justify-between transition-colors cursor-pointer ${
-                  habits.exercise
-                    ? 'bg-rose-950/30 border-rose-800/60 text-rose-300'
-                    : 'bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-rose-400" />
-                  <span>ورزش، پیاده‌روی یا کشش</span>
-                </div>
-                {habits.exercise ? <CheckCircle2 className="w-4 h-4 text-rose-400" /> : <Circle className="w-4 h-4 text-zinc-600" />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => toggleHabit('focus')}
-                className={`w-full p-2.5 rounded-xl border flex items-center justify-between transition-colors cursor-pointer ${
-                  habits.focus
-                    ? 'bg-purple-950/30 border-purple-800/60 text-purple-300'
-                    : 'bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-purple-400" />
-                  <span>حداقل یک سشن پومودورو عمیق</span>
-                </div>
-                {habits.focus ? <CheckCircle2 className="w-4 h-4 text-purple-400" /> : <Circle className="w-4 h-4 text-zinc-600" />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => toggleHabit('sleep')}
-                className={`w-full p-2.5 rounded-xl border flex items-center justify-between transition-colors cursor-pointer ${
-                  habits.sleep
-                    ? 'bg-indigo-950/30 border-indigo-800/60 text-indigo-300'
-                    : 'bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Moon className="w-4 h-4 text-indigo-400" />
-                  <span>خواب باکیفیت و سر وقت (۷-۸ ساعت)</span>
-                </div>
-                {habits.sleep ? <CheckCircle2 className="w-4 h-4 text-indigo-400" /> : <Circle className="w-4 h-4 text-zinc-600" />}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

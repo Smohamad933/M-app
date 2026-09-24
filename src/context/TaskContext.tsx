@@ -17,10 +17,14 @@ import type {
   UserTimeline,
   GlobalSystemSettings,
   SystemFontOption,
+  FriendRequestItem,
+  AppOperatingMode,
+  TaskWorkLog,
 } from '../types';
-import { api, DEFAULT_GLOBAL_SETTINGS, onSyncEvent } from '../services/api';
+import { api, DEFAULT_GLOBAL_SETTINGS, onSyncEvent, broadcastSync } from '../services/api';
 import { getTodayISO, formatPersianDate, toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
+import { DEFAULT_APP_TEXTS } from '../utils/appTexts';
 import confetti from 'canvas-confetti';
 
 interface TaskContextType {
@@ -62,7 +66,8 @@ interface TaskContextType {
     jobTitle?: string;
     skills?: string[];
     dailyTimeline?: UserTimeline;
-  }) => Promise<boolean>;
+  }) => Promise<any>;
+  completeBaleVerification: (user: User) => void;
   logout: () => Promise<void>;
   createUser: (data: {
     username: string;
@@ -77,8 +82,36 @@ interface TaskContextType {
     skills?: string[];
   }) => Promise<User>;
   updateUser: (data: { id: string; name: string; role: 'admin' | 'user'; password?: string }) => Promise<void>;
-  deleteUser: (id: string) => Promise<void>;
+  updateMyProfile: (data: {
+    id: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    birthDate?: string;
+    jobTitle?: string;
+    skills?: string[];
+    bio?: string;
+    coverImage?: string;
+    isProfileCompleted?: boolean;
+    dailyTimeline?: Record<string, string>;
+    avatar?: string | null;
+    password?: string;
+    baleChatId?: string | number;
+    baleUsername?: string;
+    baleNotifToken?: string;
+    baleNotificationsEnabled?: boolean;
+  }) => Promise<void>;
+  deleteUser: (id: string, username?: string) => Promise<void>;
+  deleteUsersBulk: (ids: string[]) => Promise<{
+    deletedCount: number;
+    deleted: string[];
+    skipped: { id: string; reason: string }[];
+  }>;
   refreshUsers: () => Promise<void>;
+  /** Admin-editable app text with fallback to the built-in default */
+  getText: (key: string) => string;
 
   // Career Goals & Personality
   goals: CareerGoal[];
@@ -100,7 +133,7 @@ interface TaskContextType {
   setTaskIncompleteReason: (taskId: string, category: UncompletedCategory, reason: string) => Promise<void>;
 
   // Excel / CSV Export
-  exportUsersCsv: () => void;
+  exportUsersCsv: (ids?: string[]) => void;
 
   // Group Focus Rooms (Pomodoro Rooms)
   activeRoomId: string | null;
@@ -108,6 +141,7 @@ interface TaskContextType {
   joinFocusRoom: (roomId: string) => Promise<boolean>;
   leaveFocusRoom: () => Promise<void>;
   deleteFocusRoom: (roomId?: string) => Promise<void>;
+  deleteAllFocusRooms: () => Promise<number>;
   createFocusRoom: (name: string, focusDuration?: number, breakDuration?: number) => Promise<FocusRoom>;
   syncRoomTimer: (action: 'start' | 'pause' | 'reset' | 'setMode', timeLeft?: number, mode?: string) => Promise<void>;
   sendRoomMessage: (text: string) => Promise<void>;
@@ -149,6 +183,38 @@ interface TaskContextType {
   addCategory: (category: { name: string; color: string; icon: string }) => Promise<Category>;
   deleteCategory?: (id: string) => Promise<void>;
   
+  // Friends & Colleague Network
+  friends: User[];
+  friendRequests: { incoming: FriendRequestItem[]; outgoing: FriendRequestItem[] };
+  refreshFriends: () => Promise<void>;
+  sendFriendRequest: (toUserId: string, projectId?: string, projectName?: string) => Promise<any>;
+  acceptFriendRequest: (requestId: string) => Promise<any>;
+  rejectFriendRequest: (requestId: string) => Promise<any>;
+  removeFriend: (friendId: string) => Promise<any>;
+
+  // Subscription & Identity
+  isPro: boolean;
+  setUserSubscription: (
+    userId: string,
+    plan: 'free' | 'plus' | 'pro' | 'ultra',
+    planType?: '1_month' | '3_months' | '6_months',
+    expiresAt?: string
+  ) => Promise<void>;
+  isUpgradeModalOpen: boolean;
+  setIsUpgradeModalOpen: (open: boolean) => void;
+  isFirstLoginModalOpen: boolean;
+  setIsFirstLoginModalOpen: (open: boolean) => void;
+  viewingPublicUser: User | null;
+  setViewingPublicUser: (user: User | null) => void;
+
+  // Operating Mode & Community Demo & Work Logger
+  isDemoMode: boolean;
+  appOperatingMode: AppOperatingMode;
+  setAppOperatingMode: (mode: AppOperatingMode) => Promise<void>;
+  logTaskWorkTime: (taskId: string, minutes: number) => Promise<void>;
+  deleteMyAccount: () => Promise<void>;
+  approveUserRegistration: (userId: string) => Promise<void>;
+
   // Settings
   updateSettings: (partial: Partial<AppSettings>) => void;
   getDailySummaryText: () => string;
@@ -161,6 +227,13 @@ interface TaskContextType {
   addCustomFont: (font: { name: string; family: string; fontUrl?: string; description?: string }) => void;
   uploadCustomFont: (file: File, name: string, family?: string, description?: string) => Promise<SystemFontOption>;
   deleteCustomFont: (fontId: string) => void;
+
+  // 12-Hour Offline-First Sync
+  isMandatorySyncDue: boolean;
+  remainingHoursUntilSync: number;
+  triggerServerSync: () => Promise<void>;
+  isSyncModalOpen: boolean;
+  setIsSyncModalOpen: (open: boolean) => void;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -362,7 +435,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       persianDigits: true,
       soundEnabled: true,
       hapticEnabled: true,
-      theme: 'dark',
+      theme: 'light',
       viewMode: 'desktop',
     };
   });
@@ -375,7 +448,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const [selectedDate, setSelectedDate] = useState<string>(getTodayISO);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [taskViewMode, setTaskViewMode] = useState<TaskViewMode>('list');
+  const [taskViewMode, setTaskViewMode] = useState<TaskViewMode>('kanban');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [selectedFilterUserId, setSelectedFilterUserId] = useState<string | null>(null);
@@ -403,22 +476,56 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [dailyNotes, setDailyNotes] = useState<Record<string, string>>({});
   const [incompleteModalTask, setIncompleteModalTask] = useState<Task | null>(null);
 
-  // Sync settings with audio, theme and persistence
+  // Friends & Colleague Network state
+  const [friends, setFriends] = useState<User[]>([]);
+  const [friendRequests, setFriendRequests] = useState<{ incoming: FriendRequestItem[]; outgoing: FriendRequestItem[] }>({
+    incoming: [],
+    outgoing: [],
+  });
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isFirstLoginModalOpen, setIsFirstLoginModalOpen] = useState(false);
+  const [viewingPublicUser, setViewingPublicUser] = useState<User | null>(null);
+
+  // 12-Hour Offline-First Sync State
+  const [isMandatorySyncDue, setIsMandatorySyncDue] = useState<boolean>(() => api.isMandatorySyncDue());
+  const [remainingHoursUntilSync, setRemainingHoursUntilSync] = useState<number>(() => api.getRemainingHoursUntilMandatorySync());
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
+
+  // Periodically check 12-hour sync requirement
+  useEffect(() => {
+    const checkSyncStatus = () => {
+      const isDue = api.isMandatorySyncDue();
+      setIsMandatorySyncDue(isDue);
+      setRemainingHoursUntilSync(api.getRemainingHoursUntilMandatorySync());
+      if (isDue) {
+        setIsSyncModalOpen(true);
+      }
+    };
+    checkSyncStatus();
+    const interval = setInterval(checkSyncStatus, 45000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const triggerServerSync = async () => {
+    await api.syncDataWithServer();
+    setIsMandatorySyncDue(false);
+    setRemainingHoursUntilSync(12);
+    setIsSyncModalOpen(false);
+    await refreshTasks();
+    await refreshProjects();
+    await refreshUsers();
+  };
+
+  // Sync settings with audio and light theme
   useEffect(() => {
     sounds.enabled = settings.soundEnabled;
     sounds.hapticEnabled = settings.hapticEnabled;
     
-    const isDark = settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.documentElement.classList.add('light');
-    }
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
 
     try {
-      localStorage.setItem('taskrooz_settings', JSON.stringify(settings));
+      localStorage.setItem('taskrooz_settings', JSON.stringify({ ...settings, theme: 'light' }));
     } catch {}
   }, [settings]);
 
@@ -497,6 +604,21 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e: any) {
       alert(e.message || 'خطا در حذف اتاق');
     }
+  };
+
+  const deleteAllFocusRooms = async (): Promise<number> => {
+    const count = await api.deleteAllFocusRooms();
+    // If we are currently inside a room, mark it as deleted too
+    if (activeRoom) {
+      setActiveRoom({
+        ...activeRoom,
+        isDeleted: true,
+        deletedAt: Math.floor(Date.now() / 1000),
+        isRunning: false,
+      });
+    }
+    sounds.playComplete();
+    return count;
   };
 
   const createFocusRoom = async (name: string, focusDuration = 1500, breakDuration = 300): Promise<FocusRoom> => {
@@ -586,6 +708,166 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const appOperatingMode: AppOperatingMode = globalSettings?.appOperatingMode || 'commercial';
+  const isDemoMode = appOperatingMode === 'community_demo';
+  const isPro = isDemoMode || currentUser?.role === 'admin' || currentUser?.subscription?.plan === 'pro';
+
+  const setAppOperatingMode = async (mode: AppOperatingMode) => {
+    await updateGlobalSettings({ appOperatingMode: mode });
+    broadcastSync('SETTINGS_UPDATED', { appOperatingMode: mode });
+    sounds.playComplete();
+  };
+
+  const logTaskWorkTime = async (taskId: string, minutes: number) => {
+    if (!currentUser || minutes <= 0) return;
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    const newLog: TaskWorkLog = {
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userAvatar: currentUser.avatar || null,
+      minutes,
+      loggedAt: new Date().toISOString(),
+    };
+
+    const updatedLogs = [...(task.workLogs || []), newLog];
+    const totalMinutes = (task.focusMinutesSpent || 0) + minutes;
+
+    const updatedTask: Task = {
+      ...task,
+      focusMinutesSpent: totalMinutes,
+      workLogs: updatedLogs,
+    };
+
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));
+    await api.updateTask(updatedTask);
+    broadcastSync('TASK_UPDATED', { taskId, projectId: task.projectId });
+    sounds.playComplete();
+  };
+
+  const deleteMyAccount = async () => {
+    if (!currentUser) return;
+    if (currentUser.id === 'usr_admin_mohusyn' || (currentUser.username || '').toLowerCase() === 'mohusyn') {
+      alert('حساب کاربری مدیر اصلی محافظت‌شده است و قابل حذف نیست.');
+      return;
+    }
+    await api.deleteUser(currentUser.id, currentUser.username);
+    broadcastSync('USER_DELETED', { id: currentUser.id, username: currentUser.username });
+    await logout();
+  };
+
+  const approveUserRegistration = async (userId: string) => {
+    await api.setUserSubscription(userId, 'pro', '3_months');
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId
+          ? {
+              ...u,
+              status: 'active',
+              isDemo: true,
+              subscription: {
+                plan: 'pro',
+                planType: '3_months',
+                activatedAt: new Date().toISOString(),
+              },
+            }
+          : u
+      )
+    );
+    await refreshUsers();
+    sounds.playComplete();
+  };
+
+  const refreshFriends = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const fList = await api.getFriends();
+      setFriends(fList);
+      const reqs = await api.getFriendRequests();
+      setFriendRequests(reqs);
+    } catch {}
+  }, [currentUser]);
+
+  const sendFriendRequest = async (toUserId: string, projectId?: string, projectName?: string) => {
+    const res = await api.sendFriendRequest(toUserId, projectId, projectName);
+    await refreshFriends();
+    return res;
+  };
+
+  const acceptFriendRequest = async (requestId: string) => {
+    const res = await api.acceptFriendRequest(requestId);
+    await refreshFriends();
+    await refreshProjects();
+    sounds.playComplete();
+    return res;
+  };
+
+  const rejectFriendRequest = async (requestId: string) => {
+    const res = await api.rejectFriendRequest(requestId);
+    await refreshFriends();
+    return res;
+  };
+
+  const removeFriend = async (friendId: string) => {
+    await api.removeFriend(friendId);
+    await refreshFriends();
+    sounds.playPop();
+  };
+
+  const setUserSubscription = async (
+    userId: string,
+    plan: 'free' | 'plus' | 'pro' | 'ultra',
+    planType?: '1_month' | '3_months' | '6_months',
+    expiresAt?: string
+  ) => {
+    // 1. Optimistic local state update immediately
+    const isTargetMe = (u: User) =>
+      u.id === userId || (u.username && u.username.toLowerCase() === userId.toLowerCase());
+
+    const isPremium = plan !== 'free';
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        isTargetMe(u)
+          ? {
+              ...u,
+              status: isPremium ? 'active' : u.status,
+              subscription: {
+                plan,
+                planType: planType || (plan === 'ultra' ? '6_months' : plan === 'plus' ? '1_month' : '3_months'),
+                activatedAt: new Date().toISOString(),
+                expiresAt,
+              },
+            }
+          : u
+      )
+    );
+    if (currentUser && isTargetMe(currentUser)) {
+      setCurrentUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: isPremium ? 'active' : prev.status,
+              subscription: {
+                plan,
+                planType: planType || (plan === 'ultra' ? '6_months' : plan === 'plus' ? '1_month' : '3_months'),
+                activatedAt: new Date().toISOString(),
+                expiresAt,
+              },
+            }
+          : prev
+      );
+    }
+
+    // 2. Persist to API
+    await api.setUserSubscription(userId, plan, planType, expiresAt);
+
+    // 3. Re-sync from server
+    await refreshUsers();
+    sounds.playComplete();
+  };
+
   const refreshProjects = useCallback(async () => {
     try {
       const pList = await api.getTeamProjects();
@@ -602,6 +884,14 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     icon?: string;
     memberIds?: string[];
   }): Promise<TeamProject> => {
+    if (!isPro) {
+      const myProjects = projects.filter((p) => p.creatorId === currentUser?.id);
+      if (myProjects.length >= 1) {
+        setIsUpgradeModalOpen(true);
+        sounds.playPop();
+        throw new Error('در پلن رایگان فقط مجاز به ایجاد ۱ پروژه تیمی هستید. جهت ایجاد پروژه‌های نامحدود، حساب خود را به اشتراک ویژه (Pro) ارتقا دهید.');
+      }
+    }
     const created = await api.createTeamProject(data);
     setProjects((prev) => [created, ...prev]);
     sounds.playComplete();
@@ -659,7 +949,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (gSettings.enforcedFont) {
           setSystemFontState(gSettings.enforcedFont);
         }
-        if (user?.role === 'admin') {
+        if (user) {
           try {
             const uList = await api.getUsers();
             setUsers(uList);
@@ -705,38 +995,110 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [selectedFilterUserId, selectedProjectId]);
 
   const refreshUsers = useCallback(async () => {
-    if (currentUser?.role === 'admin') {
+    if (currentUser) {
       try {
         const uList = await api.getUsers();
         setUsers(uList);
+
+        // Keep currentUser strictly synchronized with their directory record
+        const selfInList = uList.find(
+          (u) =>
+            u.id === currentUser.id ||
+            (u.username && u.username.toLowerCase() === currentUser.username.toLowerCase())
+        );
+        if (selfInList) {
+          setCurrentUser((prev) => {
+            if (!prev) return prev;
+            const subChanged =
+              prev.subscription?.plan !== selfInList.subscription?.plan ||
+              prev.subscription?.planType !== selfInList.subscription?.planType ||
+              prev.subscription?.expiresAt !== selfInList.subscription?.expiresAt;
+            const statusChanged = prev.status !== selfInList.status;
+            const isDemoChanged = prev.isDemo !== selfInList.isDemo;
+            const roleChanged = prev.role !== selfInList.role;
+
+            if (subChanged || statusChanged || isDemoChanged || roleChanged) {
+              return {
+                ...prev,
+                ...selfInList,
+                subscription: selfInList.subscription || prev.subscription,
+              };
+            }
+            return prev;
+          });
+        }
       } catch (e) {
         console.error('Error fetching users:', e);
       }
     }
   }, [currentUser]);
 
-  // Real-time synchronization: BroadcastChannel + periodic polling for Admin
+  // Real-time synchronization: BroadcastChannel + periodic polling
   useEffect(() => {
-    const unsubscribe = onSyncEvent((event) => {
-      if (event === 'USER_REGISTERED') {
-        if (currentUser?.role === 'admin') {
-          refreshUsers();
+    const unsubscribe = onSyncEvent((event, payload) => {
+      if (event === 'USER_REGISTERED' || event === 'USER_UPDATED') {
+        refreshUsers();
+        api.getCurrentUser().then((me) => {
+          if (me) setCurrentUser(me);
+        }).catch(() => {});
+      } else if (event === 'USER_DELETED') {
+        // Cross-tab: purge local mirror and refresh so deleted users never resurrect
+        const deletedId = (payload as any)?.id as string | undefined;
+        const deletedUsername = (payload as any)?.username as string | undefined;
+        if (deletedId) {
+          api.removeLocalUserMirror(deletedId, deletedUsername);
         }
+        refreshUsers();
+      } else if (event === 'TASK_UPDATED' || event === 'TASK_CREATED' || event === 'TASK_DELETED' || event === 'PROJECT_SYNC') {
+        refreshTasks();
+        refreshProjects();
+      } else if (event === 'SETTINGS_UPDATED') {
+        api.getGlobalSettings().then(setGlobalSettings).catch(() => {});
+        refreshUsers();
       } else if (event === 'ROOM_SYNC') {
         refreshActiveRoom();
       }
     });
 
-    let pollInterval: any = null;
-    if (currentUser?.role === 'admin') {
-      pollInterval = setInterval(refreshUsers, 3000);
+    // Background polling for users directory & subscription changes (every 30s when tab is visible)
+    let userPoll: any = null;
+    if (currentUser) {
+      userPoll = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        refreshUsers();
+      }, 30000);
+    }
+
+    // Background sync for team project tasks and live progress (every 15 seconds when tab is visible)
+    let taskPoll: any = null;
+    if (currentUser) {
+      taskPoll = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        refreshTasks();
+        refreshProjects();
+      }, 15000);
+    }
+
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && !document.hidden && currentUser) {
+        refreshTasks();
+        refreshProjects();
+        refreshUsers();
+      }
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibility);
     }
 
     return () => {
       unsubscribe();
-      if (pollInterval) clearInterval(pollInterval);
+      if (userPoll) clearInterval(userPoll);
+      if (taskPoll) clearInterval(taskPoll);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibility);
+      }
     };
-  }, [currentUser?.role, refreshUsers, refreshActiveRoom]);
+  }, [currentUser, refreshUsers, refreshTasks, refreshProjects, refreshActiveRoom]);
 
   useEffect(() => {
     if (currentUser) {
@@ -744,14 +1106,25 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshUsers();
       refreshProjects();
       refreshGoals();
+      refreshFriends();
+
+      const localCompleted = typeof window !== 'undefined' && localStorage.getItem('taskrooz_user_profile_completed_' + currentUser.id) === 'true';
+      const hasCoreInfo = Boolean(currentUser.birthDate && currentUser.city && currentUser.jobTitle);
+      const isAlreadyCompleted = currentUser.role === 'admin' || currentUser.isProfileCompleted === true || localCompleted || hasCoreInfo;
+
+      if (!isAlreadyCompleted) {
+        setIsFirstLoginModalOpen(true);
+      } else {
+        setIsFirstLoginModalOpen(false);
+      }
     }
-  }, [currentUser, refreshTasks, refreshUsers, refreshProjects, refreshGoals]);
+  }, [currentUser, refreshTasks, refreshUsers, refreshProjects, refreshGoals, refreshFriends]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       const res = await api.login(username, password);
       setCurrentUser(res.user);
-      if (res.user.role === 'admin') {
+      if (res.user) {
         try {
           const uList = await api.getUsers();
           setUsers(uList);
@@ -777,23 +1150,43 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     jobTitle?: string;
     skills?: string[];
     dailyTimeline?: UserTimeline;
-  }): Promise<boolean> => {
+  }): Promise<any> => {
     try {
-      const res = await api.register(data);
-      setCurrentUser(res.user);
+      const res: any = await api.register(data);
+      if (res.requiresVerification) {
+        return res;
+      }
+      const userObj = { ...res.user, isProfileCompleted: true };
+      setCurrentUser(userObj);
+      try {
+        localStorage.setItem('taskrooz_user_profile_completed_' + res.user.id, 'true');
+      } catch {}
       setUsers((prev) => {
         const filtered = prev.filter((u) => u.username.toLowerCase() !== res.user.username.toLowerCase());
-        return [...filtered, res.user];
+        return [...filtered, userObj];
       });
       try {
         localStorage.setItem('taskrooz_sync_signal', String(Date.now()));
       } catch {}
       sounds.playComplete();
       await checkPendingRoomInvite();
-      return true;
+      return res;
     } catch (e: any) {
       throw e;
     }
+  };
+
+  const completeBaleVerification = (user: User) => {
+    const userObj = { ...user, isProfileCompleted: true };
+    setCurrentUser(userObj);
+    try {
+      localStorage.setItem('taskrooz_user_profile_completed_' + user.id, 'true');
+    } catch {}
+    setUsers((prev) => {
+      const filtered = prev.filter((u) => u.username.toLowerCase() !== user.username.toLowerCase());
+      return [...filtered, userObj];
+    });
+    sounds.playComplete();
   };
 
   const addGoal = async (data: Omit<CareerGoal, 'id' | 'createdAt' | 'userId'>): Promise<CareerGoal> => {
@@ -832,6 +1225,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = { ...currentUser, dailyTimeline: timeline };
     setCurrentUser(updated);
     sounds.playPop();
+    // Persist to server (self profile update)
+    try {
+      await api.updateMyProfile({ id: currentUser.id, dailyTimeline: timeline as Record<string, string> });
+    } catch {
+      // offline — local state already updated
+    }
   };
 
   const openIncompleteModal = (task: Task) => {
@@ -857,8 +1256,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     closeIncompleteModal();
   };
 
-  const exportUsersCsv = () => {
-    api.exportUsersCsv(users);
+  const exportUsersCsv = (ids?: string[]) => {
+    const list = ids && ids.length > 0 ? users.filter((u) => ids.includes(u.id)) : users;
+    api.exportUsersCsv(list);
     sounds.playComplete();
   };
 
@@ -897,11 +1297,80 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sounds.playPop();
   };
 
-  const deleteUser = async (id: string) => {
-    await api.deleteUser(id);
+  /** Self-service profile update (avatar, contact info, routine, password) */
+  const updateMyProfile = async (data: {
+    id: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    birthDate?: string;
+    jobTitle?: string;
+    skills?: string[];
+    bio?: string;
+    coverImage?: string;
+    isProfileCompleted?: boolean;
+    dailyTimeline?: Record<string, string>;
+    avatar?: string | null;
+    password?: string;
+    baleChatId?: string | number;
+    baleUsername?: string;
+    baleNotifToken?: string;
+    baleNotificationsEnabled?: boolean;
+  }) => {
+    const updated = await api.updateMyProfile(data);
+    // Merge returned fields into the current user (only fields that were sent)
+    setCurrentUser((prev) => {
+      if (!prev) return prev;
+      const merged = { ...prev, isProfileCompleted: true };
+      for (const k of Object.keys(updated) as (keyof typeof updated)[]) {
+        if (updated[k] !== null && updated[k] !== undefined && updated[k] !== '') {
+          (merged as any)[k] = updated[k];
+        } else if ((k === 'avatar' && data.avatar === null) || (k === 'avatar' && data.avatar === '')) {
+          delete (merged as any).avatar;
+        }
+      }
+      merged.isProfileCompleted = true;
+      try {
+        localStorage.setItem('taskrooz_user_profile_completed_' + prev.id, 'true');
+      } catch {}
+      return merged;
+    });
+    await refreshUsers();
+    sounds.playComplete();
+  };
+
+  /** Admin-editable app text with fallback to the built-in default */
+  const getText = useCallback(
+    (key: string) => {
+      const custom = globalSettings.texts?.[key];
+      if (typeof custom === 'string' && custom.trim() !== '') return custom;
+      return DEFAULT_APP_TEXTS[key] ?? key;
+    },
+    [globalSettings.texts]
+  );
+
+  const deleteUser = async (id: string, username?: string) => {
+    await api.deleteUser(id, username);
+    // Immediate optimistic removal so the list updates instantly
+    setUsers((prev) => prev.filter((u) => u.id !== id));
     await refreshUsers();
     await refreshTasks();
-    sounds.playPop();
+    sounds.playComplete();
+  };
+
+  /** Bulk deletion of many users (admin) — one server call, protected accounts skipped */
+  const deleteUsersBulk = async (ids: string[]) => {
+    const result = await api.deleteUsersBulk(ids);
+    const deletedSet = new Set(result.deleted || []);
+    setUsers((prev) => prev.filter((u) => !deletedSet.has(u.id)));
+    // Purge local mirrors so deleted users can never resurrect
+    (result.deleted || []).forEach((id) => api.removeLocalUserMirror(id));
+    await refreshUsers();
+    await refreshTasks();
+    sounds.playComplete();
+    return result;
   };
 
   const triggerConfetti = useCallback(() => {
@@ -918,12 +1387,21 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const addTask = async (taskData: TaskCreateInput): Promise<Task> => {
+    if (!isPro) {
+      const activeTasksCount = tasks.filter((t) => t.userId === currentUser?.id && !t.completed).length;
+      if (activeTasksCount >= 5) {
+        setIsUpgradeModalOpen(true);
+        sounds.playPop();
+        throw new Error('سقف تسک‌های فعال در پلن رایگان ۵ عدد است. لطفاً جهت ثبت تسک‌های بیشتر، حساب خود را به نسخه ویژه (Pro) ارتقا دهید.');
+      }
+    }
     const created = await api.createTask({
       ...taskData,
       userId: taskData.userId || currentUser?.id || 'usr_admin_1',
     });
     setTasks((prev) => [created, ...prev]);
     sounds.playPop();
+    broadcastSync('TASK_CREATED', { taskId: created.id, projectId: created.projectId });
     refreshUsers();
     refreshProjects();
     return created;
@@ -933,17 +1411,20 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await api.updateTask(updatedTask);
     setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
     sounds.playPop();
+    broadcastSync('TASK_UPDATED', { taskId: updatedTask.id, projectId: updatedTask.projectId });
     refreshUsers();
     refreshProjects();
   };
 
   const deleteTask = async (id: string) => {
+    const target = tasks.find((t) => t.id === id);
     await api.deleteTask(id);
     setTasks((prev) => prev.filter((t) => t.id !== id));
     if (activeFocusTaskId === id) {
       setActiveFocusTaskId(null);
     }
     sounds.playPop();
+    broadcastSync('TASK_DELETED', { taskId: id, projectId: target?.projectId });
     refreshUsers();
     refreshProjects();
   };
@@ -973,6 +1454,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     await api.toggleTask(id);
+    broadcastSync('TASK_UPDATED', { taskId: id, projectId: task.projectId });
     refreshUsers();
     refreshProjects();
   };
@@ -1120,7 +1602,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logout,
       createUser,
       updateUser,
+      updateMyProfile,
       deleteUser,
+      deleteUsersBulk,
       refreshUsers,
       setSelectedDate,
       setActiveTab,
@@ -1136,6 +1620,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       joinFocusRoom,
       leaveFocusRoom,
       deleteFocusRoom,
+      deleteAllFocusRooms,
       createFocusRoom,
       syncRoomTimer,
       sendRoomMessage,
@@ -1172,11 +1657,44 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       exportUsersCsv,
       globalSettings,
       updateGlobalSettings,
+      getText,
       allAvailableFonts,
       customFonts,
       addCustomFont,
       uploadCustomFont,
       deleteCustomFont,
+      // Friends & Colleague Network
+      friends,
+      friendRequests,
+      refreshFriends,
+      sendFriendRequest,
+      acceptFriendRequest,
+      rejectFriendRequest,
+      removeFriend,
+      // Subscription & Public Profile
+      isPro,
+      setUserSubscription,
+      isUpgradeModalOpen,
+      setIsUpgradeModalOpen,
+      isFirstLoginModalOpen,
+      setIsFirstLoginModalOpen,
+      viewingPublicUser,
+      setViewingPublicUser,
+      // Operating Mode & Work Logger
+      isDemoMode,
+      appOperatingMode,
+      setAppOperatingMode,
+      logTaskWorkTime,
+      deleteMyAccount,
+      approveUserRegistration,
+      // Auth & User Actions
+      completeBaleVerification,
+      // 12-Hour Offline-First Sync
+      isMandatorySyncDue,
+      remainingHoursUntilSync,
+      triggerServerSync,
+      isSyncModalOpen,
+      setIsSyncModalOpen,
     }),
     [
       currentUser,
@@ -1212,6 +1730,18 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       globalSettings,
       allAvailableFonts,
       customFonts,
+      friends,
+      friendRequests,
+      refreshFriends,
+      isPro,
+      isUpgradeModalOpen,
+      isFirstLoginModalOpen,
+      viewingPublicUser,
+      isDemoMode,
+      appOperatingMode,
+      isMandatorySyncDue,
+      remainingHoursUntilSync,
+      isSyncModalOpen,
     ]
   );
 
