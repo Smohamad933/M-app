@@ -473,12 +473,12 @@ export const UserManagementView: React.FC = () => {
   const handleSetBaleWebhook = async () => {
     sounds.playPop();
     try {
-      const res = await api.setBaleWebhook();
+      const res = await api.setBaleWebhook(baleForm.token);
       if (res.ok) {
         sounds.playComplete();
         alert('وب‌هوک ربات بله با موفقیت تنظیم شد:\n' + res.webhookUrl);
       } else {
-        alert('خطا در تنظیم وب‌هوک بله.');
+        alert(res.error || 'خطا در تنظیم وب‌هوک بله.');
       }
     } catch (e: any) {
       alert(e.message || 'خطا در تنظیم وب‌هوک');

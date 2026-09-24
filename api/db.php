@@ -362,6 +362,10 @@ class TaskRoozDB {
                     if (!empty($u['timeline_json'])) $u['dailyTimeline'] = json_decode($u['timeline_json'], true);
                     if (isset($u['birth_date']) && !isset($u['birthDate'])) $u['birthDate'] = $u['birth_date'];
                     if (isset($u['job_title']) && !isset($u['jobTitle'])) $u['jobTitle'] = $u['job_title'];
+                    if (isset($u['verification_code']) && !isset($u['verificationCode'])) $u['verificationCode'] = $u['verification_code'];
+                    if (isset($u['is_verified']) && !isset($u['isVerified'])) $u['isVerified'] = !empty($u['is_verified']);
+                    if (isset($u['bale_chat_id']) && !isset($u['baleChatId'])) $u['baleChatId'] = $u['bale_chat_id'];
+                    if (isset($u['bale_username']) && !isset($u['baleUsername'])) $u['baleUsername'] = $u['bale_username'];
                     $u['isProfileCompleted'] = !empty($u['is_profile_completed']) || ($u['role'] === 'admin') || (!empty($u['birthDate']) && !empty($u['city']));
                     return $u;
                 }
@@ -436,6 +440,10 @@ class TaskRoozDB {
             'dailyTimeline' => is_array($timeline) ? $timeline : [],
             'subscription' => ['plan' => $role === 'admin' ? 'pro' : 'free'],
             'isProfileCompleted' => $role === 'admin' || $isCompleted,
+            'verificationCode' => $extra['verificationCode'] ?? null,
+            'isVerified' => !empty($extra['isVerified']),
+            'baleChatId' => $extra['baleChatId'] ?? null,
+            'baleUsername' => $extra['baleUsername'] ?? null,
             'createdAt' => $now,
             'totalTasks' => 0,
             'completedTasks' => 0,

@@ -2984,8 +2984,19 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       const chatId = msg?.chat?.id || msg?.from?.id || cb?.message?.chat?.id || cb?.from?.id;
       const text = (msg?.text || '').trim();
 
+      const toEnDigits = (str: string) => {
+        const persian = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+        const arabic = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+        let s = str || '';
+        for (let i = 0; i < 10; i++) {
+          s = s.split(persian[i]).join(String(i)).split(arabic[i]).join(String(i));
+        }
+        return s;
+      };
+      const textEn = toEnDigits(text);
+
       const normalizePhone = (p: string) => {
-        let d = (p || '').replace(/[^\d]/g, '');
+        let d = toEnDigits(p || '').replace(/[^\d]/g, '');
         if (d.startsWith('0098')) d = '0' + d.slice(4);
         else if (d.startsWith('98')) d = '0' + d.slice(2);
         else if (d.length === 10 && d.startsWith('9')) d = '0' + d;
@@ -3025,14 +3036,10 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         }
       }
 
-      // Check verification code (/start verify_XXXXXX or 6 digits)
+      // Check verification code (Supports Persian and English digits)
       let code: string | null = null;
-      const mStart = text.match(/^\/start\s+verify_([A-Za-z0-9]{4,10})/i);
-      const mVerify = text.match(/^\/verify\s+([A-Za-z0-9]{4,10})/i);
-      const mDigits = text.match(/^\b(\d{6})\b$/);
-      if (mStart) code = mStart[1];
-      else if (mVerify) code = mVerify[1];
-      else if (mDigits) code = mDigits[1];
+      const mCode = textEn.match(/(?:verify_|تایید_)?([0-9]{5,8})/i) || textEn.match(/^\s*([0-9]{4,10})\s*$/);
+      if (mCode) code = mCode[1];
 
       if (code) {
         const found = db.users.find((u) => u.verificationCode === code);

@@ -446,8 +446,11 @@ export const api = {
     );
   },
 
-  async setBaleWebhook(): Promise<{ ok: boolean; webhookUrl: string }> {
-    return await request<{ ok: boolean; webhookUrl: string }>('api/bale.php?action=set_webhook', { method: 'POST' });
+  async setBaleWebhook(token?: string): Promise<{ ok: boolean; webhookUrl: string; error?: string; message?: string }> {
+    return await request<{ ok: boolean; webhookUrl: string; error?: string; message?: string }>(
+      'api/bale.php?action=set_webhook',
+      { method: 'POST', body: JSON.stringify({ token }) }
+    );
   },
 
   // Auth: Login (Verified against Central Server with IIS 405 Resilience)

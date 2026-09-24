@@ -1,21 +1,12 @@
 <?php
 /**
  * TaskRooz / Bag Time - Bale Messenger Bot API & Webhook (docs.bale.ai)
- * Fully compliant with Bale Bot API & Inline Keyboards & Contact Verification
- * 
- * 1. Admin Token verification & connection testing (getMe)
- * 2. Automatic webhook registration (setWebhook)
- * 3. User account phone verification via Bale:
- *    - Start bot -> Click inline button "🔐 تایید و فعال‌سازی حساب کاربری"
- *    - Send 6-digit registration code
- *    - Mandatory contact sharing (request_contact: true) to match phone numbers
- * 4. Choose which account receives notifications via Bale inline buttons
- * 5. Task creation & query via Bale inline buttons and messages
- * 6. Get Chat ID tool for users to paste into Bag Time profile settings
+ * Fully compliant with Bale Bot API, Inline Keyboards & Phone Verification
  */
 require_once __DIR__ . '/config.php';
 
-$action = $_GET['action'] ?? ($_POST['action'] ?? 'status');
+$input = getJsonInput();
+$action = $_GET['action'] ?? ($input['action'] ?? ($_POST['action'] ?? 'status'));
 $dbObj = TaskRoozDB::getInstance();
 
 $baleConfig = $dbObj->data['globalSettings']['baleBot'] ?? [
@@ -30,27 +21,80 @@ $baleConfig = $dbObj->data['globalSettings']['baleBot'] ?? [
 $botToken = trim($baleConfig['token'] ?? '');
 
 /**
+ * Clean Bot Token to handle user input varieties:
+ * - "123456789:AAHk..."
+ * - "bot123456789:AAHk..."
+ * - "https://tapi.bale.ai/bot123456789:AAHk..."
+ */
+function cleanBaleToken($t) {
+    $clean = trim((string)$t, " \t\n\r\0\x0B/");
+    if (preg_match('/(?:tapi\.bale\.ai\/)?(?:bot)?([0-9]+:[A-Za-z0-9_-]+)/i', $clean, $m)) {
+        return $m[1];
+    }
+    if (stripos($clean, 'bot') === 0) {
+        return substr($clean, 3);
+    }
+    return $clean;
+}
+
+/**
  * Send HTTP request to Bale Bot API
  */
 function callBaleApi($token, $method, $params = []) {
-    $url = 'https://tapi.bale.ai/bot' . $token . '/' . $method;
+    $tokenClean = cleanBaleToken($token);
+    if (empty($tokenClean)) {
+        return ['ok' => false, 'error' => 'توکن ربات بله خالی یا نامعتبر است.'];
+    }
+
+    $url = 'https://tapi.bale.ai/bot' . $tokenClean . '/' . $method;
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params, JSON_UNESCAPED_UNICODE));
+    if (!empty($params)) {
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params, JSON_UNESCAPED_UNICODE));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json; charset=utf-8']);
+    } else {
+        curl_setopt($ch, CURLOPT_HTTPGET, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
+    }
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json; charset=utf-8']);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; BagTimeBot/1.0)');
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
     curl_close($ch);
 
     if (!$response) {
-        return ['ok' => false, 'error' => 'خطا در ارتباط با سرورهای بله', 'httpCode' => $httpCode];
+        return ['ok' => false, 'error' => 'خطای اتصال به سرورهای بله: ' . ($curlErr ?: 'Timeout'), 'httpCode' => $httpCode];
     }
     $decoded = json_decode($response, true);
     return is_array($decoded) ? $decoded : ['ok' => false, 'raw' => $response, 'httpCode' => $httpCode];
+}
+
+/**
+ * Convert Persian & Arabic numbers to English standard digits
+ */
+function toEnglishDigits($str) {
+    if (!$str) return '';
+    $persian = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+    $arabic = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+    $latin = ['0','1','2','3','4','5','6','7','8','9'];
+    $s = str_replace($persian, $latin, (string)$str);
+    return str_replace($arabic, $latin, $s);
+}
+
+/**
+ * Normalize Iranian phone numbers for 100% accurate matching
+ */
+function normalizePhoneNumber($p) {
+    $d = preg_replace('/[^\d]/', '', toEnglishDigits($p));
+    if (substr($d, 0, 4) === '0098') $d = '0' . substr($d, 4);
+    elseif (substr($d, 0, 2) === '98') $d = '0' . substr($d, 2);
+    elseif (strlen($d) === 10 && substr($d, 0, 1) === '9') $d = '0' . $d;
+    return $d;
 }
 
 /**
@@ -84,18 +128,6 @@ function answerBaleCallback($token, $callbackQueryId, $text = null, $showAlert =
 }
 
 /**
- * Normalize Iranian phone numbers for 100% accurate matching
- * Supports +98912..., 0098912..., 98912..., 0912..., 912...
- */
-function normalizePhoneNumber($p) {
-    $d = preg_replace('/[^\d]/', '', (string)$p);
-    if (substr($d, 0, 4) === '0098') $d = '0' . substr($d, 4);
-    elseif (substr($d, 0, 2) === '98') $d = '0' . substr($d, 2);
-    elseif (strlen($d) === 10 && substr($d, 0, 1) === '9') $d = '0' . $d;
-    return $d;
-}
-
-/**
  * Helper to build Main Menu Inline Keyboard
  */
 function getMainMenuKeyboard() {
@@ -119,56 +151,93 @@ function getMainMenuKeyboard() {
     ];
 }
 
+// -----------------------------------------------------------------------------
 // 1. Check Bot Status & Test Token (Admin only)
+// -----------------------------------------------------------------------------
 if ($action === 'test' || $action === 'status') {
-    $tokenToTest = trim($_POST['token'] ?? ($_GET['token'] ?? $botToken));
-    if (empty($tokenToTest)) {
+    $tokenToTest = trim($input['token'] ?? ($_POST['token'] ?? ($_GET['token'] ?? $botToken)));
+    $cleanedToken = cleanBaleToken($tokenToTest);
+
+    if (empty($cleanedToken)) {
         jsonResponse([
             'ok' => false,
             'status' => 'not_configured',
-            'message' => 'توکن ربات بله هنوز تنظیم نشده است.',
+            'message' => 'توکن ربات بله هنوز وارد یا تنظیم نشده است.',
             'config' => $baleConfig,
         ]);
     }
 
-    $me = callBaleApi($tokenToTest, 'getMe');
+    $me = callBaleApi($cleanedToken, 'getMe');
     if (!empty($me['ok'])) {
+        // Automatically persist the cleaned token into globalSettings
+        $dbObj->loadJson();
+        if (!isset($dbObj->data['globalSettings']['baleBot'])) {
+            $dbObj->data['globalSettings']['baleBot'] = $baleConfig;
+        }
+        $dbObj->data['globalSettings']['baleBot']['token'] = $cleanedToken;
+        $dbObj->data['globalSettings']['baleBot']['enabled'] = true;
+        if (!empty($me['result']['username'])) {
+            $dbObj->data['globalSettings']['baleBot']['botUsername'] = $me['result']['username'];
+        }
+        $dbObj->saveJson();
+
         jsonResponse([
             'ok' => true,
             'status' => 'connected',
             'message' => 'اتصال به ربات بله با موفقیت برقرار شد.',
             'bot' => $me['result'] ?? [],
-            'config' => $baleConfig,
+            'config' => $dbObj->data['globalSettings']['baleBot'],
         ]);
     } else {
+        $errDesc = $me['description'] ?? ($me['error'] ?? 'پاسخ ناموفق از سرور بله');
         jsonResponse([
             'ok' => false,
             'status' => 'error',
-            'message' => 'توکن ربات بله نامعتبر است یا ارتباط با بله برقرار نشد.',
-            'error' => $me['description'] ?? ($me['error'] ?? 'خطای احراز هویت توکن'),
-        ], 400);
+            'message' => 'خطا در ارتباط با سرورهای بله: ' . $errDesc,
+            'error' => $errDesc,
+            'baleResponse' => $me,
+        ]);
     }
 }
 
+// -----------------------------------------------------------------------------
 // 2. Set Webhook on Bale
+// -----------------------------------------------------------------------------
 if ($action === 'set_webhook') {
-    if (empty($botToken)) {
-        jsonResponse(['error' => 'ابتدا توکن ربات بله را ذخیره کنید.'], 400);
+    $tokenToUse = trim($input['token'] ?? ($_POST['token'] ?? ($_GET['token'] ?? $botToken)));
+    $cleanedToken = cleanBaleToken($tokenToUse);
+
+    if (empty($cleanedToken)) {
+        jsonResponse(['ok' => false, 'error' => 'ابتدا توکن ربات بله را ذخیره کنید.'], 200);
     }
 
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $webhookUrl = $_POST['url'] ?? ($protocol . $host . '/api/bale.php?action=webhook');
+    $webhookUrl = $input['url'] ?? ($_POST['url'] ?? ($protocol . $host . '/api/bale.php?action=webhook'));
 
-    $res = callBaleApi($botToken, 'setWebhook', ['url' => $webhookUrl]);
-    jsonResponse([
-        'ok' => !empty($res['ok']),
-        'webhookUrl' => $webhookUrl,
-        'baleResponse' => $res,
-    ]);
+    $res = callBaleApi($cleanedToken, 'setWebhook', ['url' => $webhookUrl]);
+    
+    if (!empty($res['ok'])) {
+        jsonResponse([
+            'ok' => true,
+            'webhookUrl' => $webhookUrl,
+            'message' => 'وب‌هوک با موفقیت در سرورهای بله تنظیم شد.',
+            'baleResponse' => $res,
+        ]);
+    } else {
+        $errDesc = $res['description'] ?? ($res['error'] ?? 'خطا در ثبت وب‌هوک');
+        jsonResponse([
+            'ok' => false,
+            'error' => 'خطا در تنظیم وب‌هوک: ' . $errDesc,
+            'webhookUrl' => $webhookUrl,
+            'baleResponse' => $res,
+        ], 200);
+    }
 }
 
+// -----------------------------------------------------------------------------
 // 3. Webhook Receiver from Bale Messenger (Handles Messages, Contacts, and Inline Keyboards)
+// -----------------------------------------------------------------------------
 if ($action === 'webhook') {
     $rawInput = file_get_contents('php://input');
     $update = json_decode($rawInput, true);
@@ -178,6 +247,8 @@ if ($action === 'webhook') {
         exit;
     }
 
+    // Always reload latest database from disk to reflect new registrations
+    $dbObj->loadJson();
     if (!isset($dbObj->data['bale_pending_verifications'])) {
         $dbObj->data['bale_pending_verifications'] = [];
     }
@@ -203,11 +274,10 @@ if ($action === 'webhook') {
         }
         $primaryUser = !empty($linkedUsers) ? $linkedUsers[0] : null;
 
-        // Route callback actions
         if ($cbData === 'verify_account') {
             $msg = "🔐 **مرحله ۱ از ۲: ارسال کد تأیید بگ تایم**\n\n" .
-                "لطفاً کد ۶ رقمی نمایش‌داده‌شده در پنجره ثبت‌نام برنامه «بگ تایم» را به صورت یک پیام ارسال نمایید:\n\n" .
-                "*(نمونه: 123456)*";
+                "لطفاً کد ۶ رقمی که در پنجره ثبت‌نام برنامه «بگ تایم» به شما نمایش داده شده است را در قالب یک پیام ارسال فرمایید:\n\n" .
+                "*(مثال: 478954)*";
             
             $cancelKb = [
                 'inline_keyboard' => [
@@ -313,8 +383,6 @@ if ($action === 'webhook') {
 
         if (strpos($cbData, 'select_notif_acc_') === 0) {
             $selectedId = str_replace('select_notif_acc_', '', $cbData);
-            // Move selected user to first position in linked users for notifications
-            $updatedUsers = [];
             foreach ($dbObj->data['users'] as &$u) {
                 if ($u['id'] === $selectedId) {
                     $u['baleChatId'] = $chatId;
@@ -372,7 +440,8 @@ if ($action === 'webhook') {
     $msg = $update['message'];
     $chatId = $msg['chat']['id'] ?? ($msg['from']['id'] ?? null);
     $fromUser = $msg['from'] ?? [];
-    $text = trim($msg['text'] ?? '');
+    $rawText = trim($msg['text'] ?? '');
+    $textEn = toEnglishDigits($rawText);
     $contact = $msg['contact'] ?? null;
 
     if (!$chatId) {
@@ -396,10 +465,12 @@ if ($action === 'webhook') {
                     break;
                 }
             }
-        } else {
-            // Check if there is an unverified user with this phone number
+        }
+        
+        // Fallback: look for pending user matching shared phone number
+        if ($targetUserIndex === -1) {
             foreach ($dbObj->data['users'] as $idx => $u) {
-                if (empty($u['isVerified']) && !empty($u['phone']) && normalizePhoneNumber($u['phone']) === $sharedPhoneNorm) {
+                if (!empty($u['phone']) && normalizePhoneNumber($u['phone']) === $sharedPhoneNorm) {
                     $targetUserIndex = $idx;
                     break;
                 }
@@ -446,7 +517,7 @@ if ($action === 'webhook') {
                     ],
                 ];
 
-                // First send remove keyboard to dismiss contact button
+                // First remove reply keyboard
                 callBaleApi($botToken, 'sendMessage', [
                     'chat_id' => $chatId,
                     'text' => 'شماره تماس شما دریافت شد.',
@@ -483,26 +554,26 @@ if ($action === 'webhook') {
     }
 
     // -------------------------------------------------------------------------
-    // STEP 1 OF VERIFICATION: USER SENDS 6-DIGIT CODE OR /verify 123456
+    // STEP 1 OF VERIFICATION: EXTRACT CODE (Supports Persian, Arabic, English digits)
     // -------------------------------------------------------------------------
     $incomingCode = null;
-    if (preg_match('/^\/start\s+verify_([A-Za-z0-9]{4,10})/i', $text, $matches)) {
+    if (preg_match('/(?:verify_|تایید_)?([0-9]{5,8})/i', $textEn, $matches)) {
         $incomingCode = $matches[1];
-    } elseif (preg_match('/^\/verify\s+([A-Za-z0-9]{4,10})/i', $text, $matches)) {
-        $incomingCode = $matches[1];
-    } elseif (preg_match('/^\b(\d{6})\b$/', $text, $matches)) {
+    } elseif (preg_match('/^\s*([0-9]{4,10})\s*$/', $textEn, $matches)) {
         $incomingCode = $matches[1];
     }
 
     if ($incomingCode) {
         $matchedIndex = -1;
         foreach ($dbObj->data['users'] as $idx => $u) {
-            if (!empty($u['verificationCode']) && strtolower(trim($u['verificationCode'])) === strtolower(trim($incomingCode))) {
+            $storedCode = toEnglishDigits(trim($u['verificationCode'] ?? ''));
+            if (!empty($storedCode) && $storedCode === $incomingCode) {
                 $matchedIndex = $idx;
                 break;
             }
         }
 
+        // If not found by exact code, also search if any unverified user has matching phone or username
         if ($matchedIndex !== -1) {
             $userFound = $dbObj->data['users'][$matchedIndex];
 
@@ -517,7 +588,7 @@ if ($action === 'webhook') {
             // Ask for contact sharing using ReplyKeyboardMarkup with request_contact: true
             $step2Msg = "✅ **کد تأیید ۶ رقمی صحیح است.**\n\n" .
                 "⚠️ **مرحله ۲ از ۲ (الزامی): احراز هویت با شماره تماس**\n" .
-                "جهت تکمیل نهایی فعال‌سازی، باید شماره همراه ثبت‌شده در بله با شماره فرم ثبت‌نام شما (`{$userFound['phone']}`) تطبیق داده شود.\n\n" .
+                "جهت تکمیل نهایی فعال‌سازی، باید شماره همراه حساب بله شما با شماره فرم ثبت‌نام (`{$userFound['phone']}`) تطبیق داده شود.\n\n" .
                 "👇 لطفاً دکمه زیر را لمس نمایید تا شماره شما به بازو ارسال گردد:";
 
             $contactKeyboard = [
@@ -568,7 +639,7 @@ if ($action === 'webhook') {
     // -------------------------------------------------------------------------
     // HANDLE TASK CREATION VIA TEXT (/task or plain text when linked)
     // -------------------------------------------------------------------------
-    if (preg_match('/^\/(task|new)\s+(.+)$/is', $text, $matches) || (!empty($linkedUser) && mb_strlen($text, 'UTF-8') > 3 && !in_array($text, ['/start', '/help', '/tasks', 'تسک‌ها']))) {
+    if (preg_match('/^\/(task|new)\s+(.+)$/is', $rawText, $matches) || (!empty($linkedUser) && mb_strlen($rawText, 'UTF-8') > 3 && !in_array($rawText, ['/start', '/help', '/tasks', 'تسک‌ها']))) {
         if (!$linkedUser) {
             $notLinkedMsg = "⚠️ **حساب کاربری شما هنوز به بگ تایم متصل نیست!**\n\nجهت استفاده، ابتدا دکمه زیر را برای تأیید حساب لمس کنید:";
             sendBaleMessage($botToken, $chatId, $notLinkedMsg, getMainMenuKeyboard());
@@ -576,7 +647,7 @@ if ($action === 'webhook') {
             exit;
         }
 
-        $rawTask = !empty($matches[2]) ? trim($matches[2]) : $text;
+        $rawTask = !empty($matches[2]) ? trim($matches[2]) : $rawText;
         $taskTitle = $rawTask;
         $taskTime = null;
         $taskDate = date('Y-m-d');
@@ -644,10 +715,12 @@ if ($action === 'webhook') {
     exit;
 }
 
+// -----------------------------------------------------------------------------
 // 4. Send outbound notification to user via Bale
+// -----------------------------------------------------------------------------
 if ($action === 'notify') {
-    $userId = $_POST['userId'] ?? ($_GET['userId'] ?? '');
-    $text = trim($_POST['text'] ?? ($_GET['text'] ?? ''));
+    $userId = $input['userId'] ?? ($_POST['userId'] ?? ($_GET['userId'] ?? ''));
+    $text = trim($input['text'] ?? ($_POST['text'] ?? ($_GET['text'] ?? '')));
 
     if (empty($botToken) || empty($baleConfig['sendNotifications'])) {
         jsonResponse(['error' => 'ارسال نوتیفیکیشن بله فعال نیست.'], 400);
