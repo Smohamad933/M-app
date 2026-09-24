@@ -44,6 +44,8 @@ interface DBUser {
   isVerified?: boolean;
   baleChatId?: string | number;
   baleUsername?: string;
+  baleNotifToken?: string;
+  baleNotificationsEnabled?: boolean;
   createdAt: string;
 }
 
@@ -858,9 +860,12 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
       const strField = (v: any) => (typeof v === 'string' ? v.trim() : undefined);
-      for (const k of ['name', 'phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'baleChatId', 'baleUsername'] as const) {
+      for (const k of ['name', 'phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'baleChatId', 'baleUsername', 'baleNotifToken'] as const) {
         const v = strField((parsedBody as any)[k]);
         if (v !== undefined) (self as any)[k] = v;
+      }
+      if ('baleNotificationsEnabled' in (parsedBody as any)) {
+        self.baleNotificationsEnabled = Boolean((parsedBody as any).baleNotificationsEnabled);
       }
       if (Array.isArray((parsedBody as any).skills)) {
         self.skills = ((parsedBody as any).skills as any[]).filter((s) => typeof s === 'string').map((s) => s.trim()).filter(Boolean);
@@ -900,6 +905,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           avatar: self.avatar || null,
           baleChatId: self.baleChatId,
           baleUsername: self.baleUsername,
+          baleNotifToken: self.baleNotifToken,
+          baleNotificationsEnabled: self.baleNotificationsEnabled,
           isProfileCompleted: true,
           skills: self.skills,
           dailyTimeline: self.dailyTimeline,
@@ -3032,6 +3039,27 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           return true;
         } else {
           sendJson(res, { ok: false, error: 'عدم تطابق شماره همراه' });
+          return true;
+        }
+      }
+
+      // Check for notification token (NOTIF-XXXXXX or notif_XXXXXX)
+      let notifToken: string | null = null;
+      const mNotif = textEn.match(/(?:notif[_\-\s]?)([A-Za-z0-9]{4,14})/i) || text.match(/^NOTIF[_\-]?([A-Za-z0-9]{4,14})$/i);
+      if (mNotif) notifToken = mNotif[1];
+
+      if (notifToken) {
+        const cleanTok = notifToken.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const target = db.users.find((u) => {
+          const uTok = (u.baleNotifToken || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          return uTok && (uTok === cleanTok || uTok.includes(cleanTok) || cleanTok.includes(uTok));
+        });
+        if (target) {
+          target.baleChatId = chatId;
+          target.baleUsername = msg?.from?.username;
+          target.baleNotificationsEnabled = true;
+          writeDb(db);
+          sendJson(res, { ok: true, notifActivated: true, user: target.username, chatId });
           return true;
         }
       }

@@ -100,6 +100,8 @@ interface TaskContextType {
     password?: string;
     baleChatId?: string | number;
     baleUsername?: string;
+    baleNotifToken?: string;
+    baleNotificationsEnabled?: boolean;
   }) => Promise<void>;
   deleteUser: (id: string, username?: string) => Promise<void>;
   deleteUsersBulk: (ids: string[]) => Promise<{
@@ -1314,6 +1316,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password?: string;
     baleChatId?: string | number;
     baleUsername?: string;
+    baleNotifToken?: string;
+    baleNotificationsEnabled?: boolean;
   }) => {
     const updated = await api.updateMyProfile(data);
     // Merge returned fields into the current user (only fields that were sent)

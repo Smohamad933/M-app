@@ -695,6 +695,8 @@ export const api = {
     password?: string;
     baleChatId?: string | number;
     baleUsername?: string;
+    baleNotifToken?: string;
+    baleNotificationsEnabled?: boolean;
   }): Promise<User> {
     const payload = { action: 'update_profile', ...data };
     let data_: { user: User } | undefined;

@@ -679,7 +679,7 @@ class TaskRoozDB {
         foreach ($this->data['users'] as &$u) {
             if ($u['id'] === $id) {
                 if (isset($fields['name'])) $u['name'] = trim($fields['name']);
-                foreach (['phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'avatar', 'baleChatId', 'baleUsername'] as $k) {
+                foreach (['phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'avatar', 'baleChatId', 'baleUsername', 'baleNotifToken', 'baleNotificationsEnabled'] as $k) {
                     if (array_key_exists($k, $fields)) $u[$k] = $fields[$k];
                 }
                 if (array_key_exists('skills', $fields)) $u['skills'] = is_array($fields['skills']) ? $fields['skills'] : [];

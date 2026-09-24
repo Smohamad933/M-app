@@ -44,6 +44,8 @@ export interface User {
   isProfileCompleted?: boolean;
   baleChatId?: string | number;
   baleUsername?: string;
+  baleNotifToken?: string;
+  baleNotificationsEnabled?: boolean;
   verificationCode?: string;
   isVerified?: boolean;
   createdAt: string;

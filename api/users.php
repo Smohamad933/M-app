@@ -30,9 +30,9 @@ if ($action === 'update_profile' || ($input['action'] ?? '') === 'update_profile
     }
 
     $fields = [];
-    foreach (['name', 'phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'bio', 'coverImage', 'baleChatId', 'baleUsername'] as $k) {
-        if (array_key_exists($k, $input) && is_string($input[$k])) {
-            $fields[$k] = trim($input[$k]);
+    foreach (['name', 'phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'bio', 'coverImage', 'baleChatId', 'baleUsername', 'baleNotifToken', 'baleNotificationsEnabled'] as $k) {
+        if (array_key_exists($k, $input)) {
+            $fields[$k] = $input[$k];
         }
     }
     if (array_key_exists('skills', $input) && is_array($input['skills'])) {
@@ -78,6 +78,8 @@ if ($action === 'update_profile' || ($input['action'] ?? '') === 'update_profile
             'dailyTimeline' => $fields['dailyTimeline'] ?? null,
             'baleChatId' => $fields['baleChatId'] ?? ($currentUser['baleChatId'] ?? null),
             'baleUsername' => $fields['baleUsername'] ?? ($currentUser['baleUsername'] ?? null),
+            'baleNotifToken' => $fields['baleNotifToken'] ?? ($currentUser['baleNotifToken'] ?? null),
+            'baleNotificationsEnabled' => !empty($fields['baleNotificationsEnabled']) || !empty($currentUser['baleNotificationsEnabled']),
             'isProfileCompleted' => true,
         ],
     ]);

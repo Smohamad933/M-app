@@ -26,6 +26,9 @@ import {
   ShieldAlert,
   FileText,
   Bot,
+  Copy,
+  ExternalLink,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface ProfileModalProps {
@@ -111,6 +114,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
 
   const [jobTitle, setJobTitle] = useState(currentUser?.jobTitle || '');
   const [bio, setBio] = useState(currentUser?.bio || '');
+  const [baleNotifToken, setBaleNotifToken] = useState(currentUser?.baleNotifToken || '');
+  const [isGeneratingToken, setIsGeneratingToken] = useState(false);
+  const [copiedToken, setCopiedToken] = useState(false);
   const [skills, setSkills] = useState<string[]>(currentUser?.skills || []);
   const [skillInput, setSkillInput] = useState('');
   const [timeline, setTimeline] = useState<Record<string, string>>({
@@ -129,6 +135,26 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleGenerateNotifToken = async () => {
+    if (!currentUser) return;
+    setIsGeneratingToken(true);
+    sounds.playPop();
+    try {
+      const newToken = 'NOTIF-' + Math.floor(100000 + Math.random() * 900000);
+      setBaleNotifToken(newToken);
+      await updateMyProfile({
+        id: currentUser.id,
+        baleNotifToken: newToken,
+        baleNotificationsEnabled: true,
+      });
+      sounds.playComplete();
+    } catch {
+      alert('خطا در صدور توکن اعلان.');
+    } finally {
+      setIsGeneratingToken(false);
+    }
+  };
 
   // Active Device detection
   const isMobileDevice = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
@@ -209,6 +235,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
         phone: phone.trim(),
         email: email.trim(),
         baleChatId: baleChatId.trim() || undefined,
+        baleNotifToken: baleNotifToken || undefined,
         province,
         city: city.trim(),
         birthDate: finalBirthDate,
@@ -392,26 +419,111 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
             </label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} placeholder="user@example.com" dir="ltr" />
           </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Bot className="w-3.5 h-3.5 text-blue-500" />
-                <span>شناسه چت بله (Bale Chat ID)</span>
-              </span>
-              {currentUser?.baleChatId && (
-                <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-bold">
-                  ✓ متصل به بله
+          {/* BALE NOTIFICATION INTEGRATION */}
+          <div className="sm:col-span-2 p-4 rounded-2xl bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50 border border-blue-200/80 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-slate-900">
+                    اتصال و دریافت اعلان‌ها در پیام‌رسان بله (Bale Notifications)
+                  </h4>
+                  <p className="text-[10px] text-slate-500">
+                    ارسال آنی هشدارهای وظایف روزانه و پیام‌های تیمی به اکانت بله شما
+                  </p>
+                </div>
+              </div>
+
+              {currentUser?.baleChatId ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 text-[11px] font-black">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>نوتیفیکیشن بله فعال است</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30 text-[10px] font-bold">
+                  <span>غیرفعال (نیاز به توکن)</span>
                 </span>
               )}
-            </label>
-            <input
-              type="text"
-              value={baleChatId}
-              onChange={(e) => setBaleChatId(e.target.value)}
-              className={inputCls}
-              placeholder="مثلاً 123456789"
-              dir="ltr"
-            />
+            </div>
+
+            {/* Token Generation Box */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-white border border-blue-100 shadow-xs">
+              <div className="space-y-0.5 text-right w-full sm:w-auto">
+                <span className="text-[11px] font-bold text-slate-600 block">
+                  توکن اختصاصی اتصال شما:
+                </span>
+                {baleNotifToken ? (
+                  <span className="font-mono font-black text-blue-700 text-sm sm:text-base tracking-wider select-all" dir="ltr">
+                    {baleNotifToken}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    هنوز توکنی صادر نشده است
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleGenerateNotifToken}
+                  disabled={isGeneratingToken}
+                  className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  {isGeneratingToken ? 'در حال صدور...' : baleNotifToken ? 'صدور مجدد توکن' : '🔑 دریافت توکن اتصال به بله'}
+                </button>
+
+                {baleNotifToken && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(baleNotifToken);
+                        setCopiedToken(true);
+                        sounds.playPop();
+                        setTimeout(() => setCopiedToken(false), 2500);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                      title="کپی کردن توکن"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>{copiedToken ? 'کپی شد!' : 'کپی'}</span>
+                    </button>
+
+                    <a
+                      href={`https://ble.ir/BagTime_Bot?start=notif_${baleNotifToken}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-sm"
+                      title="ارسال مستقیم به ربات بله"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>اتصال در بله 🚀</span>
+                    </a>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <label className="text-[11px] font-bold text-slate-600 min-w-max">
+                یا ثبت دستی شناسه چت بله (اختیاری):
+              </label>
+              <input
+                type="text"
+                value={baleChatId}
+                onChange={(e) => setBaleChatId(e.target.value)}
+                className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-800 font-mono text-xs outline-none focus:border-blue-500 text-left flex-1"
+                placeholder="مثلاً 123456789"
+                dir="ltr"
+              />
+            </div>
+
+            <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+              💡 <b>نحوه فعال‌سازی:</b> توکن بالا را کپی کرده و در ربات بله، دکمه شیشه‌ای <b>«🔔 اتصال اعلان‌ها با توکن»</b> را لمس کنید و این کد را ارسال فرمایید تا اعلان‌های بگ تایم به حساب شما متصل شوند.
+            </p>
           </div>
 
           {/* Jalali Birthdate 3-Dropdown Selectors */}

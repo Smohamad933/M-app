@@ -289,6 +289,21 @@ if ($action === 'webhook') {
             exit;
         }
 
+        if ($cbData === 'notif_by_token') {
+            $msg = "🔔 **اتصال و فعال‌سازی دریافت اعلان‌ها با توکن اختصاصی**\n\n" .
+                "لطفاً توکن اعلان که در برنامه «بگ تایم» از بخش «ویرایش پروفایل» دریافت کرده‌اید را در قالب یک پیام ارسال فرمایید:\n\n" .
+                "*(نمونه توکن: NOTIF-481920 یا کد ۶ رقمی)*";
+            
+            $cancelKb = [
+                'inline_keyboard' => [
+                    [['text' => '❌ انصراف و بازگشت به منوی اصلی', 'callback_data' => 'main_menu']]
+                ]
+            ];
+            sendBaleMessage($botToken, $chatId, $msg, $cancelKb);
+            echo json_encode(['ok' => true]);
+            exit;
+        }
+
         if ($cbData === 'my_tasks') {
             if (!$primaryUser) {
                 $msg = "⚠️ هنوز حسابی به این چت متصل نشده است!\nجهت اتصال، ابتدا دکمه «🔐 تأیید و احراز هویت حساب کاربری» را لمس کنید.";
@@ -548,6 +563,58 @@ if ($action === 'webhook') {
         } else {
             $notFoundMsg = "⚠️ حسابی در انتظار احراز هویت با این شماره یافت نشد.\nلطفاً ابتدا کد ۶ رقمی را ارسال فرمایید:";
             sendBaleMessage($botToken, $chatId, $notFoundMsg, getMainMenuKeyboard());
+            echo json_encode(['ok' => true]);
+            exit;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // NOTIFICATION TOKEN ACTIVATION (NOTIF-XXXXXX or notif_XXXXXX)
+    // -------------------------------------------------------------------------
+    $incomingNotifToken = null;
+    if (preg_match('/(?:notif[_\-\s]?)([A-Za-z0-9]{4,14})/i', $textEn, $nm)) {
+        $incomingNotifToken = $nm[1];
+    } elseif (preg_match('/^NOTIF[_\-]?([A-Za-z0-9]{4,14})$/i', $rawText, $nm)) {
+        $incomingNotifToken = $nm[1];
+    }
+
+    if ($incomingNotifToken) {
+        $notifMatchedIndex = -1;
+        $cleanSearch = strtoupper(trim($incomingNotifToken));
+        foreach ($dbObj->data['users'] as $idx => $u) {
+            $userTok = strtoupper(trim($u['baleNotifToken'] ?? ''));
+            $userTokClean = str_replace(['NOTIF-', 'NOTIF_', 'NOTIF'], '', $userTok);
+            $searchClean = str_replace(['NOTIF-', 'NOTIF_', 'NOTIF'], '', $cleanSearch);
+            if (!empty($userTok) && ($userTok === $cleanSearch || $userTokClean === $searchClean)) {
+                $notifMatchedIndex = $idx;
+                break;
+            }
+        }
+
+        if ($notifMatchedIndex !== -1) {
+            $targetUser = &$dbObj->data['users'][$notifMatchedIndex];
+            $targetUser['baleChatId'] = $chatId;
+            $targetUser['baleUsername'] = $fromUser['username'] ?? ($targetUser['baleUsername'] ?? '');
+            $targetUser['baleNotificationsEnabled'] = true;
+            $dbObj->saveJson();
+
+            $successNotifMsg = "🎉 **نوتیفیکیشن‌های بله با موفقیت فعال شدند!** 🔔\n\n" .
+                "👤 حساب متصل شده: **{$targetUser['name']}** (@{$targetUser['username']})\n" .
+                "🆔 شناسه چت بله: `{$chatId}`\n\n" .
+                "از این پس کلیه هشدارهای وظایف روزانه، تغییرات پروژه‌ها و پیام‌های شما مستقیماً در همین چت برای شما ارسال خواهد شد.";
+
+            $notifKb = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '📋 تسک‌های من', 'callback_data' => 'my_tasks'],
+                        ['text' => '➕ ثبت تسک جدید', 'callback_data' => 'new_task'],
+                    ],
+                    [
+                        ['text' => '🔙 بازگشت به منوی اصلی', 'callback_data' => 'main_menu'],
+                    ],
+                ]
+            ];
+            sendBaleMessage($botToken, $chatId, $successNotifMsg, $notifKb);
             echo json_encode(['ok' => true]);
             exit;
         }
