@@ -70,6 +70,7 @@ import {
   Settings,
   MessageSquare,
   ChevronDown,
+  ChevronLeft,
 } from 'lucide-react';
 
 export const MainLayout: React.FC = () => {
@@ -207,19 +208,19 @@ export const MainLayout: React.FC = () => {
   const pendingTodayCount = todayTasks.filter((t) => !t.completed).length;
 
   const navItems: Array<{ id: TabType; label: string; icon: React.ElementType; adminOnly?: boolean; badge?: number }> = [
-    { id: 'dashboard', label: 'داشبورد (Dashboard)', icon: LayoutDashboard },
-    { id: 'messages', label: 'پیام‌ها و گفتگوها', icon: MessageSquare },
+    { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
+    { id: 'tasks', label: 'کارهای من', icon: CheckSquare, badge: pendingTodayCount > 0 ? pendingTodayCount : undefined },
     { id: 'planner', label: 'دیلی پلنر ساعتی', icon: Clock },
+    { id: 'calendar', label: 'تقویم', icon: CalendarDays },
+    { id: 'messages', label: 'پیام‌ها و گفتگوها', icon: MessageSquare },
+    { id: 'friends', label: 'همکاران و دوستان', icon: Users, badge: friendsList.length > 0 ? friendsList.length : undefined },
+    { id: 'projects', label: 'پروژه‌های تیمی', icon: FolderKanban, badge: projects.length > 0 ? projects.length : undefined },
+    { id: 'focus', label: 'تمرکز پومودورو', icon: Timer },
     { id: 'habits', label: 'تحلیلگر عادت‌ها', icon: Brain },
     { id: 'career', label: 'اهداف و رشد شغلی', icon: Compass },
-    { id: 'tasks', label: 'کارهای من (My Tasks)', icon: CheckSquare, badge: pendingTodayCount > 0 ? pendingTodayCount : 4 },
-    { id: 'projects', label: 'پروژه‌های تیمی', icon: FolderKanban, badge: projects.length },
-    { id: 'friends', label: 'همکاران و دوستان', icon: Users, badge: 2 },
-    { id: 'calendar', label: 'تقویم (Calendar)', icon: CalendarDays },
-    { id: 'focus', label: 'تمرکز پومودورو', icon: Timer },
     { id: 'categories', label: 'دسته‌بندی‌ها', icon: LayoutGrid },
-    { id: 'users', label: 'مانیتورینگ کاربران', icon: ShieldCheck, adminOnly: true, badge: users.length },
     { id: 'stats', label: 'گزارش عملکرد', icon: BarChart3 },
+    { id: 'users', label: 'مانیتورینگ کاربران', icon: ShieldCheck, adminOnly: true, badge: users.length > 0 ? users.length : undefined },
   ];
 
   const handleMobileTabSelect = (tab: TabType) => {
@@ -272,24 +273,29 @@ export const MainLayout: React.FC = () => {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-[#121212] text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-950 hover:bg-slate-50'
+                        ? 'bg-emerald-500/10 text-emerald-800 border border-emerald-500/25 shadow-xs font-black'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <Icon className={`w-4 h-4 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
+                    <div className="flex items-center gap-2.5">
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-[#00b884] stroke-[2.5]' : 'text-slate-500 stroke-2'}`} />
                       <span>{item.label}</span>
                     </div>
 
-                    {isActive ? (
-                      <ArrowUpRight className="w-4 h-4 text-slate-400 stroke-[2.5]" />
-                    ) : item.badge !== undefined && item.badge > 0 ? (
-                      <span className="bg-[#f95738] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
-                        +{toPersianDigits(item.badge)}
-                      </span>
-                    ) : null}
+                    <div className="flex items-center gap-1.5">
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          isActive ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {toPersianDigits(item.badge)}
+                        </span>
+                      )}
+                      {isActive && (
+                        <span className="w-1.5 h-3.5 rounded-full bg-[#00b884]" />
+                      )}
+                    </div>
                   </button>
                 );
               })}
@@ -1072,30 +1078,37 @@ export const MainLayout: React.FC = () => {
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="relative w-4/5 max-w-xs bg-white h-full p-5 shadow-2xl flex flex-col justify-between z-10 animate-in slide-in-from-right duration-200">
+          <div className="relative w-[82%] max-w-[320px] bg-white h-full p-4 sm:p-5 shadow-2xl flex flex-col justify-between z-10 animate-in slide-in-from-right duration-200 border-l border-slate-200">
             <div className="flex flex-col min-h-0 flex-1">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
                   {appLogo ? (
-                    <img src={appLogo} alt={appName} className="w-8 h-8 rounded-xl object-cover" />
+                    <img src={appLogo} alt={appName} className="w-9 h-9 rounded-2xl object-cover shadow-xs border border-slate-100" />
                   ) : (
-                    <TaskMasterHexagon size={32} />
+                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-xs">
+                      <TaskMasterHexagon size={24} />
+                    </div>
                   )}
-                  <span className="font-black text-sm text-slate-900">{appName}</span>
+                  <div>
+                    <div className="font-black text-sm text-slate-900 leading-tight">{appName}</div>
+                    <div className="text-[10px] text-slate-400 font-semibold">مدیریت زمان و فعالیت‌ها</div>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-800"
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+                  title="بستن منو"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* User Profile in Drawer */}
+              {/* User Profile Card in Drawer */}
               {currentUser && (
                 <button
                   type="button"
@@ -1103,23 +1116,27 @@ export const MainLayout: React.FC = () => {
                     setIsMobileMenuOpen(false);
                     setIsProfileModalOpen(true);
                   }}
-                  className="my-4 p-3 rounded-2xl bg-slate-50 border border-slate-100 text-right w-full flex items-center gap-3"
+                  className="my-3.5 p-3 rounded-2xl bg-gradient-to-l from-slate-50 to-white border border-slate-200/80 text-right w-full flex items-center gap-3 hover:border-emerald-300 transition-all shadow-2xs cursor-pointer group"
                 >
-                  <UserAvatar
-                    name={currentUser.name}
-                    avatar={currentUser.avatar}
-                    fallbackImage={defaultAvatar}
-                    size="w-9 h-9 rounded-full text-xs"
-                    className="border-2 border-[#00b884]"
-                  />
+                  <div className="relative">
+                    <UserAvatar
+                      name={currentUser.name}
+                      avatar={currentUser.avatar}
+                      fallbackImage={defaultAvatar}
+                      size="w-10 h-10 rounded-full text-xs"
+                      className="border-2 border-emerald-500 shadow-2xs"
+                    />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-200" />
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-extrabold text-xs text-slate-900 truncate">
+                    <div className="font-extrabold text-xs text-slate-900 truncate group-hover:text-emerald-700 transition-colors">
                       {currentUser.name}
                     </div>
-                    <div className="text-[10px] text-slate-400 truncate">
+                    <div className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
                       {currentUser.jobTitle || (isAdmin ? 'مدیر سیستم' : 'کاربر')}
                     </div>
                   </div>
+                  <ChevronLeft className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-transform group-hover:-translate-x-0.5" />
                 </button>
               )}
 
@@ -1135,21 +1152,28 @@ export const MainLayout: React.FC = () => {
                       key={item.id}
                       type="button"
                       onClick={() => handleMobileTabSelect(item.id)}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         isActive
-                          ? 'bg-[#121212] text-white shadow-xs'
-                          : 'text-slate-600 hover:bg-slate-100'
+                          ? 'bg-emerald-500/10 text-emerald-900 border border-emerald-500/25 shadow-xs font-black'
+                          : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <Icon className="w-4 h-4" />
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-[#00b884] stroke-[2.5]' : 'text-slate-500 stroke-2'}`} />
                         <span>{item.label}</span>
                       </div>
-                      {item.badge !== undefined && item.badge > 0 && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#f95738] text-white font-bold">
-                          +{toPersianDigits(item.badge)}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {item.badge !== undefined && item.badge > 0 && (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                            isActive ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {toPersianDigits(item.badge)}
+                          </span>
+                        )}
+                        {isActive && (
+                          <span className="w-1.5 h-3.5 rounded-full bg-[#00b884]" />
+                        )}
+                      </div>
                     </button>
                   );
                 })}
@@ -1165,9 +1189,9 @@ export const MainLayout: React.FC = () => {
                   sounds.playPop();
                   setViewingPublicUser(currentUser);
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100 font-bold text-xs"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100 hover:text-slate-900 font-bold text-xs transition-colors cursor-pointer"
               >
-                <Eye className="w-4 h-4 text-indigo-500" />
+                <Eye className="w-4 h-4 text-emerald-600" />
                 <span>پروفایل من (دید همکاران)</span>
               </button>
 
@@ -1177,10 +1201,10 @@ export const MainLayout: React.FC = () => {
                   setIsMobileMenuOpen(false);
                   logout();
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-500 hover:bg-rose-50 font-bold"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 font-bold transition-colors cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
-                <span>خروج از حساب</span>
+                <span>خروج از حساب کاربری</span>
               </button>
             </div>
           </div>
