@@ -3046,16 +3046,25 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         }
       }
 
-      // Check for notification token (NOTIF-XXXXXX or notif_XXXXXX)
+      // Check for notification token (NOTIF-XXXXXX or notif_XXXXXX or /start notif_...)
       let notifToken: string | null = null;
-      const mNotif = textEn.match(/(?:notif[_\-\s]?)([A-Za-z0-9]{4,14})/i) || text.match(/^NOTIF[_\-]?([A-Za-z0-9]{4,14})$/i);
+      const isNotif = textEn.toLowerCase().includes('notif');
+      const mNotif = textEn.match(/(?:start\s+)?notif[_\-\s]*(?:notif)?[_\-\s]*([A-Za-z0-9]{4,14})/i) ||
+                     textEn.match(/NOTIF[_\-\s]*([A-Za-z0-9]{4,14})/i) ||
+                     (isNotif ? textEn.match(/(\d{5,8})/) : null);
       if (mNotif) notifToken = mNotif[1];
 
-      if (notifToken) {
+      if (isNotif && notifToken) {
         const cleanTok = notifToken.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const cleanDigits = notifToken.replace(/[^\d]/g, '');
         const target = db.users.find((u) => {
           const uTok = (u.baleNotifToken || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-          return uTok && (uTok === cleanTok || uTok.includes(cleanTok) || cleanTok.includes(uTok));
+          const uDigits = (u.baleNotifToken || '').replace(/[^\d]/g, '');
+          return Boolean(
+            (uTok && cleanTok && (uTok === cleanTok || uTok.includes(cleanTok) || cleanTok.includes(uTok))) ||
+            (uDigits && cleanDigits && uDigits === cleanDigits) ||
+            (uDigits && textEn.includes(uDigits))
+          );
         });
         if (target) {
           target.baleChatId = chatId;
@@ -3063,6 +3072,9 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           target.baleNotificationsEnabled = true;
           writeDb(db);
           sendJson(res, { ok: true, notifActivated: true, user: target.username, chatId });
+          return true;
+        } else {
+          sendJson(res, { ok: false, error: 'توکن اعلان نامعتبر است یا در سامانه یافت نشد.' }, 404);
           return true;
         }
       }

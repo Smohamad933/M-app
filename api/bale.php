@@ -642,25 +642,41 @@ if ($action === 'webhook') {
     }
 
     // -------------------------------------------------------------------------
-    // NOTIFICATION TOKEN ACTIVATION (NOTIF-XXXXXX or notif_XXXXXX)
+    // NOTIFICATION TOKEN ACTIVATION (NOTIF-XXXXXX or notif_XXXXXX or /start notif_...)
     // -------------------------------------------------------------------------
+    $isNotifIntent = false;
     $incomingNotifToken = null;
-    if (preg_match('/(?:notif[_\-\s]?)([A-Za-z0-9]{4,14})/i', $textEn, $nm)) {
+
+    if (preg_match('/(?:start\s+)?notif[_\-\s]*(?:notif)?[_\-\s]*([A-Za-z0-9]{4,14})/i', $textEn, $nm)) {
+        $isNotifIntent = true;
         $incomingNotifToken = $nm[1];
-    } elseif (preg_match('/^NOTIF[_\-]?([A-Za-z0-9]{4,14})$/i', $rawText, $nm)) {
+    } elseif (preg_match('/NOTIF[_\-\s]*([A-Za-z0-9]{4,14})/i', $textEn, $nm)) {
+        $isNotifIntent = true;
         $incomingNotifToken = $nm[1];
+    } elseif (stripos($textEn, 'notif') !== false) {
+        $isNotifIntent = true;
+        if (preg_match('/(\d{5,8})/', $textEn, $nm)) {
+            $incomingNotifToken = $nm[1];
+        }
     }
 
-    if ($incomingNotifToken) {
+    if ($isNotifIntent) {
         $notifMatchedIndex = -1;
-        $cleanSearch = strtoupper(trim($incomingNotifToken));
+        $cleanSearch = preg_replace('/[^A-Za-z0-9]/', '', strtoupper((string)$incomingNotifToken));
+        $cleanSearchDigits = preg_replace('/[^\d]/', '', (string)$incomingNotifToken);
+
         foreach ($dbObj->data['users'] as $idx => $u) {
-            $userTok = strtoupper(trim($u['baleNotifToken'] ?? ''));
-            $userTokClean = str_replace(['NOTIF-', 'NOTIF_', 'NOTIF'], '', $userTok);
-            $searchClean = str_replace(['NOTIF-', 'NOTIF_', 'NOTIF'], '', $cleanSearch);
-            if (!empty($userTok) && ($userTok === $cleanSearch || $userTokClean === $searchClean)) {
-                $notifMatchedIndex = $idx;
-                break;
+            $userTok = strtoupper(trim((string)($u['baleNotifToken'] ?? '')));
+            $userTokClean = preg_replace('/[^A-Za-z0-9]/', '', $userTok);
+            $userTokDigits = preg_replace('/[^\d]/', '', $userTok);
+
+            if (!empty($userTokClean)) {
+                if ($userTokClean === $cleanSearch || 
+                    (!empty($userTokDigits) && !empty($cleanSearchDigits) && $userTokDigits === $cleanSearchDigits) ||
+                    (!empty($userTokDigits) && strpos($textEn, $userTokDigits) !== false)) {
+                    $notifMatchedIndex = $idx;
+                    break;
+                }
             }
         }
 
@@ -669,6 +685,9 @@ if ($action === 'webhook') {
             $targetUser['baleChatId'] = $chatId;
             $targetUser['baleUsername'] = $fromUser['username'] ?? ($targetUser['baleUsername'] ?? '');
             $targetUser['baleNotificationsEnabled'] = true;
+            $targetUser['baleNotificationActive'] = true;
+            $targetUser['status'] = 'active';
+            $targetUser['isVerified'] = true;
             $dbObj->saveJson();
 
             $successNotifMsg = "🎉 **نوتیفیکیشن‌های بله با موفقیت فعال شدند!** 🔔\n\n" .
@@ -688,6 +707,20 @@ if ($action === 'webhook') {
                 ]
             ];
             sendBaleMessage($botToken, $chatId, $successNotifMsg, $notifKb);
+            echo json_encode(['ok' => true]);
+            exit;
+        } else {
+            $notFoundTokenMsg = "⚠️ **توکن اعلان نامعتبر است!**\n\n" .
+                "توکن ارسال‌شده در سامانه یافت نشد یا تغییر یافته است.\n" .
+                "جهت دریافت توکن معتبر، لطفاً در برنامه «بگ تایم» وارد «ویرایش پروفایل» شوید و روی «دریافت توکن اتصال به بله» کلیک کنید.";
+
+            $failKb = [
+                'inline_keyboard' => [
+                    [['text' => '🔄 ارسال مجدد توکن', 'callback_data' => 'notif_by_token']],
+                    [['text' => '🔙 منوی اصلی', 'callback_data' => 'main_menu']],
+                ]
+            ];
+            sendBaleMessage($botToken, $chatId, $notFoundTokenMsg, $failKb);
             echo json_encode(['ok' => true]);
             exit;
         }
