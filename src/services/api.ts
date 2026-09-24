@@ -466,6 +466,46 @@ export const api = {
     );
   },
 
+  async testBaleNotification(params?: {
+    userId?: string;
+    chatId?: string;
+    title?: string;
+    message?: string;
+    token?: string;
+  }): Promise<{ ok: boolean; message?: string; error?: string; baleResponse?: any }> {
+    return await request<{ ok: boolean; message?: string; error?: string; baleResponse?: any }>(
+      'api/bale.php?action=notify',
+      {
+        method: 'POST',
+        body: JSON.stringify(params || {}),
+      }
+    );
+  },
+
+  getCachedUser(): User | null {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem('taskrooz_current_user');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  },
+
+  getAuthToken(): string | null {
+    return getAuthToken();
+  },
+
+  setCachedUser(user: User | null): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      if (user) {
+        localStorage.setItem('taskrooz_current_user', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('taskrooz_current_user');
+      }
+    } catch {}
+  },
+
   // Auth: Login (Verified against Central Server with IIS 405 Resilience)
   async login(username: string, password: string): Promise<{ user: User; token: string }> {
     const cleanUser = username.trim();
