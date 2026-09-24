@@ -245,7 +245,63 @@ if ($action === 'set_webhook') {
 }
 
 // -----------------------------------------------------------------------------
-// 3. Webhook Receiver from Bale Messenger (Handles Messages, Contacts, and Inline Keyboards)
+// 3. Create Automatic Bale Login Ticket (One-Click Auto Login)
+// -----------------------------------------------------------------------------
+if ($action === 'create_bale_login') {
+    $ticket = 'bale_login_' . time() . '_' . substr(bin2hex(random_bytes(4)), 0, 8);
+    if (!isset($dbObj->data['bale_login_tickets'])) {
+        $dbObj->data['bale_login_tickets'] = [];
+    }
+    // Clean expired tickets (> 10 mins)
+    $now = time();
+    foreach ($dbObj->data['bale_login_tickets'] as $k => $v) {
+        if (($now - ($v['createdAt'] ?? 0)) > 600) {
+            unset($dbObj->data['bale_login_tickets'][$k]);
+        }
+    }
+
+    $dbObj->data['bale_login_tickets'][$ticket] = [
+        'status' => 'pending',
+        'createdAt' => $now,
+    ];
+    $dbObj->saveJson();
+
+    $cleanBotUser = ltrim($botUsername, '@');
+    if (empty($cleanBotUser)) $cleanBotUser = 'BagTime_Bot';
+    $baleLink = "https://ble.ir/" . $cleanBotUser . "?start=login_" . $ticket;
+
+    jsonResponse([
+        'ok' => true,
+        'ticket' => $ticket,
+        'baleBotUsername' => $cleanBotUser,
+        'baleBotLink' => $baleLink,
+        'expiresIn' => 300,
+    ]);
+}
+
+// -----------------------------------------------------------------------------
+// 4. Check Automatic Bale Login Status
+// -----------------------------------------------------------------------------
+if ($action === 'check_bale_login') {
+    $ticket = $_GET['ticket'] ?? ($_POST['ticket'] ?? '');
+    if (empty($ticket) || empty($dbObj->data['bale_login_tickets'][$ticket])) {
+        jsonResponse(['status' => 'not_found', 'error' => 'تیکت ورود معتبر نیست یا منقضی شده است.'], 404);
+    }
+    $ticketData = $dbObj->data['bale_login_tickets'][$ticket];
+    if (($ticketData['status'] ?? '') === 'approved' && !empty($ticketData['user'])) {
+        $_SESSION['user_id'] = $ticketData['user']['id'];
+        jsonResponse([
+            'status' => 'approved',
+            'token' => $ticketData['token'],
+            'user' => $ticketData['user'],
+            'message' => 'ورود با بله با موفقیت تأیید شد.',
+        ]);
+    }
+    jsonResponse(['status' => 'pending']);
+}
+
+// -----------------------------------------------------------------------------
+// 5. Webhook Receiver from Bale Messenger (Handles Messages, Contacts, and Inline Keyboards)
 // -----------------------------------------------------------------------------
 if ($action === 'webhook') {
     // Reuse already parsed $input or fallback to php://input (IIS FastCGI resilience)
@@ -632,6 +688,84 @@ if ($action === 'webhook') {
     }
 
     // -------------------------------------------------------------------------
+    // AUTOMATIC BALE LOGIN (One-Click instant login via /start login_TICKET)
+    // -------------------------------------------------------------------------
+    if (preg_match('/^\/start\s+login_([a-zA-Z0-9_]+)$/is', $rawText, $autoLoginMatch)) {
+        $ticketId = trim($autoLoginMatch[1]);
+        if (isset($dbObj->data['bale_login_tickets'][$ticketId])) {
+            $matchedUser = null;
+            // 1. Check if user is linked by chatId
+            foreach ($dbObj->data['users'] as &$u) {
+                if (!empty($u['baleChatId']) && strval($u['baleChatId']) === strval($chatId)) {
+                    $matchedUser = &$u;
+                    break;
+                }
+            }
+            // 2. Fallback check by username
+            if (!$matchedUser && !empty($fromUser['username'])) {
+                $bUserLower = strtolower($fromUser['username']);
+                foreach ($dbObj->data['users'] as &$u) {
+                    if (strtolower($u['username']) === $bUserLower || (strtolower($u['username']) === 'mohusyn' && $bUserLower === 'mohusyn')) {
+                        $matchedUser = &$u;
+                        $matchedUser['baleChatId'] = $chatId;
+                        break;
+                    }
+                }
+            }
+
+            // 3. Auto-create account if new user
+            if (!$matchedUser) {
+                $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
+                if (empty($fromName)) $fromName = 'کاربر بله ' . substr($chatId, -4);
+                $newUsername = 'bale_' . substr($chatId, -6);
+                $newUserId = 'usr_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4);
+                $randomPass = substr(bin2hex(random_bytes(4)), 0, 8);
+
+                $matchedUser = [
+                    'id' => $newUserId,
+                    'numericId' => 1000 + count($dbObj->data['users']),
+                    'username' => $newUsername,
+                    'name' => $fromName,
+                    'password' => $randomPass,
+                    'password_hash' => password_hash($randomPass, PASSWORD_DEFAULT),
+                    'role' => 'user',
+                    'status' => 'active',
+                    'isVerified' => true,
+                    'baleChatId' => $chatId,
+                    'baleUsername' => $fromUser['username'] ?? '',
+                    'createdAt' => date('Y-m-d H:i:s'),
+                    'isProfileCompleted' => true,
+                    'subscription' => ['plan' => 'free'],
+                ];
+                $dbObj->data['users'][] = $matchedUser;
+            }
+
+            // Generate session and token
+            $token = base64_encode($matchedUser['id'] . ':' . time());
+            $cleanUser = $matchedUser;
+            unset($cleanUser['password_hash']);
+            unset($cleanUser['password']);
+
+            $dbObj->data['bale_login_tickets'][$ticketId] = [
+                'status' => 'approved',
+                'token' => $token,
+                'user' => $cleanUser,
+                'approvedAt' => time(),
+            ];
+            $dbObj->saveJson();
+
+            $confirmMsg = "🎉 **ورود موفقیت‌آمیز به سامانه بگ تایم!**\n\n" .
+                "👤 کاربر گرامی: **{$matchedUser['name']}**\n" .
+                "⚡ درخواست ورود شما در مرورگر با موفقیت تأیید شد و هم‌اکنون وارد پنل کاربری خود شدید.\n\n" .
+                "می‌توانید به مرورگر خود بازگردید.";
+
+            sendBaleMessage($botToken, $chatId, $confirmMsg, getMainMenuKeyboard());
+            echo json_encode(['ok' => true]);
+            exit;
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // STEP 1 OF VERIFICATION: EXTRACT CODE (Supports Persian, Arabic, English digits)
     // -------------------------------------------------------------------------
     $incomingCode = null;
@@ -715,12 +849,28 @@ if ($action === 'webhook') {
     }
 
     // -------------------------------------------------------------------------
-    // HANDLE TASK CREATION VIA TEXT (/task or plain text when linked)
+    // HANDLE TASK CREATION VIA TEXT (/task or explicit awaiting state)
+    // ONLY FOR THE SPECIFIC BOUND USER SET WITH THIS BOT
     // -------------------------------------------------------------------------
-    if (preg_match('/^\/(task|new)\s+(.+)$/is', $rawText, $matches) || (!empty($linkedUser) && mb_strlen($rawText, 'UTF-8') > 3 && !in_array($rawText, ['/start', '/help', '/tasks', 'تسک‌ها']))) {
-        if (!$linkedUser) {
-            $notLinkedMsg = "⚠️ **حساب کاربری شما هنوز به بگ تایم متصل نیست!**\n\nجهت استفاده، ابتدا دکمه زیر را برای تأیید حساب لمس کنید:";
-            sendBaleMessage($botToken, $chatId, $notLinkedMsg, getMainMenuKeyboard());
+    $isUserAllowedToCreateTask = false;
+    if ($linkedUser) {
+        $boundUserId = $baleConfig['boundUserId'] ?? null;
+        if (isUserAdmin($linkedUser)) {
+            $isUserAllowedToCreateTask = true;
+        } elseif (!empty($boundUserId) && $boundUserId === $linkedUser['id']) {
+            $isUserAllowedToCreateTask = true;
+        } elseif (!empty($linkedUser['baleAllowTaskCreation'])) {
+            $isUserAllowedToCreateTask = true;
+        }
+    }
+
+    $isAwaitingTaskTitle = (($dbObj->data['bale_user_states'][$chatId] ?? '') === 'awaiting_task_title');
+    $isExplicitTaskCommand = (bool)preg_match('/^\/(task|new)\s+(.+)$/is', $rawText, $matches);
+
+    if ($isExplicitTaskCommand || $isAwaitingTaskTitle) {
+        if (!$linkedUser || !$isUserAllowedToCreateTask) {
+            $notAllowedMsg = "⛔ **دسترسی ثبت وظیفه در این ربات محدود است!**\n\nامکان افزودن تسک فقط و فقط برای کاربری فعال است که این ربات با اکانت اختصاصی او ست شده باشد.";
+            sendBaleMessage($botToken, $chatId, $notAllowedMsg, getMainMenuKeyboard());
             echo json_encode(['ok' => true]);
             exit;
         }
@@ -752,10 +902,15 @@ if ($action === 'webhook') {
             'date' => $taskDate,
             'time' => $taskTime,
             'priority' => 'medium',
-            'categoryId' => 'general',
+            'categoryId' => 'cat-work',
             'userId' => $linkedUser['id'],
             'createdAt' => date('Y-m-d H:i:s'),
         ];
+
+        // Clear waiting state
+        if (isset($dbObj->data['bale_user_states'][$chatId])) {
+            unset($dbObj->data['bale_user_states'][$chatId]);
+        }
         $dbObj->saveJson();
 
         $reply = "✅ **وظیفه جدید در تقویم شما ثبت شد:**\n\n" .

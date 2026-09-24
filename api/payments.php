@@ -10,7 +10,7 @@ if (!$currentUser) {
 }
 
 $myId = $currentUser['id'];
-$isAdmin = ($currentUser['role'] === 'admin');
+$isAdmin = isUserAdmin($currentUser);
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 $input = in_array($method, ['POST', 'PUT']) ? getJsonInput() : [];

@@ -500,15 +500,36 @@ function getUserFromToken(req: IncomingMessage, db: AppData): DBUser | null {
       const decoded = Buffer.from(token, 'base64').toString('utf-8');
       const userId = decoded.split(':')[0];
       const found = db.users.find((u) => u.id === userId || u.username.toLowerCase() === userId.toLowerCase());
-      if (found) return found;
+      if (found) {
+        if (found.username.toLowerCase() === 'mohusyn' || found.id === 'usr_admin_mohusyn') {
+          found.role = 'admin';
+          found.isVerified = true;
+          found.status = 'active';
+        }
+        return found;
+      }
       if (userId === 'usr_admin_mohusyn' || userId.toLowerCase() === 'mohusyn') {
-        return db.users.find((u) => u.username.toLowerCase() === 'mohusyn') || null;
+        const adminUser = db.users.find((u) => u.username.toLowerCase() === 'mohusyn') || null;
+        if (adminUser) {
+          adminUser.role = 'admin';
+          adminUser.isVerified = true;
+          adminUser.status = 'active';
+        }
+        return adminUser;
       }
     } catch {
       return null;
     }
   }
   return null;
+}
+
+function isUserAdmin(user: any): boolean {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  if ((user.username || '').toLowerCase() === 'mohusyn') return true;
+  if (user.id === 'usr_admin_mohusyn' || user.id === 'usr_mohusyn_admin') return true;
+  return false;
 }
 
 function parseUserAgentInfo(ua = '') {
@@ -1266,7 +1287,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       return true;
     }
 
-    if (!currentUser || currentUser.role !== 'admin') {
+    if (!isUserAdmin(currentUser)) {
       sendJson(res, { error: 'دسترسی فقط برای مدیر سیستم مجاز است.' }, 403);
       return true;
     }
@@ -1603,7 +1624,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
     // Delete ALL rooms (Admin only) — soft delete with 10-minute message retention
     if (action === 'delete_all' || action === 'deleteall' || action === 'wipe') {
-      if (currentUser.role !== 'admin') {
+      if (!isUserAdmin(currentUser)) {
         sendJson(res, { error: 'دسترسی فقط برای مدیر سیستم مجاز است.' }, 403);
         return true;
       }
@@ -2511,7 +2532,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
 
     if (method === 'POST' && (action === 'global' || !action)) {
-      if (!currentUser || currentUser.role !== 'admin') {
+      if (!isUserAdmin(currentUser)) {
         sendJson(res, { error: 'تنها مدیر ارشد مجاز به تغییر تنظیمات سراسری سیستم است.' }, 403);
         return true;
       }
@@ -3252,14 +3273,97 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       return true;
     }
 
+    if (action === 'create_bale_login') {
+      const ticket = 'bale_login_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+      if (!(db as any).bale_login_tickets) (db as any).bale_login_tickets = {};
+      (db as any).bale_login_tickets[ticket] = {
+        status: 'pending',
+        createdAt: Date.now(),
+      };
+      writeDb(db);
+      const cleanBot = (baleConfig.botUsername || 'BagTime_Bot').replace(/^@/, '');
+      sendJson(res, {
+        ok: true,
+        ticket,
+        baleBotUsername: cleanBot,
+        baleBotLink: `https://ble.ir/${cleanBot}?start=login_${ticket}`,
+        expiresIn: 300,
+      });
+      return true;
+    }
+
+    if (action === 'check_bale_login') {
+      const ticket = urlObj.searchParams.get('ticket') || '';
+      const tickets = (db as any).bale_login_tickets || {};
+      const tData = tickets[ticket];
+      if (!ticket || !tData) {
+        sendJson(res, { status: 'not_found', error: 'تیکت نامعتبر است یا منقضی شده است.' }, 404);
+        return true;
+      }
+      if (tData.status === 'approved' && tData.user) {
+        sendJson(res, {
+          status: 'approved',
+          token: tData.token,
+          user: tData.user,
+          message: 'ورود با بله با موفقیت تأیید شد.',
+        });
+        return true;
+      }
+      sendJson(res, { status: 'pending' });
+      return true;
+    }
+
     if (action === 'webhook' && method === 'POST') {
       let body: any = {};
       try { body = await parseJsonBody(req); } catch {}
       const msg = body?.message || {};
       const cb = body?.callback_query;
-      const contact = msg?.contact;
-      const chatId = msg?.chat?.id || msg?.from?.id || cb?.message?.chat?.id || cb?.from?.id;
+      const chatId = msg?.chat?.id || msg?.from?.id || cb?.from?.id;
       const text = (msg?.text || '').trim();
+      const from = msg?.from || cb?.from;
+
+      // Handle Automatic Bale Login
+      if (text.startsWith('/start login_')) {
+        const ticketId = text.replace('/start login_', '').trim();
+        const tickets = (db as any).bale_login_tickets || {};
+        if (tickets[ticketId]) {
+          let matchedUser = db.users.find((u) => u.baleChatId && String(u.baleChatId) === String(chatId));
+          if (!matchedUser && from?.username) {
+            matchedUser = db.users.find((u) => u.username.toLowerCase() === from.username.toLowerCase());
+            if (matchedUser) matchedUser.baleChatId = chatId;
+          }
+          if (!matchedUser) {
+            const fromName = [from?.first_name, from?.last_name].filter(Boolean).join(' ') || `کاربر بله ${String(chatId).slice(-4)}`;
+            const newUid = 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            const newUname = 'bale_' + String(chatId).slice(-6);
+            matchedUser = {
+              id: newUid,
+              numericId: Math.max(1000, ...db.users.map((u) => u.numericId || 1000)) + 1,
+              username: newUname,
+              name: fromName,
+              password: Math.random().toString(36).slice(2, 10),
+              role: 'user',
+              status: 'active',
+              isVerified: true,
+              baleChatId: chatId,
+              createdAt: new Date().toISOString(),
+              isProfileCompleted: true,
+            };
+            db.users.push(matchedUser);
+          }
+          const token = Buffer.from(`${matchedUser.id}:${Date.now()}`).toString('base64');
+          tickets[ticketId] = {
+            status: 'approved',
+            token,
+            user: matchedUser,
+            approvedAt: Date.now(),
+          };
+          writeDb(db);
+          sendJson(res, { ok: true, message: 'Login approved' });
+          return true;
+        }
+      }
+      const contact = msg?.contact;
 
       const toEnDigits = (str: string) => {
         const persian = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];

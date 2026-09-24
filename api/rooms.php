@@ -62,7 +62,7 @@ if (!$currentUser) {
 
 // POST / GET /api/rooms.php?action=delete_all -> Admin only: delete ALL rooms
 if ($action === 'delete_all' || $action === 'deleteall' || $action === 'wipe') {
-    $isAdmin = ($currentUser['role'] ?? '') === 'admin';
+    $isAdmin = isUserAdmin($currentUser);
     if (!$isAdmin) {
         jsonResponse(['error' => 'دسترسی فقط برای مدیر سیستم مجاز است.'], 403);
     }

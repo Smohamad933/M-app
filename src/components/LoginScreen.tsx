@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import { TaskMasterHexagon } from './TaskMasterLogo';
+import { api, setAuthToken } from '../services/api';
 import type { AppDeveloper } from '../types';
 import {
   Lock,
@@ -13,18 +14,80 @@ import {
   Mail,
   Check,
   X,
+  Bot,
+  RefreshCw,
+  ExternalLink,
 } from 'lucide-react';
 
 import { BaleVerificationModal, type BaleVerificationInfo } from './BaleVerificationModal';
 
 export const LoginScreen: React.FC = () => {
-  const { login, register, globalSettings, getText } = useTask();
+  const { login, register, globalSettings, getText, completeBaleVerification } = useTask();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [selectedDevForModal, setSelectedDevForModal] = useState<AppDeveloper | null>(null);
 
   // Bale Verification Modal State
   const [baleVerificationData, setBaleVerificationData] = useState<BaleVerificationInfo | null>(null);
+
+  // Bale Automatic Login State
+  const [isStartingBaleLogin, setIsStartingBaleLogin] = useState(false);
+  const [baleLoginModalData, setBaleLoginModalData] = useState<{
+    ticket: string;
+    baleBotUsername: string;
+    baleBotLink: string;
+    expiresIn: number;
+  } | null>(null);
+  const [balePollingActive, setBalePollingActive] = useState(false);
+
+  // Bale Auto-Login Polling Effect
+  useEffect(() => {
+    if (!balePollingActive || !baleLoginModalData?.ticket) return;
+
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.checkBaleLoginStatus(baleLoginModalData.ticket);
+        if (!isMounted) return;
+        if (res.status === 'approved' && res.token && res.user) {
+          clearInterval(interval);
+          setBalePollingActive(false);
+          setBaleLoginModalData(null);
+          setAuthToken(res.token);
+          completeBaleVerification(res.user);
+        }
+      } catch (e) {
+        // Continue polling
+      }
+    }, 1500);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [balePollingActive, baleLoginModalData, completeBaleVerification]);
+
+  const handleStartAutoBaleLogin = async () => {
+    setIsStartingBaleLogin(true);
+    setError(null);
+    try {
+      const res = await api.createBaleLoginTicket();
+      if (res && res.ticket) {
+        setBaleLoginModalData(res);
+        setBalePollingActive(true);
+        // Automatically open the Bale deep-link in a new tab/window
+        if (res.baleBotLink) {
+          window.open(res.baleBotLink, '_blank');
+        }
+      } else {
+        setError('خطا در برقراری ارتباط با سرویس ورود بله. لطفاً بررسی کنید ربات بله در سرور فعال باشد.');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'خطا در ایجاد نشست ورود با بله.');
+    } finally {
+      setIsStartingBaleLogin(false);
+    }
+  };
 
   // App branding (custom logo & appName)
   const appBranding = globalSettings?.appBranding;
@@ -373,7 +436,7 @@ export const LoginScreen: React.FC = () => {
           )}
 
           {/* Form Actions */}
-          <div className="pt-2">
+          <div className="pt-2 space-y-3">
             <button
               type="submit"
               disabled={loading}
@@ -389,6 +452,27 @@ export const LoginScreen: React.FC = () => {
               ) : (
                 <Check className="w-4 h-4 stroke-[2.5]" />
               )}
+            </button>
+
+            {/* OR DIVIDER */}
+            <div className="relative my-2 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200"></div>
+              </div>
+              <div className="relative bg-white px-3 text-[11px] font-bold text-slate-400">
+                یا ورود مستقیم
+              </div>
+            </div>
+
+            {/* ONE-CLICK AUTOMATIC BALE LOGIN BUTTON */}
+            <button
+              type="button"
+              onClick={handleStartAutoBaleLogin}
+              disabled={isStartingBaleLogin}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+            >
+              <Bot className="w-4 h-4" />
+              <span>{isStartingBaleLogin ? "در حال ایجاد نشست بله..." : "ورود خودکار و سریع با پیام‌رسان بله ⚡"}</span>
             </button>
           </div>
         </form>
@@ -503,6 +587,79 @@ export const LoginScreen: React.FC = () => {
             >
               بستن
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* AUTO BALE LOGIN MODAL */}
+      {baleLoginModalData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+          dir="rtl"
+        >
+          <div
+            className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 text-center relative border border-emerald-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setBaleLoginModalData(null);
+                setBalePollingActive(false);
+              }}
+              className="absolute top-4 left-4 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Glowing Bot Icon */}
+            <div className="flex justify-center pt-2">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border-2 border-emerald-200 shadow-inner animate-pulse">
+                  <Bot className="w-9 h-9" />
+                </div>
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="font-black text-slate-900 text-base">ورود سریع با پیام‌رسان بله</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                لطفاً روی دکمه زیر کلیک کرده و در صفحه باز شده در بله دکمه <span className="font-bold text-emerald-700">«شروع / Start»</span> را بزنید.
+              </p>
+            </div>
+
+            {/* Status indicator */}
+            <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/60 flex items-center justify-center gap-2.5 text-xs text-emerald-800 font-bold">
+              <RefreshCw className="w-4 h-4 animate-spin text-emerald-600 shrink-0" />
+              <span>در انتظار تأیید ورود شما در بله...</span>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <a
+                href={baleLoginModalData.baleBotLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
+              >
+                <span>باز کردن پیام‌رسان بله</span>
+                <ExternalLink className="w-4 h-4 stroke-[2.5]" />
+              </a>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setBaleLoginModalData(null);
+                  setBalePollingActive(false);
+                }}
+                className="w-full py-2.5 rounded-xl text-slate-500 hover:text-slate-800 text-xs font-bold transition-colors cursor-pointer"
+              >
+                انصراف و ورود با رمز عبور
+              </button>
+            </div>
           </div>
         </div>
       )}

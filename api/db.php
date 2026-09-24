@@ -84,8 +84,11 @@ class TaskRoozDB {
             ];
     }
 
-    /** True when a valid database file exists on disk */
+    /** True when a valid database exists */
     public function isInstalled() {
+        if ($this->mode === 'mysql' && $this->pdo !== null) {
+            return true;
+        }
         return $this->installed;
     }
 
@@ -235,6 +238,7 @@ class TaskRoozDB {
     }
 
     public function saveUsers() {
+        if ($this->mode === 'mysql' && $this->pdo !== null) return;
         $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
         if (!is_dir($dir)) @mkdir($dir, 0777, true);
         $payload = [
@@ -246,6 +250,7 @@ class TaskRoozDB {
     }
 
     public function saveTasks() {
+        if ($this->mode === 'mysql' && $this->pdo !== null) return;
         $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
         if (!is_dir($dir)) @mkdir($dir, 0777, true);
         $payload = [
@@ -260,6 +265,7 @@ class TaskRoozDB {
     }
 
     public function saveMessages() {
+        if ($this->mode === 'mysql' && $this->pdo !== null) return;
         $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
         if (!is_dir($dir)) @mkdir($dir, 0777, true);
         $payload = [
@@ -271,6 +277,7 @@ class TaskRoozDB {
     }
 
     public function saveNotifications() {
+        if ($this->mode === 'mysql' && $this->pdo !== null) return;
         $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
         if (!is_dir($dir)) @mkdir($dir, 0777, true);
         $payload = [
@@ -281,6 +288,7 @@ class TaskRoozDB {
     }
 
     public function saveSettings() {
+        if ($this->mode === 'mysql' && $this->pdo !== null) return;
         $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
         if (!is_dir($dir)) @mkdir($dir, 0777, true);
         $payload = [
@@ -291,6 +299,7 @@ class TaskRoozDB {
     }
 
     public function saveJson() {
+        if ($this->mode === 'mysql' && $this->pdo !== null) return;
         if (!is_array($this->data)) return;
         $this->saveUsers();
         $this->saveTasks();

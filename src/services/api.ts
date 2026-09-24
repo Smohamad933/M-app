@@ -474,6 +474,25 @@ export const api = {
     }
   },
 
+  async createBaleLoginTicket(): Promise<{
+    ok: boolean;
+    ticket: string;
+    baleBotUsername: string;
+    baleBotLink: string;
+    expiresIn: number;
+  }> {
+    return await request<any>('api/bale.php?action=create_bale_login', { method: 'POST' });
+  },
+
+  async checkBaleLoginStatus(ticket: string): Promise<{
+    status: 'pending' | 'approved' | 'not_found';
+    token?: string;
+    user?: User;
+    message?: string;
+  }> {
+    return await request<any>(`api/bale.php?action=check_bale_login&ticket=${encodeURIComponent(ticket)}`);
+  },
+
   async manualVerify(userId: string): Promise<{ verified: boolean; user?: User; token?: string }> {
     return await request<{ verified: boolean; user?: User; token?: string }>(
       `api/auth.php?action=manual_verify&userId=${encodeURIComponent(userId)}`,
