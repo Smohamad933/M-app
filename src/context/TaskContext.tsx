@@ -1091,10 +1091,14 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }): Promise<boolean> => {
     try {
       const res = await api.register(data);
-      setCurrentUser(res.user);
+      const userObj = { ...res.user, isProfileCompleted: true };
+      setCurrentUser(userObj);
+      try {
+        localStorage.setItem('taskrooz_user_profile_completed_' + res.user.id, 'true');
+      } catch {}
       setUsers((prev) => {
         const filtered = prev.filter((u) => u.username.toLowerCase() !== res.user.username.toLowerCase());
-        return [...filtered, res.user];
+        return [...filtered, userObj];
       });
       try {
         localStorage.setItem('taskrooz_sync_signal', String(Date.now()));
