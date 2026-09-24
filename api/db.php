@@ -671,7 +671,7 @@ class TaskRoozDB {
         foreach ($this->data['users'] as &$u) {
             if ($u['id'] === $id) {
                 if (isset($fields['name'])) $u['name'] = trim($fields['name']);
-                foreach (['phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'avatar'] as $k) {
+                foreach (['phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'avatar', 'baleChatId', 'baleUsername'] as $k) {
                     if (array_key_exists($k, $fields)) $u[$k] = $fields[$k];
                 }
                 if (array_key_exists('skills', $fields)) $u['skills'] = is_array($fields['skills']) ? $fields['skills'] : [];
@@ -726,6 +726,18 @@ class TaskRoozDB {
         }));
         $this->data['personalityResults'] = array_values(array_filter($this->data['personalityResults'] ?? [], function($p) use ($id) {
             return ($p['userId'] ?? '') !== $id;
+        }));
+        $this->data['friendships'] = array_values(array_filter($this->data['friendships'] ?? [], function($f) use ($id) {
+            return ($f['user1Id'] ?? '') !== $id && ($f['user2Id'] ?? '') !== $id;
+        }));
+        $this->data['friend_requests'] = array_values(array_filter($this->data['friend_requests'] ?? [], function($r) use ($id) {
+            return ($r['fromUserId'] ?? '') !== $id && ($r['toUserId'] ?? '') !== $id;
+        }));
+        $this->data['messages'] = array_values(array_filter($this->data['messages'] ?? [], function($m) use ($id) {
+            return ($m['senderId'] ?? '') !== $id && ($m['receiverId'] ?? '') !== $id;
+        }));
+        $this->data['notifications'] = array_values(array_filter($this->data['notifications'] ?? [], function($n) use ($id) {
+            return ($n['userId'] ?? '') !== $id;
         }));
         $this->saveJson();
         return true;

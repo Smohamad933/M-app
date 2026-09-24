@@ -3208,33 +3208,42 @@ export const UserManagementView: React.FC = () => {
             <div className="p-6 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-4">
               <h4 className="text-xs font-bold text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>دستورات و راهنمای تعامل کاربران با ربات بله:</span>
+                <span>دکمه‌های شیشه‌ای و فرآیند تعامل کاربران در بازوی بله:</span>
               </h4>
               <div className="space-y-2.5 text-xs">
                 <div className="p-3 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-1">
-                  <div className="font-mono text-emerald-400 text-[11px] dir-ltr text-right">
-                    /start verify_482910 یا ارسال کد ۶ رقمی
+                  <div className="font-bold text-emerald-400 text-xs">
+                    🔘 دکمه‌های شیشه‌ای (Inline Keyboard) بدون نیاز به تایپ دستی
                   </div>
-                  <p className="text-[11px] text-zinc-400">
-                    تأیید فوری هویت حساب و شماره موبایل در هنگام ثبت‌نام و فعال‌سازی خودکار کاربر
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    تمامی گزینه‌ها (تأیید حساب، تسک‌های من، تسک جدید، تنظیمات نوتیفیکیشن و مشاهده Chat ID) در قالب دکمه‌های شیشه‌ای زیبا و روان زیر پیام‌ها قرار دارند.
                   </p>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-1">
-                  <div className="font-mono text-blue-400 text-[11px] dir-ltr text-right">
-                    /task مطالعه کتاب فردا ساعت ۱۰
+                  <div className="font-bold text-blue-400 text-xs">
+                    🔐 احراز هویت ۲ مرحله‌ای الزامی با تطبیق شماره تماس
                   </div>
-                  <p className="text-[11px] text-zinc-400">
-                    ایجاد وظیفه جدید همراه با استخراج هوشمند ساعت و روز در تقویم بگ تایم
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    کاربر پس از ارسال کد ۶ رقمی، دکمه «ارسال شماره تماس» در بله را می‌زند؛ شماره بله مستقیماً با شماره ثبت‌نامی تطبیق داده شده و در صورت یکسان بودن، حساب فوراً فعال می‌شود.
                   </p>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-1">
-                  <div className="font-mono text-purple-400 text-[11px] dir-ltr text-right">
-                    /tasks یا لیست تسک‌ها
+                  <div className="font-bold text-purple-400 text-xs">
+                    🔔 تنظیم اختصاصی اکانت دریافت‌کننده نوتیفیکیشن
                   </div>
-                  <p className="text-[11px] text-zinc-400">
-                    دریافت خلاصه لیست وظایف فعال امروز همراه با وضعیت انجام
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    کاربر می‌تواند در ربات با دکمه شیشه‌ای «تنظیمات اعلان‌ها»، اکانت فعال خود برای دریافت نوتیفیکیشن‌ها را تعیین کند.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-1">
+                  <div className="font-bold text-cyan-400 text-xs">
+                    🆔 اتصال مستقیم با شناسه چت (Chat ID)
+                  </div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    کاربران می‌توانند شناسه عددی چت خود را از ربات دریافت کرده و در تنظیمات پروفایل بگ تایم وارد کنند تا حسابشان بدون ثبت‌نام مجدد متصل شود.
                   </p>
                 </div>
               </div>

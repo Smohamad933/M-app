@@ -25,6 +25,7 @@ import {
   Smartphone,
   ShieldAlert,
   FileText,
+  Bot,
 } from 'lucide-react';
 
 interface ProfileModalProps {
@@ -98,6 +99,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
   const [name, setName] = useState(currentUser?.name || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
   const [email, setEmail] = useState(currentUser?.email || '');
+  const [baleChatId, setBaleChatId] = useState(currentUser?.baleChatId ? String(currentUser.baleChatId) : '');
   const [province, setProvince] = useState(currentUser?.province || '');
   const [city, setCity] = useState(currentUser?.city || '');
 
@@ -206,6 +208,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
         name: name.trim(),
         phone: phone.trim(),
         email: email.trim(),
+        baleChatId: baleChatId.trim() || undefined,
         province,
         city: city.trim(),
         birthDate: finalBirthDate,
@@ -388,6 +391,27 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
               ایمیل
             </label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} placeholder="user@example.com" dir="ltr" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Bot className="w-3.5 h-3.5 text-blue-500" />
+                <span>شناسه چت بله (Bale Chat ID)</span>
+              </span>
+              {currentUser?.baleChatId && (
+                <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-bold">
+                  ✓ متصل به بله
+                </span>
+              )}
+            </label>
+            <input
+              type="text"
+              value={baleChatId}
+              onChange={(e) => setBaleChatId(e.target.value)}
+              className={inputCls}
+              placeholder="مثلاً 123456789"
+              dir="ltr"
+            />
           </div>
 
           {/* Jalali Birthdate 3-Dropdown Selectors */}

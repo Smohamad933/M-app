@@ -690,6 +690,8 @@ export const api = {
     dailyTimeline?: Record<string, string>;
     avatar?: string | null;
     password?: string;
+    baleChatId?: string | number;
+    baleUsername?: string;
   }): Promise<User> {
     const payload = { action: 'update_profile', ...data };
     let data_: { user: User } | undefined;
@@ -786,7 +788,7 @@ export const api = {
         await request(`api/users.php?action=delete&${idParam}`);
       } catch (err2: any) {
         lastError = err2;
-        // 3. Final fallback: POST ?action=delete
+        // 3. Fallback: POST ?action=delete
         try {
           await request(`api/users.php?action=delete&${idParam}`, {
             method: 'POST',
@@ -794,7 +796,12 @@ export const api = {
           });
         } catch (err3: any) {
           lastError = err3;
-          throw lastError;
+          // 4. Fallback: auth.php?action=delete_account
+          try {
+            await request('api/auth.php?action=delete_account', { method: 'POST' });
+          } catch {
+            throw lastError;
+          }
         }
       }
     }

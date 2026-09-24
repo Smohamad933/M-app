@@ -154,6 +154,22 @@ if ($action === 'manual_verify') {
     jsonResponse(['error' => 'کاربر یافت نشد.'], 404);
 }
 
+// DELETE MY ACCOUNT
+if ($action === 'delete_account' || $action === 'delete_my_account') {
+    $user = getCurrentUser();
+    if (!$user) {
+        jsonResponse(['error' => 'ابتدا وارد حساب کاربری خود شوید.'], 401);
+    }
+    if ($user['id'] === 'usr_admin_mohusyn' || strtolower($user['username'] ?? '') === 'mohusyn') {
+        jsonResponse(['error' => 'حساب مدیر اصلی محافظت‌شده است و قابل حذف نیست.'], 400);
+    }
+    $db->deleteUser($user['id']);
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        @session_destroy();
+    }
+    jsonResponse(['ok' => true, 'message' => 'حساب کاربری با موفقیت حذف شد.']);
+}
+
 // LOGIN ACCOUNT
 if ($action === 'login' || empty($action) && (isset($_GET['username']) || isset($_POST['username']))) {
     $input = getJsonInput();

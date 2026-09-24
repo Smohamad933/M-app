@@ -38,7 +38,6 @@ export const LoginScreen: React.FC = () => {
     baleBotLink: string;
   } | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
-  const [isVerifyingManual, setIsVerifyingManual] = useState(false);
 
   // App branding (custom logo & appName)
   const appBranding = globalSettings?.appBranding;
@@ -66,24 +65,6 @@ export const LoginScreen: React.FC = () => {
       clearInterval(interval);
     };
   }, [baleVerificationData?.userId]);
-
-  const handleManualVerify = async () => {
-    if (!baleVerificationData?.userId) return;
-    setIsVerifyingManual(true);
-    sounds.playPop();
-    try {
-      const res = await api.manualVerify(baleVerificationData.userId);
-      if (res.verified && res.user) {
-        sounds.playComplete();
-        completeBaleVerification(res.user);
-        setBaleVerificationData(null);
-      }
-    } catch (e: any) {
-      alert(e.message || 'خطا در تأیید حساب');
-    } finally {
-      setIsVerifyingManual(false);
-    }
-  };
 
   const handleCopyCode = () => {
     if (!baleVerificationData?.verificationCode) return;
@@ -608,10 +589,25 @@ export const LoginScreen: React.FC = () => {
               </button>
             </div>
 
+            {/* Step by step guide */}
+            <div className="text-right p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 space-y-2 text-[11px] text-amber-900">
+              <div className="font-black text-amber-950 flex items-center gap-1.5">
+                <span>⚠️ مراحل احراز هویت الزامی با ربات بله:</span>
+              </div>
+              <ol className="list-decimal list-inside space-y-1 font-medium leading-relaxed pr-1 text-[11px]">
+                <li>وارد ربات بله شوید و دکمه شیشه‌ای <b>«🔐 تأیید حساب کاربری»</b> را لمس کنید.</li>
+                <li>کد ۶ رقمی بالا را به ربات ارسال فرمایید.</li>
+                <li>سپس دکمه <b>«📱 ارسال شماره تماس و اطلاعات من»</b> را در بله بزنید تا شماره شما تطبیق داده شود.</li>
+              </ol>
+              <div className="text-[10px] text-amber-800/80 pt-0.5 font-bold">
+                * بدون تطبیق شماره تماس در ربات بله، امکان فعال‌سازی اکانت وجود ندارد.
+              </div>
+            </div>
+
             {/* Live Polling Status */}
-            <div className="flex items-center justify-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 py-2 rounded-xl">
+            <div className="flex items-center justify-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 py-2.5 rounded-xl border border-blue-100">
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              <span>در انتظار تأیید خودکار توسط ربات بله...</span>
+              <span>در انتظار ارسال کد و تطبیق شماره در ربات بله...</span>
             </div>
 
             {/* Action Buttons */}
@@ -623,17 +619,30 @@ export const LoginScreen: React.FC = () => {
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs sm:text-sm font-black shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
               >
                 <ExternalLink className="w-4 h-4" />
-                <span>باز کردن ربات در بله و تأیید فوری 🚀</span>
+                <span>ورود به ربات بله و تکمیل احراز هویت 🚀</span>
               </a>
 
               <button
                 type="button"
-                onClick={handleManualVerify}
-                disabled={isVerifyingManual}
-                className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition-colors cursor-pointer"
-                title="در صورت عدم دسترسی به بله یا کارکرد آفلاین"
+                onClick={async () => {
+                  if (!baleVerificationData?.userId) return;
+                  try {
+                    const check = await api.checkVerification(baleVerificationData.userId);
+                    if (check.verified && check.user) {
+                      sounds.playComplete();
+                      completeBaleVerification(check.user);
+                      setBaleVerificationData(null);
+                    } else {
+                      alert('شماره یا کد شما هنوز در ربات بله تأیید نشده است. لطفاً ابتدا در بله شماره خود را ارسال فرمایید.');
+                    }
+                  } catch {
+                    alert('خطا در بررسی وضعیت احراز هویت.');
+                  }
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
               >
-                {isVerifyingManual ? 'در حال فعال‌سازی...' : 'تأیید مستقیم (حالت آزمایشی / آفلاین)'}
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>بررسی مجدد وضعیت تأیید بله</span>
               </button>
             </div>
           </div>

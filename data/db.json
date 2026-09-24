@@ -6,7 +6,12 @@
       "password": "Smosh1387",
       "name": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
       "role": "admin",
-      "createdAt": "2026-09-19T17:29:02.500Z"
+      "createdAt": "2026-09-19T17:29:02.500Z",
+      "numericId": 1000,
+      "subscription": {
+        "plan": "pro"
+      },
+      "isProfileCompleted": true
     }
   ],
   "tasks": [],
@@ -137,53 +142,6 @@
         }
       ],
       "createdAt": "2026-09-21T13:02:11.842Z"
-    },
-    {
-      "id": "room_t9nr1d",
-      "name": "اتاق تمرکز برنامه‌نویسان ارشد",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789995731736,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۳:۰۲",
-          "lastPing": 1789995731729
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789995731729",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز برنامه‌نویسان ارشد» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۱۳:۰۲"
-        },
-        {
-          "id": "msg_1789995731733_vjs3",
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "text": "سلام به همگی، تمرکز ۲۵ دقیقه‌ای را آغاز می‌کنیم! 🎯",
-          "timestamp": "۱۳:۰۲"
-        },
-        {
-          "id": "msg_del_1789995731738",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "این اتاق توسط سید محمدحسین شیخ الاسلامی (Mohusyn) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه در سرور محفوظ مانده و سپس به طور کامل پاکسازی خواهند شد.",
-          "timestamp": "۱۳:۰۲"
-        }
-      ],
-      "createdAt": "2026-09-21T13:02:11.729Z",
-      "isDeleted": true,
-      "deletedAt": 1789995731
     },
     {
       "id": "room_qod088",

@@ -858,7 +858,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
       const strField = (v: any) => (typeof v === 'string' ? v.trim() : undefined);
-      for (const k of ['name', 'phone', 'email', 'province', 'city', 'birthDate', 'jobTitle'] as const) {
+      for (const k of ['name', 'phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'baleChatId', 'baleUsername'] as const) {
         const v = strField((parsedBody as any)[k]);
         if (v !== undefined) (self as any)[k] = v;
       }
@@ -898,6 +898,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           birthDate: self.birthDate,
           jobTitle: self.jobTitle,
           avatar: self.avatar || null,
+          baleChatId: self.baleChatId,
+          baleUsername: self.baleUsername,
           isProfileCompleted: true,
           skills: self.skills,
           dailyTimeline: self.dailyTimeline,
@@ -962,6 +964,10 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       db.goals = db.goals.filter((g) => g.userId !== id);
       db.dailyNotes = db.dailyNotes.filter((n) => n.userId !== id);
       db.personalityResults = db.personalityResults.filter((x) => x.userId !== id);
+      (db as any).friendships = ((db as any).friendships || []).filter((f: any) => f.user1Id !== id && f.user2Id !== id);
+      (db as any).friend_requests = ((db as any).friend_requests || []).filter((r: any) => r.fromUserId !== id && r.toUserId !== id);
+      (db as any).messages = ((db as any).messages || []).filter((m: any) => m.senderId !== id && m.receiverId !== id);
+      (db as any).notifications = ((db as any).notifications || []).filter((n: any) => n.userId !== id);
     };
 
     const isProtectedUser = (u: DBUser) =>
@@ -990,13 +996,20 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       sendJson(res, { message: 'حساب کاربری و تمامی تسک‌ها و داده‌های مرتبط با موفقیت حذف شدند.' });
     };
 
-    // IIS 405 resilience: some servers block the DELETE verb, allow delete via GET/POST ?action=delete
-    if (method === 'GET' && (qAction === 'delete' || qAction === 'delete_user')) {
-      handleUserDelete(urlObj.searchParams.get('id'));
+    // Standard DELETE verb (allows self-account deletion or admin deletion)
+    if (method === 'DELETE') {
+      const deleteId = urlObj.searchParams.get('id') || (typeof parsedBody.id === 'string' ? parsedBody.id : null) || (currentUser ? currentUser.id : null);
+      handleUserDelete(deleteId);
       return true;
     }
-    if (method === 'POST' && (qAction === 'delete' || qAction === 'delete_user')) {
-      handleUserDelete(typeof parsedBody.id === 'string' && parsedBody.id ? parsedBody.id : urlObj.searchParams.get('id'));
+
+    // IIS 405 resilience: some servers block the DELETE verb, allow delete via GET/POST ?action=delete
+    if (method === 'GET' && (qAction === 'delete' || qAction === 'delete_user' || qAction === 'delete_account')) {
+      handleUserDelete(urlObj.searchParams.get('id') || (currentUser ? currentUser.id : null));
+      return true;
+    }
+    if (method === 'POST' && (qAction === 'delete' || qAction === 'delete_user' || qAction === 'delete_account')) {
+      handleUserDelete(typeof parsedBody.id === 'string' && parsedBody.id ? parsedBody.id : (urlObj.searchParams.get('id') || (currentUser ? currentUser.id : null)));
       return true;
     }
 
@@ -2966,8 +2979,51 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       let body: any = {};
       try { body = await parseJsonBody(req); } catch {}
       const msg = body?.message || {};
-      const chatId = msg?.chat?.id || msg?.from?.id;
+      const cb = body?.callback_query;
+      const contact = msg?.contact;
+      const chatId = msg?.chat?.id || msg?.from?.id || cb?.message?.chat?.id || cb?.from?.id;
       const text = (msg?.text || '').trim();
+
+      const normalizePhone = (p: string) => {
+        let d = (p || '').replace(/[^\d]/g, '');
+        if (d.startsWith('0098')) d = '0' + d.slice(4);
+        else if (d.startsWith('98')) d = '0' + d.slice(2);
+        else if (d.length === 10 && d.startsWith('9')) d = '0' + d;
+        return d;
+      };
+
+      // Callback query from inline button click
+      if (cb) {
+        const cbData = cb.data;
+        if (cbData === 'verify_account') {
+          sendJson(res, { ok: true, prompt: 'send_code' });
+          return true;
+        }
+        if (cbData === 'my_chat_id') {
+          sendJson(res, { ok: true, chatId });
+          return true;
+        }
+        sendJson(res, { ok: true });
+        return true;
+      }
+
+      // Contact sharing verification (Step 2: mandatory phone matching)
+      if (contact && contact.phone_number) {
+        const sharedPhone = normalizePhone(contact.phone_number);
+        const pendingUser = db.users.find((u) => !u.isVerified && u.phone && normalizePhone(u.phone) === sharedPhone);
+        if (pendingUser) {
+          pendingUser.isVerified = true;
+          pendingUser.status = 'active';
+          pendingUser.baleChatId = chatId;
+          pendingUser.baleUsername = msg?.from?.username;
+          writeDb(db);
+          sendJson(res, { ok: true, verified: true, user: pendingUser.username });
+          return true;
+        } else {
+          sendJson(res, { ok: false, error: 'عدم تطابق شماره همراه' });
+          return true;
+        }
+      }
 
       // Check verification code (/start verify_XXXXXX or 6 digits)
       let code: string | null = null;
@@ -2981,12 +3037,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       if (code) {
         const found = db.users.find((u) => u.verificationCode === code);
         if (found) {
-          found.isVerified = true;
-          found.status = 'active';
-          found.baleChatId = chatId;
-          found.baleUsername = msg?.from?.username;
-          writeDb(db);
-          sendJson(res, { ok: true, verified: true, user: found.username });
+          // If already has phone, require contact or if matching
+          sendJson(res, { ok: true, codeValid: true, prompt: 'request_contact', user: found.username });
           return true;
         }
       }

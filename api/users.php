@@ -30,7 +30,7 @@ if ($action === 'update_profile' || ($input['action'] ?? '') === 'update_profile
     }
 
     $fields = [];
-    foreach (['name', 'phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'bio', 'coverImage'] as $k) {
+    foreach (['name', 'phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'bio', 'coverImage', 'baleChatId', 'baleUsername'] as $k) {
         if (array_key_exists($k, $input) && is_string($input[$k])) {
             $fields[$k] = trim($input[$k]);
         }
@@ -76,6 +76,8 @@ if ($action === 'update_profile' || ($input['action'] ?? '') === 'update_profile
             'jobTitle' => $fields['jobTitle'] ?? null,
             'skills' => $fields['skills'] ?? null,
             'dailyTimeline' => $fields['dailyTimeline'] ?? null,
+            'baleChatId' => $fields['baleChatId'] ?? ($currentUser['baleChatId'] ?? null),
+            'baleUsername' => $fields['baleUsername'] ?? ($currentUser['baleUsername'] ?? null),
             'isProfileCompleted' => true,
         ],
     ]);
