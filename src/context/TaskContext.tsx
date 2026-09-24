@@ -1018,25 +1018,43 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Background polling for users directory & subscription changes (every 25s for all users)
+    // Background polling for users directory & subscription changes (every 30s when tab is visible)
     let userPoll: any = null;
     if (currentUser) {
-      userPoll = setInterval(refreshUsers, 25000);
+      userPoll = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        refreshUsers();
+      }, 30000);
     }
 
-    // Background sync for team project tasks and live progress (every 12 seconds)
+    // Background sync for team project tasks and live progress (every 15 seconds when tab is visible)
     let taskPoll: any = null;
     if (currentUser) {
       taskPoll = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
         refreshTasks();
         refreshProjects();
-      }, 12000);
+      }, 15000);
+    }
+
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && !document.hidden && currentUser) {
+        refreshTasks();
+        refreshProjects();
+        refreshUsers();
+      }
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibility);
     }
 
     return () => {
       unsubscribe();
       if (userPoll) clearInterval(userPoll);
       if (taskPoll) clearInterval(taskPoll);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibility);
+      }
     };
   }, [currentUser, refreshUsers, refreshTasks, refreshProjects, refreshActiveRoom]);
 

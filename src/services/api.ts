@@ -131,7 +131,25 @@ function resolveApiUrl(endpoint: string): string {
   return '/' + clean;
 }
 
+const inFlightRequests = new Map<string, Promise<any>>();
+const cacheStore = new Map<string, { data: any; expiry: number }>();
+
+export function clearApiCache(endpointPrefix?: string) {
+  if (!endpointPrefix) {
+    cacheStore.clear();
+    return;
+  }
+  for (const key of cacheStore.keys()) {
+    if (key.includes(endpointPrefix)) {
+      cacheStore.delete(key);
+    }
+  }
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  const isGet = method === 'GET';
+
   const token = getAuthToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -151,95 +169,123 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     url = `${url}${sep}token=${encodeURIComponent(token)}`;
   }
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      ...options,
-      credentials: 'same-origin',
-      headers,
-    });
-  } catch (err: any) {
-    throw new Error('عدم برقراری ارتباط با سرور. لطفاً وضعیت سرور و شبکه را بررسی کنید.');
-  }
-
-  // Handle IIS 405 Method Not Allowed resilience!
-  if (res.status === 405) {
-    const method = (options.method || 'GET').toUpperCase();
-    if (method === 'POST') {
-      try {
-        const bodyStr = typeof options.body === 'string' ? options.body : JSON.stringify(options.body || {});
-        const formHeaders = {
-          ...headers,
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        };
-        const fallbackRes = await fetch(url, {
-          ...options,
-          method: 'POST',
-          headers: formHeaders,
-          body: `data=${encodeURIComponent(bodyStr)}&payload=${encodeURIComponent(bodyStr)}`,
-        });
-        if (fallbackRes.ok || fallbackRes.status < 400) {
-          const fbText = await fallbackRes.text();
-          try {
-            return JSON.parse(fbText);
-          } catch {}
-        }
-      } catch {}
-
-      try {
-        const sep = url.includes('?') ? '&' : '?';
-        const fallbackRes2 = await fetch(`${url}${sep}_method=POST`, {
-          ...options,
-          method: 'POST',
-          headers: {
-            ...headers,
-            'X-HTTP-Method-Override': 'POST',
-          },
-        });
-        if (fallbackRes2.ok || fallbackRes2.status < 400) {
-          const fbText = await fallbackRes2.text();
-          try {
-            return JSON.parse(fbText);
-          } catch {}
-        }
-      } catch {}
-    } else if (method === 'PUT' || method === 'DELETE') {
-      try {
-        const sep = url.includes('?') ? '&' : '?';
-        const fallbackRes = await fetch(`${url}${sep}_method=${method}`, {
-          ...options,
-          method: 'POST',
-          headers: {
-            ...headers,
-            'X-HTTP-Method-Override': method,
-          },
-        });
-        if (fallbackRes.ok || fallbackRes.status < 400) {
-          const fbText = await fallbackRes.text();
-          try {
-            return JSON.parse(fbText);
-          } catch {}
-        }
-      } catch {}
+  if (isGet) {
+    const cached = cacheStore.get(url);
+    if (cached && cached.expiry > Date.now()) {
+      return cached.data as T;
     }
+    if (inFlightRequests.has(url)) {
+      return inFlightRequests.get(url)! as Promise<T>;
+    }
+  } else {
+    cacheStore.clear();
   }
 
-  const text = await res.text();
-  let data: any = {};
-  try {
-    data = JSON.parse(text);
-  } catch {
+  const fetchPromise = (async () => {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        ...options,
+        credentials: 'same-origin',
+        headers,
+      });
+    } catch (err: any) {
+      throw new Error('عدم برقراری ارتباط با سرور. لطفاً وضعیت سرور و شبکه را بررسی کنید.');
+    }
+
+    // Handle IIS 405 Method Not Allowed resilience!
+    if (res.status === 405) {
+      if (method === 'POST') {
+        try {
+          const bodyStr = typeof options.body === 'string' ? options.body : JSON.stringify(options.body || {});
+          const formHeaders = {
+            ...headers,
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          };
+          const fallbackRes = await fetch(url, {
+            ...options,
+            method: 'POST',
+            headers: formHeaders,
+            body: `data=${encodeURIComponent(bodyStr)}&payload=${encodeURIComponent(bodyStr)}`,
+          });
+          if (fallbackRes.ok || fallbackRes.status < 400) {
+            const fbText = await fallbackRes.text();
+            try {
+              const data = JSON.parse(fbText);
+              return data;
+            } catch {}
+          }
+        } catch {}
+
+        try {
+          const sep = url.includes('?') ? '&' : '?';
+          const fallbackRes2 = await fetch(`${url}${sep}_method=POST`, {
+            ...options,
+            method: 'POST',
+            headers: {
+              ...headers,
+              'X-HTTP-Method-Override': 'POST',
+            },
+          });
+          if (fallbackRes2.ok || fallbackRes2.status < 400) {
+            const fbText = await fallbackRes2.text();
+            try {
+              const data = JSON.parse(fbText);
+              return data;
+            } catch {}
+          }
+        } catch {}
+      } else if (method === 'PUT' || method === 'DELETE') {
+        try {
+          const sep = url.includes('?') ? '&' : '?';
+          const fallbackRes = await fetch(`${url}${sep}_method=${method}`, {
+            ...options,
+            method: 'POST',
+            headers: {
+              ...headers,
+              'X-HTTP-Method-Override': method,
+            },
+          });
+          if (fallbackRes.ok || fallbackRes.status < 400) {
+            const fbText = await fallbackRes.text();
+            try {
+              const data = JSON.parse(fbText);
+              return data;
+            } catch {}
+          }
+        } catch {}
+      }
+    }
+
+    const text = await res.text();
+    let data: any = {};
+    try {
+      data = JSON.parse(text);
+    } catch {
+      if (!res.ok) {
+        throw new Error(`خطای سرور (${res.status}): ${text.slice(0, 150)}`);
+      }
+      throw new Error('پاسخ نامعتبر از سرور دریافت شد.');
+    }
+
     if (!res.ok) {
-      throw new Error(`خطای سرور (${res.status}): ${text.slice(0, 150)}`);
+      throw new Error(data.error || 'خطایی در پردازش اطلاعات در سرور رخ داد.');
     }
-    throw new Error('پاسخ نامعتبر از سرور دریافت شد.');
+
+    if (isGet) {
+      cacheStore.set(url, { data, expiry: Date.now() + 2500 });
+    }
+
+    return data as T;
+  })().finally(() => {
+    if (isGet) inFlightRequests.delete(url);
+  });
+
+  if (isGet) {
+    inFlightRequests.set(url, fetchPromise);
   }
 
-  if (!res.ok) {
-    throw new Error(data.error || 'خطایی در پردازش اطلاعات در سرور رخ داد.');
-  }
-
-  return data;
+  return fetchPromise;
 }
 
 

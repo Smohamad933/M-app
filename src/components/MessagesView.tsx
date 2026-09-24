@@ -77,7 +77,10 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
   useEffect(() => {
     loadConversations();
-    const interval = setInterval(loadConversations, 5000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      loadConversations();
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -142,7 +145,10 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
       return;
     }
     loadMessages();
-    const interval = setInterval(loadMessages, 4500);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      loadMessages();
+    }, 4000);
     return () => clearInterval(interval);
   }, [activePartner?.id]);
 
