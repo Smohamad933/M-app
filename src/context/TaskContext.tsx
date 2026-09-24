@@ -66,7 +66,8 @@ interface TaskContextType {
     jobTitle?: string;
     skills?: string[];
     dailyTimeline?: UserTimeline;
-  }) => Promise<boolean>;
+  }) => Promise<any>;
+  completeBaleVerification: (user: User) => void;
   logout: () => Promise<void>;
   createUser: (data: {
     username: string;
@@ -1145,9 +1146,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     jobTitle?: string;
     skills?: string[];
     dailyTimeline?: UserTimeline;
-  }): Promise<boolean> => {
+  }): Promise<any> => {
     try {
-      const res = await api.register(data);
+      const res: any = await api.register(data);
+      if (res.requiresVerification) {
+        return res;
+      }
       const userObj = { ...res.user, isProfileCompleted: true };
       setCurrentUser(userObj);
       try {
@@ -1162,10 +1166,23 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch {}
       sounds.playComplete();
       await checkPendingRoomInvite();
-      return true;
+      return res;
     } catch (e: any) {
       throw e;
     }
+  };
+
+  const completeBaleVerification = (user: User) => {
+    const userObj = { ...user, isProfileCompleted: true };
+    setCurrentUser(userObj);
+    try {
+      localStorage.setItem('taskrooz_user_profile_completed_' + user.id, 'true');
+    } catch {}
+    setUsers((prev) => {
+      const filtered = prev.filter((u) => u.username.toLowerCase() !== user.username.toLowerCase());
+      return [...filtered, userObj];
+    });
+    sounds.playComplete();
   };
 
   const addGoal = async (data: Omit<CareerGoal, 'id' | 'createdAt' | 'userId'>): Promise<CareerGoal> => {
@@ -1662,6 +1679,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logTaskWorkTime,
       deleteMyAccount,
       approveUserRegistration,
+      // Auth & User Actions
+      completeBaleVerification,
       // 12-Hour Offline-First Sync
       isMandatorySyncDue,
       remainingHoursUntilSync,

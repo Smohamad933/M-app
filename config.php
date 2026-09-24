@@ -26,14 +26,25 @@ if (file_exists(__DIR__ . '/config.local.php')) {
 if (!defined('DB_HOST')) define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1');
 if (!defined('DB_PORT')) define('DB_PORT', getenv('DB_PORT') ?: '3306');
 if (!defined('DB_NAME')) define('DB_NAME', getenv('DB_NAME') ?: 'taskrooz_db');
+if (!defined('DB_NAME_USERS')) define('DB_NAME_USERS', getenv('DB_NAME_USERS') ?: DB_NAME);
+if (!defined('DB_NAME_TASKS')) define('DB_NAME_TASKS', getenv('DB_NAME_TASKS') ?: DB_NAME);
+if (!defined('DB_NAME_MESSAGES')) define('DB_NAME_MESSAGES', getenv('DB_NAME_MESSAGES') ?: DB_NAME);
+if (!defined('DB_NAME_NOTIFICATIONS')) define('DB_NAME_NOTIFICATIONS', getenv('DB_NAME_NOTIFICATIONS') ?: DB_NAME);
 if (!defined('DB_USER')) define('DB_USER', getenv('DB_USER') ?: 'root');
 if (!defined('DB_PASS')) define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
 
 $GLOBALS['taskrooz_db_error'] = null;
 
-function getMySQLPDO() {
-    static $mysqlPdo = null;
-    if ($mysqlPdo !== null) return $mysqlPdo;
+function getMySQLPDO($module = null) {
+    static $connections = [];
+
+    $dbName = DB_NAME;
+    if ($module === 'users') $dbName = DB_NAME_USERS;
+    elseif ($module === 'tasks') $dbName = DB_NAME_TASKS;
+    elseif ($module === 'messages') $dbName = DB_NAME_MESSAGES;
+    elseif ($module === 'notifications') $dbName = DB_NAME_NOTIFICATIONS;
+
+    if (isset($connections[$dbName])) return $connections[$dbName];
 
     if (!extension_loaded('pdo_mysql') || !class_exists('PDO')) {
         $GLOBALS['taskrooz_db_error'] = 'اکستنشن pdo_mysql در PHP سرور فعال نیست.';
@@ -41,16 +52,16 @@ function getMySQLPDO() {
     }
 
     try {
-        $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+        $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . $dbName . ";charset=utf8mb4";
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_TIMEOUT => 4,
         ];
-        $mysqlPdo = new PDO($dsn, DB_USER, DB_PASS, $options);
-        // Execute UTF-8 collation directly (100% compatible across PHP 7.0 - 8.5+ without deprecated constants)
-        $mysqlPdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
-        return $mysqlPdo;
+        $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+        $connections[$dbName] = $pdo;
+        return $pdo;
     } catch (Exception $e) {
         $GLOBALS['taskrooz_db_error'] = $e->getMessage();
         return null;

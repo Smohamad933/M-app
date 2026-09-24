@@ -52,6 +52,8 @@ import {
   Monitor,
   Key,
   Laptop,
+  Bot,
+  Database,
 } from 'lucide-react';
 
 /**
@@ -180,7 +182,7 @@ export const UserManagementView: React.FC = () => {
   } = useTask();
 
   // Active view tab inside Admin Panel
-  const [adminTab, setAdminTab] = useState<'users' | 'payments' | 'settings' | 'texts' | 'developers' | 'apk'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'payments' | 'settings' | 'texts' | 'developers' | 'apk' | 'bale'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const pendingUsers = users.filter((u) => u.status === 'pending_approval');
   const [planFilter, setPlanFilter] = useState<'all' | 'pro' | 'free'>('all');
@@ -401,6 +403,86 @@ export const UserManagementView: React.FC = () => {
     setCopiedSha256(true);
     sounds.playPop();
     setTimeout(() => setCopiedSha256(false), 3000);
+  };
+
+  // Bale Messenger Bot State (docs.bale.ai)
+  const initialBale = (globalSettings as any)?.baleBot || {
+    enabled: false,
+    token: '',
+    botUsername: 'BagTime_Bot',
+    verifyOnRegister: true,
+    sendNotifications: true,
+    allowTaskCreation: true,
+  };
+  const [baleForm, setBaleForm] = useState(initialBale);
+  const [baleTesting, setBaleTesting] = useState(false);
+  const [baleTestResult, setBaleTestResult] = useState<{ ok: boolean; message: string; botName?: string } | null>(null);
+  const [baleSaving, setBaleSaving] = useState(false);
+
+  useEffect(() => {
+    if ((globalSettings as any)?.baleBot) {
+      setBaleForm((globalSettings as any).baleBot);
+    }
+  }, [globalSettings]);
+
+  const handleTestBaleToken = async () => {
+    setBaleTesting(true);
+    setBaleTestResult(null);
+    sounds.playPop();
+    try {
+      const res = await api.testBaleToken(baleForm.token);
+      if (res.ok) {
+        sounds.playComplete();
+        setBaleTestResult({
+          ok: true,
+          message: 'اتصال با موفقیت برقرار شد!',
+          botName: res.bot?.first_name || 'BagTime Bot',
+        });
+      } else {
+        setBaleTestResult({
+          ok: false,
+          message: res.message || 'خطا در ارتباط با سرورهای بله',
+        });
+      }
+    } catch (e: any) {
+      setBaleTestResult({
+        ok: false,
+        message: e.message || 'خطا در تست توکن ربات بله',
+      });
+    } finally {
+      setBaleTesting(false);
+    }
+  };
+
+  const handleSaveBaleConfig = async () => {
+    setBaleSaving(true);
+    sounds.playPop();
+    try {
+      await updateGlobalSettings({
+        baleBot: baleForm,
+      });
+      sounds.playComplete();
+      alert('تنظیمات ربات بله با موفقیت ذخیره شد.');
+    } catch (e: any) {
+      alert(e.message || 'خطا در ذخیره تنظیمات ربات بله');
+    } finally {
+      setBaleSaving(false);
+    }
+  };
+
+  const handleSetBaleWebhook = async () => {
+    sounds.playPop();
+    try {
+      const res = await api.setBaleWebhook();
+      if (res.ok) {
+        sounds.playComplete();
+        alert('وب‌هوک ربات بله با موفقیت تنظیم شد:\n' + res.webhookUrl);
+      } else {
+        alert('خطا در تنظیم وب‌هوک بله.');
+      }
+    } catch (e: any) {
+      alert(e.message || 'خطا در تنظیم وب‌هوک');
+    }
   };
 
   // Admin App Developers Manager (configured by admin with photo, name, role)
@@ -975,6 +1057,18 @@ export const UserManagementView: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setAdminTab('bale')}
+          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            adminTab === 'bale'
+              ? 'bg-blue-600 text-white shadow-xs font-black'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <Bot className="w-3.5 h-3.5 text-blue-400" />
+          <span>ربات بله (Bale Bot)</span>
+        </button>
+
+        <button
           onClick={() => setAdminTab('apk')}
           className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'apk'
@@ -983,7 +1077,7 @@ export const UserManagementView: React.FC = () => {
           }`}
         >
           <Smartphone className="w-3.5 h-3.5" />
-          <span>خروجی APK اندروید</span>
+          <span>خروجی APK و ویندوز</span>
         </button>
       </div>
 
@@ -2915,6 +3009,283 @@ export const UserManagementView: React.FC = () => {
                 <p className="text-[11px] text-zinc-400 leading-relaxed">
                   آیکون تسک‌روز در لیست برنامه‌های گوشی قرار گرفته و به عنوان اپ بومی با سرعت بالا و دسترسی آفلاین اجرا می‌شود.
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: BALE MESSENGER BOT INTEGRATION (docs.bale.ai) */}
+      {adminTab === 'bale' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Hero Banner */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-950/70 via-zinc-900 to-zinc-950 border border-blue-600/30 p-6 md:p-8 shadow-2xl">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="space-y-3 max-w-2xl">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 text-[11px] font-bold">
+                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                  اتصال رسمی پیام‌رسان بله (Bale Bot Platform • docs.bale.ai)
+                </div>
+                <h3 className="text-xl md:text-2xl font-black text-white leading-tight">
+                  مدیریت و پیکربندی ربات بله (BagTime Bale Bot)
+                </h3>
+                <p className="text-xs md:text-sm text-zinc-300 leading-relaxed">
+                  با تنظیم توکن ربات بله، امکان تایید هویت شماره موبایل در ثبت‌نام، ارسال بلادرنگ نوتیفیکیشن‌ها، و ایجاد وظایف و تسک‌ها مستقیماً از طریق پیام‌رسان بله برای کاربران فعال می‌شود.
+                </p>
+              </div>
+
+              <div className="flex-shrink-0 flex items-center justify-center">
+                <div className="w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 p-1 shadow-2xl shadow-blue-500/20 flex items-center justify-center">
+                  <div className="w-full h-full bg-zinc-950 rounded-[22px] flex flex-col items-center justify-center p-2 text-center">
+                    <Bot className="w-9 h-9 text-blue-400 mb-1" />
+                    <span className="text-[10px] font-black text-white">ربات بله</span>
+                    <span className="text-[8px] text-zinc-400 font-mono">v1.2</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bot Configuration Form */}
+          <div className="p-6 md:p-8 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-6">
+            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+              <Bot className="w-4 h-4 text-blue-400" />
+              <span>مشخصات و توکن ربات پیام‌رسان بله</span>
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-300">
+                  توکن ربات بله (Bale Bot Token) *
+                </label>
+                <input
+                  type="text"
+                  value={baleForm.token}
+                  onChange={(e) => setBaleForm({ ...baleForm, token: e.target.value })}
+                  placeholder="مثال: 123456789:AAHk..."
+                  dir="ltr"
+                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800 text-white font-mono text-xs outline-none focus:border-blue-500 text-left"
+                />
+                <p className="text-[10px] text-zinc-500">
+                  توکن دریافتی از بازوی رسمی BotFather در پیام‌رسان بله را اینجا قرار دهید.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-300">
+                  شناسه کاربری ربات (Bot Username) *
+                </label>
+                <input
+                  type="text"
+                  value={baleForm.botUsername}
+                  onChange={(e) => setBaleForm({ ...baleForm, botUsername: e.target.value })}
+                  placeholder="مثال: BagTime_Bot"
+                  dir="ltr"
+                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800 text-white font-mono text-xs outline-none focus:border-blue-500 text-left"
+                />
+                <p className="text-[10px] text-zinc-500">
+                  آیدی ربات جهت هدایت کاربران در ثبت‌نام (لینک ble.ir/BagTime_Bot)
+                </p>
+              </div>
+            </div>
+
+            {/* Feature Toggles */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+              <label className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex items-start gap-3 cursor-pointer hover:border-zinc-700 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={baleForm.enabled}
+                  onChange={(e) => setBaleForm({ ...baleForm, enabled: e.target.checked })}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-0 mt-0.5 cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-white">فعال‌سازی ربات بله</div>
+                  <div className="text-[10px] text-zinc-400">اتصال سامانه به زیرساخت بله</div>
+                </div>
+              </label>
+
+              <label className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex items-start gap-3 cursor-pointer hover:border-zinc-700 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={baleForm.verifyOnRegister}
+                  onChange={(e) => setBaleForm({ ...baleForm, verifyOnRegister: e.target.checked })}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-0 mt-0.5 cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-white">تأیید شماره در ثبت‌نام</div>
+                  <div className="text-[10px] text-zinc-400">ارسال کد به ربات بله جهت احراز</div>
+                </div>
+              </label>
+
+              <label className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex items-start gap-3 cursor-pointer hover:border-zinc-700 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={baleForm.sendNotifications}
+                  onChange={(e) => setBaleForm({ ...baleForm, sendNotifications: e.target.checked })}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-0 mt-0.5 cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-white">ارسال نوتیفیکیشن‌ها</div>
+                  <div className="text-[10px] text-zinc-400">ارسال اعلان تسک و پیام در بله</div>
+                </div>
+              </label>
+
+              <label className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex items-start gap-3 cursor-pointer hover:border-zinc-700 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={baleForm.allowTaskCreation}
+                  onChange={(e) => setBaleForm({ ...baleForm, allowTaskCreation: e.target.checked })}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-0 mt-0.5 cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-white">ثبت تسک از بله</div>
+                  <div className="text-[10px] text-zinc-400">دستور task/ برای ساخت تسک</div>
+                </div>
+              </label>
+            </div>
+
+            {/* Test result banner if any */}
+            {baleTestResult && (
+              <div
+                className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs ${
+                  baleTestResult.ok
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {baleTestResult.ok ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-rose-400" />
+                  )}
+                  <span>{baleTestResult.message}</span>
+                  {baleTestResult.botName && (
+                    <span className="font-bold text-white">({baleTestResult.botName})</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleSaveBaleConfig}
+                disabled={baleSaving}
+                className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-colors cursor-pointer shadow-md flex items-center gap-2"
+              >
+                <Check className="w-4 h-4" />
+                <span>{baleSaving ? 'در حال ذخیره...' : 'ذخیره تنظیمات ربات بله'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleTestBaleToken}
+                disabled={baleTesting || !baleForm.token.trim()}
+                className="px-5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition-colors cursor-pointer border border-zinc-700 flex items-center gap-2 disabled:opacity-40"
+              >
+                <RefreshCw className={`w-4 h-4 ${baleTesting ? 'animate-spin text-blue-400' : ''}`} />
+                <span>{baleTesting ? 'در حال تست...' : 'تست اتصال به سرور بله (getMe)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSetBaleWebhook}
+                disabled={!baleForm.token.trim()}
+                className="px-5 py-3 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-cyan-300 font-bold text-xs transition-colors cursor-pointer border border-cyan-500/30 flex items-center gap-2 disabled:opacity-40"
+              >
+                <Code2 className="w-4 h-4 text-cyan-400" />
+                <span>تنظیم خودکار وب‌هوک (setWebhook)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Bale Bot User Guide & Architecture */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Guide Card */}
+            <div className="p-6 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-4">
+              <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>دستورات و راهنمای تعامل کاربران با ربات بله:</span>
+              </h4>
+              <div className="space-y-2.5 text-xs">
+                <div className="p-3 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-1">
+                  <div className="font-mono text-emerald-400 text-[11px] dir-ltr text-right">
+                    /start verify_482910 یا ارسال کد ۶ رقمی
+                  </div>
+                  <p className="text-[11px] text-zinc-400">
+                    تأیید فوری هویت حساب و شماره موبایل در هنگام ثبت‌نام و فعال‌سازی خودکار کاربر
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-1">
+                  <div className="font-mono text-blue-400 text-[11px] dir-ltr text-right">
+                    /task مطالعه کتاب فردا ساعت ۱۰
+                  </div>
+                  <p className="text-[11px] text-zinc-400">
+                    ایجاد وظیفه جدید همراه با استخراج هوشمند ساعت و روز در تقویم بگ تایم
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 space-y-1">
+                  <div className="font-mono text-purple-400 text-[11px] dir-ltr text-right">
+                    /tasks یا لیست تسک‌ها
+                  </div>
+                  <p className="text-[11px] text-zinc-400">
+                    دریافت خلاصه لیست وظایف فعال امروز همراه با وضعیت انجام
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modular Isolated Databases Status */}
+            <div className="p-6 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-4">
+              <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                <Database className="w-4 h-4 text-emerald-400" />
+                <span>معماری پایگاه‌داده‌های تفکیک‌شده (Modular Isolated Stores):</span>
+              </h4>
+              <div className="space-y-2.5 text-xs">
+                <div className="p-3 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-white text-xs">پایگاه داده کاربران (Users DB)</div>
+                    <div className="text-[10px] text-zinc-500 font-mono">data/users.json • جدول users</div>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
+                    مجزا و فوق‌سریع
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-white text-xs">پایگاه داده وظایف (Tasks DB)</div>
+                    <div className="text-[10px] text-zinc-500 font-mono">data/tasks.json • جدول tasks & projects</div>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold">
+                    تفکیک شده
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-white text-xs">پایگاه داده پیام‌ها (Messages DB)</div>
+                    <div className="text-[10px] text-zinc-500 font-mono">data/messages.json • چت P2P و اتاق‌ها</div>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">
+                    ایزوله و پرسرعت
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-white text-xs">پایگاه داده اعلان‌ها (Notifs DB)</div>
+                    <div className="text-[10px] text-zinc-500 font-mono">data/notifications.json • اعلان و لاگ بله</div>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">
+                    مستقل
+                  </span>
+                </div>
               </div>
             </div>
           </div>

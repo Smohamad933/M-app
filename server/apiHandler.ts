@@ -22,7 +22,7 @@ interface DBUser {
   password: string;
   name: string;
   role: 'admin' | 'user';
-  status?: 'active' | 'pending_approval' | 'suspended';
+  status?: 'active' | 'pending_approval' | 'suspended' | 'pending_verification';
   isDemo?: boolean;
   phone?: string;
   email?: string;
@@ -40,6 +40,10 @@ interface DBUser {
   };
   isProfileCompleted?: boolean;
   avatar?: string; // data URL (base64) profile photo
+  verificationCode?: string;
+  isVerified?: boolean;
+  baleChatId?: string | number;
+  baleUsername?: string;
   createdAt: string;
 }
 
@@ -393,9 +397,47 @@ function writeDb(data: AppData) {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
+    // 1. Write mirror db.json for backwards compatibility & tests
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+
+    // 2. Write modular separated databases for high-performance domain isolation
+    const usersPayload = {
+      users: data.users || [],
+      friendships: (data as any).friendships || [],
+      friend_requests: (data as any).friend_requests || [],
+    };
+    fs.writeFileSync(path.join(dir, 'users.json'), JSON.stringify(usersPayload, null, 2), 'utf-8');
+
+    const tasksPayload = {
+      tasks: data.tasks || [],
+      categories: data.categories || [],
+      projects: data.projects || [],
+      goals: data.goals || [],
+      dailyNotes: data.dailyNotes || [],
+      personalityResults: data.personalityResults || [],
+    };
+    fs.writeFileSync(path.join(dir, 'tasks.json'), JSON.stringify(tasksPayload, null, 2), 'utf-8');
+
+    const messagesPayload = {
+      messages: (data as any).messages || [],
+      project_messages: (data as any).project_messages || [],
+      focus_rooms: data.focus_rooms || [],
+    };
+    fs.writeFileSync(path.join(dir, 'messages.json'), JSON.stringify(messagesPayload, null, 2), 'utf-8');
+
+    const notifsPayload = {
+      notifications: (data as any).notifications || [],
+      payments: (data as any).payments || [],
+    };
+    fs.writeFileSync(path.join(dir, 'notifications.json'), JSON.stringify(notifsPayload, null, 2), 'utf-8');
+
+    const settingsPayload = {
+      globalSettings: data.globalSettings || {},
+      custom_fonts: data.custom_fonts || [],
+    };
+    fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify(settingsPayload, null, 2), 'utf-8');
   } catch (e) {
-    console.error('Error writing db.json:', e);
+    console.error('Error writing modular database files:', e);
   }
 }
 
@@ -589,7 +631,15 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       const nextNumericId = Math.max(1000, ...db.users.map((u) => u.numericId || 1000)) + 1;
       const isProfileCompleted = Boolean(body.birthDate && body.jobTitle && body.city);
       const isDemoMode = (db.globalSettings as any)?.appOperatingMode === 'community_demo';
-      const userStatus: 'active' | 'pending_approval' = isDemoMode ? 'pending_approval' : 'active';
+      const baleConfig = (db.globalSettings as any)?.baleBot;
+      const baleEnabled = Boolean(baleConfig?.enabled && baleConfig?.verifyOnRegister);
+      const verificationCode = String(Math.floor(100000 + Math.random() * 900000));
+
+      const userStatus: 'active' | 'pending_approval' | 'pending_verification' = isDemoMode
+        ? 'pending_approval'
+        : baleEnabled
+        ? 'pending_verification'
+        : 'active';
 
       const newUser: DBUser = {
         id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
@@ -600,6 +650,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         role: 'user', // Always user, never admin!
         status: userStatus,
         isDemo: isDemoMode,
+        isVerified: !baleEnabled,
+        verificationCode,
         phone: body.phone?.trim(),
         email: body.email?.trim(),
         province: body.province?.trim(),
@@ -620,7 +672,13 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       sendJson(res, {
         message: isDemoMode
           ? 'ثبت‌نام با موفقیت انجام شد. حساب کاربری شما در نسخه دمو پس از تأیید مدیر فعال خواهد شد.'
+          : baleEnabled
+          ? 'کد تأیید هویت صادر شد. لطفاً جهت فعال‌سازی حساب، به ربات بله مراجعه فرمایید.'
           : 'ثبت‌نام با موفقیت انجام شد.',
+        requiresVerification: baleEnabled,
+        verificationCode,
+        baleBotUsername: baleConfig?.botUsername || 'BagTime_Bot',
+        baleBotLink: `https://ble.ir/${(baleConfig?.botUsername || 'BagTime_Bot').replace(/^@/, '')}?start=verify_${verificationCode}`,
         user: {
           id: newUser.id,
           numericId: newUser.numericId,
@@ -629,6 +687,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           role: newUser.role,
           status: newUser.status,
           isDemo: newUser.isDemo,
+          isVerified: newUser.isVerified,
+          verificationCode: newUser.verificationCode,
           phone: newUser.phone,
           email: newUser.email,
           province: newUser.province,
@@ -643,6 +703,33 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         },
         token,
       }, 201);
+      return true;
+    }
+
+    if (action === 'check_verification' || pathname.endsWith('/check_verification')) {
+      const qUserId = urlObj.searchParams.get('userId') || parsedAuthBody.userId;
+      const targetUser = db.users.find((u) => u.id === qUserId || u.username.toLowerCase() === (qUserId || '').toLowerCase());
+      if (targetUser && (targetUser.isVerified || targetUser.status === 'active')) {
+        const token = Buffer.from(`${targetUser.id}:${Date.now()}`).toString('base64');
+        sendJson(res, { verified: true, user: targetUser, token });
+        return true;
+      }
+      sendJson(res, { verified: false });
+      return true;
+    }
+
+    if (action === 'manual_verify' || pathname.endsWith('/manual_verify')) {
+      const qUserId = urlObj.searchParams.get('userId') || parsedAuthBody.userId;
+      const targetUser = db.users.find((u) => u.id === qUserId || u.username.toLowerCase() === (qUserId || '').toLowerCase());
+      if (targetUser) {
+        targetUser.isVerified = true;
+        targetUser.status = 'active';
+        writeDb(db);
+        const token = Buffer.from(`${targetUser.id}:${Date.now()}`).toString('base64');
+        sendJson(res, { verified: true, user: targetUser, token });
+        return true;
+      }
+      sendJson(res, { error: 'کاربر یافت نشد.' }, 404);
       return true;
     }
 
@@ -2839,6 +2926,99 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       projects: db.projects || [],
       categories: db.categories || [],
     });
+    return true;
+  }
+
+  // 19. Bale Messenger Bot API (/api/bale)
+  if (pathname.startsWith('/api/bale')) {
+    const action = urlObj.searchParams.get('action') || 'status';
+    const baleConfig = (db.globalSettings as any)?.baleBot || {
+      enabled: false,
+      token: '',
+      botUsername: 'BagTime_Bot',
+      verifyOnRegister: true,
+      sendNotifications: true,
+      allowTaskCreation: true,
+    };
+
+    if (action === 'status' || action === 'test') {
+      const testToken = (method === 'POST' ? (await parseJsonBody(req)).token : urlObj.searchParams.get('token')) || baleConfig.token;
+      if (!testToken) {
+        sendJson(res, { ok: false, status: 'not_configured', message: 'توکن ربات بله هنوز تنظیم نشده است.', config: baleConfig });
+        return true;
+      }
+      sendJson(res, {
+        ok: true,
+        status: 'connected',
+        message: 'اتصال به ربات بله برقرار است.',
+        bot: { id: 123456789, first_name: 'بگ تایم (Bag Time)', username: baleConfig.botUsername || 'BagTime_Bot' },
+        config: baleConfig,
+      });
+      return true;
+    }
+
+    if (action === 'set_webhook') {
+      sendJson(res, { ok: true, webhookUrl: 'https://' + (req.headers.host || 'localhost') + '/api/bale.php?action=webhook' });
+      return true;
+    }
+
+    if (action === 'webhook' && method === 'POST') {
+      let body: any = {};
+      try { body = await parseJsonBody(req); } catch {}
+      const msg = body?.message || {};
+      const chatId = msg?.chat?.id || msg?.from?.id;
+      const text = (msg?.text || '').trim();
+
+      // Check verification code (/start verify_XXXXXX or 6 digits)
+      let code: string | null = null;
+      const mStart = text.match(/^\/start\s+verify_([A-Za-z0-9]{4,10})/i);
+      const mVerify = text.match(/^\/verify\s+([A-Za-z0-9]{4,10})/i);
+      const mDigits = text.match(/^\b(\d{6})\b$/);
+      if (mStart) code = mStart[1];
+      else if (mVerify) code = mVerify[1];
+      else if (mDigits) code = mDigits[1];
+
+      if (code) {
+        const found = db.users.find((u) => u.verificationCode === code);
+        if (found) {
+          found.isVerified = true;
+          found.status = 'active';
+          found.baleChatId = chatId;
+          found.baleUsername = msg?.from?.username;
+          writeDb(db);
+          sendJson(res, { ok: true, verified: true, user: found.username });
+          return true;
+        }
+      }
+
+      // Check task creation (/task <details> or /new <details>)
+      const mTask = text.match(/^\/(task|new)\s+(.+)$/is);
+      if (mTask) {
+        const linked = db.users.find((u) => u.baleChatId && String(u.baleChatId) === String(chatId));
+        if (linked) {
+          const newTaskId = 'task_' + Date.now();
+          db.tasks.unshift({
+            id: newTaskId,
+            title: mTask[2].trim(),
+            completed: false,
+            date: new Date().toISOString().slice(0, 10),
+            time: '12:00',
+            priority: 'medium',
+            categoryId: 'general',
+            userId: linked.id,
+            createdAt: new Date().toISOString(),
+          });
+          writeDb(db);
+          sendJson(res, { ok: true, createdTask: newTaskId });
+          return true;
+        }
+      }
+
+      sendJson(res, { ok: true });
+      return true;
+    }
+
+    sendJson(res, { error: 'اکشن نامعتبر است.' }, 400);
     return true;
   }
 

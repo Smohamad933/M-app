@@ -110,15 +110,74 @@ class TaskRoozDB {
 
         $content = null;
         $foundPath = null;
-        foreach ($candidatePaths as $p) {
-            if (file_exists($p) && filesize($p) > 10) {
-                $raw = @file_get_contents($p);
-                if (!empty($raw)) {
-                    $parsed = @json_decode($raw, true);
-                    if (is_array($parsed) && isset($parsed['users'])) {
-                        $content = $parsed;
-                        $foundPath = $p;
-                        break;
+        $modularDataDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+
+        // Check if modular databases exist (data/users.json, data/tasks.json, etc.)
+        if (file_exists($modularDataDir . DIRECTORY_SEPARATOR . 'users.json')) {
+            $uRaw = @file_get_contents($modularDataDir . DIRECTORY_SEPARATOR . 'users.json');
+            $uParsed = $uRaw ? @json_decode($uRaw, true) : null;
+            if (is_array($uParsed) && isset($uParsed['users'])) {
+                $content = $this->defaultSeed();
+                $content['users'] = $uParsed['users'] ?? [];
+                $content['friendships'] = $uParsed['friendships'] ?? [];
+                $content['friend_requests'] = $uParsed['friend_requests'] ?? [];
+
+                if (file_exists($modularDataDir . DIRECTORY_SEPARATOR . 'tasks.json')) {
+                    $tRaw = @file_get_contents($modularDataDir . DIRECTORY_SEPARATOR . 'tasks.json');
+                    $tParsed = $tRaw ? @json_decode($tRaw, true) : null;
+                    if (is_array($tParsed)) {
+                        $content['tasks'] = $tParsed['tasks'] ?? [];
+                        if (!empty($tParsed['categories'])) $content['categories'] = $tParsed['categories'];
+                        if (!empty($tParsed['projects'])) $content['projects'] = $tParsed['projects'];
+                        if (!empty($tParsed['goals'])) $content['goals'] = $tParsed['goals'];
+                        if (!empty($tParsed['dailyNotes'])) $content['dailyNotes'] = $tParsed['dailyNotes'];
+                        if (!empty($tParsed['personalityResults'])) $content['personalityResults'] = $tParsed['personalityResults'];
+                    }
+                }
+
+                if (file_exists($modularDataDir . DIRECTORY_SEPARATOR . 'messages.json')) {
+                    $mRaw = @file_get_contents($modularDataDir . DIRECTORY_SEPARATOR . 'messages.json');
+                    $mParsed = $mRaw ? @json_decode($mRaw, true) : null;
+                    if (is_array($mParsed)) {
+                        $content['messages'] = $mParsed['messages'] ?? [];
+                        $content['project_messages'] = $mParsed['project_messages'] ?? [];
+                        $content['focus_rooms'] = $mParsed['focus_rooms'] ?? [];
+                    }
+                }
+
+                if (file_exists($modularDataDir . DIRECTORY_SEPARATOR . 'notifications.json')) {
+                    $nRaw = @file_get_contents($modularDataDir . DIRECTORY_SEPARATOR . 'notifications.json');
+                    $nParsed = $nRaw ? @json_decode($nRaw, true) : null;
+                    if (is_array($nParsed)) {
+                        $content['notifications'] = $nParsed['notifications'] ?? [];
+                        $content['payments'] = $nParsed['payments'] ?? [];
+                    }
+                }
+
+                if (file_exists($modularDataDir . DIRECTORY_SEPARATOR . 'settings.json')) {
+                    $sRaw = @file_get_contents($modularDataDir . DIRECTORY_SEPARATOR . 'settings.json');
+                    $sParsed = $sRaw ? @json_decode($sRaw, true) : null;
+                    if (is_array($sParsed)) {
+                        if (!empty($sParsed['globalSettings'])) $content['globalSettings'] = $sParsed['globalSettings'];
+                        if (!empty($sParsed['custom_fonts'])) $content['custom_fonts'] = $sParsed['custom_fonts'];
+                    }
+                }
+
+                $foundPath = $modularDataDir . DIRECTORY_SEPARATOR . 'users.json';
+            }
+        }
+
+        if (!$content) {
+            foreach ($candidatePaths as $p) {
+                if (file_exists($p) && filesize($p) > 10) {
+                    $raw = @file_get_contents($p);
+                    if (!empty($raw)) {
+                        $parsed = @json_decode($raw, true);
+                        if (is_array($parsed) && isset($parsed['users'])) {
+                            $content = $parsed;
+                            $foundPath = $p;
+                            break;
+                        }
                     }
                 }
             }
@@ -175,8 +234,70 @@ class TaskRoozDB {
         }
     }
 
+    public function saveUsers() {
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        $payload = [
+            'users' => $this->data['users'] ?? [],
+            'friendships' => $this->data['friendships'] ?? [],
+            'friend_requests' => $this->data['friend_requests'] ?? [],
+        ];
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'users.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    }
+
+    public function saveTasks() {
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        $payload = [
+            'tasks' => $this->data['tasks'] ?? [],
+            'categories' => $this->data['categories'] ?? [],
+            'projects' => $this->data['projects'] ?? [],
+            'goals' => $this->data['goals'] ?? [],
+            'dailyNotes' => $this->data['dailyNotes'] ?? [],
+            'personalityResults' => $this->data['personalityResults'] ?? [],
+        ];
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'tasks.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    }
+
+    public function saveMessages() {
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        $payload = [
+            'messages' => $this->data['messages'] ?? [],
+            'project_messages' => $this->data['project_messages'] ?? [],
+            'focus_rooms' => $this->data['focus_rooms'] ?? [],
+        ];
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'messages.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    }
+
+    public function saveNotifications() {
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        $payload = [
+            'notifications' => $this->data['notifications'] ?? [],
+            'payments' => $this->data['payments'] ?? [],
+        ];
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'notifications.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    }
+
+    public function saveSettings() {
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        $payload = [
+            'globalSettings' => $this->data['globalSettings'] ?? [],
+            'custom_fonts' => $this->data['custom_fonts'] ?? [],
+        ];
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'settings.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    }
+
     public function saveJson() {
         if (!is_array($this->data)) return;
+        $this->saveUsers();
+        $this->saveTasks();
+        $this->saveMessages();
+        $this->saveNotifications();
+        $this->saveSettings();
+
         $encoded = json_encode($this->data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         if (!$encoded) return;
 

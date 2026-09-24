@@ -52,6 +52,14 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
 
     $globalSettings = $db->getGlobalSettings();
     $isDemoMode = ($globalSettings['appOperatingMode'] ?? '') === 'community_demo';
+    $baleConfig = $globalSettings['baleBot'] ?? [];
+    $baleEnabled = !empty($baleConfig['enabled']) && !empty($baleConfig['verifyOnRegister']);
+    $verificationCode = strval(rand(100000, 999999));
+    $botUsername = trim($baleConfig['botUsername'] ?? 'BagTime_Bot');
+
+    $userStatus = $isDemoMode
+        ? 'pending_approval'
+        : ($baleEnabled ? 'pending_verification' : 'active');
 
     $extra = [
         'phone' => trim($input['phone'] ?? ''),
@@ -62,8 +70,10 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
         'jobTitle' => trim($input['jobTitle'] ?? $input['job_title'] ?? ''),
         'skills' => is_array($input['skills'] ?? null) ? $input['skills'] : [],
         'dailyTimeline' => is_array($input['dailyTimeline'] ?? null) ? $input['dailyTimeline'] : [],
-        'status' => $isDemoMode ? 'pending_approval' : 'active',
+        'status' => $userStatus,
         'isDemo' => $isDemoMode,
+        'isVerified' => !$baleEnabled,
+        'verificationCode' => $verificationCode,
     ];
 
     $created = $db->createUser($username, $password, $name, 'user', $extra);
@@ -74,18 +84,26 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
 
     $successMsg = $isDemoMode
         ? 'ثبت‌نام شما با موفقیت انجام شد. حساب کاربری شما در نسخه دموی کامیونیتی، پس از فعال‌سازی دستی مدیر تایید می‌گردد.'
-        : 'حساب کاربری شما با موفقیت در سامانه ایجاد شد.';
+        : ($baleEnabled
+            ? 'کد فعال‌سازی ایجاد شد. لطفاً جهت تأیید شماره، به ربات بله مراجعه فرمایید.'
+            : 'حساب کاربری شما با موفقیت در سامانه ایجاد شد.');
 
     jsonResponse([
         'message' => $successMsg,
+        'requiresVerification' => $baleEnabled,
+        'verificationCode' => $verificationCode,
+        'baleBotUsername' => $botUsername,
+        'baleBotLink' => 'https://ble.ir/' . ltrim($botUsername, '@') . '?start=verify_' . $verificationCode,
         'user' => [
             'id' => $created['id'],
             'numericId' => $created['numericId'] ?? 1000,
             'username' => $created['username'],
             'name' => $created['name'],
             'role' => $created['role'],
-            'status' => $created['status'] ?? 'active',
+            'status' => $created['status'] ?? $userStatus,
             'isDemo' => !empty($created['isDemo']),
+            'isVerified' => !empty($created['isVerified']),
+            'verificationCode' => $created['verificationCode'] ?? $verificationCode,
             'phone' => $created['phone'] ?? '',
             'email' => $created['email'] ?? '',
             'province' => $created['province'] ?? '',
@@ -98,6 +116,42 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
         ],
         'token' => $token
     ], 201);
+}
+
+// CHECK BALE VERIFICATION STATUS
+if ($action === 'check_verification') {
+    $userId = $_GET['userId'] ?? $_POST['userId'] ?? '';
+    $u = $db->getUserById($userId);
+    if (!$u) $u = $db->getUserByUsername($userId);
+    if ($u && (!empty($u['isVerified']) || ($u['status'] ?? '') === 'active')) {
+        $_SESSION['user_id'] = $u['id'];
+        $token = base64_encode($u['id'] . ':' . time());
+        unset($u['password_hash']);
+        unset($u['password']);
+        jsonResponse(['verified' => true, 'user' => $u, 'token' => $token]);
+    }
+    jsonResponse(['verified' => false]);
+}
+
+// MANUAL / FALLBACK VERIFY
+if ($action === 'manual_verify') {
+    $userId = $_GET['userId'] ?? $_POST['userId'] ?? '';
+    $allUsers = $db->getAllUsers();
+    $found = false;
+    foreach ($db->data['users'] as &$u) {
+        if ($u['id'] === $userId || strtolower($u['username']) === strtolower($userId)) {
+            $u['isVerified'] = true;
+            $u['status'] = 'active';
+            $found = true;
+            $db->saveJson();
+            $_SESSION['user_id'] = $u['id'];
+            $token = base64_encode($u['id'] . ':' . time());
+            unset($u['password_hash']);
+            unset($u['password']);
+            jsonResponse(['verified' => true, 'user' => $u, 'token' => $token]);
+        }
+    }
+    jsonResponse(['error' => 'کاربر یافت نشد.'], 404);
 }
 
 // LOGIN ACCOUNT

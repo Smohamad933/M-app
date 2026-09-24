@@ -42,6 +42,10 @@ export interface User {
   subscription?: UserSubscription;
   deviceSessions?: UserDeviceSession[];
   isProfileCompleted?: boolean;
+  baleChatId?: string | number;
+  baleUsername?: string;
+  verificationCode?: string;
+  isVerified?: boolean;
   createdAt: string;
   totalTasks?: number;
   completedTasks?: number;
@@ -339,4 +343,13 @@ export interface GlobalSystemSettings {
     supportContact?: string;
   };
   focusPlaylist?: any[];
+  /** Bale Messenger Bot Integration (docs.bale.ai) */
+  baleBot?: {
+    enabled: boolean;
+    token: string;
+    botUsername: string;
+    verifyOnRegister: boolean;
+    sendNotifications: boolean;
+    allowTaskCreation: boolean;
+  };
 }

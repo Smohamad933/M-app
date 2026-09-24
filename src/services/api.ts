@@ -67,6 +67,14 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
     'وکالت و امور حقوقی',
     'سایر / فریلنسر آزاد',
   ],
+  baleBot: {
+    enabled: false,
+    token: '',
+    botUsername: 'BagTime_Bot',
+    verifyOnRegister: true,
+    sendNotifications: true,
+    allowTaskCreation: true,
+  },
 };
 
 // Real-time synchronization channel for cross-tab and cross-window coordination
@@ -411,7 +419,35 @@ export const api = {
         localStorage.setItem('taskrooz_registered_users', JSON.stringify(list));
       }
     } catch {}
-    return res;
+    return res as any;
+  },
+
+  async checkVerification(userId: string): Promise<{ verified: boolean; user?: User; token?: string }> {
+    try {
+      return await request<{ verified: boolean; user?: User; token?: string }>(
+        `api/auth.php?action=check_verification&userId=${encodeURIComponent(userId)}`
+      );
+    } catch {
+      return { verified: false };
+    }
+  },
+
+  async manualVerify(userId: string): Promise<{ verified: boolean; user?: User; token?: string }> {
+    return await request<{ verified: boolean; user?: User; token?: string }>(
+      `api/auth.php?action=manual_verify&userId=${encodeURIComponent(userId)}`,
+      { method: 'POST' }
+    );
+  },
+
+  async testBaleToken(token?: string): Promise<{ ok: boolean; status: string; message: string; bot?: any }> {
+    return await request<{ ok: boolean; status: string; message: string; bot?: any }>(
+      'api/bale.php?action=test',
+      { method: 'POST', body: JSON.stringify({ token }) }
+    );
+  },
+
+  async setBaleWebhook(): Promise<{ ok: boolean; webhookUrl: string }> {
+    return await request<{ ok: boolean; webhookUrl: string }>('api/bale.php?action=set_webhook', { method: 'POST' });
   },
 
   // Auth: Login (Verified against Central Server with IIS 405 Resilience)

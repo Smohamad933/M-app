@@ -1,6 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import { TaskMasterHexagon } from './TaskMasterLogo';
+import { api } from '../services/api';
+import { toPersianDigits } from '../utils/persianDate';
+import { sounds } from '../utils/sound';
 import type { AppDeveloper } from '../types';
 import {
   Lock,
@@ -13,18 +16,82 @@ import {
   Mail,
   Check,
   X,
+  Bot,
+  Copy,
+  ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
-  const { login, register, globalSettings, getText } = useTask();
+  const { login, register, completeBaleVerification, globalSettings, getText } = useTask();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [selectedDevForModal, setSelectedDevForModal] = useState<AppDeveloper | null>(null);
+
+  // Bale Verification Modal State
+  const [baleVerificationData, setBaleVerificationData] = useState<{
+    userId: string;
+    username: string;
+    phone: string;
+    verificationCode: string;
+    baleBotUsername: string;
+    baleBotLink: string;
+  } | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [isVerifyingManual, setIsVerifyingManual] = useState(false);
 
   // App branding (custom logo & appName)
   const appBranding = globalSettings?.appBranding;
   const appName = (appBranding?.appName || '').trim() || 'بگ تایم';
   const appLogo = typeof appBranding?.logoDataUrl === 'string' ? appBranding.logoDataUrl : null;
+
+  // Real-time verification polling while verification modal is open
+  useEffect(() => {
+    if (!baleVerificationData?.userId) return;
+
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      try {
+        const check = await api.checkVerification(baleVerificationData.userId);
+        if (check.verified && check.user && isMounted) {
+          sounds.playComplete();
+          completeBaleVerification(check.user);
+          setBaleVerificationData(null);
+        }
+      } catch {}
+    }, 2500);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [baleVerificationData?.userId]);
+
+  const handleManualVerify = async () => {
+    if (!baleVerificationData?.userId) return;
+    setIsVerifyingManual(true);
+    sounds.playPop();
+    try {
+      const res = await api.manualVerify(baleVerificationData.userId);
+      if (res.verified && res.user) {
+        sounds.playComplete();
+        completeBaleVerification(res.user);
+        setBaleVerificationData(null);
+      }
+    } catch (e: any) {
+      alert(e.message || 'خطا در تأیید حساب');
+    } finally {
+      setIsVerifyingManual(false);
+    }
+  };
+
+  const handleCopyCode = () => {
+    if (!baleVerificationData?.verificationCode) return;
+    navigator.clipboard.writeText(baleVerificationData.verificationCode);
+    setCopiedCode(true);
+    sounds.playPop();
+    setTimeout(() => setCopiedCode(false), 2500);
+  };
 
   // App developers configured by admin
   const appDevelopers = useMemo(() => {
@@ -100,13 +167,25 @@ export const LoginScreen: React.FC = () => {
           return;
         }
 
-        await register({
+        const regRes = await register({
           name: name.trim(),
           username: username.trim().toLowerCase(),
           password: password.trim(),
           phone: cleanPhone,
           email: email.trim(),
         });
+
+        if (regRes?.requiresVerification) {
+          setBaleVerificationData({
+            userId: regRes.user.id,
+            username: regRes.user.username,
+            phone: cleanPhone,
+            verificationCode: regRes.verificationCode,
+            baleBotUsername: regRes.baleBotUsername || 'BagTime_Bot',
+            baleBotLink: regRes.baleBotLink || `https://ble.ir/BagTime_Bot?start=verify_${regRes.verificationCode}`,
+          });
+          return;
+        }
       }
     } catch (err: any) {
       setError(err.message || (mode === "login" ? "نام کاربری یا رمز عبور اشتباه است." : "خطا در ایجاد حساب کاربری."));
@@ -469,6 +548,94 @@ export const LoginScreen: React.FC = () => {
             >
               بستن
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* BALE BOT VERIFICATION MODAL */}
+      {baleVerificationData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in"
+          dir="rtl"
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200/90 space-y-5 animate-in zoom-in-95 text-center relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setBaleVerificationData(null)}
+              className="absolute top-4 left-4 p-2 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Icon & Title */}
+            <div className="w-16 h-16 mx-auto rounded-3xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-sm">
+              <Bot className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-base sm:text-lg font-black text-slate-900">
+                تأیید هویت شماره با ربات بله
+              </h3>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-xs mx-auto">
+                کد فعال‌سازی اختصاصی شما صادر شد. جهت تأیید و ورود به برنامه، کافیست به ربات بله مراجعه کرده و کد زیر را ارسال فرمایید:
+              </p>
+            </div>
+
+            {/* Bot ID Box */}
+            <div className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-100 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-bold">شناسه ربات رسمی:</span>
+              <span className="font-mono font-black text-blue-700 dir-ltr">
+                @{baleVerificationData.baleBotUsername.replace(/^@/, '')}
+              </span>
+            </div>
+
+            {/* Verification Code Box */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="text-[11px] font-bold text-slate-400">کد تأیید ۶ رقمی شما:</div>
+              <div className="text-3xl font-black font-mono tracking-widest text-slate-900 select-all py-1">
+                {toPersianDigits(baleVerificationData.verificationCode)}
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>{copiedCode ? 'کد کپی شد!' : 'کپی کردن کد'}</span>
+              </button>
+            </div>
+
+            {/* Live Polling Status */}
+            <div className="flex items-center justify-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 py-2 rounded-xl">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              <span>در انتظار تأیید خودکار توسط ربات بله...</span>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-2 pt-1">
+              <a
+                href={baleVerificationData.baleBotLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs sm:text-sm font-black shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>باز کردن ربات در بله و تأیید فوری 🚀</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={handleManualVerify}
+                disabled={isVerifyingManual}
+                className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition-colors cursor-pointer"
+                title="در صورت عدم دسترسی به بله یا کارکرد آفلاین"
+              >
+                {isVerifyingManual ? 'در حال فعال‌سازی...' : 'تأیید مستقیم (حالت آزمایشی / آفلاین)'}
+              </button>
+            </div>
           </div>
         </div>
       )}

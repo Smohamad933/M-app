@@ -17,6 +17,10 @@ import {
   CheckCircle2,
   Clock,
   UserPlus,
+  ArrowRight,
+  X,
+  ChevronDown,
+  LogOut,
 } from 'lucide-react';
 
 interface MessagesViewProps {
@@ -37,6 +41,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [approvingMsgId, setApprovingMsgId] = useState<string | null>(null);
+  const [isContactPickerOpen, setIsContactPickerOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -278,27 +283,55 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
           </div>
         </div>
 
-        {activePartner && (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (onOpenPublicProfile) onOpenPublicProfile(activePartner);
-                else setViewingPublicUser(activePartner);
-              }}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>پروفایل همکار</span>
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {activePartner && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setActivePartner(null);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer md:hidden"
+              >
+                <ArrowRight className="w-3.5 h-3.5 text-slate-600" />
+                <span>لیست مخاطبین</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenPublicProfile) onOpenPublicProfile(activePartner);
+                  else setViewingPublicUser(activePartner);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>پروفایل همکار</span>
+              </button>
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('tasks')}
+            className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+            title="خروج از صفحه پیام‌ها و بازگشت به داشبورد"
+          >
+            <LogOut className="w-3.5 h-3.5 text-rose-600" />
+            <span>خروج از پیام‌ها</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Messaging Container */}
       <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100vh-175px)] min-h-[500px]">
         {/* Right Pane: Conversations & Colleagues List (4 cols) */}
-        <div className="md:col-span-4 border-l border-slate-200 dark:border-zinc-800 flex flex-col h-full bg-slate-50/50 dark:bg-zinc-950/40">
+        <div
+          className={`${
+            activePartner ? 'hidden md:flex' : 'flex'
+          } md:col-span-4 border-l border-slate-200 dark:border-zinc-800 flex-col h-full bg-slate-50/50 dark:bg-zinc-950/40`}
+        >
           {/* Search Bar */}
           <div className="p-3.5 border-b border-slate-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900">
             <div className="relative">
@@ -395,35 +428,104 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
         </div>
 
         {/* Left Pane: Active Conversation Thread & Input (8 cols) */}
-        <div className="md:col-span-8 flex flex-col h-full bg-white dark:bg-zinc-900">
+        <div
+          className={`${
+            activePartner ? 'flex' : 'hidden md:flex'
+          } md:col-span-8 flex-col h-full bg-white dark:bg-zinc-900 relative`}
+        >
           {activePartner ? (
             <>
               {/* Active Partner Top Bar */}
-              <div className="p-3.5 px-5 border-b border-slate-200/90 dark:border-zinc-800 flex items-center justify-between gap-3 bg-slate-50/70 dark:bg-zinc-950/40">
-                <div className="flex items-center gap-3">
-                  <UserAvatar user={activePartner} size="sm" className="w-9 h-9" />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-slate-900 dark:text-white">
+              <div className="p-3.5 px-4 sm:px-5 border-b border-slate-200/90 dark:border-zinc-800 flex items-center justify-between gap-2.5 bg-slate-50/70 dark:bg-zinc-950/40">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  {/* Back to Contacts List button (Fixes being stuck in chat) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      setActivePartner(null);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-200/80 text-slate-700 text-xs font-bold border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    title="بازگشت به لیست مخاطبین و انتخاب همکار دیگر"
+                  >
+                    <ArrowRight className="w-4 h-4 text-slate-700" />
+                    <span>مخاطبین</span>
+                  </button>
+
+                  <UserAvatar user={activePartner} size="sm" className="w-9 h-9 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-slate-900 dark:text-white truncate">
                         {activePartner.name}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-[10px] text-slate-400 font-mono truncate hidden sm:inline">
                         @{activePartner.username}
                       </span>
                     </div>
                     {activePartner.jobTitle && (
-                      <span className="text-[10px] text-slate-500 dark:text-zinc-400">
+                      <span className="text-[10px] text-slate-500 dark:text-zinc-400 truncate block">
                         {activePartner.jobTitle}
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    آنلاین در سیستم
-                  </span>
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                  {/* Quick Contact Switcher Dropdown */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsContactPickerOpen((p) => !p)}
+                      className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="تغییر سریع مخاطب گفتگو"
+                    >
+                      <Users className="w-3.5 h-3.5 text-indigo-600" />
+                      <span className="hidden md:inline">تغییر مخاطب</span>
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                    </button>
+
+                    {isContactPickerOpen && (
+                      <div className="absolute left-0 top-full mt-1.5 w-64 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-xl z-50 p-2 space-y-1 max-h-72 overflow-y-auto">
+                        <div className="text-[10px] font-bold text-slate-400 px-2 py-1">
+                          انتخاب مخاطب برای گفتگو:
+                        </div>
+                        {allowedPartners.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => {
+                              sounds.playPop();
+                              setActivePartner(u);
+                              setIsContactPickerOpen(false);
+                            }}
+                            className={`w-full p-2 rounded-xl flex items-center gap-2 text-right transition-colors cursor-pointer ${
+                              u.id === activePartner.id
+                                ? 'bg-indigo-50 text-indigo-900 font-bold'
+                                : 'hover:bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            <UserAvatar user={u} size="xs" className="w-7 h-7 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs truncate font-bold">{u.name}</div>
+                              <div className="text-[10px] text-slate-400 truncate">@{u.username}</div>
+                            </div>
+                            {u.id === activePartner.id && <Check className="w-3.5 h-3.5 text-indigo-600" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Exit Chat Button */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('tasks')}
+                    className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                    title="خروج از بخش چت و بازگشت به داشبورد"
+                  >
+                    <X className="w-4 h-4 text-rose-600" />
+                    <span className="hidden sm:inline">خروج</span>
+                  </button>
                 </div>
               </div>
 
@@ -599,15 +701,33 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
               </form>
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-3">
-              <MessageSquare className="w-12 h-12 text-slate-300 dark:text-zinc-600" />
-              <div className="space-y-1">
+            <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-4">
+              <div className="w-16 h-16 rounded-3xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400">
+                <MessageSquare className="w-8 h-8" />
+              </div>
+              <div className="space-y-1.5 max-w-sm">
                 <h4 className="text-sm font-black text-slate-800 dark:text-zinc-200">
                   هیچ گفتگویی انتخاب نشده است
                 </h4>
-                <p className="text-xs text-slate-400 max-w-sm">
-                  از ستون سمت راست یکی از همکاران را انتخاب کنید تا تاریخچه پیام‌ها نمایش داده شود.
+                <p className="text-xs text-slate-400">
+                  از ستون سمت راست یکی از همکاران را انتخاب کنید تا تاریخچه پیام‌ها نمایش داده شود، یا از طریق دکمه‌های زیر بخش مورد نظرتان را باز کنید.
                 </p>
+              </div>
+              <div className="flex items-center gap-2 pt-2 flex-wrap justify-center">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('tasks')}
+                  className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-black transition-colors cursor-pointer"
+                >
+                  بازگشت به داشبورد و وظایف
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('friends')}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition-colors cursor-pointer"
+                >
+                  لیست همکاران و دوستان
+                </button>
               </div>
             </div>
           )}
