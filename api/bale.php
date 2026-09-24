@@ -38,7 +38,7 @@ function cleanBaleToken($t) {
 }
 
 /**
- * Send HTTP request to Bale Bot API
+ * Send HTTP request to Bale Bot API (with cURL & file_get_contents fallback)
  */
 function callBaleApi($token, $method, $params = []) {
     $tokenClean = cleanBaleToken($token);
@@ -47,31 +47,58 @@ function callBaleApi($token, $method, $params = []) {
     }
 
     $url = 'https://tapi.bale.ai/bot' . $tokenClean . '/' . $method;
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    if (!empty($params)) {
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params, JSON_UNESCAPED_UNICODE));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json; charset=utf-8']);
-    } else {
-        curl_setopt($ch, CURLOPT_HTTPGET, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
-    }
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; BagTimeBot/1.0)');
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErr = curl_error($ch);
-    curl_close($ch);
 
-    if (!$response) {
-        return ['ok' => false, 'error' => 'خطای اتصال به سرورهای بله: ' . ($curlErr ?: 'Timeout'), 'httpCode' => $httpCode];
+    if (function_exists('curl_init')) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        if (!empty($params)) {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params, JSON_UNESCAPED_UNICODE));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json; charset=utf-8']);
+        } else {
+            curl_setopt($ch, CURLOPT_HTTPGET, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
+        }
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; BagTimeBot/1.0)');
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr = curl_error($ch);
+        curl_close($ch);
+
+        if ($response !== false && $response !== '') {
+            $decoded = json_decode($response, true);
+            return is_array($decoded) ? $decoded : ['ok' => false, 'raw' => $response, 'httpCode' => $httpCode];
+        }
     }
-    $decoded = json_decode($response, true);
-    return is_array($decoded) ? $decoded : ['ok' => false, 'raw' => $response, 'httpCode' => $httpCode];
+
+    // Fallback: file_get_contents with stream context
+    $opts = [
+        'http' => [
+            'method' => !empty($params) ? 'POST' : 'GET',
+            'header' => "Content-Type: application/json; charset=utf-8\r\nAccept: application/json\r\nUser-Agent: BagTimeBot/1.0\r\n",
+            'timeout' => 15,
+            'ignore_errors' => true,
+        ],
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+        ]
+    ];
+    if (!empty($params)) {
+        $opts['http']['content'] = json_encode($params, JSON_UNESCAPED_UNICODE);
+    }
+    $context = stream_context_create($opts);
+    $response = @file_get_contents($url, false, $context);
+    if ($response !== false && $response !== '') {
+        $decoded = json_decode($response, true);
+        return is_array($decoded) ? $decoded : ['ok' => false, 'raw' => $response];
+    }
+
+    return ['ok' => false, 'error' => 'ارتباط با سرور بله برقرار نشد. لطفاً اتصال اینترنت سرور یا وضعیت توکن را بررسی فرمایید.'];
 }
 
 /**
@@ -149,6 +176,45 @@ function getMainMenuKeyboard() {
             ],
         ],
     ];
+}
+
+/**
+ * Dispatch notification to a user via Bale Bot
+ */
+function sendBaleNotificationToUser($userId, $title, $message) {
+    $dbObj = TaskRoozDB::getInstance();
+    $baleConfig = $dbObj->data['globalSettings']['baleBot'] ?? [];
+    $botToken = cleanBaleToken($baleConfig['token'] ?? '');
+    if (empty($botToken)) {
+        return ['ok' => false, 'error' => 'توکن بازوی بله در سیستم تنظیم نشده است.'];
+    }
+
+    $targetUser = null;
+    foreach ($dbObj->data['users'] as $u) {
+        if ($u['id'] === $userId || strtolower($u['username'] ?? '') === strtolower($userId)) {
+            $targetUser = $u;
+            break;
+        }
+    }
+
+    if (!$targetUser) {
+        return ['ok' => false, 'error' => 'کاربر مورد نظر یافت نشد.'];
+    }
+
+    if (empty($targetUser['baleChatId'])) {
+        return ['ok' => false, 'error' => 'شناسه چت بله برای این کاربر متصل نشده است.'];
+    }
+
+    // Check if user has explicitly disabled Bale notifications
+    if (isset($targetUser['baleNotificationsEnabled']) && $targetUser['baleNotificationsEnabled'] === false) {
+        return ['ok' => false, 'error' => 'دریافت اعلان‌های بله توسط این کاربر غیرفعال شده است.'];
+    }
+
+    $cleanTitle = trim($title);
+    $cleanBody = trim($message);
+    $text = "🔔 **{$cleanTitle}**\n\n{$cleanBody}\n\n⏱️ _ارسال شده از سامانه بگ تایم_";
+
+    return sendBaleMessage($botToken, $targetUser['baleChatId'], $text);
 }
 
 // -----------------------------------------------------------------------------
@@ -503,6 +569,9 @@ if ($action === 'webhook') {
                 $matchedUser['baleChatId'] = $chatId;
                 $matchedUser['balePhoneNumber'] = $contact['phone_number'];
                 $matchedUser['baleUsername'] = $fromUser['username'] ?? ($matchedUser['baleUsername'] ?? '');
+                // AUTOMATICALLY ENABLE BALE NOTIFICATIONS UPON PHONE VERIFICATION
+                $matchedUser['baleNotificationsEnabled'] = true;
+                $matchedUser['baleNotificationActive'] = true;
                 
                 unset($dbObj->data['bale_pending_verifications'][$chatId]);
                 $dbObj->saveJson();
@@ -510,8 +579,11 @@ if ($action === 'webhook') {
                 // Send success message with glass/inline buttons and remove reply keyboard
                 $successMsg = "🎉 **احراز هویت و تأیید شماره با موفقیت کامل انجام شد!** ✅\n\n" .
                     "👤 کاربر گرامی: **{$matchedUser['name']}**\n" .
-                    "📱 شماره تأیید شده: `{$sharedPhoneNorm}`\n\n" .
-                    "حساب کاربری شما در سامانه «بگ تایم» فعال گردید و هم‌اکنون می‌توانید وارد برنامه شوید.";
+                    "📱 شماره تأیید شده: `{$sharedPhoneNorm}`\n" .
+                    "🆔 شناسه چت بله: `{$chatId}`\n\n" .
+                    "🔔 **اعلان‌های هوشمند بگ تایم در بله به صورت خودکار برای شما فعال گردید.**\n\n" .
+                    "از این پس کلیه هشدارهای وظایف روزانه، تایم‌لاین ساعتی و پیام‌های تیمی در همین چت برای شما ارسال خواهند شد.\n" .
+                    "حساب کاربری شما فعال گردید و هم‌اکنون می‌توانید وارد برنامه شوید.";
 
                 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
                 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
@@ -786,27 +858,94 @@ if ($action === 'webhook') {
 // 4. Send outbound notification to user via Bale
 // -----------------------------------------------------------------------------
 if ($action === 'notify') {
+    $dbObj->loadJson();
     $userId = $input['userId'] ?? ($_POST['userId'] ?? ($_GET['userId'] ?? ''));
-    $text = trim($input['text'] ?? ($_POST['text'] ?? ($_GET['text'] ?? '')));
+    $title = trim($input['title'] ?? ($_POST['title'] ?? 'اعلان سامانه بگ تایم ⏱️'));
+    $bodyText = trim($input['text'] ?? ($input['message'] ?? ($_POST['text'] ?? ($_POST['message'] ?? ($_GET['text'] ?? '')))));
+    $chatIdInput = $input['chatId'] ?? ($_POST['chatId'] ?? ($_GET['chatId'] ?? null));
+    $customToken = cleanBaleToken($input['token'] ?? ($_POST['token'] ?? ''));
 
-    if (empty($botToken) || empty($baleConfig['sendNotifications'])) {
-        jsonResponse(['error' => 'ارسال نوتیفیکیشن بله فعال نیست.'], 400);
+    $tokenToUse = !empty($customToken) ? $customToken : $botToken;
+    if (empty($tokenToUse)) {
+        $savedConf = $dbObj->data['globalSettings']['baleBot'] ?? [];
+        $tokenToUse = cleanBaleToken($savedConf['token'] ?? '');
+    }
+
+    if (empty($tokenToUse)) {
+        jsonResponse(['ok' => false, 'error' => 'توکن ربات بله هنوز تنظیم نشده است. ابتدا در تنظیمات پنل مدیریت، توکن را ذخیره کنید.'], 400);
+    }
+
+    if (empty($bodyText)) {
+        $bodyText = 'این یک پیام آزمایشی جهت بررسی اتصال و دریافت اعلان‌ها در پیام‌رسان بله است.';
+    }
+
+    $formattedText = !empty($title) ? "🔔 **{$title}**\n\n{$bodyText}\n\n⏱️ _ارسال شده از سامانه بگ تایم_" : "{$bodyText}\n\n⏱️ _ارسال شده از سامانه بگ تایم_";
+
+    // Direct send by chatId if provided
+    if (!empty($chatIdInput)) {
+        $res = sendBaleMessage($tokenToUse, $chatIdInput, $formattedText);
+        if (!empty($res['ok'])) {
+            jsonResponse([
+                'ok' => true,
+                'message' => 'نوتیفیکیشن با موفقیت به شناسه چت بله ارسال شد.',
+                'chatId' => $chatIdInput,
+                'baleResponse' => $res,
+            ]);
+        } else {
+            $err = $res['description'] ?? ($res['error'] ?? 'خطا در ارتباط با سرور بله');
+            jsonResponse([
+                'ok' => false,
+                'error' => "سرور بله پیام را نپذیرفت: {$err}",
+                'baleResponse' => $res,
+            ], 400);
+        }
+    }
+
+    // Otherwise find user by id/username or current authenticated user
+    if (empty($userId)) {
+        $cur = getCurrentUser();
+        if ($cur) $userId = $cur['id'];
+    }
+
+    if (empty($userId)) {
+        jsonResponse(['ok' => false, 'error' => 'شناسه کاربر یا شناسه چت جهت ارسال اعلان الزامی است.'], 400);
     }
 
     $targetUser = null;
     foreach ($dbObj->data['users'] as $u) {
-        if ($u['id'] === $userId || ($u['username'] ?? '') === $userId) {
+        if ($u['id'] === $userId || strtolower($u['username'] ?? '') === strtolower($userId)) {
             $targetUser = $u;
             break;
         }
     }
 
-    if (!$targetUser || empty($targetUser['baleChatId'])) {
-        jsonResponse(['error' => 'شناسه چت بله برای این کاربر ثبت نشده است.'], 404);
+    if (!$targetUser) {
+        jsonResponse(['ok' => false, 'error' => 'کاربر مورد نظر در سامانه یافت نشد.'], 404);
     }
 
-    $res = sendBaleMessage($botToken, $targetUser['baleChatId'], $text);
-    jsonResponse(['ok' => !empty($res['ok']), 'baleResponse' => $res]);
+    if (empty($targetUser['baleChatId'])) {
+        jsonResponse([
+            'ok' => false,
+            'error' => "شناسه چت بله برای کاربر «{$targetUser['name']}» یافت نشد. لطفاً ابتدا حساب بله را متصل کنید (با ارسال کد یا توکن به بات).",
+        ], 400);
+    }
+
+    $res = sendBaleMessage($tokenToUse, $targetUser['baleChatId'], $formattedText);
+    if (!empty($res['ok'])) {
+        jsonResponse([
+            'ok' => true,
+            'message' => "اعلان با موفقیت به چت بله «{$targetUser['name']}» ارسال شد.",
+            'chatId' => $targetUser['baleChatId'],
+            'baleResponse' => $res,
+        ]);
+    } else {
+        $err = $res['description'] ?? ($res['error'] ?? 'خطای ناشناخته از سرور بله');
+        jsonResponse([
+            'ok' => false,
+            'error' => "سرور بله پیام را نپذیرفت: {$err}",
+            'baleResponse' => $res,
+        ], 400);
+    }
 }
 
 jsonResponse(['error' => 'اکشن نامعتبر است.'], 400);

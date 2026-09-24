@@ -43,6 +43,7 @@ import {
   ArrowDown,
   Edit2,
   Check,
+  Bell,
   Download,
   Copy,
   Package,
@@ -482,6 +483,36 @@ export const UserManagementView: React.FC = () => {
       }
     } catch (e: any) {
       alert(e.message || 'خطا در تنظیم وب‌هوک');
+    }
+  };
+
+  const [baleNotifTesting, setBaleNotifTesting] = useState(false);
+
+  const handleTestBaleNotificationAdmin = async () => {
+    const targetChat = prompt('شناسه عددی چت بله (Chat ID) جهت ارسال پیام آزمایشی را وارد کنید:');
+    if (!targetChat || !targetChat.trim()) return;
+
+    setBaleNotifTesting(true);
+    sounds.playPop();
+    try {
+      const res = await api.testBaleNotification({
+        chatId: targetChat.trim(),
+        token: baleForm.token.trim(),
+        title: 'تست اعلان مدیریت بگ تایم ⏱️',
+        message: 'این یک پیام آزمایشی ارسال شده مستقیم از پنل مدیریت سامانه بگ تایم است. سیستم اعلان‌ها به درستی متصل است و کار می‌کند! ✅',
+      });
+      if (res.ok) {
+        sounds.playComplete();
+        alert('✅ پیام آزمایشی با موفقیت به چت بله ارسال شد!\nشناسه چت: ' + targetChat);
+      } else {
+        sounds.playWarning();
+        alert('❌ خطا در ارسال پیام به بله:\n' + (res.error || 'پاسخ نامشخص'));
+      }
+    } catch (e: any) {
+      sounds.playWarning();
+      alert('❌ خطای ارتباطی:\n' + (e.message || 'خطا در ارسال'));
+    } finally {
+      setBaleNotifTesting(false);
     }
   };
 
@@ -3198,6 +3229,17 @@ export const UserManagementView: React.FC = () => {
               >
                 <Code2 className="w-4 h-4 text-cyan-400" />
                 <span>تنظیم خودکار وب‌هوک (setWebhook)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleTestBaleNotificationAdmin}
+                disabled={baleNotifTesting || !baleForm.token.trim()}
+                className="px-5 py-3 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 font-bold text-xs transition-colors cursor-pointer border border-purple-500/40 flex items-center gap-2 disabled:opacity-40"
+                title="تست ارسال آنی یک پیام آزمایشی به هر Chat ID در بله"
+              >
+                <Bell className={`w-4 h-4 ${baleNotifTesting ? 'animate-bounce text-purple-400' : 'text-purple-400'}`} />
+                <span>{baleNotifTesting ? 'در حال ارسال پیام...' : 'ارسال پیام تست نوتیفیکیشن'}</span>
               </button>
             </div>
           </div>

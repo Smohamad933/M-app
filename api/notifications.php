@@ -97,6 +97,42 @@ if ($method === 'POST') {
         $dbObj->saveJson();
         jsonResponse(['message' => 'تمام اعلان‌ها پاک شدند.']);
     }
+
+    // Test sending notification to Bale
+    if ($postAction === 'test_bale' || $postAction === 'send_bale') {
+        require_once __DIR__ . '/bale.php';
+        $title = trim($input['title'] ?? 'اعلان آزمایشی بگ تایم ⏱️');
+        $message = trim($input['message'] ?? 'این یک پیام آزمایشی جهت بررسی اتصال و دریافت اعلان‌ها در پیام‌رسان بله است.');
+
+        // Add to in-app notifications
+        $notifId = 'notif_test_' . time();
+        $dbObj->data['notifications'][] = [
+            'id' => $notifId,
+            'userId' => $myId,
+            'title' => $title,
+            'message' => $message,
+            'type' => 'info',
+            'timestamp' => date('Y-m-d H:i:s'),
+            'read' => false,
+        ];
+        $dbObj->saveJson();
+
+        $res = sendBaleNotificationToUser($myId, $title, $message);
+        if (!empty($res['ok'])) {
+            jsonResponse([
+                'ok' => true,
+                'message' => 'پیام آزمایشی با موفقیت به اکانت بله شما ارسال شد.',
+                'baleResponse' => $res,
+            ]);
+        } else {
+            $err = $res['error'] ?? 'خطا در ارسال پیام به بله';
+            jsonResponse([
+                'ok' => false,
+                'error' => $err,
+                'baleResponse' => $res,
+            ], 400);
+        }
+    }
 }
 
 jsonResponse(['error' => 'درخواست نامعتبر است.'], 400);

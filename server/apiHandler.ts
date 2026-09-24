@@ -43,6 +43,7 @@ interface DBUser {
   verificationCode?: string;
   isVerified?: boolean;
   baleChatId?: string | number;
+  balePhoneNumber?: string;
   baleUsername?: string;
   baleNotifToken?: string;
   baleNotificationsEnabled?: boolean;
@@ -3028,14 +3029,16 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       // Contact sharing verification (Step 2: mandatory phone matching)
       if (contact && contact.phone_number) {
         const sharedPhone = normalizePhone(contact.phone_number);
-        const pendingUser = db.users.find((u) => !u.isVerified && u.phone && normalizePhone(u.phone) === sharedPhone);
-        if (pendingUser) {
-          pendingUser.isVerified = true;
-          pendingUser.status = 'active';
-          pendingUser.baleChatId = chatId;
-          pendingUser.baleUsername = msg?.from?.username;
+        const matchedUser = db.users.find((u) => u.phone && normalizePhone(u.phone) === sharedPhone);
+        if (matchedUser) {
+          matchedUser.isVerified = true;
+          matchedUser.status = 'active';
+          matchedUser.baleChatId = chatId;
+          matchedUser.balePhoneNumber = contact.phone_number;
+          matchedUser.baleUsername = msg?.from?.username;
+          matchedUser.baleNotificationsEnabled = true;
           writeDb(db);
-          sendJson(res, { ok: true, verified: true, user: pendingUser.username });
+          sendJson(res, { ok: true, verified: true, user: matchedUser.username, baleNotificationsEnabled: true });
           return true;
         } else {
           sendJson(res, { ok: false, error: 'عدم تطابق شماره همراه' });
@@ -3103,6 +3106,51 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
       sendJson(res, { ok: true });
       return true;
+    }
+
+    if (action === 'notify') {
+      let body: any = {};
+      try { body = await parseJsonBody(req); } catch {}
+      const token = (body.token || baleConfig.token || '').trim();
+      const cleanToken = token.replace(/^(?:https?:\/\/tapi\.bale\.ai\/)?(?:bot)?/i, '').replace(/\/$/, '');
+      const chatId = body.chatId;
+      let targetUser = null;
+      if (body.userId) {
+        targetUser = db.users.find((u) => u.id === body.userId || u.username === body.userId);
+      }
+      const targetChatId = chatId || targetUser?.baleChatId;
+      const title = body.title || 'اعلان سامانه بگ تایم ⏱️';
+      const text = body.text || body.message || 'این یک اعلان آزمایشی جهت بررسی اتصال در پیام‌رسان بله است.';
+      const formatted = `🔔 **${title}**\n\n${text}\n\n⏱️ _ارسال شده از سامانه بگ تایم_`;
+
+      if (!targetChatId) {
+        sendJson(res, { ok: false, error: 'شناسه چت بله (Chat ID) یافت نشد. لطفاً ابتدا حساب بله را متصل کنید.' }, 400);
+        return true;
+      }
+
+      if (!cleanToken) {
+        sendJson(res, { ok: false, error: 'توکن ربات بله هنوز تنظیم نشده است. ابتدا در پنل مدیریت، توکن را ذخیره کنید.' }, 400);
+        return true;
+      }
+
+      try {
+        const resp = await fetch(`https://tapi.bale.ai/bot${cleanToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: targetChatId, text: formatted }),
+        });
+        const data: any = await resp.json();
+        if (data && data.ok) {
+          sendJson(res, { ok: true, message: 'اعلان با موفقیت به پیام‌رسان بله ارسال شد.', baleResponse: data, chatId: targetChatId });
+        } else {
+          const desc = data?.description || data?.error || 'سرور بله درخواست را نپذیرفت.';
+          sendJson(res, { ok: false, error: `پاسخ بله: ${desc}`, baleResponse: data }, 400);
+        }
+        return true;
+      } catch (e: any) {
+        sendJson(res, { ok: false, error: `خطای اتصال به بله: ${e.message}` }, 500);
+        return true;
+      }
     }
 
     sendJson(res, { error: 'اکشن نامعتبر است.' }, 400);

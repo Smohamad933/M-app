@@ -29,7 +29,10 @@ import {
   Copy,
   ExternalLink,
   CheckCircle2,
+  Bell,
+  AlertCircle,
 } from 'lucide-react';
+import { api } from '../services/api';
 
 interface ProfileModalProps {
   onClose: () => void;
@@ -134,7 +137,57 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isTestingNotif, setIsTestingNotif] = useState(false);
+  const [testNotifResult, setTestNotifResult] = useState<{ ok: boolean; message: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleTestBaleNotification = async () => {
+    setIsTestingNotif(true);
+    setTestNotifResult(null);
+    sounds.playPop();
+
+    const targetChat = baleChatId.trim() || currentUser?.baleChatId;
+    if (!targetChat) {
+      sounds.playWarning();
+      setTestNotifResult({
+        ok: false,
+        message: 'ابتدا حساب بله خود را متصل کنید (با ارسال کد تأیید، توکن به بات یا وارد کردن شناسه چت).',
+      });
+      setIsTestingNotif(false);
+      return;
+    }
+
+    try {
+      const res = await api.testBaleNotification({
+        userId: currentUser?.id,
+        chatId: targetChat,
+        title: 'تست موفق اتصال بگ تایم ⏱️',
+        message: `سلام ${name || currentUser?.name || 'کاربر گرامی'}! اتصال حساب شما با پیام‌رسان بله برقرار است و نوتیفیکیشن‌ها با موفقیت فعال هستند. ✅`,
+      });
+
+      if (res.ok) {
+        sounds.playComplete();
+        setTestNotifResult({
+          ok: true,
+          message: res.message || 'پیام آزمایشی با موفقیت به پیام‌رسان بله ارسال شد! چت بله خود را بررسی کنید.',
+        });
+      } else {
+        sounds.playWarning();
+        setTestNotifResult({
+          ok: false,
+          message: res.error || 'خطا در ارسال اعلان به بله',
+        });
+      }
+    } catch (err: any) {
+      sounds.playWarning();
+      setTestNotifResult({
+        ok: false,
+        message: err.message || 'خطا در برقراری ارتباط با سرور',
+      });
+    } finally {
+      setIsTestingNotif(false);
+    }
+  };
 
   const handleGenerateNotifToken = async () => {
     if (!currentUser) return;
@@ -507,22 +560,52 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 pt-1">
-              <label className="text-[11px] font-bold text-slate-600 min-w-max">
-                یا ثبت دستی شناسه چت بله (اختیاری):
-              </label>
-              <input
-                type="text"
-                value={baleChatId}
-                onChange={(e) => setBaleChatId(e.target.value)}
-                className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-800 font-mono text-xs outline-none focus:border-blue-500 text-left flex-1"
-                placeholder="مثلاً 123456789"
-                dir="ltr"
-              />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+              <div className="flex items-center gap-2 flex-1">
+                <label className="text-[11px] font-bold text-slate-600 min-w-max">
+                  شناسه چت بله (Chat ID):
+                </label>
+                <input
+                  type="text"
+                  value={baleChatId}
+                  onChange={(e) => setBaleChatId(e.target.value)}
+                  className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-800 font-mono text-xs outline-none focus:border-blue-500 text-left flex-1"
+                  placeholder="مثلاً 123456789"
+                  dir="ltr"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleTestBaleNotification}
+                disabled={isTestingNotif}
+                className="px-3 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+                title="تست ارسال اعلان آزمایشی به چت بله شما"
+              >
+                <Bell className={`w-3.5 h-3.5 ${isTestingNotif ? 'animate-bounce text-purple-600' : ''}`} />
+                <span>{isTestingNotif ? 'در حال ارسال تست...' : '🔔 تست ارسال اعلان به بله'}</span>
+              </button>
             </div>
 
+            {testNotifResult && (
+              <div
+                className={`p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200 ${
+                  testNotifResult.ok
+                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                    : 'bg-amber-50 border border-amber-200 text-amber-800'
+                }`}
+              >
+                {testNotifResult.ok ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                )}
+                <span className="flex-1">{testNotifResult.message}</span>
+              </div>
+            )}
+
             <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
-              💡 <b>نحوه فعال‌سازی:</b> توکن بالا را کپی کرده و در ربات بله، دکمه شیشه‌ای <b>«🔔 اتصال اعلان‌ها با توکن»</b> را لمس کنید و این کد را ارسال فرمایید تا اعلان‌های بگ تایم به حساب شما متصل شوند.
+              💡 <b>نحوه فعال‌سازی خودکار:</b> پس از احراز هویت با شماره تماس در ربات یا ارسال توکن اختصاصی، اعلان‌های هوشمند بگ تایم در بله به صورت کاملاً اتوماتیک برای شما فعال می‌شوند. با فشردن دکمه بالا می‌توانید ارسال اعلان را آزمایش کنید.
             </p>
           </div>
 

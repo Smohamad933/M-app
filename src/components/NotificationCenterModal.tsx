@@ -7,7 +7,11 @@ import {
   Users,
   Megaphone,
   X,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
+import { api } from '../services/api';
+import { sounds } from '../utils/sound';
 
 export interface AppNotification {
   id: string;
@@ -60,6 +64,33 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     } catch {}
     return DEFAULT_NOTIFICATIONS;
   });
+  const [testingBale, setTestingBale] = useState(false);
+  const [baleToast, setBaleToast] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const handleTestBale = async () => {
+    setTestingBale(true);
+    setBaleToast(null);
+    sounds.playPop();
+    try {
+      const res = await api.testBaleNotification({
+        title: 'تست مرکز اعلان‌های بگ تایم ⏱️',
+        message: 'این یک پیام آزمایشی از مرکز اعلان‌های اپلیکیشن بگ تایم است. نوتیفیکیشن‌های بله با موفقیت فعال هستند! ✅',
+      });
+      if (res.ok) {
+        sounds.playComplete();
+        setBaleToast({ ok: true, message: 'اعلان با موفقیت به بله شما ارسال شد!' });
+      } else {
+        sounds.playWarning();
+        setBaleToast({ ok: false, message: res.error || 'خطا در ارسال اعلان به بله' });
+      }
+    } catch (e: any) {
+      sounds.playWarning();
+      setBaleToast({ ok: false, message: e.message || 'خطای شبکه در اتصال به سرور' });
+    } finally {
+      setTestingBale(false);
+      setTimeout(() => setBaleToast(null), 4000);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -215,17 +246,47 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         </div>
 
         {/* Footer */}
-        {currentList.length > 0 && (
-          <div className="p-3 border-t border-slate-100 bg-slate-50/50 flex justify-center">
+        <div className="p-2.5 border-t border-slate-100 bg-slate-50/80 flex flex-col gap-2">
+          {baleToast && (
+            <div
+              className={`p-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in duration-200 ${
+                baleToast.ok
+                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                  : 'bg-amber-50 border border-amber-200 text-amber-800'
+              }`}
+            >
+              {baleToast.ok ? (
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+              ) : (
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+              )}
+              <span className="flex-1 leading-tight">{baleToast.message}</span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2 px-1">
             <button
               type="button"
-              onClick={handleClearAll}
-              className="text-xs font-bold text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
+              onClick={handleTestBale}
+              disabled={testingBale}
+              className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer disabled:opacity-50"
+              title="ارسال پیام آزمایشی به چت بله"
             >
-              پاک کردن تاریخچه اعلان‌ها
+              <Bell className={`w-3.5 h-3.5 ${testingBale ? 'animate-bounce' : ''}`} />
+              <span>{testingBale ? 'در حال ارسال...' : 'تست اعلان بله'}</span>
             </button>
+
+            {currentList.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="text-[11px] font-bold text-slate-400 hover:text-rose-600 transition-colors cursor-pointer px-2 py-1"
+              >
+                پاک کردن تاریخچه
+              </button>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

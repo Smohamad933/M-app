@@ -159,6 +159,13 @@ if ($method === 'POST') {
     ];
 
     $dbObj->saveJson();
+
+    // Dispatch notification to Bale if receiver has Bale enabled
+    if (file_exists(__DIR__ . '/bale.php')) {
+        require_once __DIR__ . '/bale.php';
+        sendBaleNotificationToUser($receiverId, "پیام جدید از {$currentUser['name']} 💬", $previewText);
+    }
+
     jsonResponse(['message' => 'پیام با موفقیت ارسال شد.', 'data' => $newMsg], 201);
 }
 

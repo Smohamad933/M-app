@@ -116,6 +116,17 @@ if ($method === 'POST') {
         ];
 
         $dbObj->saveJson();
+
+        // Dispatch notification to Bale if receiver has Bale enabled
+        if (file_exists(__DIR__ . '/bale.php')) {
+            require_once __DIR__ . '/bale.php';
+            sendBaleNotificationToUser(
+                $toUserId,
+                'درخواست دوستی و همکاری جدید 👥',
+                "{$currentUser['name']} (@{$currentUser['username']}) برای شما درخواست همکاری ارسال کرد."
+            );
+        }
+
         jsonResponse(['message' => 'درخواست دوستی و همکاری ارسال شد.', 'request' => $newReq], 201);
     }
 
@@ -160,6 +171,17 @@ if ($method === 'POST') {
         }
 
         $dbObj->saveJson();
+
+        // Dispatch notification to Bale if requester has Bale enabled
+        if (file_exists(__DIR__ . '/bale.php')) {
+            require_once __DIR__ . '/bale.php';
+            sendBaleNotificationToUser(
+                $found['fromUserId'],
+                'پذیرش درخواست همکاری ✅',
+                "{$currentUser['name']} (@{$currentUser['username']}) درخواست همکاری شما را پذیرفت."
+            );
+        }
+
         jsonResponse(['message' => 'درخواست همکاری با موفقیت پذیرفته شد.']);
     }
 
