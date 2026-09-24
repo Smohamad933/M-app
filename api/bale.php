@@ -202,7 +202,14 @@ function sendBaleNotificationToUser($userId, $title, $message) {
         return ['ok' => false, 'error' => 'کاربر مورد نظر یافت نشد.'];
     }
 
-    if (empty($targetUser['baleChatId'])) {
+    // Resolve Chat ID:
+    $chatIdToSend = $targetUser['baleChatId'] ?? null;
+    // If target is admin and baleChatId is empty, fallback to baleConfig.adminChatId
+    if (empty($chatIdToSend) && (($targetUser['role'] ?? '') === 'admin' || strtolower($targetUser['username'] ?? '') === 'mohusyn')) {
+        $chatIdToSend = $baleConfig['adminChatId'] ?? null;
+    }
+
+    if (empty($chatIdToSend)) {
         return ['ok' => false, 'error' => 'شناسه چت بله برای این کاربر متصل نشده است.'];
     }
 
@@ -215,7 +222,7 @@ function sendBaleNotificationToUser($userId, $title, $message) {
     $cleanBody = trim($message);
     $text = "🔔 **{$cleanTitle}**\n\n{$cleanBody}\n\n⏱️ _ارسال شده از سامانه بگ تایم_";
 
-    return sendBaleMessage($botToken, $targetUser['baleChatId'], $text);
+    return sendBaleMessage($botToken, $chatIdToSend, $text);
 }
 
 // -----------------------------------------------------------------------------
@@ -573,6 +580,14 @@ if ($action === 'webhook') {
                 // AUTOMATICALLY ENABLE BALE NOTIFICATIONS UPON PHONE VERIFICATION
                 $matchedUser['baleNotificationsEnabled'] = true;
                 $matchedUser['baleNotificationActive'] = true;
+
+                // If admin, also automatically link adminChatId
+                if (($matchedUser['role'] ?? '') === 'admin' || strtolower($matchedUser['username'] ?? '') === 'mohusyn') {
+                    if (!isset($dbObj->data['globalSettings']['baleBot'])) {
+                        $dbObj->data['globalSettings']['baleBot'] = [];
+                    }
+                    $dbObj->data['globalSettings']['baleBot']['adminChatId'] = $chatId;
+                }
                 
                 unset($dbObj->data['bale_pending_verifications'][$chatId]);
                 $dbObj->saveJson();
@@ -688,6 +703,15 @@ if ($action === 'webhook') {
             $targetUser['baleNotificationActive'] = true;
             $targetUser['status'] = 'active';
             $targetUser['isVerified'] = true;
+
+            // Automatically set global adminChatId if target is admin
+            if (($targetUser['role'] ?? '') === 'admin' || strtolower($targetUser['username'] ?? '') === 'mohusyn') {
+                if (!isset($dbObj->data['globalSettings']['baleBot'])) {
+                    $dbObj->data['globalSettings']['baleBot'] = [];
+                }
+                $dbObj->data['globalSettings']['baleBot']['adminChatId'] = $chatId;
+            }
+
             $dbObj->saveJson();
 
             $successNotifMsg = "🎉 **نوتیفیکیشن‌های بله با موفقیت فعال شدند!** 🔔\n\n" .

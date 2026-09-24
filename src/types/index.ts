@@ -350,6 +350,7 @@ export interface GlobalSystemSettings {
     enabled: boolean;
     token: string;
     botUsername: string;
+    adminChatId?: string | number;
     verifyOnRegister: boolean;
     sendNotifications: boolean;
     allowTaskCreation: boolean;

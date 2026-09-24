@@ -414,6 +414,7 @@ export const UserManagementView: React.FC = () => {
     enabled: false,
     token: '',
     botUsername: 'BagTime_Bot',
+    adminChatId: '',
     verifyOnRegister: true,
     sendNotifications: true,
     allowTaskCreation: true,
@@ -3124,6 +3125,34 @@ export const UserManagementView: React.FC = () => {
                 />
                 <p className="text-[10px] text-zinc-500">
                   آیدی ربات جهت هدایت کاربران در ثبت‌نام (لینک ble.ir/BagTime_Bot)
+                </p>
+              </div>
+
+              <div className="space-y-1.5 md:col-span-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-zinc-300">
+                    شناسه چت بله مدیر کل (Admin Chat ID جهت دریافت آنی درخواست‌های Pro، واریزی‌ها و پیام‌ها)
+                  </label>
+                  {currentUser?.baleChatId && (
+                    <button
+                      type="button"
+                      onClick={() => setBaleForm({ ...baleForm, adminChatId: String(currentUser.baleChatId) })}
+                      className="text-[10px] text-blue-400 hover:text-blue-300 font-bold cursor-pointer"
+                    >
+                      استفاده از شناسه بله من ({currentUser.baleChatId})
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={baleForm.adminChatId || ''}
+                  onChange={(e) => setBaleForm({ ...baleForm, adminChatId: e.target.value })}
+                  placeholder="مثال: 54473145 (شناسه عددی اکانت بله شما)"
+                  dir="ltr"
+                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800 text-white font-mono text-xs outline-none focus:border-blue-500 text-left"
+                />
+                <p className="text-[10px] text-zinc-500">
+                  کلیه هشدارهای درخواست ارتقای اشتراک (Pro و Ultra)، واریزی‌های جدید و پیام‌های کاربران فوراً به این چت در بله فرستاده می‌شوند.
                 </p>
               </div>
             </div>

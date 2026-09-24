@@ -111,6 +111,33 @@ if ($method === 'POST') {
         }
 
         $dbObj->saveJson();
+
+        // Dispatch Bale notification to Admin immediately!
+        if (file_exists(__DIR__ . '/bale.php')) {
+            require_once __DIR__ . '/bale.php';
+            $planEmoji = ($plan === 'ultra' || $planType === '6_months') ? '💎' : (($plan === 'plus' || $planType === '1_month') ? '➕' : '⭐');
+            $admTitle = "درخواست ارتقای اشتراک {$planLabel} {$planEmoji}";
+            $admMsg = "کاربر «{$currentUser['name']}» (@{$currentUser['username']}) متقاضی ارتقا به طرح {$planLabel} است.\n" .
+                "💰 مبلغ: {$amount}\n" .
+                "🔢 کد پیگیری: {$trackingCode}" .
+                (!empty($note) ? "\n📝 پیام کاربر: {$note}" : "") .
+                "\n\nلطفاً جهت بررسی و ارسال شماره کارت به بخش پیام‌های سامانه بگ تایم مراجعه فرمایید.";
+
+            // 1. Send to Mohusyn user ID
+            if ($adminUser) {
+                sendBaleNotificationToUser($adminUser['id'], $admTitle, $admMsg);
+            }
+
+            // 2. Also send to globalSettings.baleBot.adminChatId if configured
+            $baleConf = $dbObj->data['globalSettings']['baleBot'] ?? [];
+            if (!empty($baleConf['adminChatId'])) {
+                $botTk = cleanBaleToken($baleConf['token'] ?? '');
+                if (!empty($botTk)) {
+                    $baleFormatted = "🔔 **{$admTitle}**\n\n{$admMsg}\n\n⏱️ _ارسال شده از سامانه بگ تایم_";
+                    sendBaleMessage($botTk, $baleConf['adminChatId'], $baleFormatted);
+                }
+            }
+        }
         jsonResponse([
             'message' => 'اطلاعات پرداخت با موفقیت ثبت شد و در انتظار تأیید مدیر است.',
             'payment' => $newPayment,
@@ -163,6 +190,17 @@ if ($method === 'POST') {
         ];
 
         $dbObj->saveJson();
+
+        // Dispatch Bale notification to User upon approval
+        if (file_exists(__DIR__ . '/bale.php')) {
+            require_once __DIR__ . '/bale.php';
+            sendBaleNotificationToUser(
+                $targetUserId,
+                "تأیید پرداخت و فعال‌سازی اشتراک {$planName} {$planSymbol}",
+                "پرداخت شما با موفقیت تأیید شد و اشتراک {$planName} به مدت {$days} روز برای حساب شما فعال گردید. ✅"
+            );
+        }
+
         jsonResponse([
             'message' => "پرداخت تأیید و اشتراک {$planName} برای کاربر فعال گردید.",
             'payment' => $payment,

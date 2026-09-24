@@ -311,13 +311,13 @@ function injectFontLink(font: SystemFontOption) {
 }
 
 export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => api.getCachedUser());
   const [users, setUsers] = useState<User[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [projects, setProjects] = useState<TeamProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => !api.getCachedUser() && Boolean(api.getAuthToken()));
 
   // Custom fonts & Global settings
   const [customFonts, setCustomFonts] = useState<SystemFontOption[]>(() => {
@@ -962,10 +962,13 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshTasks();
   };
 
-  // Load initial data
+  // Load initial data (Fast, Offline-first, Parallelized)
   useEffect(() => {
     async function init() {
-      setIsLoading(true);
+      // If we don't have a cached user, show brief loading while checking token
+      if (!api.getCachedUser() && api.getAuthToken()) {
+        setIsLoading(true);
+      }
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const inviteRoom = urlParams.get('room') || urlParams.get('room_id');
@@ -973,45 +976,40 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           sessionStorage.setItem('taskrooz_pending_room', inviteRoom);
         }
 
+        // Fast user verification
         const user = await api.getCurrentUser();
         if (user) {
           setCurrentUser(user);
           if (inviteRoom) {
             sessionStorage.removeItem('taskrooz_pending_room');
-            await joinFocusRoom(inviteRoom);
+            joinFocusRoom(inviteRoom).catch(() => {});
           }
         }
-
-        const cats = await api.getCategories();
-        setCategories(cats);
-        await refreshProjects();
-        const gList = await api.getGoals();
-        setGoals(gList);
-        const pRes = await api.getPersonalityResult();
-        setPersonalityResult(pRes);
-        const notes = await api.getDailyNotes();
-        setDailyNotes(notes);
-        const gSettings = await api.getGlobalSettings();
-        setGlobalSettings(gSettings);
-        if (gSettings.enforcedFont) {
-          setSystemFontState(gSettings.enforcedFont);
-        }
-        if (user) {
-          try {
-            const uList = await api.getUsers();
-            setUsers(uList);
-          } catch {}
-        }
-        try {
-          const remoteFonts = await api.fetchCustomFonts();
-          setCustomFonts(remoteFonts);
-          remoteFonts.forEach(injectFontLink);
-        } catch {}
       } catch (e) {
-        console.error('Initialization error:', e);
+        console.error('Initialization user check error:', e);
       } finally {
+        // Drop the loading screen immediately so the app is accessible instantly!
         setIsLoading(false);
       }
+
+      // Concurrently load all other data in PARALLEL in background
+      Promise.allSettled([
+        api.getCategories().then((cats) => setCategories(cats)),
+        refreshProjects(),
+        api.getGoals().then((gList) => setGoals(gList)),
+        api.getPersonalityResult().then((pRes) => setPersonalityResult(pRes)),
+        api.getDailyNotes().then((notes) => setDailyNotes(notes)),
+        api.getGlobalSettings().then((gSettings) => {
+          setGlobalSettings(gSettings);
+          if (gSettings.enforcedFont) {
+            setSystemFontState(gSettings.enforcedFont);
+          }
+        }),
+        api.fetchCustomFonts().then((remoteFonts) => {
+          setCustomFonts(remoteFonts);
+          remoteFonts.forEach(injectFontLink);
+        }),
+      ]);
     }
     init();
   }, []);

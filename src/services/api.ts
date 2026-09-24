@@ -71,6 +71,7 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
     enabled: false,
     token: '',
     botUsername: 'BagTime_Bot',
+    adminChatId: '',
     verifyOnRegister: true,
     sendNotifications: true,
     allowTaskCreation: true,
@@ -469,6 +470,30 @@ export const api = {
     );
   },
 
+  getCachedUser(): User | null {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem('taskrooz_current_user');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  },
+
+  getAuthToken(): string | null {
+    return getAuthToken();
+  },
+
+  setCachedUser(user: User | null): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      if (user) {
+        localStorage.setItem('taskrooz_current_user', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('taskrooz_current_user');
+      }
+    } catch {}
+  },
+
   // Auth: Login (Verified against Central Server with IIS 405 Resilience)
   async login(username: string, password: string): Promise<{ user: User; token: string }> {
     const cleanUser = username.trim();
@@ -481,6 +506,7 @@ export const api = {
         body: JSON.stringify({ username: cleanUser, password: cleanPass }),
       });
       setAuthToken(data.token);
+      this.setCachedUser(data.user);
       return data;
     } catch (err: any) {
       // If IIS returned 405 Method Not Allowed or blocked POST, retry via GET request
@@ -490,6 +516,7 @@ export const api = {
           { method: 'GET' }
         );
         setAuthToken(data.token);
+        this.setCachedUser(data.user);
         return data;
       } catch (retryErr: any) {
         // Fallback for Super Admin Mohusyn so the owner is NEVER locked out of their app
@@ -503,6 +530,7 @@ export const api = {
           };
           const token = btoa('usr_admin_mohusyn:' + Date.now());
           setAuthToken(token);
+          this.setCachedUser(adminUser);
           return { user: adminUser, token };
         }
         throw new Error(err.message || 'نام کاربری یا کلمه عبور نادرست است.');
@@ -512,15 +540,30 @@ export const api = {
 
   async getCurrentUser(): Promise<User | null> {
     const token = getAuthToken();
-    if (!token) return null;
+    if (!token) {
+      this.setCachedUser(null);
+      return null;
+    }
 
     try {
-      const data = await request<{ authenticated: boolean; user?: User }>('api/auth.php?action=me');
-      if (data.authenticated && data.user) return data.user;
+      // 1.8-second timeout controller so app NEVER hangs on loading
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 1800) : null;
+      const data = await request<{ authenticated: boolean; user?: User }>('api/auth.php?action=me', {
+        signal: controller?.signal,
+      });
+      if (timeoutId) clearTimeout(timeoutId);
+      if (data.authenticated && data.user) {
+        this.setCachedUser(data.user);
+        return data.user;
+      }
       removeAuthToken();
+      this.setCachedUser(null);
       return null;
     } catch {
-      removeAuthToken();
+      // If network fails or times out, fallback to local cached user immediately
+      const cached = this.getCachedUser();
+      if (cached) return cached;
       return null;
     }
   },
@@ -532,6 +575,7 @@ export const api = {
       // ignore
     }
     removeAuthToken();
+    this.setCachedUser(null);
   },
 
   // Users (Admin only - fetched directly from Central Server Database with local mirror)
