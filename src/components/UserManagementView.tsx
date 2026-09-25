@@ -48,12 +48,8 @@ import {
   CreditCard,
   Music,
   Upload,
-  Monitor,
-  Laptop,
   Bot,
   Database,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 
 /**
@@ -182,7 +178,7 @@ export const UserManagementView: React.FC = () => {
   } = useTask();
 
   // Active view tab inside Admin Panel
-  const [adminTab, setAdminTab] = useState<'users' | 'payments' | 'settings' | 'texts' | 'developers' | 'apk' | 'bale'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'payments' | 'settings' | 'texts' | 'developers' | 'extension' | 'bale'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const pendingUsers = users.filter((u) => u.status === 'pending_approval');
   const [planFilter, setPlanFilter] = useState<'all' | 'pro' | 'free'>('all');
@@ -306,15 +302,8 @@ export const UserManagementView: React.FC = () => {
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
-  // APK generation states
-  const [isBuildingApk, setIsBuildingApk] = useState(false);
-  const [apkBuildStep, setApkBuildStep] = useState<string | null>(null);
-  const [apkBuildProgress, setApkBuildProgress] = useState(0);
-  const [copiedApkLink, setCopiedApkLink] = useState(false);
-
   const [copiedExtLink, setCopiedExtLink] = useState(false);
   const [selectedExtBrowser, setSelectedExtBrowser] = useState<'chrome' | 'edge' | 'firefox'>('chrome');
-  const [showLegacyPackages, setShowLegacyPackages] = useState(false);
 
   const handleDownloadExtZip = () => {
     sounds.playPop();
@@ -331,99 +320,6 @@ export const UserManagementView: React.FC = () => {
     navigator.clipboard.writeText('https://raw.githubusercontent.com/Smohamad933/M-app/arena/01a0c425-m-app/bagtime-extension.zip');
     setCopiedExtLink(true);
     setTimeout(() => setCopiedExtLink(false), 2500);
-  };
-
-  const [isBuildingExe, setIsBuildingExe] = useState(false);
-  const [exeBuildProgress, setExeBuildProgress] = useState(0);
-  const [copiedExeLink, setCopiedExeLink] = useState(false);
-  const [copiedKeystorePass, setCopiedKeystorePass] = useState(false);
-  const [copiedSha256, setCopiedSha256] = useState(false);
-
-  const handleGenerateAndDownloadApk = () => {
-    setIsBuildingApk(true);
-    setApkBuildProgress(20);
-    setApkBuildStep('در حال بسته‌بندی فایل‌های وب، استایل‌ها و کامپوننت‌های بگ تایم...');
-    sounds.playPop();
-
-    setTimeout(() => {
-      setApkBuildProgress(50);
-      setApkBuildStep('تولید ساختار AndroidManifest، آیکون‌های برنامه و ماژول آفلاین...');
-    }, 700);
-
-    setTimeout(() => {
-      setApkBuildProgress(80);
-      setApkBuildStep('امضای دیجیتال بسته نصبی با کلید اختصاصی taskrooz-release.keystore...');
-    }, 1400);
-
-    setTimeout(() => {
-      setApkBuildProgress(100);
-      setApkBuildStep('پکیج APK امضا شده با موفقیت ساخته شد! در حال شروع دانلود...');
-      sounds.playComplete();
-
-      // Trigger file download
-      const link = document.createElement('a');
-      link.href = '/TaskRooz.apk';
-      link.download = 'TaskRooz.apk';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      setTimeout(() => {
-        setIsBuildingApk(false);
-        setApkBuildStep(null);
-      }, 1500);
-    }, 2100);
-  };
-
-  const handleCopyApkLink = () => {
-    const origin = window.location.origin;
-    const directUrl = `${origin}/TaskRooz.apk`;
-    navigator.clipboard.writeText(directUrl);
-    setCopiedApkLink(true);
-    sounds.playPop();
-    setTimeout(() => setCopiedApkLink(false), 3000);
-  };
-
-  const handleGenerateAndDownloadExe = () => {
-    setIsBuildingExe(true);
-    setExeBuildProgress(25);
-    sounds.playPop();
-
-    setTimeout(() => setExeBuildProgress(60), 600);
-    setTimeout(() => {
-      setExeBuildProgress(100);
-      sounds.playComplete();
-      const link = document.createElement('a');
-      link.href = '/TaskRooz.exe';
-      link.download = 'TaskRooz.exe';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => setIsBuildingExe(false), 1500);
-    }, 1400);
-  };
-
-  const handleCopyExeLink = () => {
-    const origin = window.location.origin;
-    const directUrl = `${origin}/TaskRooz.exe`;
-    navigator.clipboard.writeText(directUrl);
-    setCopiedExeLink(true);
-    sounds.playPop();
-    setTimeout(() => setCopiedExeLink(false), 3000);
-  };
-
-  const handleCopyKeystorePass = () => {
-    navigator.clipboard.writeText('taskrooz1405');
-    setCopiedKeystorePass(true);
-    sounds.playPop();
-    setTimeout(() => setCopiedKeystorePass(false), 3000);
-  };
-
-  const handleCopySha256 = () => {
-    navigator.clipboard.writeText('6B:3D:7F:CE:FB:0A:56:C7:9F:3A:3F:4A:97:B5:6E:0D:95:3A:B1:8C:B9:83:00:70:30:7B:FB:A7:93:A4:63:62');
-    setCopiedSha256(true);
-    sounds.playPop();
-    setTimeout(() => setCopiedSha256(false), 3000);
   };
 
   // Bale Messenger Bot State (docs.bale.ai)
@@ -1091,9 +987,9 @@ export const UserManagementView: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setAdminTab('apk')}
+          onClick={() => setAdminTab('extension')}
           className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            adminTab === 'apk'
+            adminTab === 'extension'
               ? 'bg-indigo-600 text-white shadow-xs font-black'
               : 'text-zinc-400 hover:text-white'
           }`}
@@ -2747,7 +2643,7 @@ export const UserManagementView: React.FC = () => {
       )}
 
       {/* TAB 5: BROWSER EXTENSION (CHROME, EDGE, FIREFOX NEW TAB ASSISTANT) */}
-      {adminTab === 'apk' && (
+      {adminTab === 'extension' && (
         <div className="space-y-6 animate-in fade-in">
           {/* Hero Banner */}
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-950/80 via-zinc-900 to-zinc-950 border border-indigo-700/40 p-6 md:p-8 shadow-2xl">
@@ -2995,117 +2891,6 @@ export const UserManagementView: React.FC = () => {
                   <p className="text-[11px] text-zinc-400 leading-relaxed">
                     فایل <code className="text-indigo-400 font-mono">manifest.json</code> پوشه افزونه را انتخاب کنید تا دستیار فعال گردد.
                   </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Secondary Collapsible: Legacy Mobile APK & Windows Desktop */}
-          <div className="p-5 bg-zinc-900/40 rounded-3xl border border-zinc-800/80 space-y-4">
-            <button
-              type="button"
-              onClick={() => {
-                sounds.playPop();
-                setShowLegacyPackages(!showLegacyPackages);
-              }}
-              className="w-full flex items-center justify-between text-right cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <Laptop className="w-4 h-4 text-zinc-400" />
-                <span className="text-xs font-bold text-zinc-300">
-                  بسته‌های پیشین: دانلود فایل نصبی اندروید (TaskRooz.apk) و نسخه دسکتاپ ویندوز (TaskRooz.exe)
-                </span>
-              </div>
-              <div className="p-1 rounded-lg bg-zinc-800 text-zinc-400">
-                {showLegacyPackages ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </div>
-            </button>
-
-            {showLegacyPackages && (
-              <div className="pt-3 border-t border-zinc-800/80 space-y-4 animate-in fade-in">
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  نسخه‌های نصبی پیشین کماکان در سامانه موجود و قابل دریافت هستند:
-                </p>
-                <div className="flex flex-wrap items-center gap-3 text-xs">
-                  <a
-                    href="/TaskRooz.apk"
-                    download="TaskRooz.apk"
-                    className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold flex items-center gap-2 transition-colors cursor-pointer"
-                  >
-                    <Smartphone className="w-4 h-4 text-emerald-400" />
-                    <span>دانلود مستقیم TaskRooz.apk</span>
-                  </a>
-
-                  <button
-                    type="button"
-                    onClick={handleCopyApkLink}
-                    className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold flex items-center gap-2 transition-colors cursor-pointer"
-                  >
-                    {copiedApkLink ? (
-                      <span className="text-emerald-400">لینک کپی شد</span>
-                    ) : (
-                      <span>کپی لینک دانلود APK</span>
-                    )}
-                  </button>
-
-                  <a
-                    href="/TaskRooz.exe"
-                    download="TaskRooz.exe"
-                    className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold flex items-center gap-2 transition-colors cursor-pointer"
-                  >
-                    <Monitor className="w-4 h-4 text-cyan-400" />
-                    <span>دانلود مستقیم TaskRooz.exe</span>
-                  </a>
-
-                  <button
-                    type="button"
-                    onClick={handleCopyExeLink}
-                    className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold flex items-center gap-2 transition-colors cursor-pointer"
-                  >
-                    {copiedExeLink ? (
-                      <span className="text-emerald-400">لینک کپی شد</span>
-                    ) : (
-                      <span>کپی لینک دانلود EXE</span>
-                    )}
-                  </button>
-                </div>
-
-                <div className="pt-2 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleGenerateAndDownloadApk}
-                    disabled={isBuildingApk}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-emerald-400 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Smartphone className="w-3.5 h-3.5" />
-                    <span>{isBuildingApk ? `در حال ساخت APK (${apkBuildProgress}% - ${apkBuildStep || ''})` : 'ساخت مجدد بسته APK'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleGenerateAndDownloadExe}
-                    disabled={isBuildingExe}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-cyan-400 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Monitor className="w-3.5 h-3.5" />
-                    <span>{isBuildingExe ? `در حال ساخت EXE (${exeBuildProgress}%)` : 'ساخت مجدد فایل ویندوز (EXE)'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleCopyKeystorePass}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span>{copiedKeystorePass ? 'رمز کپی شد' : 'کپی رمز Keystore'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleCopySha256}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span>{copiedSha256 ? 'SHA256 کپی شد' : 'کپی اثر انگشت SHA-256'}</span>
-                  </button>
                 </div>
               </div>
             )}
