@@ -241,10 +241,10 @@ let balePollingInterval = null;
 let noteSyncTimeout = null;
 
 // DOM Elements Cache
-const headerClock = document.getElementById('headerClock');
-const headerDate = document.getElementById('headerDate');
-const calLiveClock = document.getElementById('calLiveClock');
-const calLiveDate = document.getElementById('calLiveDate');
+const headerClock = document.getElementById('navLiveClock') || document.getElementById('headerClock');
+const headerDate = document.getElementById('navLiveDate') || document.getElementById('headerDate');
+const calLiveClock = document.getElementById('calBigClock') || document.getElementById('calLiveClock');
+const calLiveDate = document.getElementById('calBigDate') || document.getElementById('calLiveDate');
 const fontSelect = document.getElementById('fontSelect');
 const heroEngineIcon = document.getElementById('heroEngineIcon');
 const heroEngineTitle = document.getElementById('heroEngineTitle');
