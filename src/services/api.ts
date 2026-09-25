@@ -374,6 +374,14 @@ export const api = {
         body: JSON.stringify(payload),
       });
     } catch (err1: any) {
+      if (err1?.requiresVerification) {
+        return err1;
+      }
+      // If server returned a clear validation error (e.g. 400: duplicate username or phone)
+      if (err1?.message && !err1.message.includes('405') && !err1.message.includes('عدم برقراری ارتباط')) {
+        throw err1;
+      }
+
       // Retry 1: Send via GET query parameters directly (IIS never blocks GET)
       try {
         const queryParams = new URLSearchParams({
@@ -392,45 +400,10 @@ export const api = {
           { method: 'GET' }
         );
       } catch (err2: any) {
-        // Retry 2: Send via base64 encoded data parameter
-        try {
-          const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-          res = await request<typeof res>(
-            `api/auth.php?action=register&data=${encodeURIComponent(encodedData)}`,
-            { method: 'GET' }
-          );
-        } catch (err3: any) {
-          // If server still blocks with 405 or fails: activate user locally with zero blocking!
-          const newUser: User = {
-            id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-            username: payload.username.toLowerCase(),
-            name: payload.name,
-            role: 'user',
-            phone: payload.phone,
-            email: payload.email,
-            province: payload.province,
-            city: payload.city,
-            birthDate: payload.birthDate,
-            jobTitle: payload.jobTitle,
-            skills: payload.skills,
-            dailyTimeline: payload.dailyTimeline,
-            isProfileCompleted: true,
-            createdAt: new Date().toISOString(),
-            totalTasks: 0,
-            completedTasks: 0,
-          };
-          const token = btoa(`${newUser.id}:${Date.now()}`);
-          setAuthToken(token);
-          broadcastSync('USER_REGISTERED', newUser);
-          try {
-            const raw = localStorage.getItem('taskrooz_registered_users');
-            const list = raw ? JSON.parse(raw) : [];
-            list.push(newUser);
-            localStorage.setItem('taskrooz_registered_users', JSON.stringify(list));
-            localStorage.setItem('taskrooz_user_profile_completed_' + newUser.id, 'true');
-          } catch {}
-          return { user: newUser, token };
+        if (err2?.requiresVerification) {
+          return err2;
         }
+        throw new Error(err2?.message || err1?.message || 'خطا در ثبت اطلاعات در سرور.');
       }
     }
 

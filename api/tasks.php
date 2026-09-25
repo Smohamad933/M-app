@@ -27,10 +27,27 @@ if ($method === 'GET') {
     jsonResponse(['tasks' => $tasks]);
 }
 
-// POST /api/tasks -> Create task
+// POST /api/tasks -> Create task or quick toggle/delete
 if ($method === 'POST') {
     requireVerifiedUser();
     $input = getJsonInput();
+    $action = $input['action'] ?? $_GET['action'] ?? '';
+
+    if ($action === 'toggle') {
+        $id = $input['id'] ?? $_GET['id'] ?? '';
+        if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
+        $res = $db->toggleTask($id);
+        if ($res) jsonResponse($res);
+        jsonResponse(['error' => 'تسک پیدا نشد.'], 404);
+    }
+
+    if ($action === 'delete') {
+        $id = $input['id'] ?? $_GET['id'] ?? '';
+        if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
+        $db->deleteTask($id);
+        jsonResponse(['message' => 'تسک با موفقیت حذف شد.']);
+    }
+
     $title = trim($input['title'] ?? '');
     $date = trim($input['date'] ?? date('Y-m-d'));
 

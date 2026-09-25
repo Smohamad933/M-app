@@ -22,9 +22,67 @@ class TaskRoozDB {
             $this->pdo = getMySQLPDO();
             if ($this->pdo !== null) {
                 $this->mode = 'mysql';
+                $this->ensureMySQLSchema();
             }
         }
         $this->loadJson();
+    }
+
+    private function ensureMySQLSchema() {
+        if (!$this->pdo) return;
+        try {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS `users` (
+                  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `numeric_id` int(11) DEFAULT 1000,
+                  `username` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `role` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'user',
+                  `status` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+                  `is_verified` tinyint(1) NOT NULL DEFAULT 0,
+                  `verification_code` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `bale_chat_id` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `bale_username` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `phone` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `email` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `province` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `city` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `birth_date` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `job_title` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `skills_json` text COLLATE utf8mb4_unicode_ci,
+                  `timeline_json` text COLLATE utf8mb4_unicode_ci,
+                  `avatar` longtext COLLATE utf8mb4_unicode_ci,
+                  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  UNIQUE KEY `idx_username` (`username`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            $columns = [];
+            $colStmt = $this->pdo->query("SHOW COLUMNS FROM `users`");
+            while ($c = $colStmt->fetch(PDO::FETCH_ASSOC)) {
+                $columns[strtolower($c['Field'])] = true;
+            }
+            if (!isset($columns['status'])) {
+                @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `status` varchar(50) DEFAULT 'active'");
+            }
+            if (!isset($columns['is_verified'])) {
+                @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `is_verified` tinyint(1) DEFAULT 0");
+            }
+            if (!isset($columns['verification_code'])) {
+                @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `verification_code` varchar(50) DEFAULT NULL");
+            }
+            if (!isset($columns['bale_chat_id'])) {
+                @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `bale_chat_id` varchar(100) DEFAULT NULL");
+            }
+            if (!isset($columns['bale_username'])) {
+                @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `bale_username` varchar(100) DEFAULT NULL");
+            }
+            if (!isset($columns['numeric_id'])) {
+                @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `numeric_id` int(11) DEFAULT 1000");
+            }
+        } catch (Exception $e) {}
     }
 
     public static function getInstance() {
@@ -332,6 +390,14 @@ class TaskRoozDB {
                 if ($u) {
                     if (!empty($u['skills_json'])) $u['skills'] = json_decode($u['skills_json'], true);
                     if (!empty($u['timeline_json'])) $u['dailyTimeline'] = json_decode($u['timeline_json'], true);
+                    if (isset($u['birth_date']) && !isset($u['birthDate'])) $u['birthDate'] = $u['birth_date'];
+                    if (isset($u['job_title']) && !isset($u['jobTitle'])) $u['jobTitle'] = $u['job_title'];
+                    if (isset($u['verification_code']) && !isset($u['verificationCode'])) $u['verificationCode'] = $u['verification_code'];
+                    if (isset($u['is_verified']) && !isset($u['isVerified'])) $u['isVerified'] = !empty($u['is_verified']);
+                    if (isset($u['bale_chat_id']) && !isset($u['baleChatId'])) $u['baleChatId'] = $u['bale_chat_id'];
+                    if (isset($u['bale_username']) && !isset($u['baleUsername'])) $u['baleUsername'] = $u['bale_username'];
+                    if (isset($u['numeric_id']) && !isset($u['numericId'])) $u['numericId'] = (int)$u['numeric_id'];
+                    $u['isProfileCompleted'] = !empty($u['is_profile_completed']) || ($u['role'] === 'admin') || (!empty($u['birthDate']) && !empty($u['city']));
                     return $u;
                 }
             } catch (Exception $e) {}
@@ -455,13 +521,22 @@ class TaskRoozDB {
         // 1. Save to MySQL
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
+                $isVer = !empty($extra['isVerified']) ? 1 : 0;
+                $verCode = $extra['verificationCode'] ?? null;
+                $baleChatId = $extra['baleChatId'] ?? null;
+                $baleUsername = $extra['baleUsername'] ?? null;
                 $stmt = $this->pdo->prepare("
-                    INSERT INTO users (id, username, password_hash, name, role, phone, email, province, city, birth_date, job_title, skills_json, timeline_json, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO users (id, numeric_id, username, password_hash, name, role, status, is_verified, verification_code, bale_chat_id, bale_username, phone, email, province, city, birth_date, job_title, skills_json, timeline_json, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE 
                         name = VALUES(name),
                         password_hash = VALUES(password_hash),
                         role = VALUES(role),
+                        status = VALUES(status),
+                        is_verified = VALUES(is_verified),
+                        verification_code = VALUES(verification_code),
+                        bale_chat_id = VALUES(bale_chat_id),
+                        bale_username = VALUES(bale_username),
                         phone = VALUES(phone),
                         email = VALUES(email),
                         province = VALUES(province),
@@ -469,7 +544,7 @@ class TaskRoozDB {
                         job_title = VALUES(job_title)
                 ");
                 $stmt->execute([
-                    $id, $usernameClean, $hash, $name, $role,
+                    $id, $numericId, $usernameClean, $hash, $name, $role, $status, $isVer, $verCode, $baleChatId, $baleUsername,
                     $phone, $email, $province, $city, $birthDate, $jobTitle,
                     json_encode($skills), json_encode($timeline), $now
                 ]);
@@ -508,7 +583,10 @@ class TaskRoozDB {
             try {
                 $stmt = $this->pdo->query("
                     SELECT 
-                        u.id, u.username, u.name, u.role, u.phone, u.email, u.province, u.city,
+                        u.id, u.numeric_id as numericId, u.username, u.name, u.role, u.status,
+                        u.is_verified as isVerified, u.verification_code as verificationCode,
+                        u.bale_chat_id as baleChatId, u.bale_username as baleUsername,
+                        u.phone, u.email, u.province, u.city,
                         u.birth_date as birthDate, u.job_title as jobTitle, u.skills_json, u.timeline_json, u.avatar,
                         u.created_at as createdAt,
                         COUNT(t.id) as totalTasks,
@@ -528,6 +606,8 @@ class TaskRoozDB {
                         $u['progressPercent'] = $total > 0 ? round(($done / $total) * 100) : 0;
                         $u['skills'] = !empty($u['skills_json']) ? json_decode($u['skills_json'], true) : [];
                         $u['dailyTimeline'] = !empty($u['timeline_json']) ? json_decode($u['timeline_json'], true) : [];
+                        $u['isVerified'] = !empty($u['isVerified']);
+                        $u['numericId'] = (int)($u['numericId'] ?? 1000);
                         return $u;
                     }, $users);
                 }
