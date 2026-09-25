@@ -398,7 +398,7 @@ function handleSearchSubmit(e) {
   window.location.href = engine.url + encodeURIComponent(q);
 }
 
-// ── Shortcuts / Bookmarks (With Sponsored First) ──
+// ── Shortcuts / Bookmarks (Apps Grid - Exact Wireframe UX) ──
 function renderShortcuts() {
   if (!shortcutsList) return;
   shortcutsList.innerHTML = '';
@@ -409,7 +409,7 @@ function renderShortcuts() {
     spEl.href = sponsoredSite.url;
     spEl.target = '_blank';
     spEl.rel = 'noopener noreferrer';
-    spEl.className = 'shortcut-item sponsored';
+    spEl.className = 'app-tile sponsored';
     spEl.title = `اسپانسر: ${sponsoredSite.title}`;
 
     const iconContent = (sponsoredSite.icon && sponsoredSite.icon.startsWith('http'))
@@ -417,34 +417,34 @@ function renderShortcuts() {
       : `<span>${escapeHtml(sponsoredSite.icon || '⭐')}</span>`;
 
     spEl.innerHTML = `
-      <span class="shortcut-badge">${escapeHtml(sponsoredSite.badge || 'اسپانسر')}</span>
-      <div class="shortcut-icon-box">
+      <span class="app-sponsored-badge">${escapeHtml(sponsoredSite.badge || 'اسپانسر')}</span>
+      <div class="app-tile-icon">
         ${iconContent}
       </div>
-      <span class="shortcut-title">${escapeHtml(sponsoredSite.title)}</span>
+      <span class="app-tile-name">${escapeHtml(sponsoredSite.title)}</span>
     `;
     shortcutsList.appendChild(spEl);
   }
 
-  // 2. User-added Shortcuts
+  // 2. User-added Shortcuts (Grid of rounded squares)
   shortcuts.forEach((sc, idx) => {
     const itemEl = document.createElement('div');
-    itemEl.className = 'shortcut-item';
+    itemEl.className = 'app-tile';
 
     const iconContent = (sc.icon && sc.icon.startsWith('http'))
       ? `<img src="${escapeHtml(sc.icon)}" alt="icon" />`
       : `<span>${escapeHtml(sc.icon || '🔗')}</span>`;
 
     itemEl.innerHTML = `
-      <button type="button" class="shortcut-delete-btn" title="حذف میانبر" data-index="${idx}">✕</button>
-      <div class="shortcut-icon-box">
+      <button type="button" class="app-delete-btn" title="حذف میانبر" data-index="${idx}">✕</button>
+      <div class="app-tile-icon">
         ${iconContent}
       </div>
-      <span class="shortcut-title">${escapeHtml(sc.title)}</span>
+      <span class="app-tile-name">${escapeHtml(sc.title)}</span>
     `;
 
     itemEl.addEventListener('click', (e) => {
-      if ((e.target).classList.contains('shortcut-delete-btn')) {
+      if ((e.target).classList.contains('app-delete-btn')) {
         e.stopPropagation();
         deleteShortcut(idx);
         return;
@@ -455,14 +455,14 @@ function renderShortcuts() {
     shortcutsList.appendChild(itemEl);
   });
 
-  // 3. Add Shortcut Button
+  // 3. Add Shortcut Button (Rounded square tile)
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
-  addBtn.className = 'btn-add-shortcut';
+  addBtn.className = 'app-tile add-new';
   addBtn.title = 'افزودن میانبر جدید به صفحه';
   addBtn.innerHTML = `
-    <div class="add-shortcut-icon">+</div>
-    <span class="shortcut-title">افزودن</span>
+    <div class="app-tile-icon" style="font-size: 1.6rem; font-weight: 300;">+</div>
+    <span class="app-tile-name">افزودن</span>
   `;
   addBtn.addEventListener('click', () => {
     if (addShortcutModal) addShortcutModal.style.display = 'flex';

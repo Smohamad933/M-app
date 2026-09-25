@@ -12,7 +12,7 @@
 </head>
 <body>
 
-  <!-- Top Navigation Bar (Identical to User's Preferred Style) -->
+  <!-- 1. تب بار بالا (Top Bar) -->
   <header class="top-nav">
     <div class="nav-brand">
       <img src="icons/icon-48.png" alt="Bag Time Logo" class="brand-logo">
@@ -61,293 +61,232 @@
     </div>
   </header>
 
-  <!-- Central Search Stage (Clean, Centered, Spacious) -->
-  <main class="main-container">
-    
-    <div class="search-hero-section">
-      <!-- Dynamic Engine Logo / Title -->
-      <div class="engine-logo-header">
-        <h1 id="heroEngineTitle" class="hero-engine-title">Google</h1>
-        <span id="heroEngineIcon" class="hero-engine-icon">🌐</span>
-      </div>
+  <!-- MAIN 3-COLUMN WORKSPACE (EXACT WIREFRAME UX) -->
+  <main class="ux-workspace">
 
-      <!-- Central Search Bar Form -->
-      <form id="heroSearchForm" class="central-search-form" autocomplete="off">
-        <div class="search-input-wrapper">
-          <button type="submit" class="search-submit-btn" title="شروع جستجو (Enter)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <span>جستجو</span>
-          </button>
+    <!-- ستون سمت راست: تسک لیست (Task List) -->
+    <aside class="col-tasks">
+      <section class="ux-card task-list-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="card-icon-box icon-emerald">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            </div>
+            <div>
+              <h2 class="card-title">تسک لیست</h2>
+              <p id="hubSyncNotice" class="card-subtitle">همگام‌سازی زنده با سرور بگ تایم</p>
+            </div>
+          </div>
 
-          <input
-            type="text"
-            id="heroSearchInput"
-            class="central-search-input"
-            placeholder="جستجو در گوگل یا وارد کردن آدرس وبسایت..."
-            autocomplete="off"
-            spellcheck="false"
-            autofocus
-          />
-
-          <button type="button" id="clearSearchBtn" class="search-clear-btn" title="پاک کردن متن">✕</button>
-
-          <div id="searchEngineBadge" class="search-engine-badge" title="کلیک برای تغییر موتور جستجو">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
-            <span id="searchEngineName">گوگل</span>
-            <span id="searchEngineIcon">🌐</span>
+          <div class="card-actions-group">
+            <span id="tasksCountBadge" class="tasks-badge">۰ تسک</span>
+            <button type="button" id="refreshTasksBtn" class="btn-icon-action" title="به‌روزرسانی داده‌ها از سرور">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </button>
           </div>
         </div>
 
-        <!-- Quick Search Engine Switcher Pills -->
-        <div class="engine-pills-row">
-          <button type="button" class="engine-pill active" data-engine="google">
-            <span class="pill-icon">🌐</span>
-            <span>گوگل</span>
-          </button>
-          <button type="button" class="engine-pill" data-engine="bing">
-            <span class="pill-icon">🔷</span>
-            <span>بینگ</span>
-          </button>
-          <button type="button" class="engine-pill" data-engine="duckduckgo">
-            <span class="pill-icon">🦆</span>
-            <span>DuckDuckGo</span>
-          </button>
-          <button type="button" class="engine-pill" data-engine="yahoo">
-            <span class="pill-icon">🟣</span>
-            <span>یاهو</span>
-          </button>
-          <button type="button" class="engine-pill" data-engine="ecosia">
-            <span class="pill-icon">🌱</span>
-            <span>Ecosia</span>
-          </button>
+        <!-- Progress Track -->
+        <div class="progress-section">
+          <div class="progress-header">
+            <span>پیشرفت کارهای امروز:</span>
+            <span id="progressStats" class="progress-numbers">۰ از ۰ (۰٪)</span>
+          </div>
+          <div class="progress-track">
+            <div id="progressBar" class="progress-fill" style="width: 0%;"></div>
+          </div>
         </div>
-      </form>
 
-      <!-- Clean Chrome-style Shortcuts Row (First Item is Admin Sponsored Site) -->
-      <div class="shortcuts-container">
-        <div id="shortcutsList" class="shortcuts-row">
-          <!-- Rendered dynamically -->
+        <!-- Quick Add Task -->
+        <form id="addTaskForm" class="task-add-form">
+          <div class="task-add-box">
+            <input
+              type="text"
+              id="taskInput"
+              class="task-title-input"
+              placeholder="+ افزودن تسک جدید..."
+              autocomplete="off"
+              required
+            />
+            <div class="task-time-pill" title="زمان‌بندی">
+              <span class="time-ico">⏰</span>
+              <input type="text" id="taskTimeInput" class="task-time-input" placeholder="ساعت" dir="ltr" />
+            </div>
+            <select id="prioritySelect" class="task-priority-select" title="تعیین اولویت">
+              <option value="medium">متوسط</option>
+              <option value="high">فوری 🔥</option>
+              <option value="low">عادی</option>
+            </select>
+            <button type="submit" class="task-add-btn">
+              <span>افزودن</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs-row">
+          <div class="filter-tabs">
+            <button type="button" class="filter-tab active" data-filter="all">همه</button>
+            <button type="button" class="filter-tab" data-filter="pending">در انتظار</button>
+            <button type="button" class="filter-tab" data-filter="completed">تکمیل‌شده</button>
+          </div>
+        </div>
+
+        <!-- Scrollable Task List -->
+        <div id="tasksList" class="tasks-list-container">
+          <!-- Dynamically populated -->
+        </div>
+
+        <!-- Card Footer Link -->
+        <div class="card-footer-row">
+          <span class="footer-tip">💡 کلید <kbd>/</kbd> برای جستجو</span>
+          <a href="https://taskrooz.mohusyn.ir" target="_blank" class="footer-action-link">
+            <span>مدیریت کامل زمان</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </section>
+    </aside>
+
+    <!-- ستون وسط: سرچ بار + موتور جستجوها + آپ ها + موزیک پلیر -->
+    <section class="col-center">
+      
+      <!-- سرچ بار و موتور جستجوها -->
+      <div class="center-search-block">
+        <form id="heroSearchForm" class="central-search-form" autocomplete="off">
+          <div class="search-input-wrapper">
+            <button type="submit" class="search-submit-btn" title="شروع جستجو (Enter)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <span>جستجو</span>
+            </button>
+
+            <input
+              type="text"
+              id="heroSearchInput"
+              class="central-search-input"
+              placeholder="جستجو در وب یا وارد کردن آدرس وبسایت..."
+              autocomplete="off"
+              spellcheck="false"
+              autofocus
+            />
+
+            <button type="button" id="clearSearchBtn" class="search-clear-btn" title="پاک کردن متن">✕</button>
+
+            <div id="searchEngineBadge" class="search-engine-badge" title="کلیک برای تغییر موتور جستجو">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+              <span id="searchEngineName">گوگل</span>
+              <span id="searchEngineIcon">🌐</span>
+            </div>
+          </div>
+
+          <!-- موتور جستجو ها (Engine Pills) -->
+          <div class="engine-pills-row">
+            <button type="button" class="engine-pill active" data-engine="google">
+              <span class="pill-icon">🌐</span>
+              <span>گوگل</span>
+            </button>
+            <button type="button" class="engine-pill" data-engine="bing">
+              <span class="pill-icon">🔷</span>
+              <span>بینگ</span>
+            </button>
+            <button type="button" class="engine-pill" data-engine="duckduckgo">
+              <span class="pill-icon">🦆</span>
+              <span>DuckDuckGo</span>
+            </button>
+            <button type="button" class="engine-pill" data-engine="yahoo">
+              <span class="pill-icon">🟣</span>
+              <span>یاهو</span>
+            </button>
+            <button type="button" class="engine-pill" data-engine="ecosia">
+              <span class="pill-icon">🌱</span>
+              <span>Ecosia</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- آپ ها (Apps / Shortcuts Grid - 2 rows of rounded squares) -->
+      <div class="apps-grid-section">
+        <div class="apps-section-title">آپ‌ها و میانبرها</div>
+        <div id="shortcutsList" class="apps-grid">
+          <!-- Item 1: Admin Sponsored Site, followed by user shortcuts -->
         </div>
       </div>
-    </div>
 
-    <!-- 2-COLUMN MAIN WORKSPACE GRID -->
-    <div class="workspace-grid">
-
-      <!-- RIGHT COLUMN: Time Tasks + Quick Notes stacked vertically -->
-      <div class="workspace-col-right">
-
-        <!-- Card 1: Time-based Tasks & Daily Planner -->
-        <section class="card tasks-card">
-          <div class="card-header">
-            <div class="card-title-group">
-              <div class="card-icon-box icon-emerald">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-              </div>
-              <div>
-                <h2 class="card-title">تسک‌ها و کارهای امروز شما</h2>
-                <p id="hubSyncNotice" class="card-subtitle">جهت همگام‌سازی دوطرفه با اپلیکیشن، دکمه اتصال را بزنید.</p>
-              </div>
-            </div>
-
-            <div class="card-actions-group">
-              <span id="tasksCountBadge" class="tasks-badge">۰ تسک</span>
-              <button type="button" id="refreshTasksBtn" class="btn-icon-action" title="به‌روزرسانی داده‌ها از سرور">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-              </button>
-            </div>
-          </div>
-
-          <!-- Progress Bar -->
-          <div class="progress-section">
-            <div class="progress-header">
-              <span>میزان پیشرفت روزانه:</span>
-              <span id="progressStats" class="progress-numbers">۰ از ۰ (۰٪)</span>
-            </div>
-            <div class="progress-track">
-              <div id="progressBar" class="progress-fill" style="width: 0%;"></div>
-            </div>
-          </div>
-
-          <!-- Add Task Form with Time & Priority -->
-          <form id="addTaskForm" class="task-add-form">
-            <div class="task-add-box">
-              <input
-                type="text"
-                id="taskInput"
-                class="task-title-input"
-                placeholder="+ افزودن تسک جدید به بگ تایم (عنوان را بنویسید و Enter بزنید)..."
-                autocomplete="off"
-                required
-              />
-              <div class="task-time-pill" title="زمان تسک">
-                <span class="time-ico">⏰</span>
-                <input type="text" id="taskTimeInput" class="task-time-input" placeholder="زمان" dir="ltr" />
-              </div>
-              <select id="prioritySelect" class="task-priority-select" title="تعیین اولویت">
-                <option value="medium">اولویت متوسط</option>
-                <option value="high">اولویت فوری 🔥</option>
-                <option value="low">اولویت عادی</option>
-              </select>
-              <button type="submit" class="task-add-btn">
-                <span>افزودن</span>
-              </button>
-            </div>
-          </form>
-
-          <!-- Filter Tabs -->
-          <div class="filter-tabs-row">
-            <div class="filter-tabs">
-              <button type="button" class="filter-tab active" data-filter="all">همه کارها</button>
-              <button type="button" class="filter-tab" data-filter="pending">در انتظار انجام</button>
-              <button type="button" class="filter-tab" data-filter="completed">تکمیل‌شده‌ها</button>
-            </div>
-          </div>
-
-          <!-- Task Scroll List -->
-          <div id="tasksList" class="tasks-list-container">
-            <!-- Rendered dynamically -->
-          </div>
-
-          <!-- Card Footer -->
-          <div class="card-footer-row">
-            <span class="footer-tip">💡 برای فوکوس مستقیم روی سرچ‌بار کلید <kbd>/</kbd> را بزنید.</span>
-            <a id="footerOpenApp" href="https://taskrooz.mohusyn.ir" target="_blank" class="footer-action-link">
-              <span>مدیریت کامل زمان و تایم‌لاین در بگ تایم</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </a>
-          </div>
-        </section>
-
-        <!-- Card 2: Quick Daily Notes (Stacked right under tasks) -->
-        <section class="card notes-card">
-          <div class="card-header">
-            <div class="card-title-group">
-              <div class="card-icon-box icon-amber">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-              </div>
-              <div>
-                <h2 class="card-title">یادداشت‌های سریع امروز</h2>
-                <p id="noteStatusText" class="card-subtitle">ذخیره خودکار با تایپ در سرور و حافظه محلی</p>
-              </div>
-            </div>
-
-            <div class="card-actions-group">
-              <button type="button" id="copyNoteBtn" class="btn-secondary-sm" title="کپی کردن متن">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                <span>کپی</span>
-              </button>
-              <button type="button" id="saveNoteBtn" class="btn-primary-sm" title="ذخیره یادداشت">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                <span>ذخیره دستی</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="note-box">
-            <textarea
-              id="dailyNoteArea"
-              class="note-textarea"
-              placeholder="ایده‌ها، نکات کاری، تلفن‌های ضروری یا خلاصه برنامه‌های امروز خود را اینجا یادداشت کنید..."
-            ></textarea>
-          </div>
-        </section>
-
+      <!-- موزیک پلیر در آینده (Music Player Future Pill) -->
+      <div class="music-player-pill-wrapper">
+        <div class="music-player-pill" title="موزیک پلیر و صداهای آرامش‌بخش تمرکز (به‌زودی)">
+          <span class="music-icon">🎵</span>
+          <span class="music-text">موزیک پلیر در آینده</span>
+          <span class="music-badge">بزودی</span>
+        </div>
       </div>
 
-      <!-- LEFT COLUMN: Top 1/3 Clock & Calendar, Bottom 2/3 Pomodoro & Stats -->
-      <div class="workspace-col-left">
+    </section>
 
-        <!-- Top 1/3: Jalali Mini Calendar & Digital Clock -->
-        <section class="card calendar-card">
-          <div class="cal-top-header">
-            <div class="cal-clock-time" id="calBigClock">۰۰:۰۰:۰۰</div>
-            <div class="cal-clock-date" id="calBigDate">جمعه، ۳ مهر ۱۴۰۵</div>
+    <!-- ستون سمت چپ: تقویم و ساعت (بالا) + یادداشت ها (پایین) -->
+    <aside class="col-left">
+
+      <!-- جعبه بالا: تقویم و ساعت -->
+      <section class="ux-card calendar-clock-card">
+        <div class="card-header-clean">
+          <span class="header-tag">تقویم و ساعت</span>
+          <span id="calBigClock" class="clock-live-text">۰۰:۰۰:۰۰</span>
+        </div>
+
+        <div class="cal-date-banner" id="calBigDate">
+          جمعه، ۳ مهر ۱۴۰۵
+        </div>
+
+        <!-- Jalali Calendar Widget -->
+        <div class="jalali-calendar-box">
+          <div class="cal-nav-bar">
+            <button type="button" id="calPrevMonthBtn" class="cal-arrow-btn" title="ماه قبل">›</button>
+            <span id="calCurrentMonthTitle" class="cal-month-title">مهر ۱۴۰۵</span>
+            <button type="button" id="calNextMonthBtn" class="cal-arrow-btn" title="ماه بعد">‹</button>
           </div>
 
-          <!-- Jalali Interactive Calendar -->
-          <div class="jalali-calendar">
-            <div class="cal-month-nav">
-              <button type="button" id="calPrevMonthBtn" class="cal-nav-btn" title="ماه قبل">›</button>
-              <span id="calCurrentMonthTitle" class="cal-month-name">مهر ۱۴۰۵</span>
-              <button type="button" id="calNextMonthBtn" class="cal-nav-btn" title="ماه بعد">‹</button>
-            </div>
-
-            <div class="cal-weekdays">
-              <span>ش</span>
-              <span>ی</span>
-              <span>د</span>
-              <span>س</span>
-              <span>چ</span>
-              <span>پ</span>
-              <span>ج</span>
-            </div>
-
-            <div id="calDaysGrid" class="cal-days-grid">
-              <!-- Dynamically populated days -->
-            </div>
-          </div>
-        </section>
-
-        <!-- Bottom 2/3: Pomodoro Focus Timer & Productivity -->
-        <section class="card focus-card">
-          <div class="card-header">
-            <div class="card-title-group">
-              <div class="card-icon-box icon-blue">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-              </div>
-              <div>
-                <h2 class="card-title">تایمر تمرکز (پومودورو)</h2>
-                <p id="focusModeLabel" class="card-subtitle">جلسه تمرکز ۲۵ دقیقه‌ای</p>
-              </div>
-            </div>
+          <div class="cal-weekdays">
+            <span>ش</span>
+            <span>ی</span>
+            <span>د</span>
+            <span>س</span>
+            <span>چ</span>
+            <span>پ</span>
+            <span>ج</span>
           </div>
 
-          <!-- Big Timer Digits -->
-          <div class="timer-display-area">
-            <div id="focusTimerDisplay" class="focus-digits">۲۵:۰۰</div>
-            
-            <div class="timer-buttons-row">
-              <button type="button" id="startTimerBtn" class="btn-timer-start">
-                <span>شروع تمرکز 🚀</span>
-              </button>
-              <button type="button" id="resetTimerBtn" class="btn-timer-reset" title="تنظیم مجدد">
-                <span>ریست</span>
-              </button>
-            </div>
+          <div id="calDaysGrid" class="cal-days-grid">
+            <!-- Populated dynamically -->
           </div>
+        </div>
+      </section>
 
-          <!-- Focus Modes Switcher -->
-          <div class="focus-modes-row">
-            <button type="button" class="mode-pill active" data-minutes="25">۲۵ دقیقه کار</button>
-            <button type="button" class="mode-pill" data-minutes="50">۵۰ دقیقه کار</button>
-            <button type="button" class="mode-pill" data-minutes="5">۵ دقیقه استراحت</button>
+      <!-- جعبه پایین: یادداشت ها -->
+      <section class="ux-card notes-card">
+        <div class="card-header-clean">
+          <span class="header-tag">یادداشت‌ها</span>
+          <div class="note-actions">
+            <button type="button" id="copyNoteBtn" class="btn-text-action" title="کپی متن">کپی</button>
+            <span class="sep">|</span>
+            <button type="button" id="saveNoteBtn" class="btn-text-action highlight" title="ذخیره">ذخیره</button>
           </div>
+        </div>
 
-          <!-- Productivity Stats -->
-          <div class="focus-metrics-row">
-            <div class="metric-card">
-              <span class="metric-title">جلسات تکمیل‌شده</span>
-              <span id="focusSessionsCount" class="metric-value">۰ جلسه</span>
-            </div>
-            <div class="metric-card">
-              <span class="metric-title">کل زمان تمرکز</span>
-              <span id="focusMinutesTotal" class="metric-value">۰ دقیقه</span>
-            </div>
-          </div>
+        <div class="note-input-container">
+          <textarea
+            id="dailyNoteArea"
+            class="note-field"
+            placeholder="یادداشت‌های سریع، نکات مهم یا شماره تماس‌های ضروری را اینجا بنویسید..."
+          ></textarea>
+        </div>
 
-          <!-- Quick link -->
-          <div class="focus-card-bottom">
-            <a href="https://taskrooz.mohusyn.ir" target="_blank" class="focus-link">
-              <span>ورود به اتاق تمرکز گروهی بگ تایم</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </a>
-          </div>
-        </section>
+        <div class="note-bottom-bar">
+          <span id="noteStatusText" class="note-status-label">ذخیره خودکار با تایپ ✓</span>
+        </div>
+      </section>
 
-      </div>
-
-    </div>
+    </aside>
 
   </main>
 
@@ -362,7 +301,7 @@
         <button type="button" id="closeLoginModalBtn" class="modal-close-btn">✕</button>
       </div>
 
-      <!-- Login Tabs (Bale 1-Click vs Manual Password) -->
+      <!-- Login Tabs -->
       <div class="modal-tabs-row">
         <button type="button" id="tabBaleLogin" class="modal-tab-btn active">
           <span>⚡ ورود سریع با ربات بله</span>
