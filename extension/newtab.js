@@ -399,26 +399,7 @@ const calNextMonthBtn = document.getElementById('calNextMonthBtn');
 const calCurrentMonthTitle = document.getElementById('calCurrentMonthTitle');
 const calDaysGrid = document.getElementById('calDaysGrid');
 
-// Login Modal & Mandatory Gate Elements
-const mandatoryAuthGate = document.getElementById('mandatoryAuthGate');
-const mainWorkspace = document.getElementById('mainWorkspace');
-const gateActiveServerLabel = document.getElementById('gateActiveServerLabel');
-const gateTabBale = document.getElementById('gateTabBale');
-const gateTabPassword = document.getElementById('gateTabPassword');
-const gateBaleContent = document.getElementById('gateBaleContent');
-const gatePasswordContent = document.getElementById('gatePasswordContent');
-const gateStartBaleBtn = document.getElementById('gateStartBaleBtn');
-const gateBalePollingStatus = document.getElementById('gateBalePollingStatus');
-const gateLoginForm = document.getElementById('gateLoginForm');
-const gateUsername = document.getElementById('gateUsername');
-const gatePassword = document.getElementById('gatePassword');
-const gateLoginError = document.getElementById('gateLoginError');
-const gateLoginSubmitBtn = document.getElementById('gateLoginSubmitBtn');
-const gateSrv1Btn = document.getElementById('gateSrv1Btn');
-const gateSrv2Btn = document.getElementById('gateSrv2Btn');
-const gateServerUrl = document.getElementById('gateServerUrl');
-const gateRegisterLink = document.getElementById('gateRegisterLink');
-
+// Login Modal Elements
 const loginModal = document.getElementById('loginModal');
 const openLoginModalBtn = document.getElementById('openLoginModalBtn');
 const closeLoginModalBtn = document.getElementById('closeLoginModalBtn');
@@ -850,36 +831,17 @@ function renderCalendar() {
   }
 }
 
-function updateMandatoryGateUI() {
-  const isAuthed = Boolean(currentAccount && currentAccount.token && currentAccount.user);
-
-  if (isAuthed) {
-    if (mandatoryAuthGate) mandatoryAuthGate.style.display = 'none';
-    if (mainWorkspace) mainWorkspace.style.display = 'grid';
-  } else {
-    if (mandatoryAuthGate) mandatoryAuthGate.style.display = 'flex';
-    if (mainWorkspace) mainWorkspace.style.display = 'none';
-  }
-
-  if (gateActiveServerLabel) {
-    gateActiveServerLabel.textContent = activeServerUrl.replace(/^https?:\/\//, '');
-  }
-  if (gateRegisterLink) {
-    gateRegisterLink.href = activeServerUrl;
-  }
-  if (gateServerUrl) {
-    gateServerUrl.value = activeServerUrl;
-  }
-}
-
-// ── Account & Auth State ──
+// ── Account & Auth State (With Mandatory Login Gate) ──
 async function renderAccountUI() {
   currentAccount = await Storage.get('account', null);
-  updateMandatoryGateUI();
 
   if (accountBox) {
     accountBox.innerHTML = '';
-    if (currentAccount && currentAccount.user) {
+    if (currentAccount && currentAccount.user && currentAccount.token) {
+      // LOGGED IN: UNLOCK EXTENSION
+      document.body.classList.remove('locked-app');
+      if (loginModal) loginModal.style.display = 'none';
+
       const u = currentAccount.user;
       accountBox.innerHTML = `
         <div class="user-chip-btn" id="userProfileChip" title="متصل به حساب ${escapeHtml(u.name || u.username)}">
@@ -893,9 +855,11 @@ async function renderAccountUI() {
       if (logoutBtn) {
         logoutBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
-          if (confirm('آیا از خروج از حساب کاربری اطمینان دارید؟ برای استفاده مجدد، ورود الزامی است.')) {
+          if (confirm('آیا از خروج از حساب کاربری اطمینان دارید؟ با خروج، استفاده از افزونه تا ورود مجدد قفل خواهد شد.')) {
             await Storage.set('account', null);
             currentAccount = null;
+            tasks = [];
+            renderTasks();
             await renderAccountUI();
           }
         });
@@ -904,26 +868,35 @@ async function renderAccountUI() {
       if (hubSyncNotice) {
         hubSyncNotice.textContent = `همگام‌سازی زنده فعال است (${escapeHtml(u.name || u.username)})`;
       }
+      return true;
     } else {
+      // NOT LOGGED IN: LOCK WORKSPACE WITH MANDATORY LOGIN GATE
+      document.body.classList.add('locked-app');
+      if (loginModal) loginModal.style.display = 'flex';
+      const closeBtn = document.getElementById('closeLoginModalBtn');
+      if (closeBtn) closeBtn.style.display = 'none';
+
       accountBox.innerHTML = `
-        <button type="button" id="openLoginModalBtn" class="btn-connect" style="color: #ef4444; border-color: #fca5a5;">
-          <span class="dot-status unlinked" style="background: #ef4444;"></span>
-          <span>ورود الزامی 🔐</span>
+        <button type="button" id="openLoginModalBtn" class="btn-connect">
+          <span class="dot-status unlinked"></span>
+          <span>ورود الزامی به بگ تایم</span>
         </button>
       `;
 
       const openBtn = document.getElementById('openLoginModalBtn');
       if (openBtn) {
         openBtn.addEventListener('click', () => {
-          updateMandatoryGateUI();
+          if (loginModal) loginModal.style.display = 'flex';
         });
       }
 
       if (hubSyncNotice) {
-        hubSyncNotice.textContent = 'جهت استفاده از دستیار و همگام‌سازی، ورود الزامی است.';
+        hubSyncNotice.textContent = '🔒 قفل افزونه: لطفاً ابتدا وارد حساب خود شوید.';
       }
+      return false;
     }
   }
+  return false;
 }
 
 async function syncWithServer() {
@@ -968,14 +941,10 @@ async function syncWithServer() {
 
 // ── Bale 1-Click Login Flow ──
 async function handleStartBaleLogin() {
-  const btns = [startBaleLoginBtn, gateStartBaleBtn].filter(Boolean);
-  const statuses = [balePollingStatus, gateBalePollingStatus].filter(Boolean);
-
-  btns.forEach((b) => {
-    b.disabled = true;
-    b.textContent = 'در حال ایجاد تیکت ورود...';
-  });
-  statuses.forEach((s) => (s.style.display = 'flex'));
+  if (!startBaleLoginBtn) return;
+  startBaleLoginBtn.disabled = true;
+  startBaleLoginBtn.textContent = 'در حال ایجاد تیکت ورود...';
+  if (balePollingStatus) balePollingStatus.style.display = 'flex';
 
   try {
     const res = await smartServerFetch('/api/bale.php?action=create_bale_login');
@@ -1005,11 +974,9 @@ async function handleStartBaleLogin() {
 
             AudioFeedback.playComplete();
             if (loginModal) loginModal.style.display = 'none';
-            statuses.forEach((s) => (s.style.display = 'none'));
-            btns.forEach((b) => {
-              b.disabled = false;
-              b.textContent = '🚀 ورود آنی با ربات بله';
-            });
+            if (balePollingStatus) balePollingStatus.style.display = 'none';
+            startBaleLoginBtn.disabled = false;
+            startBaleLoginBtn.textContent = '🚀 ورود آنی با ربات بله';
 
             await renderAccountUI();
             await syncWithServer();
@@ -1019,19 +986,15 @@ async function handleStartBaleLogin() {
       }, 2000);
     } else {
       alert('خطا در صدور تیکت ورود بله: ' + (data.error || 'پاسخ ناموفق'));
-      btns.forEach((b) => {
-        b.disabled = false;
-        b.textContent = '🚀 ورود آنی با ربات بله';
-      });
-      statuses.forEach((s) => (s.style.display = 'none'));
+      startBaleLoginBtn.disabled = false;
+      startBaleLoginBtn.textContent = '🚀 ورود آنی با ربات بله';
+      if (balePollingStatus) balePollingStatus.style.display = 'none';
     }
   } catch (e) {
     alert('عدم برقراری ارتباط با سرور بله یا سرورهای بگ تایم.');
-    btns.forEach((b) => {
-      b.disabled = false;
-      b.textContent = '🚀 ورود آنی با ربات بله';
-    });
-    statuses.forEach((s) => (s.style.display = 'none'));
+    startBaleLoginBtn.disabled = false;
+    startBaleLoginBtn.textContent = '🚀 ورود آنی با ربات بله';
+    if (balePollingStatus) balePollingStatus.style.display = 'none';
   }
 }
 
@@ -1249,105 +1212,15 @@ async function init() {
     }
   });
 
-  // Load Account & Sync
-  await renderAccountUI();
-  await syncWithServer();
-  await inheritFontsFromServer();
+  // Load Account & Mandatory Gate Enforcement
+  const isLoggedIn = await renderAccountUI();
+  if (isLoggedIn) {
+    await syncWithServer();
+    await inheritFontsFromServer();
+  }
 
   if (refreshTasksBtn) {
     refreshTasksBtn.addEventListener('click', syncWithServer);
-  }
-
-  // Mandatory Gate Controls
-  if (gateStartBaleBtn) {
-    gateStartBaleBtn.addEventListener('click', () => {
-      handleStartBaleLogin(true);
-    });
-  }
-
-  if (gateTabBale && gateTabPassword) {
-    gateTabBale.addEventListener('click', () => {
-      gateTabBale.classList.add('active');
-      gateTabPassword.classList.remove('active');
-      if (gateBaleContent) gateBaleContent.style.display = 'flex';
-      if (gatePasswordContent) gatePasswordContent.style.display = 'none';
-    });
-    gateTabPassword.addEventListener('click', () => {
-      gateTabPassword.classList.add('active');
-      gateTabBale.classList.remove('active');
-      if (gateBaleContent) gateBaleContent.style.display = 'none';
-      if (gatePasswordContent) gatePasswordContent.style.display = 'flex';
-    });
-  }
-
-  if (gateSrv1Btn && gateServerUrl) {
-    gateSrv1Btn.addEventListener('click', () => {
-      gateServerUrl.value = 'https://task.mohusyn.ir';
-      gateSrv1Btn.classList.add('active');
-      if (gateSrv2Btn) gateSrv2Btn.classList.remove('active');
-    });
-  }
-
-  if (gateSrv2Btn && gateServerUrl) {
-    gateSrv2Btn.addEventListener('click', () => {
-      gateServerUrl.value = 'https://bagtime.negahm.ir';
-      gateSrv2Btn.classList.add('active');
-      if (gateSrv1Btn) gateSrv1Btn.classList.remove('active');
-    });
-  }
-
-  if (gateLoginForm) {
-    gateLoginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (gateLoginError) gateLoginError.style.display = 'none';
-      if (gateLoginSubmitBtn) {
-        gateLoginSubmitBtn.disabled = true;
-        gateLoginSubmitBtn.textContent = 'در حال تأیید و ورود...';
-      }
-
-      const sUrl = (gateServerUrl?.value || activeServerUrl).trim().replace(/\/+$/, '');
-      const uName = gateUsername?.value.trim();
-      const uPass = gatePassword?.value.trim();
-
-      try {
-        const res = await fetch(`${sUrl}/api/auth.php?action=login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: uName, password: uPass }),
-        });
-
-        const data = await res.json();
-        if (res.ok && data.token) {
-          const acc = {
-            user: data.user,
-            token: data.token,
-            serverUrl: sUrl,
-          };
-          await Storage.set('account', acc);
-          currentAccount = acc;
-          if (gatePassword) gatePassword.value = '';
-          await renderAccountUI();
-          await syncWithServer();
-          await inheritFontsFromServer();
-          AudioFeedback.playCheck();
-        } else {
-          if (gateLoginError) {
-            gateLoginError.textContent = data.error || 'اطلاعات ورود نادرست است.';
-            gateLoginError.style.display = 'block';
-          }
-        }
-      } catch (err) {
-        if (gateLoginError) {
-          gateLoginError.textContent = 'عدم برقراری ارتباط با سرور. لطفاً اتصال اینترنت یا سرور دیگر را امتحان کنید.';
-          gateLoginError.style.display = 'block';
-        }
-      } finally {
-        if (gateLoginSubmitBtn) {
-          gateLoginSubmitBtn.disabled = false;
-          gateLoginSubmitBtn.textContent = 'ورود و قفل‌گشایی دستیار ⚡';
-        }
-      }
-    });
   }
 
   // Bale 1-Click Login Trigger
@@ -1374,6 +1247,7 @@ async function init() {
   // Modal Closures
   if (closeLoginModalBtn && loginModal) {
     closeLoginModalBtn.addEventListener('click', () => {
+      if (document.body.classList.contains('locked-app')) return;
       loginModal.style.display = 'none';
       if (balePollingInterval) {
         clearInterval(balePollingInterval);
@@ -1389,6 +1263,7 @@ async function init() {
   }
 
   window.addEventListener('click', (e) => {
+    if (document.body.classList.contains('locked-app')) return;
     if (e.target === loginModal) {
       loginModal.style.display = 'none';
       if (balePollingInterval) {

@@ -363,221 +363,6 @@ body {
 }
 
 /* -----------------------------------------------------------------------------
-   MANDATORY AUTH GATE (Extension is locked until logged in)
-   ----------------------------------------------------------------------------- */
-.mandatory-auth-gate {
-  position: fixed;
-  top: 60px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(248, 250, 252, 0.96);
-  backdrop-filter: blur(14px);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-}
-
-.auth-gate-card {
-  background: #ffffff;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-xl);
-  box-shadow: 0 20px 50px -10px rgba(15, 23, 42, 0.12);
-  width: 100%;
-  max-width: 480px;
-  padding: 2.2rem 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  text-align: center;
-  animation: gateCardPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes gateCardPop {
-  0% { opacity: 0; transform: scale(0.95) translateY(10px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-.auth-gate-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.auth-gate-logo-box {
-  width: 64px;
-  height: 64px;
-  margin-bottom: 0.25rem;
-}
-
-.auth-gate-logo {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 6px 16px rgba(15, 23, 42, 0.1));
-}
-
-.auth-gate-title {
-  font-size: 1.25rem;
-  font-weight: 900;
-  color: var(--text-primary);
-}
-
-.auth-gate-subtitle {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-  max-width: 380px;
-}
-
-.auth-gate-server-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  background: #f8fafc;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-full);
-  padding: 0.35rem 0.85rem;
-  font-size: 0.7rem;
-  color: var(--text-secondary);
-  margin-top: 0.25rem;
-}
-
-.gate-failover-tip {
-  font-size: 0.62rem;
-  color: var(--text-muted);
-}
-
-.auth-gate-tabs {
-  display: flex;
-  background: #f1f5f9;
-  padding: 0.25rem;
-  border-radius: var(--radius-md);
-  gap: 0.25rem;
-}
-
-.auth-tab-btn {
-  flex: 1;
-  padding: 0.55rem;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-sm);
-  font-family: inherit;
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.auth-tab-btn.active {
-  background: #ffffff;
-  color: var(--text-primary);
-  box-shadow: var(--shadow-sm);
-}
-
-.gate-tab-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.gate-bale-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 1.5rem 1rem;
-  background: #f8fafc;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  gap: 0.65rem;
-}
-
-.gate-bale-robot {
-  font-size: 2.8rem;
-}
-
-.gate-bale-title {
-  font-size: 0.95rem;
-  font-weight: 900;
-  color: var(--text-primary);
-}
-
-.gate-bale-desc {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  max-width: 340px;
-}
-
-.btn-gate-primary {
-  width: 100%;
-  padding: 0.85rem;
-  background: #0f172a;
-  color: #ffffff;
-  border: none;
-  border-radius: var(--radius-md);
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 900;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  box-shadow: 0 4px 15px rgba(15, 23, 42, 0.15);
-}
-
-.btn-gate-primary:hover {
-  background: #000000;
-  transform: translateY(-1px);
-}
-
-.btn-gate-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.gate-polling-box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  padding: 0.6rem;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: var(--radius-md);
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #1d4ed8;
-}
-
-.gate-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  text-align: right;
-}
-
-.auth-gate-footer {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  border-top: 1px solid var(--border-color);
-  padding-top: 0.85rem;
-}
-
-.gate-register-link {
-  color: var(--accent-blue);
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.gate-register-link:hover {
-  text-decoration: underline;
-}
-
-/* -----------------------------------------------------------------------------
    2. MAIN 3-COLUMN WORKSPACE (EXACT WIREFRAME UX)
    ----------------------------------------------------------------------------- */
 .ux-workspace {
@@ -1555,6 +1340,78 @@ body {
   justify-content: center;
   padding: 1rem;
   z-index: 100;
+}
+
+/* -----------------------------------------------------------------------------
+   MANDATORY LOGIN GATE (Extension locked until login is completed)
+   ----------------------------------------------------------------------------- */
+body.locked-app .ux-workspace {
+  filter: blur(12px) grayscale(25%);
+  pointer-events: none !important;
+  user-select: none !important;
+  opacity: 0.35;
+  transition: filter 0.4s ease, opacity 0.4s ease;
+}
+
+body.locked-app .top-nav .nav-center,
+body.locked-app .top-nav .font-picker-wrapper,
+body.locked-app .top-nav .btn-open-app {
+  pointer-events: none !important;
+  opacity: 0.5;
+}
+
+body.locked-app #loginModal {
+  display: flex !important;
+  backdrop-filter: blur(10px);
+  background: rgba(15, 23, 42, 0.75);
+  z-index: 99999;
+}
+
+body.locked-app #closeLoginModalBtn {
+  display: none !important;
+}
+
+.mandatory-dialog {
+  max-width: 490px;
+  width: 90%;
+  border-radius: var(--radius-xl);
+  border: 1.5px solid rgba(59, 130, 246, 0.4);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5);
+}
+
+.mandatory-top-banner {
+  text-align: center;
+  padding: 0.5rem 0 1rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1.1rem;
+}
+
+.mandatory-lock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  margin-bottom: 0.65rem;
+}
+
+.mandatory-title {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  margin-bottom: 0.35rem;
+}
+
+.mandatory-desc {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .modal-dialog {

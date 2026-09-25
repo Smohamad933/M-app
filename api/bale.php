@@ -17,9 +17,10 @@ if (empty($action)) {
     }
 }
 $dbObj = TaskRoozDB::getInstance();
-$globalSettings = $dbObj->getGlobalSettings();
 
-$baleConfig = $globalSettings['baleBot'] ?? ($dbObj->data['globalSettings']['baleBot'] ?? [
+// Retrieve global settings from MySQL or JSON properly
+$globalSettings = $dbObj->getGlobalSettings();
+$baleConfig = $globalSettings['baleBot'] ?? [
     'enabled' => false,
     'token' => '',
     'botUsername' => 'BagTime_Bot',
@@ -27,9 +28,22 @@ $baleConfig = $globalSettings['baleBot'] ?? ($dbObj->data['globalSettings']['bal
     'verifyOnRegister' => true,
     'sendNotifications' => true,
     'allowTaskCreation' => true,
-]);
+];
 
 $botToken = trim($baleConfig['token'] ?? '');
+$botUsername = trim($baleConfig['botUsername'] ?? 'BagTime_Bot');
+$providerToken = trim($baleConfig['providerToken'] ?? '');
+
+function logBale($tag, $data = null) {
+    try {
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        $file = $dir . DIRECTORY_SEPARATOR . 'bale.log';
+        $time = date('Y-m-d H:i:s');
+        $content = is_string($data) ? $data : json_encode($data, JSON_UNESCAPED_UNICODE);
+        @file_put_contents($file, "[{$time}] {$tag}: {$content}\n", FILE_APPEND | LOCK_EX);
+    } catch (Exception $e) {}
+}
 
 /**
  * Clean Bot Token to handle user input varieties:
@@ -72,6 +86,7 @@ function saveBaleTicketsData($tickets) {
 function callBaleApi($token, $method, $params = []) {
     $tokenClean = cleanBaleToken($token);
     if (empty($tokenClean)) {
+        logBale("CALL_FAILED_{$method}", 'Empty bot token');
         return ['ok' => false, 'error' => 'توکن ربات بله خالی یا نامعتبر است.'];
     }
 
@@ -97,9 +112,11 @@ function callBaleApi($token, $method, $params = []) {
     curl_close($ch);
 
     if (!$response) {
+        logBale("CURL_ERROR_{$method}", ['err' => $curlErr, 'http' => $httpCode]);
         return ['ok' => false, 'error' => 'خطای اتصال به سرورهای بله: ' . ($curlErr ?: 'Timeout'), 'httpCode' => $httpCode];
     }
     $decoded = json_decode($response, true);
+    logBale("BALE_API_{$method}", ['http' => $httpCode, 'response' => $decoded]);
     return is_array($decoded) ? $decoded : ['ok' => false, 'raw' => $response, 'httpCode' => $httpCode];
 }
 
@@ -191,8 +208,8 @@ function getBaleSubscriptionPlans() {
         'plus' => [
             'key' => 'plus',
             'type' => '1_month',
-            'title' => 'اشتراک پلاس ۱ ماهه',
-            'desc' => 'دسترسی ۳۰ روزه به تمام امکانات پیشرفته بگ تایم و نماد پلاس در پروفایل',
+            'title' => 'اشتراک پلاس (۱ ماهه)',
+            'desc' => 'دسترسی ۳۰ روزه به امکانات پیشرفته بگ تایم',
             'amountRials' => 2900000,
             'amountTomans' => '۲۹۰,۰۰۰ تومان',
             'days' => 30,
@@ -200,8 +217,8 @@ function getBaleSubscriptionPlans() {
         'pro' => [
             'key' => 'pro',
             'type' => '3_months',
-            'title' => 'اشتراک پرو ۳ ماهه',
-            'desc' => 'دسترسی ۹۰ روزه به پروژه‌های تیمی، فضای ابری و تمام امکانات حرفه‌ای بگ تایم',
+            'title' => 'اشتراک پرو (۳ ماهه)',
+            'desc' => 'دسترسی ۹۰ روزه به پروژه‌های تیمی و فضای ابری بگ تایم',
             'amountRials' => 6900000,
             'amountTomans' => '۶۹۰,۰۰۰ تومان',
             'days' => 90,
@@ -209,8 +226,8 @@ function getBaleSubscriptionPlans() {
         'ultra' => [
             'key' => 'ultra',
             'type' => '6_months',
-            'title' => 'اشتراک اولترا ۶ ماهه',
-            'desc' => 'دسترسی ۱۸۰ روزه نامحدود، پشتیبانی اختصاصی و نماد الماس در پروفایل',
+            'title' => 'اشتراک اولترا (۶ ماهه)',
+            'desc' => 'دسترسی ۱۸۰ روزه نامحدود و نماد الماس در پروفایل',
             'amountRials' => 11900000,
             'amountTomans' => '۱,۱۹۰,۰۰۰ تومان',
             'days' => 180,
@@ -220,7 +237,7 @@ function getBaleSubscriptionPlans() {
 
 /**
  * Dispatch official sendInvoice or interactive payment card in Bale
- * docs: https://docs.bale.ai/#sendinvoice
+ * According to official docs: https://docs.bale.ai/#پرداخت
  */
 function sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $userId = null) {
     global $dbObj;
@@ -230,40 +247,36 @@ function sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $userId 
     if ($planKey === '6_months') $planKey = 'ultra';
     $selectedPlan = $plans[$planKey] ?? $plans['pro'];
 
-    $globalSettings = $dbObj->getGlobalSettings();
-    $baleCfg = $globalSettings['baleBot'] ?? $baleConfig;
-    $providerToken = trim($baleCfg['providerToken'] ?? ($baleCfg['paymentToken'] ?? ($globalSettings['balePaymentToken'] ?? ($globalSettings['providerToken'] ?? ''))));
+    $providerToken = trim($baleConfig['providerToken'] ?? '');
+    $uId = $userId ?: 'anon';
+    $payload = "sub:{$uId}:{$selectedPlan['key']}:" . time();
 
-    $payload = "sub_" . ($userId ?: 'anon') . "_" . $selectedPlan['key'] . "_" . time();
+    // In Bale, title must be between 1 and 32 characters!
+    $cleanTitle = mb_substr($selectedPlan['title'], 0, 32);
+    // Description between 1 and 255 characters
+    $cleanDesc = mb_substr($selectedPlan['desc'], 0, 255);
 
     $invoiceSent = false;
-    if (!empty($providerToken) && !empty($botToken)) {
-        // According to Bale documentation: https://docs.bale.ai/#sendinvoice
-        // Title: 1-32 chars, Description: 1-255 chars, Prices: Array of LabeledPrice, provider_token
+    if (!empty($providerToken)) {
+        // Official Bale Bot Payment: sendInvoice
         $invoiceParams = [
             'chat_id' => $chatId,
-            'title' => mb_substr($selectedPlan['title'], 0, 32, 'UTF-8'),
-            'description' => mb_substr($selectedPlan['desc'], 0, 255, 'UTF-8'),
+            'title' => $cleanTitle,
+            'description' => $cleanDesc,
             'payload' => $payload,
             'provider_token' => $providerToken,
             'prices' => [
                 [
-                    'label' => mb_substr($selectedPlan['title'], 0, 32, 'UTF-8'),
+                    'label' => $cleanTitle,
                     'amount' => (int)$selectedPlan['amountRials'],
                 ],
             ],
         ];
 
         $invoiceRes = callBaleApi($botToken, 'sendInvoice', $invoiceParams);
+        logBale('sendInvoice_result', ['res' => $invoiceRes, 'params' => $invoiceParams]);
         if (!empty($invoiceRes['ok'])) {
             $invoiceSent = true;
-        } else {
-            // Retry with stringified JSON prices in case Bale expects encoded string
-            $invoiceParams['prices'] = json_encode($invoiceParams['prices'], JSON_UNESCAPED_UNICODE);
-            $retryRes = callBaleApi($botToken, 'sendInvoice', $invoiceParams);
-            if (!empty($retryRes['ok'])) {
-                $invoiceSent = true;
-            }
         }
     }
 
@@ -272,8 +285,7 @@ function sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $userId 
             "📦 طرح انتخابی: **{$selectedPlan['title']}**\n" .
             "⏱️ مدت زمان: **{$selectedPlan['days']} روز**\n" .
             "💰 مبلغ قابل پرداخت: **{$selectedPlan['amountTomans']}**\n\n" .
-            (empty($providerToken) ? "⚠️ *توکن درگاه پرداخت در تنظیمات ثبت نشده است.*\n\n" : "") .
-            "🔹 پرداخت مستقیماً از طریق درگاه کیف پول بله و تمامی کارت‌های عضو شتاب انجام می‌شود.\n\n" .
+            ($providerToken ? "⚠️ ارتباط مستقیم با درگاه برقرار نشد، می‌توانید از دکمه پرداخت زیر استفاده فرمایید:\n\n" : "🔹 پرداخت مستقیماً از طریق درگاه کیف پول بله و تمامی کارت‌های عضو شتاب انجام می‌شود.\n\n") .
             "جهت تکمیل پرداخت، روی گزینه زیر ضربه بزنید:";
 
         $invoiceKb = [
@@ -281,7 +293,7 @@ function sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $userId 
                 [
                     [
                         'text' => "💳 پرداخت آنلاین {$selectedPlan['amountTomans']} با بله",
-                        'callback_data' => "sim_pay_{$selectedPlan['key']}_" . ($userId ?: 'current'),
+                        'callback_data' => "sim_pay_{$selectedPlan['key']}_{$uId}",
                     ],
                 ],
                 [
@@ -313,24 +325,24 @@ if ($action === 'test' || $action === 'status') {
 
     $me = callBaleApi($cleanedToken, 'getMe');
     if (!empty($me['ok'])) {
-        // Automatically persist the cleaned token into globalSettings
-        $dbObj->loadJson();
-        if (!isset($dbObj->data['globalSettings']['baleBot'])) {
-            $dbObj->data['globalSettings']['baleBot'] = $baleConfig;
+        // Automatically persist the cleaned token into globalSettings (MySQL and JSON)
+        $currSettings = $dbObj->getGlobalSettings();
+        if (!isset($currSettings['baleBot'])) {
+            $currSettings['baleBot'] = $baleConfig;
         }
-        $dbObj->data['globalSettings']['baleBot']['token'] = $cleanedToken;
-        $dbObj->data['globalSettings']['baleBot']['enabled'] = true;
+        $currSettings['baleBot']['token'] = $cleanedToken;
+        $currSettings['baleBot']['enabled'] = true;
         if (!empty($me['result']['username'])) {
-            $dbObj->data['globalSettings']['baleBot']['botUsername'] = $me['result']['username'];
+            $currSettings['baleBot']['botUsername'] = $me['result']['username'];
         }
-        $dbObj->saveJson();
+        $dbObj->updateGlobalSettings($currSettings);
 
         jsonResponse([
             'ok' => true,
             'status' => 'connected',
             'message' => 'اتصال به ربات بله با موفقیت برقرار شد.',
             'bot' => $me['result'] ?? [],
-            'config' => $dbObj->data['globalSettings']['baleBot'],
+            'config' => $currSettings['baleBot'],
         ]);
     } else {
         $errDesc = $me['description'] ?? ($me['error'] ?? 'پاسخ ناموفق از سرور بله');
@@ -369,6 +381,11 @@ if ($action === 'set_webhook') {
     $res = callBaleApi($cleanedToken, 'setWebhook', ['url' => $webhookUrl]);
     
     if (!empty($res['ok'])) {
+        $currSettings = $dbObj->getGlobalSettings();
+        if (isset($currSettings['baleBot'])) {
+            $currSettings['baleBot']['webhookUrl'] = $webhookUrl;
+            $dbObj->updateGlobalSettings($currSettings);
+        }
         jsonResponse([
             'ok' => true,
             'webhookUrl' => $webhookUrl,
@@ -554,14 +571,8 @@ if ($action === 'webhook') {
         exit;
     }
 
-    // Always reload latest database & global settings from disk/MySQL
+    // Always reload latest database from disk to reflect new registrations
     $dbObj->loadJson();
-    $globalSettings = $dbObj->getGlobalSettings();
-    $baleConfig = $globalSettings['baleBot'] ?? ($dbObj->data['globalSettings']['baleBot'] ?? []);
-    if (!empty($baleConfig['token'])) {
-        $botToken = trim($baleConfig['token']);
-    }
-
     if (!isset($dbObj->data['bale_pending_verifications'])) {
         $dbObj->data['bale_pending_verifications'] = [];
     }
@@ -580,7 +591,7 @@ if ($action === 'webhook') {
 
         // Find linked users for this chat
         $linkedUsers = [];
-        foreach ($dbObj->data['users'] as $u) {
+        foreach ($dbObj->getAllUsers() as $u) {
             if (!empty($u['baleChatId']) && strval($u['baleChatId']) === strval($chatId)) {
                 $linkedUsers[] = $u;
             }
@@ -980,27 +991,28 @@ if ($action === 'webhook') {
     }
 
     if ($incomingNotifToken) {
-        $notifMatchedIndex = -1;
+        $matchedUser = null;
         $cleanSearch = strtoupper(trim($incomingNotifToken));
-        foreach ($dbObj->data['users'] as $idx => $u) {
+        foreach ($dbObj->getAllUsers() as $u) {
             $userTok = strtoupper(trim($u['baleNotifToken'] ?? ''));
             $userTokClean = str_replace(['NOTIF-', 'NOTIF_', 'NOTIF'], '', $userTok);
             $searchClean = str_replace(['NOTIF-', 'NOTIF_', 'NOTIF'], '', $cleanSearch);
             if (!empty($userTok) && ($userTok === $cleanSearch || $userTokClean === $searchClean)) {
-                $notifMatchedIndex = $idx;
+                $matchedUser = $u;
                 break;
             }
         }
 
-        if ($notifMatchedIndex !== -1) {
-            $targetUser = &$dbObj->data['users'][$notifMatchedIndex];
-            $targetUser['baleChatId'] = $chatId;
-            $targetUser['baleUsername'] = $fromUser['username'] ?? ($targetUser['baleUsername'] ?? '');
-            $targetUser['baleNotificationsEnabled'] = true;
-            $dbObj->saveJson();
+        if ($matchedUser) {
+            $dbObj->updateUserProfile($matchedUser['id'], [
+                'baleChatId' => $chatId,
+                'baleUsername' => $fromUser['username'] ?? ($matchedUser['baleUsername'] ?? ''),
+                'baleNotificationsEnabled' => true,
+                'baleNotificationActive' => true,
+            ]);
 
             $successNotifMsg = "🎉 **نوتیفیکیشن‌های بله با موفقیت فعال شدند!** 🔔\n\n" .
-                "👤 حساب متصل شده: **{$targetUser['name']}** (@{$targetUser['username']})\n" .
+                "👤 حساب متصل شده: **{$matchedUser['name']}** (@{$matchedUser['username']})\n" .
                 "🆔 شناسه چت بله: `{$chatId}`\n\n" .
                 "از این پس کلیه هشدارهای وظایف روزانه، تغییرات پروژه‌ها و پیام‌های شما مستقیماً در همین چت برای شما ارسال خواهد شد.";
 
@@ -1095,19 +1107,20 @@ if ($action === 'webhook') {
     // -------------------------------------------------------------------------
     // BALE SUBSCRIPTION PAYMENT INVOICE (Deep-link: /start pay_PLAN_USERID)
     // -------------------------------------------------------------------------
-    if (preg_match('/(?:^|\s)\/start\s+pay_([a-zA-Z0-9_\-]+)/i', $rawText, $pm)) {
+    if (preg_match('/(?:^|\s)\/start\s+pay_([a-zA-Z0-9]+)_(usr_[a-zA-Z0-9_]+)/i', $rawText, $pm)) {
+        $planKey = $pm[1];
+        $targetUserId = $pm[2];
+        sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $targetUserId);
+        echo json_encode(['ok' => true]);
+        exit;
+    } elseif (preg_match('/(?:^|\s)\/start\s+pay_([a-zA-Z0-9_]+)/i', $rawText, $pm)) {
         $payParam = $pm[1];
-        $planKey = 'pro';
+        $parts = explode('_', $payParam);
+        $planKey = $parts[0] ?? 'pro';
         $targetUserId = null;
-        if (preg_match('/^(plus|pro|ultra)_(.+)$/i', $payParam, $planParts)) {
-            $planKey = strtolower($planParts[1]);
-            $targetUserId = trim($planParts[2]);
-        } else {
-            $parts = explode('_', $payParam, 2);
-            $planKey = $parts[0] ?? 'pro';
-            $targetUserId = $parts[1] ?? null;
+        if (count($parts) > 1) {
+            $targetUserId = substr($payParam, strlen($planKey) + 1);
         }
-
         if (!$targetUserId) {
             $u = $dbObj->getUserByBaleChatId($chatId);
             if ($u) $targetUserId = $u['id'];
@@ -1119,16 +1132,31 @@ if ($action === 'webhook') {
     }
 
     // -------------------------------------------------------------------------
-    // PLAIN /start COMMAND: Show greeting with full glass button keyboard!
+    // NOTIFICATION DEEP-LINK (/start notif_TOKEN)
     // -------------------------------------------------------------------------
-    if (trim($rawText) === '/start') {
-        $senderName = $fromUser['first_name'] ?? 'همکار';
-        $greeting = "سلام {$senderName} عزیز! به بازوی رسمی «بگ تایم» خوش آمدید ⏱️✨\n\n" .
-            "جهت دسترسی به امکانات و مدیریت کارهای روزانه، یکی از گزینه‌های زیر را انتخاب کنید:";
-
-        sendBaleMessage($botToken, $chatId, $greeting, getMainMenuKeyboard());
-        echo json_encode(['ok' => true]);
-        exit;
+    if (preg_match('/(?:^|\s)\/start\s+notif_([A-Za-z0-9_-]+)/i', $rawText, $nm)) {
+        $notifToken = trim($nm[1]);
+        $targetUser = null;
+        $cleanSearch = strtoupper(str_replace(['NOTIF-', 'NOTIF_', 'notif_'], '', $notifToken));
+        foreach ($dbObj->getAllUsers() as $u) {
+            $uTok = strtoupper(str_replace(['NOTIF-', 'NOTIF_', 'notif_'], '', $u['baleNotifToken'] ?? ''));
+            if (!empty($uTok) && $uTok === $cleanSearch) {
+                $targetUser = $u;
+                break;
+            }
+        }
+        if ($targetUser) {
+            $dbObj->updateUserProfile($targetUser['id'], [
+                'baleChatId' => $chatId,
+                'baleNotificationActive' => true,
+            ]);
+            $msg = "🎉 **اتصال اعلان‌ها با موفقیت انجام شد!** 🔔\n\n" .
+                "حساب کاربری شما: **{$targetUser['name']}** (@{$targetUser['username']})\n" .
+                "از این پس یادآورها، تغییرات وظایف و پیام‌های سامانه بگ تایم در این چت برای شما ارسال خواهند شد.";
+            sendBaleMessage($botToken, $chatId, $msg, getMainMenuKeyboard());
+            echo json_encode(['ok' => true]);
+            exit;
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -1279,6 +1307,20 @@ if ($action === 'webhook') {
             echo json_encode(['ok' => true]);
             exit;
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // PLAIN /start COMMAND: Greeting with glass buttons
+    // -------------------------------------------------------------------------
+    if (preg_match('/^\s*\/start\s*$/i', $rawText)) {
+        $senderName = $fromUser['first_name'] ?? 'همکار';
+        $greeting = "سلام {$senderName} عزیز! به بازوی رسمی «بگ تایم» خوش آمدید ⏱️✨\n\n" .
+            "این بازو متصل به سیستم برنامه‌ریزی روزانه و مدیریت کارهای شماست.\n" .
+            "جهت دسترسی به امکانات، یکی از دکمه‌های شیشه‌ای زیر را انتخاب فرمایید:";
+
+        sendBaleMessage($botToken, $chatId, $greeting, getMainMenuKeyboard());
+        echo json_encode(['ok' => true]);
+        exit;
     }
 
     // -------------------------------------------------------------------------
@@ -1482,7 +1524,7 @@ if ($action === 'notify') {
     }
 
     $targetUser = null;
-    foreach ($dbObj->data['users'] as $u) {
+    foreach ($dbObj->getAllUsers() as $u) {
         if ($u['id'] === $userId || ($u['username'] ?? '') === $userId) {
             $targetUser = $u;
             break;
