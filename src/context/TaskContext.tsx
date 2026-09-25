@@ -21,7 +21,7 @@ import type {
   AppOperatingMode,
   TaskWorkLog,
 } from '../types';
-import { api, DEFAULT_GLOBAL_SETTINGS, onSyncEvent, broadcastSync } from '../services/api';
+import { api, DEFAULT_GLOBAL_SETTINGS, onSyncEvent, broadcastSync, clearApiCache } from '../services/api';
 import { getTodayISO, formatPersianDate, toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import { DEFAULT_APP_TEXTS } from '../utils/appTexts';
@@ -1067,6 +1067,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUsers = useCallback(async () => {
     if (currentUser) {
       try {
+        clearApiCache('api/users.php');
         const uList = await api.getUsers();
         setUsers(uList);
 

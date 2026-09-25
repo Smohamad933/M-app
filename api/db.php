@@ -638,7 +638,6 @@ class TaskRoozDB {
         // 1. Try MySQL
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
-                @$this->pdo->exec("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
                 $stmt = $this->pdo->query("
                     SELECT 
                         u.id, u.numeric_id as numericId, u.username, u.name, u.role, u.status,
@@ -648,11 +647,14 @@ class TaskRoozDB {
                         u.phone, u.email, u.province, u.city,
                         u.birth_date as birthDate, u.job_title as jobTitle, u.skills_json, u.timeline_json, u.avatar,
                         u.created_at as createdAt,
-                        COUNT(t.id) as totalTasks,
-                        SUM(CASE WHEN t.completed = 1 THEN 1 ELSE 0 END) as completedTasks
+                        COALESCE(t.totalTasks, 0) as totalTasks,
+                        COALESCE(t.completedTasks, 0) as completedTasks
                     FROM users u
-                    LEFT JOIN tasks t ON u.id = t.user_id
-                    GROUP BY u.id
+                    LEFT JOIN (
+                        SELECT user_id, COUNT(*) as totalTasks, SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completedTasks
+                        FROM tasks
+                        GROUP BY user_id
+                    ) t ON u.id = t.user_id
                     ORDER BY u.created_at ASC
                 ");
                 $users = $stmt->fetchAll();
