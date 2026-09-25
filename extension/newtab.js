@@ -155,7 +155,7 @@ function getJalaliDateString() {
   return `${weekday}، ${toPersianDigits(jd)} ${monthName} ${toPersianDigits(jy)}`;
 }
 
-// ── Official Dual Servers & Auto-Failover System ──
+// ── Official Dual Servers & Automated Best Server Detection ──
 const BAGTIME_SERVERS = [
   'https://task.mohusyn.ir',
   'https://bagtime.negahm.ir'
@@ -167,83 +167,48 @@ async function initServerManager() {
   const saved = await Storage.get('active_server', null);
   if (saved && BAGTIME_SERVERS.includes(saved)) {
     activeServerUrl = saved;
-  } else {
-    activeServerUrl = BAGTIME_SERVERS[0];
   }
   updateServerUI();
-  checkBothServersHealth();
+  // Automatically test both servers in background to connect to whichever is online and faster
+  autoDetectBestServer();
+}
+
+async function autoDetectBestServer() {
+  try {
+    const checks = BAGTIME_SERVERS.map(async (srv) => {
+      const start = performance.now();
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 3500);
+        const res = await fetch(`${srv}/api/settings.php`, { method: 'HEAD', signal: controller.signal });
+        clearTimeout(timer);
+        if (res.ok) {
+          return { srv, time: performance.now() - start, ok: true };
+        }
+      } catch {}
+      return { srv, time: 99999, ok: false };
+    });
+
+    const results = await Promise.all(checks);
+    const valid = results.filter((r) => r.ok).sort((a, b) => a.time - b.time);
+    if (valid.length > 0 && valid[0].srv !== activeServerUrl) {
+      activeServerUrl = valid[0].srv;
+      await Storage.set('active_server', activeServerUrl);
+      updateServerUI();
+    }
+  } catch {}
 }
 
 function updateServerUI() {
-  const label = activeServerUrl.replace(/^https?:\/\//, '');
-  const badgeEl = document.getElementById('serverBadgeLabel');
-  if (badgeEl) badgeEl.textContent = label;
-
-  const dotEl = document.getElementById('serverDotIndicator');
-  if (dotEl) {
-    dotEl.className = 'server-dot online';
-  }
-
-  // Update open webapp links
+  // Update open webapp links to active server
   const openAppBtn = document.getElementById('openWebAppBtn');
   if (openAppBtn) openAppBtn.href = activeServerUrl;
 
   const footerLink = document.getElementById('tasksFooterLink');
   if (footerLink) footerLink.href = activeServerUrl;
-
-  const srvInput = document.getElementById('extServerUrl');
-  if (srvInput) srvInput.value = activeServerUrl;
-
-  // Update dropdown choices
-  const choice1 = document.getElementById('choiceSrv1');
-  const choice2 = document.getElementById('choiceSrv2');
-  if (choice1 && choice2) {
-    if (activeServerUrl.includes('task.mohusyn.ir')) {
-      choice1.classList.add('active');
-      choice2.classList.remove('active');
-    } else {
-      choice2.classList.add('active');
-      choice1.classList.remove('active');
-    }
-  }
-
-  // Update modal pills
-  const modalSrv1Btn = document.getElementById('modalSrv1Btn');
-  const modalSrv2Btn = document.getElementById('modalSrv2Btn');
-  if (modalSrv1Btn && modalSrv2Btn) {
-    if (activeServerUrl.includes('task.mohusyn.ir')) {
-      modalSrv1Btn.classList.add('active');
-      modalSrv2Btn.classList.remove('active');
-    } else {
-      modalSrv2Btn.classList.add('active');
-      modalSrv1Btn.classList.remove('active');
-    }
-  }
 }
 
-async function checkBothServersHealth() {
-  for (const srv of BAGTIME_SERVERS) {
-    const isSrv1 = srv.includes('task.mohusyn.ir');
-    const badgeEl = isSrv1 ? document.getElementById('srv1StatusBadge') : document.getElementById('srv2StatusBadge');
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 4000);
-      const res = await fetch(`${srv}/api/settings.php`, { method: 'HEAD', signal: controller.signal });
-      clearTimeout(timer);
-      if (badgeEl) {
-        badgeEl.textContent = '🟢 آنلاین';
-        badgeEl.className = 'server-status-pill online';
-      }
-    } catch {
-      if (badgeEl) {
-        badgeEl.textContent = isSrv1 ? 'سرور ۱' : 'سرور ۲';
-        badgeEl.className = 'server-status-pill';
-      }
-    }
-  }
-}
-
-// Smart Fetch with Dual-Server Failover
+// Smart Fetch with Dual-Server Automatic Failover
 async function smartServerFetch(path, options = {}) {
   const candidates = [
     activeServerUrl,
@@ -843,13 +808,78 @@ async function renderAccountUI() {
       if (loginModal) loginModal.style.display = 'none';
 
       const u = currentAccount.user;
+      const displayName = u.name || u.username;
+      const initial = (displayName.charAt(0) || 'U').toUpperCase();
+      const avatarHtml = (u.avatar && u.avatar.startsWith('data:'))
+        ? `<img src="${u.avatar}" alt="${escapeHtml(displayName)}">`
+        : `<span>${escapeHtml(initial)}</span>`;
+
       accountBox.innerHTML = `
-        <div class="user-chip-btn" id="userProfileChip" title="متصل به حساب ${escapeHtml(u.name || u.username)}">
-          <span class="dot-status linked"></span>
-          <span class="user-chip-name">${escapeHtml(u.name || u.username)}</span>
-          <button type="button" id="logoutBtn" class="btn-chip-logout" title="خروج از حساب">✕</button>
+        <div class="user-profile-menu-wrapper" id="userProfileMenuWrapper">
+          <button type="button" class="user-profile-btn" id="userProfileBtn" title="پروفایل کاربری: ${escapeHtml(displayName)}">
+            <div class="user-avatar-circle">
+              ${avatarHtml}
+            </div>
+            <div class="user-info-text">
+              <span class="user-name-title">${escapeHtml(displayName)}</span>
+              <span class="user-status-subtitle">🟢 متصل</span>
+            </div>
+            <span class="user-chevron">▾</span>
+          </button>
+
+          <div class="profile-popover" id="profilePopover" style="display: none;">
+            <div class="popover-user-card">
+              <div class="popover-avatar-lg">
+                ${avatarHtml}
+              </div>
+              <div class="popover-user-details">
+                <h4 class="popover-user-name">${escapeHtml(displayName)}</h4>
+                <span class="popover-user-tag">@${escapeHtml(u.username)}</span>
+                <span class="popover-badge">${u.role === 'admin' ? 'مدیر سیستم ⭐' : 'عضو بگ تایم ✨'}</span>
+              </div>
+            </div>
+
+            <div class="popover-divider"></div>
+
+            <div class="popover-actions">
+              <a href="${activeServerUrl}" target="_blank" class="popover-action-item">
+                <span>🚀</span>
+                <span>ورود به پلنر اصلی</span>
+              </a>
+              <button type="button" id="popoverSyncBtn" class="popover-action-item">
+                <span>🔄</span>
+                <span>همگام‌سازی سریع کارها</span>
+              </button>
+              <button type="button" id="logoutBtn" class="popover-action-item popover-logout">
+                <span>🚪</span>
+                <span>خروج از حساب کاربری</span>
+              </button>
+            </div>
+          </div>
         </div>
       `;
+
+      const userProfileBtn = document.getElementById('userProfileBtn');
+      const profilePopover = document.getElementById('profilePopover');
+      if (userProfileBtn && profilePopover) {
+        userProfileBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isShown = profilePopover.style.display === 'flex';
+          profilePopover.style.display = isShown ? 'none' : 'flex';
+          userProfileBtn.classList.toggle('active', !isShown);
+        });
+      }
+
+      const popoverSyncBtn = document.getElementById('popoverSyncBtn');
+      if (popoverSyncBtn) {
+        popoverSyncBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (profilePopover) profilePopover.style.display = 'none';
+          if (userProfileBtn) userProfileBtn.classList.remove('active');
+          AudioFeedback.playCheck();
+          await syncWithServer();
+        });
+      }
 
       const logoutBtn = document.getElementById('logoutBtn');
       if (logoutBtn) {
@@ -866,7 +896,7 @@ async function renderAccountUI() {
       }
 
       if (hubSyncNotice) {
-        hubSyncNotice.textContent = `همگام‌سازی زنده فعال است (${escapeHtml(u.name || u.username)})`;
+        hubSyncNotice.textContent = `همگام‌سازی زنده فعال است (${escapeHtml(displayName)})`;
       }
       return true;
     } else {
@@ -1189,26 +1219,15 @@ async function init() {
     });
   }
 
-  const modalSrv1Btn = document.getElementById('modalSrv1Btn');
-  const modalSrv2Btn = document.getElementById('modalSrv2Btn');
-  if (modalSrv1Btn && extServerUrl) {
-    modalSrv1Btn.addEventListener('click', () => {
-      extServerUrl.value = 'https://task.mohusyn.ir';
-      modalSrv1Btn.classList.add('active');
-      if (modalSrv2Btn) modalSrv2Btn.classList.remove('active');
-    });
-  }
-  if (modalSrv2Btn && extServerUrl) {
-    modalSrv2Btn.addEventListener('click', () => {
-      extServerUrl.value = 'https://bagtime.negahm.ir';
-      modalSrv2Btn.classList.add('active');
-      if (modalSrv1Btn) modalSrv1Btn.classList.remove('active');
-    });
-  }
-
+  // Close popovers and menus on outside click
   document.addEventListener('click', (e) => {
-    if (serverPickerMenu && !serverPickerMenu.contains(e.target) && e.target !== serverSelectorBtn) {
-      serverPickerMenu.style.display = 'none';
+    const profilePopover = document.getElementById('profilePopover');
+    const userProfileBtn = document.getElementById('userProfileBtn');
+    if (profilePopover && profilePopover.style.display === 'flex') {
+      if (!profilePopover.contains(e.target) && !userProfileBtn?.contains(e.target)) {
+        profilePopover.style.display = 'none';
+        userProfileBtn?.classList.remove('active');
+      }
     }
   });
 
@@ -1292,51 +1311,67 @@ async function init() {
     });
   }
 
-  // Manual Login Form Submit
+  // Manual Login Form Submit with Automated Server Detection & Failover
   if (extLoginForm) {
     extLoginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       extLoginError.style.display = 'none';
       extLoginSubmitBtn.disabled = true;
-      extLoginSubmitBtn.textContent = 'در حال اتصال و تأیید...';
+      extLoginSubmitBtn.textContent = 'در حال اتصال و ورود...';
 
-      const sUrl = (extServerUrl.value || activeServerUrl).trim().replace(/\/+$/, '');
-      const uName = extUsername.value.trim();
-      const uPass = extPassword.value.trim();
+      const uName = extUsername?.value.trim() || '';
+      const uPass = extPassword?.value.trim() || '';
 
-      try {
-        const res = await fetch(`${sUrl}/api/auth.php?action=login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: uName, password: uPass }),
-        });
+      const serversToTry = [
+        activeServerUrl,
+        ...BAGTIME_SERVERS.filter((s) => s !== activeServerUrl)
+      ];
 
-        const data = await res.json();
-        if (res.ok && data.token) {
-          const acc = {
-            user: data.user,
-            token: data.token,
-            serverUrl: sUrl,
-          };
-          await Storage.set('account', acc);
-          currentAccount = acc;
-          loginModal.style.display = 'none';
-          extPassword.value = '';
-          await renderAccountUI();
-          await syncWithServer();
-          await inheritFontsFromServer();
-          AudioFeedback.playCheck();
-        } else {
-          extLoginError.textContent = data.error || 'اطلاعات ورود نادرست است یا ارتباط با سرور برقرار نشد.';
-          extLoginError.style.display = 'block';
+      let lastLoginError = 'اطلاعات ورود نادرست است یا ارتباط با سرور برقرار نشد.';
+      let loginSuccess = false;
+
+      for (const sUrl of serversToTry) {
+        try {
+          const res = await fetch(`${sUrl}/api/auth.php?action=login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: uName, password: uPass }),
+          });
+
+          const data = await res.json();
+          if (res.ok && data.token) {
+            const acc = {
+              user: data.user,
+              token: data.token,
+              serverUrl: sUrl,
+            };
+            activeServerUrl = sUrl;
+            await Storage.set('active_server', sUrl);
+            await Storage.set('account', acc);
+            currentAccount = acc;
+            loginModal.style.display = 'none';
+            if (extPassword) extPassword.value = '';
+            await renderAccountUI();
+            await syncWithServer();
+            await inheritFontsFromServer();
+            AudioFeedback.playCheck();
+            loginSuccess = true;
+            break;
+          } else if (data.error) {
+            lastLoginError = data.error;
+          }
+        } catch (err) {
+          lastLoginError = 'عدم برقراری ارتباط با سرور. در حال بررسی سرور پشتیبان...';
         }
-      } catch (err) {
-        extLoginError.textContent = 'عدم برقراری ارتباط با آدرس سرور مشخص شده. در حال بررسی سرور پشتیبان...';
-        extLoginError.style.display = 'block';
-      } finally {
-        extLoginSubmitBtn.disabled = false;
-        extLoginSubmitBtn.textContent = 'ورود و دریافت کارهای من ⚡';
       }
+
+      if (!loginSuccess) {
+        extLoginError.textContent = lastLoginError;
+        extLoginError.style.display = 'block';
+      }
+
+      extLoginSubmitBtn.disabled = false;
+      extLoginSubmitBtn.textContent = 'ورود و دریافت کارهای من ⚡';
     });
   }
 }

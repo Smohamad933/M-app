@@ -501,6 +501,35 @@ if ($action === 'check_bale_login') {
         }
     }
 
+    // If still not approved, check the sibling Bag Time server (dual-server failover sync)
+    if (empty($_GET['no_peer']) && (!$foundTicket || ($foundTicket['status'] ?? '') !== 'approved')) {
+        $currHost = $_SERVER['HTTP_HOST'] ?? '';
+        $peerHost = (strpos($currHost, 'task.mohusyn.ir') !== false) 
+            ? 'https://bagtime.negahm.ir' 
+            : 'https://task.mohusyn.ir';
+        
+        $ch = curl_init("{$peerHost}/api/bale.php?action=check_bale_login&ticket=" . urlencode($ticket) . "&no_peer=1");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        $peerRaw = curl_exec($ch);
+        curl_close($ch);
+        if ($peerRaw) {
+            $peerData = json_decode($peerRaw, true);
+            if (!empty($peerData['status']) && $peerData['status'] === 'approved') {
+                $tickets[$ticket] = [
+                    'status' => 'approved',
+                    'token' => $peerData['token'] ?? '',
+                    'user' => $peerData['user'] ?? null,
+                    'approvedAt' => time(),
+                ];
+                saveBaleTicketsData($tickets);
+                $foundTicket = $tickets[$ticket];
+            }
+        }
+    }
+
     if (!$foundTicket) {
         jsonResponse(['status' => 'not_found', 'error' => 'تیکت ورود معتبر نیست یا منقضی شده است.'], 404);
     }
@@ -515,6 +544,25 @@ if ($action === 'check_bale_login') {
         ]);
     }
     jsonResponse(['status' => 'pending']);
+}
+
+// -----------------------------------------------------------------------------
+// 4.2. Dual-Server Ticket Synchronization
+// -----------------------------------------------------------------------------
+if ($action === 'sync_ticket') {
+    $data = getJsonInput();
+    if (!empty($data['ticket']) && !empty($data['token']) && !empty($data['user'])) {
+        $tickets = getBaleTicketsData();
+        $tickets[$data['ticket']] = [
+            'status' => 'approved',
+            'token' => $data['token'],
+            'user' => $data['user'],
+            'approvedAt' => time(),
+        ];
+        saveBaleTicketsData($tickets);
+        jsonResponse(['ok' => true]);
+    }
+    jsonResponse(['ok' => false]);
 }
 
 // -----------------------------------------------------------------------------
@@ -1169,7 +1217,7 @@ if ($action === 'webhook') {
 
     if ($loginTicketMatch) {
         $tickets = getBaleTicketsData();
-        $targetTicketKey = null;
+        $targetTicketKey = $loginTicketMatch;
 
         if (isset($tickets[$loginTicketMatch])) {
             $targetTicketKey = $loginTicketMatch;
@@ -1183,130 +1231,107 @@ if ($action === 'webhook') {
             }
         }
 
-        if ($targetTicketKey) {
-            $isNewUser = false;
-            // 1. Check if user already linked by chatId
-            $matchedUser = $dbObj->getUserByBaleChatId($chatId);
+        $isNewUser = false;
+        // 1. Check if user already linked by chatId
+        $matchedUser = $dbObj->getUserByBaleChatId($chatId);
 
-            // 2. Fallback check by Bale username
-            if (!$matchedUser && !empty($fromUser['username'])) {
-                $matchedUser = $dbObj->getUserByUsername($fromUser['username']);
-                if ($matchedUser) {
-                    $dbObj->updateUserProfile($matchedUser['id'], ['baleChatId' => $chatId, 'baleUsername' => $fromUser['username']]);
-                    $matchedUser['baleChatId'] = $chatId;
-                }
+        // 2. Fallback check by Bale username
+        if (!$matchedUser && !empty($fromUser['username'])) {
+            $matchedUser = $dbObj->getUserByUsername($fromUser['username']);
+            if ($matchedUser) {
+                $dbObj->updateUserProfile($matchedUser['id'], ['baleChatId' => $chatId, 'baleUsername' => $fromUser['username']]);
+                $matchedUser['baleChatId'] = $chatId;
             }
-
-            // 3. Fallback: Check if Mohusyn
-            if (!$matchedUser && strtolower($fromUser['username'] ?? '') === 'mohusyn') {
-                $matchedUser = $dbObj->getUserByUsername('Mohusyn');
-                if ($matchedUser) {
-                    $dbObj->updateUserProfile($matchedUser['id'], ['baleChatId' => $chatId]);
-                    $matchedUser['baleChatId'] = $chatId;
-                }
-            }
-
-            // 4. Auto-register user if brand new!
-            if (!$matchedUser) {
-                $isNewUser = true;
-                $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
-                if (empty($fromName)) $fromName = 'کاربر بله ' . substr(strval($chatId), -4);
-                $cleanUname = !empty($fromUser['username']) ? preg_replace('/[^a-zA-Z0-9_]/', '', $fromUser['username']) : ('bale_' . substr(strval($chatId), -6));
-                if (empty($cleanUname)) $cleanUname = 'bale_' . substr(strval($chatId), -6);
-
-                $testUname = $cleanUname;
-                $counter = 1;
-                while ($dbObj->getUserByUsername($testUname)) {
-                    $testUname = $cleanUname . '_' . $counter++;
-                }
-
-                $randomPass = substr(bin2hex(random_bytes(5)), 0, 10);
-                $matchedUser = $dbObj->createUser($testUname, $randomPass, $fromName, 'user', [
-                    'baleChatId' => $chatId,
-                    'baleUsername' => $fromUser['username'] ?? '',
-                    'isVerified' => true,
-                    'status' => 'active',
-                ]);
-            }
-
-            // Generate session and token
-            $token = base64_encode($matchedUser['id'] . ':' . time());
-            $cleanUser = $matchedUser;
-            unset($cleanUser['password_hash']);
-            unset($cleanUser['password']);
-
-            $tickets[$targetTicketKey] = [
-                'status' => 'approved',
-                'token' => $token,
-                'user' => $cleanUser,
-                'approvedAt' => time(),
-            ];
-            saveBaleTicketsData($tickets);
-
-            $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
-            $webAppUrl = 'https://' . $host . '/index.html';
-
-            // Check if user has phone number or is new
-            $hasPhone = !empty($matchedUser['phone']) && strlen(trim($matchedUser['phone'])) >= 10;
-
-            if (!$hasPhone || $isNewUser) {
-                // Save pending info for contact reception
-                $pvFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'bale_pending.json';
-                $pVerifs = [];
-                if (file_exists($pvFile)) {
-                    $raw = @file_get_contents($pvFile);
-                    if ($raw) $pVerifs = @json_decode($raw, true) ?: [];
-                }
-                $pVerifs[strval($chatId)] = [
-                    'userId' => $matchedUser['id'],
-                    'action' => 'complete_registration_contact',
-                    'time' => time(),
-                ];
-                @file_put_contents($pvFile, json_encode($pVerifs, JSON_UNESCAPED_UNICODE), LOCK_EX);
-
-                $newRegMsg = "🎉 **ثبت‌نام شما با موفقیت در سامانه «بگ تایم» تأیید شد!** ✅\n\n" .
-                    "👤 نام کاربری شما: **{$matchedUser['name']}** (@{$matchedUser['username']})\n\n" .
-                    "📱 جهت تکمیل مشخصات و ثبت در پایگاه داده، لطفاً دکمه «ارسال شماره همراه» زیر را لمس نمایید تا شماره و نام شما به صورت خودکار ثبت گردد:\n\n" .
-                    "*(ورود به برنامه در مرورگر شما هم‌اکنون فعال شده است)*";
-
-                $contactKeyboard = [
-                    'keyboard' => [
-                        [
-                            [
-                                'text' => '📱 ارسال شماره تماس و ثبت در بگ تایم',
-                                'request_contact' => true,
-                            ],
-                        ],
-                    ],
-                    'resize_keyboard' => true,
-                    'one_time_keyboard' => true,
-                ];
-
-                callBaleApi($botToken, 'sendMessage', [
-                    'chat_id' => $chatId,
-                    'text' => $newRegMsg,
-                    'reply_markup' => $contactKeyboard,
-                ]);
-            } else {
-                // Existing account with full details
-                $confirmMsg = "🎉 **ورود شما به بگ تایم با موفقیت تأیید شد!** ✅\n\n" .
-                    "👤 کاربر گرامی: **{$matchedUser['name']}** (@{$matchedUser['username']})\n" .
-                    "⚡ حساب کاربری شما شناسایی گردید و ورود به برنامه با موفقیت انجام شد.\n\n" .
-                    "✨ پایم اوکی شد و به آپ برگردید تا به برنامه‌تان ادامه دهید.";
-
-                $loginKb = [
-                    'inline_keyboard' => [
-                        [['text' => '🌐 بازگشت به برنامه بگ تایم', 'url' => $webAppUrl]],
-                        [['text' => '📋 کارهای امروز من', 'callback_data' => 'my_tasks']],
-                        [['text' => '➕ ثبت تسک جدید', 'callback_data' => 'new_task']],
-                    ]
-                ];
-                sendBaleMessage($botToken, $chatId, $confirmMsg, $loginKb);
-            }
-
-            echo json_encode(['ok' => true]);
-            exit;
         }
+
+        // 3. Fallback: Check if Mohusyn
+        if (!$matchedUser && strtolower($fromUser['username'] ?? '') === 'mohusyn') {
+            $matchedUser = $dbObj->getUserByUsername('Mohusyn');
+            if ($matchedUser) {
+                $dbObj->updateUserProfile($matchedUser['id'], ['baleChatId' => $chatId]);
+                $matchedUser['baleChatId'] = $chatId;
+            }
+        }
+
+        // 4. Auto-register user if brand new!
+        if (!$matchedUser) {
+            $isNewUser = true;
+            $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
+            if (empty($fromName)) $fromName = 'کاربر بله ' . substr(strval($chatId), -4);
+            $cleanUname = !empty($fromUser['username']) ? preg_replace('/[^a-zA-Z0-9_]/', '', $fromUser['username']) : ('bale_' . substr(strval($chatId), -6));
+            if (empty($cleanUname)) $cleanUname = 'bale_' . substr(strval($chatId), -6);
+
+            $testUname = $cleanUname;
+            $counter = 1;
+            while ($dbObj->getUserByUsername($testUname)) {
+                $testUname = $cleanUname . '_' . $counter++;
+            }
+
+            $randomPass = substr(bin2hex(random_bytes(5)), 0, 10);
+            $matchedUser = $dbObj->createUser($testUname, $randomPass, $fromName, 'user', [
+                'baleChatId' => $chatId,
+                'baleUsername' => $fromUser['username'] ?? '',
+                'isVerified' => true,
+                'status' => 'active',
+            ]);
+        }
+
+        // Generate session and token
+        $token = base64_encode($matchedUser['id'] . ':' . time());
+        $cleanUser = $matchedUser;
+        unset($cleanUser['password_hash']);
+        unset($cleanUser['password']);
+
+        $tickets[$targetTicketKey] = [
+            'status' => 'approved',
+            'token' => $token,
+            'user' => $cleanUser,
+            'approvedAt' => time(),
+        ];
+        saveBaleTicketsData($tickets);
+
+        $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+        $webAppUrl = 'https://' . $host . '/index.html';
+        $displayName = $matchedUser['name'] ?: $matchedUser['username'];
+
+        // Send celebratory login confirmed message to Bale chat
+        $confirmMsg = "🎉 **ورود شما به «بگ تایم» با موفقیت انجام شد!** ✅\n\n" .
+            "👤 کاربر گرامی: **{$displayName}** (@{$matchedUser['username']})\n" .
+            "⚡ حساب کاربری شما شناسایی و تأیید شد و ورود به برنامه انجام گرفت.\n\n" .
+            "🔓 قفل افزونه مرورگر و پنل برنامه‌ریزی هم‌اکنون برای شما باز گردید.\n" .
+            "می‌توانید به مرورگر خود بازگردید و از امکانات دستیار استفاده فرمایید ✨";
+
+        $loginKb = [
+            'inline_keyboard' => [
+                [['text' => '🌐 بازگشت به سامانه بگ تایم', 'url' => $webAppUrl]],
+                [
+                    ['text' => '📋 کارهای امروز من', 'callback_data' => 'my_tasks'],
+                    ['text' => '➕ ثبت تسک جدید', 'callback_data' => 'new_task'],
+                ],
+            ]
+        ];
+        $sentRes = sendBaleMessage($botToken, $chatId, $confirmMsg, $loginKb);
+        logBale('BALE_LOGIN_SENT', ['chatId' => $chatId, 'user' => $matchedUser['username'], 'res' => $sentRes]);
+
+        // Dual-server background synchronization (notify peer server so both know the ticket is approved)
+        try {
+            $currHost = $_SERVER['HTTP_HOST'] ?? '';
+            $peerHost = (strpos($currHost, 'task.mohusyn.ir') !== false) 
+                ? 'https://bagtime.negahm.ir' 
+                : 'https://task.mohusyn.ir';
+            $postBody = json_encode(['ticket' => $targetTicketKey, 'token' => $token, 'user' => $cleanUser]);
+            $chPeer = curl_init("{$peerHost}/api/bale.php?action=sync_ticket");
+            curl_setopt($chPeer, CURLOPT_POST, true);
+            curl_setopt($chPeer, CURLOPT_POSTFIELDS, $postBody);
+            curl_setopt($chPeer, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($chPeer, CURLOPT_TIMEOUT, 2);
+            curl_setopt($chPeer, CURLOPT_SSL_VERIFYPEER, false);
+            @curl_exec($chPeer);
+            @curl_close($chPeer);
+        } catch (Exception $e) {}
+
+        echo json_encode(['ok' => true]);
+        exit;
     }
 
     // -------------------------------------------------------------------------

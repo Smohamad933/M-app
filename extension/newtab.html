@@ -12,7 +12,7 @@
 </head>
 <body>
 
-  <!-- 1. تب بار بالا (Top Bar - Exact Wireframe Alignment) -->
+  <!-- 1. تب بار بالا (Top Bar - Exact Clean UX) -->
   <header class="top-nav">
     <div class="nav-brand">
       <img src="icons/icon-48.png" alt="Bag Time Logo" class="brand-logo">
@@ -22,59 +22,8 @@
       </div>
     </div>
 
-    <div class="nav-center">
-      <div class="clock-badge">
-        <span id="navLiveDate" class="clock-date">بارگذاری تاریخ...</span>
-        <span class="clock-separator">•</span>
-        <span id="navLiveClock" class="clock-digits">۰۰:۰۰:۰۰</span>
-      </div>
-    </div>
-
     <div class="nav-controls">
-      <!-- Dual Server Status Pill & Dropdown -->
-      <div class="server-picker-wrapper">
-        <button type="button" id="serverSelectorBtn" class="btn-server-indicator" title="وضعیت سرورهای بگ تایم (کلیک برای تغییر یا بررسی وضعیت)">
-          <span id="serverDotIndicator" class="server-dot online"></span>
-          <span id="serverBadgeLabel">task.mohusyn.ir</span>
-          <span class="server-chevron">▾</span>
-        </button>
-        <div id="serverPickerMenu" class="server-picker-dropdown" style="display: none;">
-          <div class="server-picker-title">سرورهای رسمی بگ تایم</div>
-          <button type="button" class="server-choice active" id="choiceSrv1" data-server="https://task.mohusyn.ir">
-            <div class="server-choice-left">
-              <span class="server-radio-dot"></span>
-              <span class="server-choice-name">task.mohusyn.ir</span>
-            </div>
-            <span class="server-status-pill online" id="srv1StatusBadge">سرور ۱</span>
-          </button>
-          <button type="button" class="server-choice" id="choiceSrv2" data-server="https://bagtime.negahm.ir">
-            <div class="server-choice-left">
-              <span class="server-radio-dot"></span>
-              <span class="server-choice-name">bagtime.negahm.ir</span>
-            </div>
-            <span class="server-status-pill online" id="srv2StatusBadge">سرور ۲</span>
-          </button>
-          <div class="server-picker-note">
-            ⚡ در صورت قطعی یا اختلال هر سرور، ارتباط به طور خودکار به سرور فعال منتقل می‌شود.
-          </div>
-        </div>
-      </div>
-
-      <!-- Font Selector -->
-      <div class="font-picker-wrapper" title="تغییر قلم و فونت دلخواه">
-        <span class="font-icon">🔤</span>
-        <select id="fontSelect" class="font-select">
-          <option value="vazirmatn">فونت وزیرمتن</option>
-          <option value="sahel">فونت ساحل (Sahel)</option>
-          <option value="shabnam">فونت شبنم (Shabnam)</option>
-          <option value="dana">فونت دانا (Dana)</option>
-          <option value="yekan">فونت یکان (Yekan)</option>
-          <option value="system">فونت سیستمی (Tahoma)</option>
-          <option value="inter">فونت Inter (مدرن)</option>
-        </select>
-      </div>
-
-      <!-- Account Connection Widget -->
+      <!-- Account & Profile Widget -->
       <div id="accountBox" class="account-box">
         <button type="button" id="openLoginModalBtn" class="btn-connect">
           <span class="dot-status unlinked"></span>
@@ -267,30 +216,37 @@
           </div>
         </div>
 
-        <!-- Quick Add Task -->
-        <form id="addTaskForm" class="task-add-form">
-          <div class="task-add-box">
+        <!-- Modern Distinct Task Creator -->
+        <form id="addTaskForm" class="task-creator-card">
+          <div class="task-input-row">
+            <span class="task-input-icon">✏️</span>
             <input
               type="text"
               id="taskInput"
-              class="task-title-input"
-              placeholder="+ افزودن تسک جدید..."
+              class="task-title-field"
+              placeholder="کار یا وظیفه جدید را اینجا بنویسید..."
               autocomplete="off"
               required
             />
-            <div class="task-time-pill" title="زمان‌بندی">
-              <span class="time-ico">⏰</span>
-              <input type="text" id="taskTimeInput" class="task-time-input" placeholder="ساعت" dir="ltr" />
-            </div>
-            <select id="prioritySelect" class="task-priority-select" title="تعیین اولویت">
-              <option value="medium">متوسط</option>
-              <option value="high">فوری 🔥</option>
-              <option value="low">عادی</option>
-            </select>
-            <button type="submit" class="task-add-btn">
-              <span>افزودن</span>
-            </button>
           </div>
+
+          <div class="task-meta-row">
+            <div class="task-meta-item time-pill" title="ساعت انجام کار (اختیاری)">
+              <span class="meta-icon">⏰</span>
+              <input type="text" id="taskTimeInput" class="task-time-field" placeholder="ساعت (مثلاً ۱۴:۳۰)" dir="ltr" />
+            </div>
+            <div class="task-meta-item priority-pill" title="انتخاب سطح اولویت">
+              <select id="prioritySelect" class="task-priority-dropdown">
+                <option value="medium">⚡ اولویت متوسط</option>
+                <option value="high">🔥 اولویت فوری</option>
+                <option value="low">☕ اولویت عادی</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" id="submitTaskBtn" class="task-create-submit-btn">
+            <span>➕ افزودن به لیست کارهای امروز</span>
+          </button>
         </form>
 
         <!-- Filter Tabs -->
@@ -362,15 +318,6 @@
       <!-- Tab 2: Manual Credentials Content -->
       <div id="manualLoginContent" class="tab-content" style="display: none;">
         <form id="extLoginForm" class="modal-form">
-          <div class="form-group">
-            <label class="form-label">انتخاب سرور بگ تایم</label>
-            <div class="modal-server-pills">
-              <button type="button" class="server-choice-pill active" id="modalSrv1Btn" data-url="https://task.mohusyn.ir">task.mohusyn.ir</button>
-              <button type="button" class="server-choice-pill" id="modalSrv2Btn" data-url="https://bagtime.negahm.ir">bagtime.negahm.ir</button>
-            </div>
-            <input type="url" id="extServerUrl" class="form-input" value="https://task.mohusyn.ir" required dir="ltr" />
-          </div>
-
           <div class="form-group">
             <label class="form-label">نام کاربری</label>
             <input type="text" id="extUsername" class="form-input" placeholder="مثال: Mohusyn" required dir="ltr" />
