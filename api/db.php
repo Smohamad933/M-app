@@ -754,6 +754,71 @@ class TaskRoozDB {
             }
         }
 
+        // 3. Bale Tickets Storage: merge any user approved in Bale login tickets
+        try {
+            $btFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'bale_tickets.json';
+            if (file_exists($btFile)) {
+                $rawBt = @file_get_contents($btFile);
+                if ($rawBt) {
+                    $tickets = @json_decode($rawBt, true);
+                    if (is_array($tickets)) {
+                        foreach ($tickets as $t) {
+                            if (($t['status'] ?? '') === 'approved' && !empty($t['user']) && is_array($t['user'])) {
+                                $bu = $t['user'];
+                                $key = strtolower(trim((string)($bu['username'] ?? $bu['id'] ?? '')));
+                                if ($key !== '' && !isset($userMap[$key])) {
+                                    $uObj = [
+                                        'id' => $bu['id'] ?? ('usr_' . substr(bin2hex(random_bytes(4)), 0, 8)),
+                                        'numericId' => (int)($bu['numericId'] ?? 1000),
+                                        'username' => $bu['username'] ?? $key,
+                                        'name' => $bu['name'] ?? $bu['username'] ?? 'کاربر بله',
+                                        'role' => $bu['role'] ?? 'user',
+                                        'phone' => $bu['phone'] ?? '',
+                                        'email' => $bu['email'] ?? '',
+                                        'province' => $bu['province'] ?? '',
+                                        'city' => $bu['city'] ?? '',
+                                        'birthDate' => $bu['birthDate'] ?? '',
+                                        'jobTitle' => $bu['jobTitle'] ?? '',
+                                        'avatar' => $bu['avatar'] ?? null,
+                                        'skills' => $bu['skills'] ?? [],
+                                        'dailyTimeline' => $bu['dailyTimeline'] ?? [],
+                                        'status' => $bu['status'] ?? 'active',
+                                        'isDemo' => !empty($bu['isDemo']),
+                                        'isVerified' => true,
+                                        'baleChatId' => $bu['baleChatId'] ?? null,
+                                        'baleUsername' => $bu['baleUsername'] ?? null,
+                                        'subscription' => $bu['subscription'] ?? ['plan' => (($bu['role'] ?? '') === 'admin' ? 'pro' : 'free')],
+                                        'createdAt' => $bu['createdAt'] ?? date('Y-m-d H:i:s'),
+                                        'totalTasks' => 0,
+                                        'completedTasks' => 0,
+                                        'progressPercent' => 0,
+                                    ];
+                                    $userMap[$key] = $uObj;
+
+                                    if ($this->mode === 'mysql' && $this->pdo) {
+                                        try {
+                                            $isVer = 1;
+                                            $stmt = $this->pdo->prepare("
+                                                INSERT INTO users (id, numeric_id, username, password_hash, name, role, status, is_verified, bale_chat_id, bale_username, phone, email, province, city, birth_date, job_title, skills_json, timeline_json, created_at)
+                                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                ON DUPLICATE KEY UPDATE name = VALUES(name), role = VALUES(role), status = VALUES(status), bale_chat_id = VALUES(bale_chat_id)
+                                            ");
+                                            $stmt->execute([
+                                                $uObj['id'], $uObj['numericId'], $uObj['username'], password_hash('123456', PASSWORD_DEFAULT),
+                                                $uObj['name'], $uObj['role'], $uObj['status'], $isVer, $uObj['baleChatId'], $uObj['baleUsername'],
+                                                $uObj['phone'], $uObj['email'], $uObj['province'], $uObj['city'], $uObj['birthDate'], $uObj['jobTitle'],
+                                                json_encode($uObj['skills']), json_encode($uObj['dailyTimeline']), $uObj['createdAt']
+                                            ]);
+                                        } catch (Exception $e) {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception $e) {}
+
         return array_values($userMap);
     }
 

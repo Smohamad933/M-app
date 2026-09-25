@@ -382,11 +382,23 @@ if ($method === 'GET') {
                 ? 'https://bagtime.negahm.ir' 
                 : 'https://task.mohusyn.ir';
 
-            $ctx = stream_context_create([
-                'http' => ['timeout' => 2, 'ignore_errors' => true],
-                'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false],
-            ]);
-            $peerRaw = @file_get_contents("{$peerHost}/api/users.php?action=public&no_peer=1", false, $ctx);
+            $peerRaw = false;
+            if (function_exists('curl_init')) {
+                $ch = curl_init("{$peerHost}/api/users.php?action=public&no_peer=1");
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                $peerRaw = curl_exec($ch);
+                curl_close($ch);
+            }
+            if (!$peerRaw) {
+                $ctx = stream_context_create([
+                    'http' => ['timeout' => 2, 'ignore_errors' => true],
+                    'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false],
+                ]);
+                $peerRaw = @file_get_contents("{$peerHost}/api/users.php?action=public&no_peer=1", false, $ctx);
+            }
             if ($peerRaw) {
                 $peerData = @json_decode($peerRaw, true);
                 if (!empty($peerData['users']) && is_array($peerData['users'])) {
