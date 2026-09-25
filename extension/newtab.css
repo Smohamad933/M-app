@@ -1305,12 +1305,14 @@ body {
   color: var(--text-primary);
 }
 
-.clock-live-text {
-  font-size: 1.2rem;
-  font-weight: 900;
-  color: var(--accent-blue);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+.card-today-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #3b82f6;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: var(--radius-full);
+  padding: 0.15rem 0.55rem;
 }
 
 .cal-date-banner {

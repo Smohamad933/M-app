@@ -621,6 +621,15 @@ if ($action === 'webhook') {
 
     // Always reload latest database from disk to reflect new registrations
     $dbObj->loadJson();
+    $latestSettings = $dbObj->getGlobalSettings();
+    if (!empty($latestSettings['baleBot']['token'])) {
+        $botToken = trim($latestSettings['baleBot']['token']);
+        $baleConfig = $latestSettings['baleBot'];
+    } elseif (!empty($dbObj->data['globalSettings']['baleBot']['token'])) {
+        $botToken = trim($dbObj->data['globalSettings']['baleBot']['token']);
+        $baleConfig = $dbObj->data['globalSettings']['baleBot'];
+    }
+
     if (!isset($dbObj->data['bale_pending_verifications'])) {
         $dbObj->data['bale_pending_verifications'] = [];
     }
