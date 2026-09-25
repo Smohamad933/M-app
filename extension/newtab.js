@@ -571,11 +571,24 @@ async function deleteShortcut(index) {
 }
 
 // ── Tasks & Real-Time Sync Management ──
+let selectedCalDate = null;
+let selectedCalDay = null;
+
+function jalaliToISO(jy, jm, jd) {
+  const [gy, gm, gd] = jalaliToGregorian(jy, jm, jd);
+  const mm = String(gm).padStart(2, '0');
+  const dd = String(gd).padStart(2, '0');
+  return `${gy}-${mm}-${dd}`;
+}
+
 function renderTasks() {
   if (!tasksList) return;
   tasksList.innerHTML = '';
 
-  const filtered = tasks.filter((t) => {
+  const activeDate = selectedCalDate || getTodayDateKey();
+  const dateTasks = tasks.filter((t) => !t.date || t.date === activeDate);
+
+  const filtered = dateTasks.filter((t) => {
     if (currentFilter === 'pending') return !t.completed;
     if (currentFilter === 'completed') return t.completed;
     return true;
@@ -591,8 +604,8 @@ function renderTasks() {
     tasksList.innerHTML = `
       <div class="tasks-empty-state">
         <div class="empty-icon">☕</div>
-        <p class="empty-title">کاری در این لیست وجود ندارد</p>
-        <p class="empty-desc">با استفاده از کادر بالا، تسک جدید اضافه کنید یا در پلنر اصلی برنامه‌ریزی کنید.</p>
+        <p class="empty-title">کاری برای این تاریخ ثبت نشده است</p>
+        <p class="empty-desc">با استفاده از کادر بالا کار جدیدی بیفزایید تا مستقیماً با سرور همگام شود.</p>
       </div>
     `;
     return;
@@ -618,7 +631,8 @@ function renderTasks() {
       toggleTask(task.id, e.target.checked);
     });
 
-    el.querySelector('.task-delete-btn').addEventListener('click', () => {
+    el.querySelector('.task-delete-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
       deleteTask(task.id);
     });
 
@@ -627,21 +641,23 @@ function renderTasks() {
 }
 
 async function addTask(title, time = '', priority = 'medium') {
+  const taskDate = selectedCalDate || getTodayDateKey();
   const newTask = {
     id: 't_' + Date.now(),
     title,
     time,
     priority,
     completed: false,
-    date: getTodayDateKey(),
+    date: taskDate,
   };
 
   tasks.unshift(newTask);
   await Storage.set('tasks', tasks);
   renderTasks();
+  renderCalendar();
   AudioFeedback.playCheck();
 
-  // Push to server with failover
+  // Push to server with failover and immediately assign server ID
   if (currentAccount && currentAccount.token) {
     smartServerFetch('/api/tasks.php', {
       method: 'POST',
@@ -655,7 +671,21 @@ async function addTask(title, time = '', priority = 'medium') {
         priority,
         date: newTask.date,
       }),
-    }).catch(() => {});
+    })
+      .then((res) => res.json())
+      .then(async (data) => {
+        if (data && data.task && data.task.id) {
+          const srvId = String(data.task.id);
+          const tItem = tasks.find((item) => item.id === newTask.id);
+          if (tItem) {
+            tItem.id = srvId;
+            await Storage.set('tasks', tasks);
+            renderTasks();
+            renderCalendar();
+          }
+        }
+      })
+      .catch(() => {});
   }
 }
 
@@ -683,6 +713,7 @@ async function deleteTask(id) {
   tasks = tasks.filter((t) => t.id !== id);
   await Storage.set('tasks', tasks);
   renderTasks();
+  renderCalendar();
 
   if (currentAccount && currentAccount.token) {
     smartServerFetch('/api/tasks.php', {
@@ -698,8 +729,10 @@ async function deleteTask(id) {
 
 function updateProgress() {
   if (!progressStats || !progressBar) return;
-  const total = tasks.length;
-  const done = tasks.filter((t) => t.completed).length;
+  const activeDate = selectedCalDate || getTodayDateKey();
+  const dateTasks = tasks.filter((t) => !t.date || t.date === activeDate);
+  const total = dateTasks.length;
+  const done = dateTasks.filter((t) => t.completed).length;
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
   progressStats.textContent = `${toPersianDigits(done)} از ${toPersianDigits(total)} (${toPersianDigits(percent)}٪)`;
   progressBar.style.width = `${percent}%`;
@@ -707,7 +740,8 @@ function updateProgress() {
 
 // ── Quick Daily Notes ──
 async function loadDailyNote() {
-  const localNote = await Storage.get('daily_note_' + getTodayDateKey(), '');
+  const noteDate = selectedCalDate || getTodayDateKey();
+  const localNote = await Storage.get('daily_note_' + noteDate, '');
   if (dailyNoteArea) dailyNoteArea.value = localNote;
 
   if (currentAccount && currentAccount.token) {
@@ -718,10 +752,9 @@ async function loadDailyNote() {
       if (res.ok) {
         const data = await res.json();
         const serverNotes = data.notes || {};
-        const todayKey = getTodayDateKey();
-        if (serverNotes[todayKey] && !localNote) {
-          dailyNoteArea.value = serverNotes[todayKey];
-          await Storage.set('daily_note_' + todayKey, serverNotes[todayKey]);
+        if (serverNotes[noteDate] !== undefined && !localNote) {
+          dailyNoteArea.value = serverNotes[noteDate];
+          await Storage.set('daily_note_' + noteDate, serverNotes[noteDate]);
         }
       }
     } catch {}
@@ -731,8 +764,8 @@ async function loadDailyNote() {
 async function saveDailyNote(manual = false) {
   if (!dailyNoteArea) return;
   const content = dailyNoteArea.value;
-  const todayKey = getTodayDateKey();
-  await Storage.set('daily_note_' + todayKey, content);
+  const noteDate = selectedCalDate || getTodayDateKey();
+  await Storage.set('daily_note_' + noteDate, content);
 
   if (noteStatusText) {
     noteStatusText.textContent = manual ? 'یادداشت با موفقیت ذخیره شد ✓' : 'ذخیره خودکار ✓';
@@ -748,7 +781,7 @@ async function saveDailyNote(manual = false) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${currentAccount.token}`,
       },
-      body: JSON.stringify({ date: todayKey, content }),
+      body: JSON.stringify({ date: noteDate, content }),
     }).catch(() => {});
   }
 }
@@ -757,12 +790,14 @@ function getTodayDateKey() {
   return new Date().toISOString().split('T')[0];
 }
 
-// ── Mini Jalali Calendar ──
+// ── Interactive Jalali Calendar ──
 function initCalendar() {
   const now = new Date();
-  const [jy, jm] = gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  const [jy, jm, jd] = gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
   calViewYear = jy;
   calViewMonth = jm;
+  selectedCalDay = jd;
+  selectedCalDate = getTodayDateKey();
   renderCalendar();
 }
 
@@ -789,9 +824,28 @@ function renderCalendar() {
   for (let d = 1; d <= monthDaysCount; d++) {
     const dayCell = document.createElement('div');
     const isToday = (calViewYear === todayY && calViewMonth === todayM && d === todayD);
-    dayCell.className = `cal-day-cell ${isToday ? 'today' : ''}`;
+    const dayISO = jalaliToISO(calViewYear, calViewMonth, d);
+    const isSelected = (selectedCalDate === dayISO) || (!selectedCalDate && isToday);
+    const hasTasks = tasks.some((t) => t.date === dayISO);
+
+    dayCell.className = `cal-day-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${hasTasks ? 'has-tasks' : ''}`;
     dayCell.textContent = toPersianDigits(d);
-    dayCell.title = `${d} ${PERSIAN_MONTHS[calViewMonth - 1]}`;
+    dayCell.title = `${d} ${PERSIAN_MONTHS[calViewMonth - 1]} ${toPersianDigits(calViewYear)} (${hasTasks ? 'دارای تسک' : 'بدون تسک'})`;
+
+    dayCell.addEventListener('click', () => {
+      selectedCalDay = d;
+      selectedCalDate = dayISO;
+      const calBigDate = document.getElementById('calBigDate');
+      if (calBigDate) {
+        calBigDate.textContent = isToday
+          ? getJalaliDateString()
+          : `کارهای ${toPersianDigits(d)} ${PERSIAN_MONTHS[calViewMonth - 1]} ${toPersianDigits(calViewYear)}`;
+      }
+      renderCalendar();
+      renderTasks();
+      loadDailyNote();
+    });
+
     calDaysGrid.appendChild(dayCell);
   }
 }
@@ -944,21 +998,17 @@ async function syncWithServer() {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.tasks)) {
-        const todayStr = getTodayDateKey();
-        const serverTodayTasks = data.tasks.filter((t) => !t.date || t.date === todayStr);
-
-        if (serverTodayTasks.length > 0) {
-          tasks = serverTodayTasks.map((st) => ({
-            id: String(st.id),
-            title: st.title,
-            priority: st.priority || 'medium',
-            completed: Boolean(st.completed),
-            time: st.time || '',
-            date: st.date,
-          }));
-          await Storage.set('tasks', tasks);
-          renderTasks();
-        }
+        tasks = data.tasks.map((st) => ({
+          id: String(st.id),
+          title: st.title,
+          priority: st.priority || 'medium',
+          completed: Boolean(st.completed),
+          time: st.time || '',
+          date: st.date || getTodayDateKey(),
+        }));
+        await Storage.set('tasks', tasks);
+        renderTasks();
+        renderCalendar();
       }
     }
   } catch (e) {

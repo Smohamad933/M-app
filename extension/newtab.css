@@ -1382,28 +1382,53 @@ body {
 .cal-day-cell {
   aspect-ratio: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--text-secondary);
-  border-radius: 0.35rem;
+  border-radius: var(--radius-full);
   cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
 }
 
 .cal-day-cell:hover:not(.empty) {
-  background: #f1f5f9;
+  background: #e2e8f0;
+  color: var(--text-primary);
+  transform: scale(1.08);
 }
 
-.cal-day-cell.today {
-  background: var(--accent-blue);
-  color: #ffffff;
+.cal-day-cell.selected {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+  transform: scale(1.05);
+}
+
+.cal-day-cell.today:not(.selected) {
+  border: 1.5px solid #2563eb;
+  color: #2563eb;
   font-weight: 900;
-  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+  background: #eff6ff;
+}
+
+.cal-day-cell.has-tasks::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
 }
 
 .cal-day-cell.empty {
   cursor: default;
+  pointer-events: none;
 }
 
 /* -----------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import {
   toPersianDigits,
@@ -21,6 +21,9 @@ import {
   Check,
   Sparkles,
   Plus,
+  FileText,
+  Copy,
+  Save,
 } from 'lucide-react';
 
 interface BentoWidgetsProps {
@@ -38,12 +41,43 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
     selectedDate,
     setSelectedDate,
     setActiveTab,
+    dailyNotes,
+    saveDailyNote,
   } = useTask();
 
   const [showTodayBanner, setShowTodayBanner] = useState(true);
+  const [noteContent, setNoteContent] = useState('');
+  const [noteSaveStatus, setNoteSaveStatus] = useState<string>('');
+  const [copiedNote, setCopiedNote] = useState(false);
 
   const todayISO = getTodayISO();
   const activeDate = selectedDate || todayISO;
+
+  useEffect(() => {
+    setNoteContent(dailyNotes?.[activeDate] || '');
+  }, [activeDate, dailyNotes]);
+
+  const handleSaveNote = async () => {
+    if (!saveDailyNote) return;
+    setNoteSaveStatus('در حال ذخیره...');
+    try {
+      await saveDailyNote(activeDate, noteContent);
+      setNoteSaveStatus('ذخیره شد ✓');
+      setTimeout(() => setNoteSaveStatus(''), 2500);
+    } catch {
+      setNoteSaveStatus('خطا در ذخیره');
+    }
+  };
+
+  const handleCopyNote = () => {
+    if (!noteContent) return;
+    try {
+      navigator.clipboard.writeText(noteContent);
+      setCopiedNote(true);
+      sounds.playPop();
+      setTimeout(() => setCopiedNote(false), 2000);
+    } catch {}
+  };
 
   // 1. REAL TODAY TASKS: Priority to Team Project tasks, fallback to personal tasks
   const activeDayTasks = useMemo(() => {
@@ -567,6 +601,66 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
             <span>۱۷:۰۰</span>
             <span>۱۸:۰۰</span>
           </div>
+        </div>
+      </div>
+
+      {/* 5. FULL WIDTH: DAILY NOTES & QUICK IDEAS (SYNCED WITH EXTENSION) */}
+      <div className="lg:col-span-2 bg-white rounded-[28px] p-5 sm:p-6 border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col space-y-3.5">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200/80 shadow-2xs">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-black text-base text-slate-900 tracking-tight">
+                یادداشت‌های روزانه و ایده‌ها (Daily Notes)
+              </h3>
+              <span className="text-[10px] text-slate-400 font-bold">
+                همگام‌سازی ابری و زنده با افزونه نیوتَب مرورگر و سرورهای بگ تایم
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {noteSaveStatus && (
+              <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200/60 animate-in fade-in">
+                {noteSaveStatus}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={handleCopyNote}
+              disabled={!noteContent.trim()}
+              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-40"
+              title="کپی متن یادداشت"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>{copiedNote ? 'کپی شد!' : 'کپی'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveNote}
+              className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>ذخیره یادداشت</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="relative">
+          <textarea
+            value={noteContent}
+            onChange={(e) => setNoteContent(e.target.value)}
+            onBlur={() => {
+              if (noteContent !== (dailyNotes?.[activeDate] || '')) {
+                handleSaveNote();
+              }
+            }}
+            placeholder="یادداشت‌های مهم روزانه، شماره‌های ضروری، ایده‌ها یا خلاصه کارهای خود را بنویسید (به‌صورت بلادرنگ با افزونه نیوتَب مرورگر همگام‌سازی می‌شود)..."
+            rows={4}
+            className="w-full p-4 rounded-2xl bg-slate-50/70 border border-slate-200/90 text-slate-800 text-xs sm:text-sm font-medium leading-relaxed outline-none focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-200/50 transition-all resize-y"
+          />
         </div>
       </div>
     </div>

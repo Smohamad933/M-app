@@ -588,11 +588,8 @@ if ($action === 'create_invoice' || $action === 'create_payment_invoice') {
 
     $deepLink = "https://ble.ir/{$cleanBot}?start=pay_{$plan}_{$user['id']}";
 
-    // If user has baleChatId, also dispatch invoice directly to their Bale chat!
-    $chatId = $user['baleChatId'] ?? null;
-    if ($chatId && !empty($botToken)) {
-        sendBalePlanInvoice($botToken, $baleConfig, $chatId, $plan, $user['id']);
-    }
+    // Notice: Do NOT dispatch invoice directly here! The user opens $deepLink in Bale,
+    // which triggers the bot to send the invoice exactly ONCE when the user clicks/starts it.
 
     jsonResponse([
         'ok' => true,
@@ -601,7 +598,7 @@ if ($action === 'create_invoice' || $action === 'create_payment_invoice') {
         'amountRials' => $planInfo['amountRials'],
         'amountTomans' => $planInfo['amountTomans'],
         'title' => $planInfo['title'],
-        'directSentToBale' => !empty($chatId),
+        'directSentToBale' => false,
     ]);
 }
 
@@ -1167,7 +1164,14 @@ if ($action === 'webhook') {
     if (preg_match('/(?:^|\s)\/start\s+pay_([a-zA-Z0-9]+)_(usr_[a-zA-Z0-9_]+)/i', $rawText, $pm)) {
         $planKey = $pm[1];
         $targetUserId = $pm[2];
-        sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $targetUserId);
+
+        // 30s de-duplication cache per chat
+        $invLockKey = 'inv_lock_' . preg_replace('/[^0-9]/', '', strval($chatId));
+        $lastInvTime = (int)($dbObj->data[$invLockKey] ?? 0);
+        if ((time() - $lastInvTime) > 30) {
+            $dbObj->data[$invLockKey] = time();
+            sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $targetUserId);
+        }
         echo json_encode(['ok' => true]);
         exit;
     } elseif (preg_match('/(?:^|\s)\/start\s+pay_([a-zA-Z0-9_]+)/i', $rawText, $pm)) {
@@ -1183,7 +1187,12 @@ if ($action === 'webhook') {
             if ($u) $targetUserId = $u['id'];
         }
 
-        sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $targetUserId);
+        $invLockKey = 'inv_lock_' . preg_replace('/[^0-9]/', '', strval($chatId));
+        $lastInvTime = (int)($dbObj->data[$invLockKey] ?? 0);
+        if ((time() - $lastInvTime) > 30) {
+            $dbObj->data[$invLockKey] = time();
+            sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $targetUserId);
+        }
         echo json_encode(['ok' => true]);
         exit;
     }
@@ -1344,10 +1353,86 @@ if ($action === 'webhook') {
     }
 
     // -------------------------------------------------------------------------
-    // PLAIN /start COMMAND: Greeting with glass buttons
+    // PLAIN /start COMMAND: Greeting or Auto-link recent pending session
     // -------------------------------------------------------------------------
     if (preg_match('/^\s*\/start\s*$/i', $rawText)) {
         $senderName = $fromUser['first_name'] ?? 'همکار';
+
+        // Check if there is an unapproved pending ticket created in the last 180s from this user's browser
+        $recentTicketKey = null;
+        $tickets = getBaleTicketsData();
+        $now = time();
+        foreach ($tickets as $k => $v) {
+            if (($v['status'] ?? '') === 'pending' && ($now - ($v['createdAt'] ?? 0)) < 180) {
+                $recentTicketKey = $k;
+                break;
+            }
+        }
+
+        if ($recentTicketKey) {
+            // Auto-approve login for this new user!
+            $matchedUser = $dbObj->getUserByBaleChatId($chatId);
+            if (!$matchedUser && !empty($fromUser['username'])) {
+                $matchedUser = $dbObj->getUserByUsername($fromUser['username']);
+            }
+            if (!$matchedUser) {
+                $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
+                if (empty($fromName)) $fromName = 'کاربر بله ' . substr(strval($chatId), -4);
+                $cleanUname = !empty($fromUser['username']) ? preg_replace('/[^a-zA-Z0-9_]/', '', $fromUser['username']) : ('bale_' . substr(strval($chatId), -6));
+                if (empty($cleanUname)) $cleanUname = 'bale_' . substr(strval($chatId), -6);
+                $testUname = $cleanUname;
+                $counter = 1;
+                while ($dbObj->getUserByUsername($testUname)) {
+                    $testUname = $cleanUname . '_' . $counter++;
+                }
+                $randomPass = substr(bin2hex(random_bytes(5)), 0, 10);
+                $matchedUser = $dbObj->createUser($testUname, $randomPass, $fromName, 'user', [
+                    'baleChatId' => $chatId,
+                    'baleUsername' => $fromUser['username'] ?? '',
+                    'isVerified' => true,
+                    'status' => 'active',
+                ]);
+            } else {
+                $dbObj->updateUserProfile($matchedUser['id'], ['baleChatId' => $chatId]);
+            }
+
+            $token = base64_encode($matchedUser['id'] . ':' . time());
+            $cleanUser = $matchedUser;
+            unset($cleanUser['password_hash']);
+            unset($cleanUser['password']);
+
+            $tickets[$recentTicketKey] = [
+                'status' => 'approved',
+                'token' => $token,
+                'user' => $cleanUser,
+                'approvedAt' => time(),
+            ];
+            saveBaleTicketsData($tickets);
+
+            $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+            $webAppUrl = 'https://' . $host . '/index.html';
+            $displayName = $matchedUser['name'] ?: $matchedUser['username'];
+
+            $confirmMsg = "🎉 **ورود شما به «بگ تایم» با موفقیت انجام شد!** ✅\n\n" .
+                "👤 کاربر گرامی: **{$displayName}** (@{$matchedUser['username']})\n" .
+                "⚡ حساب کاربری شما با موفقیت به بازو متصل شد و ورود شما به برنامه تأیید گردید.\n\n" .
+                "🔓 هم‌اکنون افزونه نیوتَب و سامانه برنامه‌ریزی شما فعال شد.\n" .
+                "می‌توانید به مرورگر خود بازگردید تا به برنامه‌ریزی و کارهایتان ادامه دهید ✨";
+
+            $loginKb = [
+                'inline_keyboard' => [
+                    [['text' => '🌐 بازگشت به سامانه بگ تایم', 'url' => $webAppUrl]],
+                    [
+                        ['text' => '📋 کارهای امروز من', 'callback_data' => 'my_tasks'],
+                        ['text' => '➕ ثبت تسک جدید', 'callback_data' => 'new_task'],
+                    ],
+                ]
+            ];
+            sendBaleMessage($botToken, $chatId, $confirmMsg, $loginKb);
+            echo json_encode(['ok' => true]);
+            exit;
+        }
+
         $greeting = "سلام {$senderName} عزیز! به بازوی رسمی «بگ تایم» خوش آمدید ⏱️✨\n\n" .
             "این بازو متصل به سیستم برنامه‌ریزی روزانه و مدیریت کارهای شماست.\n" .
             "جهت دسترسی به امکانات، یکی از دکمه‌های شیشه‌ای زیر را انتخاب فرمایید:";
@@ -1547,30 +1632,49 @@ if ($action === 'webhook') {
 }
 
 // -----------------------------------------------------------------------------
-// 4. Send outbound notification to user via Bale
+// 4. Send outbound notification / message to user via Bale
 // -----------------------------------------------------------------------------
-if ($action === 'notify') {
+if ($action === 'notify' || $action === 'send_message') {
     $userId = $input['userId'] ?? ($_POST['userId'] ?? ($_GET['userId'] ?? ''));
-    $text = trim($input['text'] ?? ($_POST['text'] ?? ($_GET['text'] ?? '')));
+    $chatId = $input['chatId'] ?? ($_POST['chatId'] ?? ($_GET['chatId'] ?? ''));
+    $text = trim($input['text'] ?? ($input['message'] ?? ($_POST['text'] ?? ($_POST['message'] ?? ''))));
+    $title = trim($input['title'] ?? ($_POST['title'] ?? ''));
 
-    if (empty($botToken) || empty($baleConfig['sendNotifications'])) {
-        jsonResponse(['error' => 'ارسال نوتیفیکیشن بله فعال نیست.'], 400);
+    if (!empty($title)) {
+        $text = "📢 **{$title}**\n\n" . $text;
     }
 
-    $targetUser = null;
-    foreach ($dbObj->getAllUsers() as $u) {
-        if ($u['id'] === $userId || ($u['username'] ?? '') === $userId) {
-            $targetUser = $u;
-            break;
+    $tokenToUse = trim($input['token'] ?? ($_POST['token'] ?? $botToken));
+    $cleanedToken = cleanBaleToken($tokenToUse);
+
+    if (empty($cleanedToken)) {
+        jsonResponse(['ok' => false, 'error' => 'توکن بازوی بله خالی یا نامعتبر است.'], 200);
+    }
+    if (empty($text)) {
+        jsonResponse(['ok' => false, 'error' => 'متن پیام نمی‌تواند خالی باشد.'], 200);
+    }
+
+    // Resolve chatId if userId was provided
+    if (empty($chatId) && !empty($userId)) {
+        foreach ($dbObj->getAllUsers() as $u) {
+            if ($u['id'] === $userId || ($u['username'] ?? '') === $userId) {
+                $chatId = $u['baleChatId'] ?? null;
+                break;
+            }
         }
     }
 
-    if (!$targetUser || empty($targetUser['baleChatId'])) {
-        jsonResponse(['error' => 'شناسه چت بله برای این کاربر ثبت نشده است.'], 404);
+    if (empty($chatId)) {
+        jsonResponse(['ok' => false, 'error' => 'شناسه چت بله برای این کاربر یافت نشد. کاربر باید ابتدا بازوی بله را استارت کرده باشد.'], 200);
     }
 
-    $res = sendBaleMessage($botToken, $targetUser['baleChatId'], $text);
-    jsonResponse(['ok' => !empty($res['ok']), 'baleResponse' => $res]);
+    $res = sendBaleMessage($cleanedToken, $chatId, $text);
+    if (!empty($res['ok'])) {
+        jsonResponse(['ok' => true, 'message' => 'پیام با موفقیت به کاربر در بله ارسال شد.', 'baleResponse' => $res]);
+    } else {
+        $desc = $res['description'] ?? ($res['error'] ?? 'عدم تأیید ارسال از سرورهای بله');
+        jsonResponse(['ok' => false, 'error' => $desc, 'baleResponse' => $res], 200);
+    }
 }
 
 jsonResponse(['error' => 'اکشن نامعتبر است.'], 400);

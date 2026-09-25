@@ -1212,21 +1212,45 @@ class TaskRoozDB {
     }
 
     public function toggleTask($id) {
+        $result = null;
+
+        // 1. MySQL direct toggle
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("SELECT completed FROM tasks WHERE id = ?");
+                $stmt->execute([$id]);
+                $row = $stmt->fetch();
+                if ($row) {
+                    $newCompleted = empty($row['completed']) ? 1 : 0;
+                    $completedAt = $newCompleted ? date('Y-m-d H:i:s') : null;
+                    $up = $this->pdo->prepare("UPDATE tasks SET completed = ?, completed_at = ? WHERE id = ?");
+                    $up->execute([$newCompleted, $completedAt, $id]);
+                    $result = ['completed' => (bool)$newCompleted, 'completedAt' => $completedAt];
+                }
+            } catch (Exception $e) {}
+        }
+
+        // 2. JSON update / fallback
         $this->loadJson();
         foreach ($this->data['tasks'] as &$t) {
             if ($t['id'] === $id) {
-                $t['completed'] = !empty($t['completed']) ? false : true;
-                $t['completedAt'] = $t['completed'] ? date('Y-m-d H:i:s') : null;
-                if ($this->mode === 'mysql' && $this->pdo) {
-                    try {
-                        $stmt = $this->pdo->prepare("UPDATE tasks SET completed = ?, completed_at = ? WHERE id = ?");
-                        $stmt->execute([$t['completed'] ? 1 : 0, $t['completedAt'], $id]);
-                    } catch (Exception $e) {}
+                if ($result !== null) {
+                    $t['completed'] = $result['completed'];
+                    $t['completedAt'] = $result['completedAt'];
+                } else {
+                    $t['completed'] = !empty($t['completed']) ? false : true;
+                    $t['completedAt'] = $t['completed'] ? date('Y-m-d H:i:s') : null;
+                    $result = ['completed' => $t['completed'], 'completedAt' => $t['completedAt']];
                 }
                 $this->saveJson();
-                return ['completed' => $t['completed'], 'completedAt' => $t['completedAt']];
+                return $result;
             }
         }
+
+        if ($result !== null) {
+            return $result;
+        }
+
         return null;
     }
 
