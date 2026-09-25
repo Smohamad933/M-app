@@ -11,10 +11,17 @@ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 -- 1. جدول کاربران (users)
 CREATE TABLE IF NOT EXISTS `users` (
   `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `numeric_id` int(11) DEFAULT 1000,
   `username` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
   `role` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'user',
+  `status` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+  `is_verified` tinyint(1) NOT NULL DEFAULT 0,
+  `verification_code` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `bale_chat_id` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `bale_username` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `subscription_json` text COLLATE utf8mb4_unicode_ci,
   `phone` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `email` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `province` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,

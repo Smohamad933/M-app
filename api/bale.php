@@ -174,6 +174,32 @@ function answerBaleCallback($token, $callbackQueryId, $text = null, $showAlert =
 }
 
 /**
+ * Dual-server user broadcast helper
+ */
+function broadcastBaleUserToPeer($user) {
+    if (empty($user) || !is_array($user)) return;
+    try {
+        $currHost = $_SERVER['HTTP_HOST'] ?? '';
+        $peerHost = (strpos($currHost, 'task.mohusyn.ir') !== false) 
+            ? 'https://bagtime.negahm.ir' 
+            : 'https://task.mohusyn.ir';
+        $clean = $user;
+        unset($clean['password_hash']);
+        unset($clean['password']);
+        $postBody = json_encode(['user' => $clean]);
+        $chPeer = curl_init("{$peerHost}/api/bale.php?action=sync_user");
+        curl_setopt($chPeer, CURLOPT_POST, true);
+        curl_setopt($chPeer, CURLOPT_POSTFIELDS, $postBody);
+        curl_setopt($chPeer, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($chPeer, CURLOPT_TIMEOUT, 2);
+        curl_setopt($chPeer, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($chPeer, CURLOPT_SSL_VERIFYHOST, false);
+        @curl_exec($chPeer);
+        @curl_close($chPeer);
+    } catch (Exception $e) {}
+}
+
+/**
  * Helper to build Main Menu Inline Keyboard
  */
 function getMainMenuKeyboard() {
@@ -547,7 +573,7 @@ if ($action === 'check_bale_login') {
 }
 
 // -----------------------------------------------------------------------------
-// 4.2. Dual-Server Ticket Synchronization
+// 4.2. Dual-Server Ticket & User Synchronization
 // -----------------------------------------------------------------------------
 if ($action === 'sync_ticket') {
     $data = getJsonInput();
@@ -560,6 +586,47 @@ if ($action === 'sync_ticket') {
             'approvedAt' => time(),
         ];
         saveBaleTicketsData($tickets);
+
+        // Ensure user is created in local DB if not already present
+        $u = $data['user'];
+        $existing = $dbObj->getUserById($u['id'] ?? '');
+        if (!$existing && !empty($u['username'])) {
+            $existing = $dbObj->getUserByUsername($u['username']);
+        }
+        if (!$existing && !empty($u['username'])) {
+            $dbObj->createUser($u['username'], bin2hex(random_bytes(5)), $u['name'] ?? $u['username'], $u['role'] ?? 'user', [
+                'baleChatId' => $u['baleChatId'] ?? null,
+                'baleUsername' => $u['baleUsername'] ?? null,
+                'isVerified' => true,
+                'status' => 'active',
+                'phone' => $u['phone'] ?? '',
+                'email' => $u['email'] ?? '',
+            ]);
+        }
+
+        jsonResponse(['ok' => true]);
+    }
+    jsonResponse(['ok' => false]);
+}
+
+if ($action === 'sync_user') {
+    $data = getJsonInput();
+    if (!empty($data['user']) && is_array($data['user'])) {
+        $u = $data['user'];
+        $existing = $dbObj->getUserById($u['id'] ?? '');
+        if (!$existing && !empty($u['username'])) {
+            $existing = $dbObj->getUserByUsername($u['username']);
+        }
+        if (!$existing && !empty($u['username'])) {
+            $dbObj->createUser($u['username'], bin2hex(random_bytes(5)), $u['name'] ?? $u['username'], $u['role'] ?? 'user', [
+                'baleChatId' => $u['baleChatId'] ?? null,
+                'baleUsername' => $u['baleUsername'] ?? null,
+                'isVerified' => true,
+                'status' => 'active',
+                'phone' => $u['phone'] ?? '',
+                'email' => $u['email'] ?? '',
+            ]);
+        }
         jsonResponse(['ok' => true]);
     }
     jsonResponse(['ok' => false]);
@@ -605,7 +672,15 @@ if ($action === 'create_invoice' || $action === 'create_payment_invoice') {
 // -----------------------------------------------------------------------------
 // 5. Webhook Receiver from Bale Messenger (Handles Messages, Contacts, and Inline Keyboards)
 // -----------------------------------------------------------------------------
-if ($action === 'webhook') {
+$isWebhook = ($action === 'webhook') ||
+    (empty($action) && $_SERVER['REQUEST_METHOD'] === 'POST' && (
+        !empty($input['update_id']) ||
+        !empty($input['message']) ||
+        !empty($input['callback_query']) ||
+        !empty($input['pre_checkout_query'])
+    ));
+
+if ($isWebhook) {
     // Reuse already parsed $input or fallback to php://input (IIS FastCGI resilience)
     $update = (!empty($input) && is_array($input) && (!empty($input['update_id']) || !empty($input['message']) || !empty($input['callback_query'])))
         ? $input
@@ -1292,6 +1367,7 @@ if ($action === 'webhook') {
                 'isVerified' => true,
                 'status' => 'active',
             ]);
+            broadcastBaleUserToPeer($matchedUser);
         }
 
         // Generate session and token
@@ -1353,10 +1429,40 @@ if ($action === 'webhook') {
     }
 
     // -------------------------------------------------------------------------
-    // PLAIN /start COMMAND: Greeting or Auto-link recent pending session
+    // PLAIN /start COMMAND: Greeting, auto-account creation, or auto-link recent pending session
     // -------------------------------------------------------------------------
     if (preg_match('/^\s*\/start\s*$/i', $rawText)) {
         $senderName = $fromUser['first_name'] ?? 'همکار';
+
+        // 1. Always ensure an account exists for this Bale user in the database!
+        $matchedUser = $dbObj->getUserByBaleChatId($chatId);
+        if (!$matchedUser && !empty($fromUser['username'])) {
+            $matchedUser = $dbObj->getUserByUsername($fromUser['username']);
+        }
+        if (!$matchedUser) {
+            $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
+            if (empty($fromName)) $fromName = 'کاربر بله ' . substr(strval($chatId), -4);
+            $cleanUname = !empty($fromUser['username']) ? preg_replace('/[^a-zA-Z0-9_]/', '', $fromUser['username']) : ('bale_' . substr(strval($chatId), -6));
+            if (empty($cleanUname)) $cleanUname = 'bale_' . substr(strval($chatId), -6);
+            $testUname = $cleanUname;
+            $counter = 1;
+            while ($dbObj->getUserByUsername($testUname)) {
+                $testUname = $cleanUname . '_' . $counter++;
+            }
+            $randomPass = substr(bin2hex(random_bytes(5)), 0, 10);
+            $matchedUser = $dbObj->createUser($testUname, $randomPass, $fromName, 'user', [
+                'baleChatId' => $chatId,
+                'baleUsername' => $fromUser['username'] ?? '',
+                'isVerified' => true,
+                'status' => 'active',
+            ]);
+            broadcastBaleUserToPeer($matchedUser);
+        } else {
+            $dbObj->updateUserProfile($matchedUser['id'], [
+                'baleChatId' => $chatId,
+                'baleUsername' => $fromUser['username'] ?? '',
+            ]);
+        }
 
         // Check if there is an unapproved pending ticket created in the last 180s from this user's browser
         $recentTicketKey = null;
@@ -1370,32 +1476,6 @@ if ($action === 'webhook') {
         }
 
         if ($recentTicketKey) {
-            // Auto-approve login for this new user!
-            $matchedUser = $dbObj->getUserByBaleChatId($chatId);
-            if (!$matchedUser && !empty($fromUser['username'])) {
-                $matchedUser = $dbObj->getUserByUsername($fromUser['username']);
-            }
-            if (!$matchedUser) {
-                $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
-                if (empty($fromName)) $fromName = 'کاربر بله ' . substr(strval($chatId), -4);
-                $cleanUname = !empty($fromUser['username']) ? preg_replace('/[^a-zA-Z0-9_]/', '', $fromUser['username']) : ('bale_' . substr(strval($chatId), -6));
-                if (empty($cleanUname)) $cleanUname = 'bale_' . substr(strval($chatId), -6);
-                $testUname = $cleanUname;
-                $counter = 1;
-                while ($dbObj->getUserByUsername($testUname)) {
-                    $testUname = $cleanUname . '_' . $counter++;
-                }
-                $randomPass = substr(bin2hex(random_bytes(5)), 0, 10);
-                $matchedUser = $dbObj->createUser($testUname, $randomPass, $fromName, 'user', [
-                    'baleChatId' => $chatId,
-                    'baleUsername' => $fromUser['username'] ?? '',
-                    'isVerified' => true,
-                    'status' => 'active',
-                ]);
-            } else {
-                $dbObj->updateUserProfile($matchedUser['id'], ['baleChatId' => $chatId]);
-            }
-
             $token = base64_encode($matchedUser['id'] . ':' . time());
             $cleanUser = $matchedUser;
             unset($cleanUser['password_hash']);
@@ -1408,6 +1488,23 @@ if ($action === 'webhook') {
                 'approvedAt' => time(),
             ];
             saveBaleTicketsData($tickets);
+
+            // Dual-server ticket sync
+            try {
+                $currHost = $_SERVER['HTTP_HOST'] ?? '';
+                $peerHost = (strpos($currHost, 'task.mohusyn.ir') !== false) 
+                    ? 'https://bagtime.negahm.ir' 
+                    : 'https://task.mohusyn.ir';
+                $postBody = json_encode(['ticket' => $recentTicketKey, 'token' => $token, 'user' => $cleanUser]);
+                $chPeer = curl_init("{$peerHost}/api/bale.php?action=sync_ticket");
+                curl_setopt($chPeer, CURLOPT_POST, true);
+                curl_setopt($chPeer, CURLOPT_POSTFIELDS, $postBody);
+                curl_setopt($chPeer, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+                curl_setopt($chPeer, CURLOPT_TIMEOUT, 2);
+                curl_setopt($chPeer, CURLOPT_SSL_VERIFYPEER, false);
+                @curl_exec($chPeer);
+                @curl_close($chPeer);
+            } catch (Exception $e) {}
 
             $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
             $webAppUrl = 'https://' . $host . '/index.html';
@@ -1433,11 +1530,29 @@ if ($action === 'webhook') {
             exit;
         }
 
-        $greeting = "سلام {$senderName} عزیز! به بازوی رسمی «بگ تایم» خوش آمدید ⏱️✨\n\n" .
-            "این بازو متصل به سیستم برنامه‌ریزی روزانه و مدیریت کارهای شماست.\n" .
-            "جهت دسترسی به امکانات، یکی از دکمه‌های شیشه‌ای زیر را انتخاب فرمایید:";
+        $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+        $webAppUrl = 'https://' . $host . '/index.html';
+        $displayName = $matchedUser['name'] ?: $matchedUser['username'];
 
-        sendBaleMessage($botToken, $chatId, $greeting, getMainMenuKeyboard());
+        $greeting = "سلام {$displayName} عزیز! به بازوی رسمی «بگ تایم» خوش آمدید ⏱️✨\n\n" .
+            "✅ حساب کاربری شما با نام کاربری **@{$matchedUser['username']}** در سامانه ثبت و فعال است.\n" .
+            "این بازو متصل به سیستم برنامه‌ریزی روزانه و مدیریت کارهای شماست.\n" .
+            "جهت دسترسی به امکانات یا ورود به برنامه، گزینه‌های زیر را انتخاب فرمایید:";
+
+        $welcomeKb = [
+            'inline_keyboard' => [
+                [['text' => '🌐 ورود به وب‌آپ بگ تایم', 'url' => $webAppUrl]],
+                [
+                    ['text' => '📋 کارهای امروز من', 'callback_data' => 'my_tasks'],
+                    ['text' => '➕ ثبت تسک جدید', 'callback_data' => 'new_task'],
+                ],
+                [
+                    ['text' => '💎 خرید و تمدید اشتراک ویژه', 'callback_data' => 'buy_subscription'],
+                ],
+            ]
+        ];
+
+        sendBaleMessage($botToken, $chatId, $greeting, $welcomeKb);
         echo json_encode(['ok' => true]);
         exit;
     }

@@ -82,6 +82,9 @@ class TaskRoozDB {
             if (!isset($columns['numeric_id'])) {
                 @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `numeric_id` int(11) DEFAULT 1000");
             }
+            if (!isset($columns['subscription_json'])) {
+                @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `subscription_json` text DEFAULT NULL");
+            }
         } catch (Exception $e) {}
     }
 
@@ -630,14 +633,18 @@ class TaskRoozDB {
     }
 
     public function getAllUsers() {
+        $userMap = [];
+
         // 1. Try MySQL
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
+                @$this->pdo->exec("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
                 $stmt = $this->pdo->query("
                     SELECT 
                         u.id, u.numeric_id as numericId, u.username, u.name, u.role, u.status,
                         u.is_verified as isVerified, u.verification_code as verificationCode,
                         u.bale_chat_id as baleChatId, u.bale_username as baleUsername,
+                        u.subscription_json as subscriptionJson,
                         u.phone, u.email, u.province, u.city,
                         u.birth_date as birthDate, u.job_title as jobTitle, u.skills_json, u.timeline_json, u.avatar,
                         u.created_at as createdAt,
@@ -650,7 +657,7 @@ class TaskRoozDB {
                 ");
                 $users = $stmt->fetchAll();
                 if ($users && count($users) > 0) {
-                    return array_map(function($u) {
+                    foreach ($users as $u) {
                         $total = (int)($u['totalTasks'] ?? 0);
                         $done = (int)($u['completedTasks'] ?? 0);
                         $u['totalTasks'] = $total;
@@ -660,18 +667,34 @@ class TaskRoozDB {
                         $u['dailyTimeline'] = !empty($u['timeline_json']) ? json_decode($u['timeline_json'], true) : [];
                         $u['isVerified'] = !empty($u['isVerified']);
                         $u['numericId'] = (int)($u['numericId'] ?? 1000);
-                        return $u;
-                    }, $users);
+                        $u['subscription'] = !empty($u['subscriptionJson'])
+                            ? json_decode($u['subscriptionJson'], true)
+                            : ['plan' => (($u['role'] ?? '') === 'admin' ? 'pro' : 'free')];
+
+                        $key = strtolower(trim((string)($u['username'] ?? $u['id'])));
+                        $userMap[$key] = $u;
+                    }
                 }
             } catch (Exception $e) {}
         }
 
-        // 2. JSON Storage
+        // 2. JSON Storage: merge any user stored in JSON to guarantee nothing is ever missed
         $this->loadJson();
-        $res = [];
         $tasks = $this->data['tasks'] ?? [];
 
         foreach ($this->data['users'] as $u) {
+            $key = strtolower(trim((string)($u['username'] ?? $u['id'])));
+            if (isset($userMap[$key])) {
+                // Enrich missing Bale chat info if available in JSON
+                if (empty($userMap[$key]['baleChatId']) && !empty($u['baleChatId'])) {
+                    $userMap[$key]['baleChatId'] = $u['baleChatId'];
+                }
+                if (empty($userMap[$key]['baleUsername']) && !empty($u['baleUsername'])) {
+                    $userMap[$key]['baleUsername'] = $u['baleUsername'];
+                }
+                continue;
+            }
+
             $total = 0;
             $done = 0;
             foreach ($tasks as $t) {
@@ -682,9 +705,9 @@ class TaskRoozDB {
                 }
             }
 
-            $res[] = [
+            $uObj = [
                 'id' => $u['id'],
-                'numericId' => $u['numericId'] ?? 1000,
+                'numericId' => (int)($u['numericId'] ?? 1000),
                 'username' => $u['username'],
                 'name' => $u['name'],
                 'role' => $u['role'] ?? 'user',
@@ -699,14 +722,37 @@ class TaskRoozDB {
                 'dailyTimeline' => $u['dailyTimeline'] ?? [],
                 'status' => $u['status'] ?? 'active',
                 'isDemo' => !empty($u['isDemo']),
+                'isVerified' => !empty($u['isVerified']),
+                'baleChatId' => $u['baleChatId'] ?? null,
+                'baleUsername' => $u['baleUsername'] ?? null,
                 'subscription' => $u['subscription'] ?? ['plan' => (($u['role'] ?? '') === 'admin' ? 'pro' : 'free')],
                 'createdAt' => $u['createdAt'] ?? $u['created_at'] ?? date('Y-m-d H:i:s'),
                 'totalTasks' => $total,
                 'completedTasks' => $done,
                 'progressPercent' => $total > 0 ? round(($done / $total) * 100) : 0,
             ];
+            $userMap[$key] = $uObj;
+
+            // Self-healing: if MySQL is active, automatically push this missing JSON user to MySQL
+            if ($this->mode === 'mysql' && $this->pdo) {
+                try {
+                    $isVer = !empty($uObj['isVerified']) ? 1 : 0;
+                    $stmt = $this->pdo->prepare("
+                        INSERT INTO users (id, numeric_id, username, password_hash, name, role, status, is_verified, bale_chat_id, bale_username, phone, email, province, city, birth_date, job_title, skills_json, timeline_json, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE name = VALUES(name), role = VALUES(role), status = VALUES(status), bale_chat_id = VALUES(bale_chat_id)
+                    ");
+                    $stmt->execute([
+                        $uObj['id'], $uObj['numericId'], $uObj['username'], $u['password_hash'] ?? password_hash('123456', PASSWORD_DEFAULT),
+                        $uObj['name'], $uObj['role'], $uObj['status'], $isVer, $uObj['baleChatId'], $uObj['baleUsername'],
+                        $uObj['phone'], $uObj['email'], $uObj['province'], $uObj['city'], $uObj['birthDate'], $uObj['jobTitle'],
+                        json_encode($uObj['skills']), json_encode($uObj['dailyTimeline']), $uObj['createdAt']
+                    ]);
+                } catch (Exception $e) {}
+            }
         }
-        return $res;
+
+        return array_values($userMap);
     }
 
     public function setUserSubscription($userId, $plan, $planType = null, $expiresAt = null) {

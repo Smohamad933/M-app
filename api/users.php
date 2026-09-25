@@ -373,6 +373,47 @@ if ($method === 'GET') {
     }
 
     $users = $db->getAllUsers();
+
+    // Dual-server synchronization: query sibling domain so users created on either server appear seamlessly
+    if (empty($_GET['no_peer'])) {
+        try {
+            $currHost = $_SERVER['HTTP_HOST'] ?? '';
+            $peerHost = (strpos($currHost, 'task.mohusyn.ir') !== false) 
+                ? 'https://bagtime.negahm.ir' 
+                : 'https://task.mohusyn.ir';
+
+            $ctx = stream_context_create([
+                'http' => ['timeout' => 2, 'ignore_errors' => true],
+                'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false],
+            ]);
+            $peerRaw = @file_get_contents("{$peerHost}/api/users.php?action=public&no_peer=1", false, $ctx);
+            if ($peerRaw) {
+                $peerData = @json_decode($peerRaw, true);
+                if (!empty($peerData['users']) && is_array($peerData['users'])) {
+                    $existingKeys = [];
+                    foreach ($users as $u) {
+                        $existingKeys[strtolower(trim((string)($u['username'] ?? $u['id'])))] = true;
+                    }
+                    foreach ($peerData['users'] as $pu) {
+                        $pk = strtolower(trim((string)($pu['username'] ?? $pu['id'])));
+                        if (!isset($existingKeys[$pk]) && $pk !== 'mohusyn') {
+                            $createdU = $db->createUser($pu['username'], bin2hex(random_bytes(5)), $pu['name'] ?? $pu['username'], $pu['role'] ?? 'user', [
+                                'baleChatId' => $pu['baleChatId'] ?? null,
+                                'baleUsername' => $pu['baleUsername'] ?? null,
+                                'isVerified' => true,
+                                'status' => 'active',
+                                'phone' => $pu['phone'] ?? '',
+                                'email' => $pu['email'] ?? '',
+                            ]);
+                            $users[] = $createdU;
+                            $existingKeys[$pk] = true;
+                        }
+                    }
+                }
+            }
+        } catch (Exception $e) {}
+    }
+
     jsonResponse(['users' => $users]);
 }
 
