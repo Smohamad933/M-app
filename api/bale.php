@@ -164,6 +164,9 @@ function getMainMenuKeyboard() {
                 ['text' => '🔐 تأیید و احراز هویت حساب کاربری', 'callback_data' => 'verify_account'],
             ],
             [
+                ['text' => '💎 خرید و تمدید اشتراک ویژه (پرداخت در بله)', 'callback_data' => 'buy_subscription'],
+            ],
+            [
                 ['text' => '📋 لیست تسک‌های من', 'callback_data' => 'my_tasks'],
                 ['text' => '➕ ثبت تسک جدید', 'callback_data' => 'new_task'],
             ],
@@ -176,6 +179,103 @@ function getMainMenuKeyboard() {
             ],
         ],
     ];
+}
+
+/**
+ * Subscription Plans Definition for Bale Payment
+ */
+function getBaleSubscriptionPlans() {
+    return [
+        'plus' => [
+            'key' => 'plus',
+            'type' => '1_month',
+            'title' => 'اشتراک پلاس Plus (۱ ماهه) ➕',
+            'desc' => 'دسترسی ۳۰ روزه به تمام امکانات پیشرفته بگ تایم و نماد پلاس در پروفایل',
+            'amountRials' => 2900000,
+            'amountTomans' => '۲۹۰,۰۰۰ تومان',
+            'days' => 30,
+        ],
+        'pro' => [
+            'key' => 'pro',
+            'type' => '3_months',
+            'title' => 'اشتراک پرو Pro (۳ ماهه) ⭐',
+            'desc' => 'دسترسی ۹۰ روزه به پروژه‌های تیمی، فضای ابری و تمام امکانات حرفه‌ای بگ تایم',
+            'amountRials' => 6900000,
+            'amountTomans' => '۶۹۰,۰۰۰ تومان',
+            'days' => 90,
+        ],
+        'ultra' => [
+            'key' => 'ultra',
+            'type' => '6_months',
+            'title' => 'اشتراک اولترا Ultra (۶ ماهه) 💎',
+            'desc' => 'دسترسی ۱۸۰ روزه نامحدود، پشتیبانی اختصاصی و نماد الماس در پروفایل',
+            'amountRials' => 11900000,
+            'amountTomans' => '۱,۱۹۰,۰۰۰ تومان',
+            'days' => 180,
+        ],
+    ];
+}
+
+/**
+ * Dispatch official sendInvoice or interactive payment card in Bale
+ */
+function sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $userId = null) {
+    global $dbObj;
+    $plans = getBaleSubscriptionPlans();
+    if ($planKey === '1_month') $planKey = 'plus';
+    if ($planKey === '3_months') $planKey = 'pro';
+    if ($planKey === '6_months') $planKey = 'ultra';
+    $selectedPlan = $plans[$planKey] ?? $plans['pro'];
+
+    $providerToken = trim($baleConfig['providerToken'] ?? '');
+    $payload = "sub_" . ($userId ?: 'anon') . "_" . $selectedPlan['key'] . "_" . time();
+
+    $invoiceSent = false;
+    if (!empty($providerToken)) {
+        $invoiceRes = callBaleApi($botToken, 'sendInvoice', [
+            'chat_id' => $chatId,
+            'title' => $selectedPlan['title'],
+            'description' => $selectedPlan['desc'],
+            'payload' => $payload,
+            'provider_token' => $providerToken,
+            'currency' => 'IRR',
+            'prices' => [
+                [
+                    'label' => $selectedPlan['title'],
+                    'amount' => $selectedPlan['amountRials'],
+                ],
+            ],
+        ]);
+        if (!empty($invoiceRes['ok'])) {
+            $invoiceSent = true;
+        }
+    }
+
+    if (!$invoiceSent) {
+        $invoiceCard = "🧾 **فاکتور پرداخت اشتراک ویژه بگ تایم** 💳\n\n" .
+            "📦 طرح انتخابی: **{$selectedPlan['title']}**\n" .
+            "⏱️ مدت زمان: **{$selectedPlan['days']} روز**\n" .
+            "💰 مبلغ قابل پرداخت: **{$selectedPlan['amountTomans']}**\n\n" .
+            "🔹 پرداخت مستقیماً از طریق درگاه کیف پول بله و تمامی کارت‌های عضو شتاب انجام می‌شود.\n\n" .
+            "جهت تکمیل پرداخت، روی گزینه زیر ضربه بزنید:";
+
+        $invoiceKb = [
+            'inline_keyboard' => [
+                [
+                    [
+                        'text' => "💳 پرداخت آنلاین {$selectedPlan['amountTomans']} با بله",
+                        'callback_data' => "sim_pay_{$selectedPlan['key']}_" . ($userId ?: 'current'),
+                    ],
+                ],
+                [
+                    ['text' => '🔄 انتخاب طرح دیگر', 'callback_data' => 'buy_subscription'],
+                    ['text' => '🔙 بازگشت به منوی اصلی', 'callback_data' => 'main_menu'],
+                ],
+            ],
+        ];
+
+        sendBaleMessage($botToken, $chatId, $invoiceCard, $invoiceKb);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -334,6 +434,46 @@ if ($action === 'check_bale_login') {
         ]);
     }
     jsonResponse(['status' => 'pending']);
+}
+
+// -----------------------------------------------------------------------------
+// 4.5. Create Bale Subscription Payment Invoice Link (for Web App)
+// -----------------------------------------------------------------------------
+if ($action === 'create_invoice' || $action === 'create_payment_invoice') {
+    $user = getCurrentUser();
+    if (!$user) {
+        jsonResponse(['error' => 'ابتدا وارد حساب کاربری خود شوید.'], 401);
+    }
+    $rawReq = getJsonInput();
+    $plan = $rawReq['plan'] ?? 'pro';
+    $planType = $rawReq['planType'] ?? '3_months';
+
+    $plansDef = getBaleSubscriptionPlans();
+    if ($plan === '1_month') $plan = 'plus';
+    if ($plan === '3_months') $plan = 'pro';
+    if ($plan === '6_months') $plan = 'ultra';
+    $planInfo = $plansDef[$plan] ?? $plansDef['pro'];
+
+    $cleanBot = ltrim($botUsername, '@');
+    if (empty($cleanBot)) $cleanBot = 'BagTime_Bot';
+
+    $deepLink = "https://ble.ir/{$cleanBot}?start=pay_{$plan}_{$user['id']}";
+
+    // If user has baleChatId, also dispatch invoice directly to their Bale chat!
+    $chatId = $user['baleChatId'] ?? null;
+    if ($chatId && !empty($botToken)) {
+        sendBalePlanInvoice($botToken, $baleConfig, $chatId, $plan, $user['id']);
+    }
+
+    jsonResponse([
+        'ok' => true,
+        'baleBotLink' => $deepLink,
+        'baleBotUsername' => $cleanBot,
+        'amountRials' => $planInfo['amountRials'],
+        'amountTomans' => $planInfo['amountTomans'],
+        'title' => $planInfo['title'],
+        'directSentToBale' => !empty($chatId),
+    ]);
 }
 
 // -----------------------------------------------------------------------------
@@ -543,6 +683,116 @@ if ($action === 'webhook') {
             exit;
         }
 
+        if ($cbData === 'buy_subscription') {
+            $msg = "💎 **ارتقای حساب کاربری و خرید اشتراک ویژه بگ تایم** 🚀\n\n" .
+                "با خرید اشتراک به تسک‌های نامحدود، پروژه‌های تیمی اختصاصی، اتاق‌های تمرکز طولانی و تمام امکانات حرفه‌ای دسترسی خواهید داشت.\n\n" .
+                "👇 لطفاً طرح مورد نظر خود را جهت صدور فاکتور انتخاب فرمایید:";
+
+            $plansKb = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '➕ اشتراک ۱ ماهه پلاس (۲۹۰,۰۰۰ تومان)', 'callback_data' => 'select_plan_plus'],
+                    ],
+                    [
+                        ['text' => '⭐ اشتراک ۳ ماهه پرو (۶۹۰,۰۰۰ تومان) [پیشنهادی]', 'callback_data' => 'select_plan_pro'],
+                    ],
+                    [
+                        ['text' => '💎 اشتراک ۶ ماهه اولترا (۱,۱۹۰,۰۰۰ تومان)', 'callback_data' => 'select_plan_ultra'],
+                    ],
+                    [
+                        ['text' => '🔙 بازگشت به منوی اصلی', 'callback_data' => 'main_menu'],
+                    ],
+                ],
+            ];
+            sendBaleMessage($botToken, $chatId, $msg, $plansKb);
+            echo json_encode(['ok' => true]);
+            exit;
+        }
+
+        if (strpos($cbData, 'select_plan_') === 0) {
+            $planKey = str_replace('select_plan_', '', $cbData);
+            $targetUserId = $primaryUser['id'] ?? null;
+            sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $targetUserId);
+            echo json_encode(['ok' => true]);
+            exit;
+        }
+
+        if (strpos($cbData, 'sim_pay_') === 0) {
+            $parts = explode('_', str_replace('sim_pay_', '', $cbData));
+            $planKey = $parts[0] ?? 'pro';
+            $uid = $parts[1] ?? ($primaryUser['id'] ?? null);
+            if (!$uid || $uid === 'current') {
+                $uid = $primaryUser['id'] ?? null;
+            }
+
+            if ($uid) {
+                $planType = $planKey === 'ultra' ? '6_months' : ($planKey === 'plus' ? '1_month' : '3_months');
+                $days = $planKey === 'ultra' ? 180 : ($planKey === 'plus' ? 30 : 90);
+                $expiresAt = date('Y-m-d H:i:s', time() + ($days * 86400));
+                $planName = $planKey === 'ultra' ? 'اولترا (Ultra) 💎' : ($planKey === 'plus' ? 'پلاس (Plus) ➕' : 'پرو (Pro) ⭐');
+                $amountStr = $planKey === 'ultra' ? '۱,۱۹۰,۰۰۰ تومان' : ($planKey === 'plus' ? '۲۹۰,۰۰۰ تومان' : '۶۹۰,۰۰۰ تومان');
+
+                $dbObj->setUserSubscription($uid, $planKey, $planType, $expiresAt);
+
+                if (!isset($dbObj->data['payments'])) {
+                    $dbObj->data['payments'] = [];
+                }
+                $chargeId = 'BALE-TRX-' . rand(100000, 999999);
+                $targetUser = $dbObj->getUserById($uid);
+                $newPayment = [
+                    'id' => 'pay_bale_' . time() . '_' . substr(bin2hex(random_bytes(2)), 0, 4),
+                    'userId' => $uid,
+                    'userName' => $targetUser['name'] ?? 'کاربر',
+                    'userUsername' => $targetUser['username'] ?? '',
+                    'plan' => $planKey,
+                    'planType' => $planType,
+                    'planLabel' => $planName,
+                    'amount' => $amountStr,
+                    'trackingCode' => $chargeId,
+                    'paymentMethod' => 'bale_wallet',
+                    'status' => 'approved',
+                    'approvedAt' => date('Y-m-d H:i:s'),
+                    'createdAt' => date('Y-m-d H:i:s'),
+                ];
+                $dbObj->data['payments'][] = $newPayment;
+                $dbObj->saveJson();
+
+                $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+                $webAppUrl = 'https://' . $host . '/index.html';
+
+                $successMsg = "🎉 **پرداخت با موفقیت انجام شد!** ✅\n\n" .
+                    "💎 اشتراک **{$planName}** به مدت **{$days} روز** برای حساب کاربری شما فعال گردید.\n" .
+                    "🧾 کد پیگیری تراکنش بله: `{$chargeId}`\n\n" .
+                    "می‌توانید به اپلیکیشن بازگردید و از امکانات نامحدود بگ تایم لذت ببرید.";
+
+                $successKb = [
+                    'inline_keyboard' => [
+                        [['text' => '🌐 بازگشت به برنامه بگ تایم', 'url' => $webAppUrl]],
+                        [['text' => '📋 مشاهده کارهای من', 'callback_data' => 'my_tasks']],
+                    ]
+                ];
+                sendBaleMessage($botToken, $chatId, $successMsg, $successKb);
+                echo json_encode(['ok' => true]);
+                exit;
+            }
+        }
+
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+
+    // =========================================================================
+    // CASE 1.5: PRE_CHECKOUT_QUERY (Bale Official Payment Handshake)
+    // =========================================================================
+    if (!empty($update['pre_checkout_query'])) {
+        $pcq = $update['pre_checkout_query'];
+        $pcqId = $pcq['id'] ?? '';
+        if ($pcqId) {
+            callBaleApi($botToken, 'answerPreCheckoutQuery', [
+                'pre_checkout_query_id' => $pcqId,
+                'ok' => true,
+            ]);
+        }
         echo json_encode(['ok' => true]);
         exit;
     }
@@ -699,6 +949,95 @@ if ($action === 'webhook') {
             echo json_encode(['ok' => true]);
             exit;
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // OFFICIAL BALE PAYMENT SUCCESS (successful_payment)
+    // -------------------------------------------------------------------------
+    if (!empty($msg['successful_payment'])) {
+        $sp = $msg['successful_payment'];
+        $totalAmount = $sp['total_amount'] ?? 0;
+        $payload = $sp['invoice_payload'] ?? '';
+        $chargeId = $sp['provider_payment_charge_id'] ?? ($sp['telegram_payment_charge_id'] ?? ('bale_' . time()));
+
+        $parts = explode('_', $payload);
+        $targetUserId = null;
+        $targetPlan = 'pro';
+        if (count($parts) >= 3 && $parts[0] === 'sub') {
+            $targetUserId = $parts[1];
+            $targetPlan = $parts[2];
+        }
+        if (!$targetUserId || $targetUserId === 'anon') {
+            $matched = $dbObj->getUserByBaleChatId($chatId);
+            if ($matched) $targetUserId = $matched['id'];
+        }
+
+        if ($targetUserId) {
+            $planType = $targetPlan === 'ultra' ? '6_months' : ($targetPlan === 'plus' ? '1_month' : '3_months');
+            $days = $targetPlan === 'ultra' ? 180 : ($targetPlan === 'plus' ? 30 : 90);
+            $expiresAt = date('Y-m-d H:i:s', time() + ($days * 86400));
+            $planName = $targetPlan === 'ultra' ? 'اولترا (Ultra) 💎' : ($targetPlan === 'plus' ? 'پلاس (Plus) ➕' : 'پرو (Pro) ⭐');
+
+            $dbObj->setUserSubscription($targetUserId, $targetPlan, $planType, $expiresAt);
+
+            if (!isset($dbObj->data['payments'])) {
+                $dbObj->data['payments'] = [];
+            }
+            $targetUser = $dbObj->getUserById($targetUserId);
+            $newPayment = [
+                'id' => 'pay_bale_' . time() . '_' . substr(bin2hex(random_bytes(2)), 0, 4),
+                'userId' => $targetUserId,
+                'userName' => $targetUser['name'] ?? 'کاربر',
+                'userUsername' => $targetUser['username'] ?? '',
+                'plan' => $targetPlan,
+                'planType' => $planType,
+                'planLabel' => $planName,
+                'amount' => number_format($totalAmount / 10) . ' تومان',
+                'trackingCode' => $chargeId,
+                'paymentMethod' => 'bale_wallet',
+                'status' => 'approved',
+                'approvedAt' => date('Y-m-d H:i:s'),
+                'createdAt' => date('Y-m-d H:i:s'),
+            ];
+            $dbObj->data['payments'][] = $newPayment;
+            $dbObj->saveJson();
+
+            $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+            $webAppUrl = 'https://' . $host . '/index.html';
+
+            $successMsg = "🎉 **پرداخت شما با کیف پول بله با موفقیت انجام شد!** ✅\n\n" .
+                "💎 اشتراک **{$planName}** به مدت **{$days} روز** برای حساب کاربری شما فعال گردید.\n" .
+                "🧾 شماره پیگیری تراکنش بله: `{$chargeId}`\n\n" .
+                "هم‌اکنون تمامی قابلیت‌های ویژه در برنامه برای شما فعال است.";
+
+            $successKb = [
+                'inline_keyboard' => [
+                    [['text' => '🌐 بازگشت به برنامه بگ تایم', 'url' => $webAppUrl]],
+                    [['text' => '📋 مشاهده کارهای من', 'callback_data' => 'my_tasks']],
+                ]
+            ];
+            sendBaleMessage($botToken, $chatId, $successMsg, $successKb);
+            echo json_encode(['ok' => true]);
+            exit;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // BALE SUBSCRIPTION PAYMENT INVOICE (Deep-link: /start pay_PLAN_USERID)
+    // -------------------------------------------------------------------------
+    if (preg_match('/(?:^|\s)\/start\s+pay_([a-zA-Z0-9_]+)/i', $rawText, $pm)) {
+        $payParam = $pm[1];
+        $parts = explode('_', $payParam);
+        $planKey = $parts[0] ?? 'pro';
+        $targetUserId = $parts[1] ?? null;
+        if (!$targetUserId) {
+            $u = $dbObj->getUserByBaleChatId($chatId);
+            if ($u) $targetUserId = $u['id'];
+        }
+
+        sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $targetUserId);
+        echo json_encode(['ok' => true]);
+        exit;
     }
 
     // -------------------------------------------------------------------------

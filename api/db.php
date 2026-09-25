@@ -710,18 +710,26 @@ class TaskRoozDB {
     }
 
     public function setUserSubscription($userId, $plan, $planType = null, $expiresAt = null) {
+        $cleanPlan = in_array($plan, ['plus', 'pro', 'ultra']) ? $plan : ($plan === 'free' ? 'free' : 'pro');
+        $subData = [
+            'plan' => $cleanPlan,
+            'planType' => $planType,
+            'activatedAt' => date('Y-m-d H:i:s'),
+            'expiresAt' => $expiresAt,
+        ];
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                @$this->pdo->prepare("UPDATE users SET subscription_json = ?, status = 'active' WHERE id = ? OR username = ?")
+                    ->execute([json_encode($subData, JSON_UNESCAPED_UNICODE), $userId, $userId]);
+            } catch (Exception $e) {}
+        }
         $this->loadJson();
         $updated = false;
         if (isset($this->data['users'])) {
             foreach ($this->data['users'] as &$u) {
                 if ($u['id'] === $userId || (isset($u['username']) && strtolower($u['username']) === strtolower($userId))) {
-                    $u['subscription'] = [
-                        'plan' => $plan === 'pro' ? 'pro' : 'free',
-                        'planType' => $planType,
-                        'activatedAt' => date('Y-m-d H:i:s'),
-                        'expiresAt' => $expiresAt,
-                    ];
-                    if ($plan === 'pro') {
+                    $u['subscription'] = $subData;
+                    if ($cleanPlan !== 'free') {
                         $u['status'] = 'active';
                     }
                     $updated = true;
@@ -981,6 +989,9 @@ class TaskRoozDB {
                 if (isset($fields['isVerified'])) {
                     @$this->pdo->prepare("UPDATE users SET is_verified = ? WHERE id = ?")->execute([$fields['isVerified'] ? 1 : 0, $id]);
                 }
+                if (isset($fields['verificationCode'])) {
+                    @$this->pdo->prepare("UPDATE users SET verification_code = ? WHERE id = ?")->execute([strval($fields['verificationCode']), $id]);
+                }
                 if (isset($fields['baleChatId'])) {
                     @$this->pdo->prepare("UPDATE users SET bale_chat_id = ? WHERE id = ?")->execute([strval($fields['baleChatId']), $id]);
                 }
@@ -999,7 +1010,7 @@ class TaskRoozDB {
         foreach ($this->data['users'] as &$u) {
             if ($u['id'] === $id) {
                 if (isset($fields['name'])) $u['name'] = trim($fields['name']);
-                foreach (['phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'avatar', 'baleChatId', 'baleUsername', 'baleNotifToken', 'baleNotificationsEnabled'] as $k) {
+                foreach (['phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'avatar', 'baleChatId', 'baleUsername', 'baleNotifToken', 'baleNotificationsEnabled', 'verificationCode', 'isVerified', 'status'] as $k) {
                     if (array_key_exists($k, $fields)) $u[$k] = $fields[$k];
                 }
                 if (array_key_exists('skills', $fields)) $u['skills'] = is_array($fields['skills']) ? $fields['skills'] : [];

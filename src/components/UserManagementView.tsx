@@ -327,6 +327,7 @@ export const UserManagementView: React.FC = () => {
     enabled: false,
     token: '',
     botUsername: 'BagTime_Bot',
+    providerToken: '',
     verifyOnRegister: true,
     sendNotifications: true,
     allowTaskCreation: true,
@@ -2971,6 +2972,24 @@ export const UserManagementView: React.FC = () => {
                 />
                 <p className="text-[10px] text-zinc-500">
                   آیدی ربات جهت هدایت کاربران در ثبت‌نام (لینک ble.ir/BagTime_Bot)
+                </p>
+              </div>
+
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-xs font-bold text-zinc-300 flex items-center justify-between">
+                  <span>توکن درگاه پرداخت بله (Provider Token - کیف پول و شبکه شتاب)</span>
+                  <span className="text-[10px] text-emerald-400 font-bold">docs.bale.ai</span>
+                </label>
+                <input
+                  type="text"
+                  value={baleForm.providerToken || ''}
+                  onChange={(e) => setBaleForm({ ...baleForm, providerToken: e.target.value })}
+                  placeholder="مثال: 123456789:TEST:12345 یا توکن کیف‌پول بانکی بله"
+                  dir="ltr"
+                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800 text-white font-mono text-xs outline-none focus:border-blue-500 text-left"
+                />
+                <p className="text-[10px] text-zinc-500 leading-relaxed">
+                  توکن درگاه پرداخت متد <code>sendInvoice</code> در بله. جهت دریافت: در بله به <b>@botfather</b> مراجعه کنید ⬅️ بازوهای من ⬅️ انتخاب بازو ⬅️ گزینه «پرداخت در بازو».
                 </p>
               </div>
             </div>

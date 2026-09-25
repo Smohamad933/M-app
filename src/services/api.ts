@@ -447,6 +447,45 @@ export const api = {
     }
   },
 
+  async getVerificationCode(userId?: string): Promise<{
+    ok: boolean;
+    verificationCode: string;
+    baleBotUsername: string;
+    baleBotLink: string;
+  }> {
+    try {
+      const param = userId ? `&userId=${encodeURIComponent(userId)}` : '';
+      const res = await request<{
+        ok: boolean;
+        verificationCode: string;
+        baleBotUsername: string;
+        baleBotLink: string;
+      }>(`api/auth.php?action=get_verification_code${param}`);
+      return res;
+    } catch (e: any) {
+      return {
+        ok: false,
+        verificationCode: '',
+        baleBotUsername: 'BagTime_Bot',
+        baleBotLink: 'https://ble.ir/BagTime_Bot',
+      };
+    }
+  },
+
+  async createBalePaymentInvoice(plan: string, planType: string): Promise<{
+    ok: boolean;
+    invoiceUrl?: string;
+    baleBotLink: string;
+    payload?: string;
+    amountRials: number;
+    title: string;
+  }> {
+    return await request<any>('api/bale.php?action=create_invoice', {
+      method: 'POST',
+      body: JSON.stringify({ plan, planType }),
+    });
+  },
+
   async createBaleLoginTicket(): Promise<{
     ok: boolean;
     ticket: string;

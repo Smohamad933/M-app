@@ -291,6 +291,18 @@ if ($action === 'login' || empty($action) && (isset($_GET['username']) || isset(
         $user['city'] ?? $user['province'] ?? 'ایران'
     );
 
+    // Ensure user has a valid verification code
+    if (empty($user['verificationCode']) || strlen(trim($user['verificationCode'])) < 4) {
+        $genCode = strval(rand(100000, 999999));
+        $user['verificationCode'] = $genCode;
+        $db->updateUserProfile($user['id'], ['verificationCode' => $genCode]);
+        if ($db->mode === 'mysql' && $db->pdo) {
+            try {
+                @$db->pdo->prepare("UPDATE users SET verification_code = ? WHERE id = ?")->execute([$genCode, $user['id']]);
+            } catch (Exception $e) {}
+        }
+    }
+
     jsonResponse([
         'message' => 'ورود با موفقیت انجام شد.',
         'user' => [
@@ -301,6 +313,10 @@ if ($action === 'login' || empty($action) && (isset($_GET['username']) || isset(
             'role' => $user['role'] ?? 'user',
             'status' => $user['status'] ?? 'active',
             'isDemo' => !empty($user['isDemo']),
+            'isVerified' => !empty($user['isVerified']),
+            'verificationCode' => $user['verificationCode'] ?? '',
+            'baleChatId' => $user['baleChatId'] ?? '',
+            'baleUsername' => $user['baleUsername'] ?? '',
             'phone' => $user['phone'] ?? '',
             'email' => $user['email'] ?? '',
             'province' => $user['province'] ?? '',
@@ -318,12 +334,60 @@ if ($action === 'login' || empty($action) && (isset($_GET['username']) || isset(
     ]);
 }
 
+// GET OR GENERATE VERIFICATION CODE
+if ($action === 'get_verification_code' || $action === 'request_code') {
+    $user = getCurrentUser();
+    if (!$user) {
+        $userId = $_GET['userId'] ?? $_POST['userId'] ?? '';
+        if (!empty($userId)) {
+            $user = $db->getUserById($userId) ?: $db->getUserByUsername($userId);
+        }
+    }
+    if (!$user) {
+        jsonResponse(['error' => 'کاربر یافت نشد.'], 404);
+    }
+    $code = $user['verificationCode'] ?? '';
+    if (empty($code) || strlen(trim($code)) < 4) {
+        $code = strval(rand(100000, 999999));
+        $db->updateUserProfile($user['id'], ['verificationCode' => $code]);
+        if ($db->mode === 'mysql' && $db->pdo) {
+            try {
+                @$db->pdo->prepare("UPDATE users SET verification_code = ? WHERE id = ?")->execute([$code, $user['id']]);
+            } catch (Exception $e) {}
+        }
+    }
+    $globalSettings = $db->getGlobalSettings();
+    $baleConfig = $globalSettings['baleBot'] ?? [];
+    $botUsername = trim($baleConfig['botUsername'] ?? 'BagTime_Bot');
+    if (empty($botUsername)) $botUsername = 'BagTime_Bot';
+
+    jsonResponse([
+        'ok' => true,
+        'verificationCode' => $code,
+        'baleBotUsername' => $botUsername,
+        'baleBotLink' => 'https://ble.ir/' . ltrim($botUsername, '@') . '?start=verify_' . $code,
+    ]);
+}
+
 // CURRENT USER
 if ($method === 'GET' && $action === 'me') {
     $user = getCurrentUser();
     if (!$user) {
         jsonResponse(['authenticated' => false], 200);
     }
+
+    // Ensure user has a valid verification code
+    if (empty($user['verificationCode']) || strlen(trim($user['verificationCode'])) < 4) {
+        $genCode = strval(rand(100000, 999999));
+        $user['verificationCode'] = $genCode;
+        $db->updateUserProfile($user['id'], ['verificationCode' => $genCode]);
+        if ($db->mode === 'mysql' && $db->pdo) {
+            try {
+                @$db->pdo->prepare("UPDATE users SET verification_code = ? WHERE id = ?")->execute([$genCode, $user['id']]);
+            } catch (Exception $e) {}
+        }
+    }
+
     jsonResponse([
         'authenticated' => true,
         'user' => [
@@ -334,6 +398,10 @@ if ($method === 'GET' && $action === 'me') {
             'role' => $user['role'] ?? 'user',
             'status' => $user['status'] ?? 'active',
             'isDemo' => !empty($user['isDemo']),
+            'isVerified' => !empty($user['isVerified']),
+            'verificationCode' => $user['verificationCode'] ?? '',
+            'baleChatId' => $user['baleChatId'] ?? '',
+            'baleUsername' => $user['baleUsername'] ?? '',
             'phone' => $user['phone'] ?? '',
             'email' => $user['email'] ?? '',
             'province' => $user['province'] ?? '',

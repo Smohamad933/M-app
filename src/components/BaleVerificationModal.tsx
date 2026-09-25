@@ -32,8 +32,29 @@ export const BaleVerificationModal: React.FC<BaleVerificationModalProps> = ({
   onVerified,
 }) => {
   const { completeBaleVerification } = useTask();
+  const [activeCode, setActiveCode] = useState(data.verificationCode || '');
+  const [activeBotLink, setActiveBotLink] = useState(data.baleBotLink || '');
+  const [activeBotUsername, setActiveBotUsername] = useState(data.baleBotUsername || 'BagTime_Bot');
+  const [isLoadingCode, setIsLoadingCode] = useState(!data.verificationCode || data.verificationCode.length < 4);
   const [copiedCode, setCopiedCode] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+
+  // If code wasn't provided or was empty, automatically generate and load it from backend
+  useEffect(() => {
+    if (!activeCode || activeCode.length < 4) {
+      setIsLoadingCode(true);
+      api.getVerificationCode(data.userId)
+        .then((res) => {
+          if (res?.verificationCode) {
+            setActiveCode(res.verificationCode);
+            if (res.baleBotLink) setActiveBotLink(res.baleBotLink);
+            if (res.baleBotUsername) setActiveBotUsername(res.baleBotUsername);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsLoadingCode(false));
+    }
+  }, [data.userId, activeCode]);
 
   // Auto-poll verification status every 2.5 seconds
   useEffect(() => {
@@ -57,8 +78,9 @@ export const BaleVerificationModal: React.FC<BaleVerificationModalProps> = ({
   }, [data.userId, completeBaleVerification, onClose, onVerified]);
 
   const handleCopyCode = () => {
+    if (!activeCode) return;
     try {
-      navigator.clipboard.writeText(data.verificationCode);
+      navigator.clipboard.writeText(activeCode);
       setCopiedCode(true);
       setTimeout(() => setCopiedCode(false), 2000);
     } catch {}
@@ -118,20 +140,28 @@ export const BaleVerificationModal: React.FC<BaleVerificationModalProps> = ({
         <div className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-100 flex items-center justify-between text-xs">
           <span className="text-slate-500 font-bold">شناسه ربات رسمی:</span>
           <span className="font-mono font-black text-blue-700 dir-ltr">
-            @{data.baleBotUsername.replace(/^@/, '')}
+            @{activeBotUsername.replace(/^@/, '')}
           </span>
         </div>
 
         {/* Verification Code Box */}
         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
           <div className="text-[11px] font-bold text-slate-400">کد تأیید ۶ رقمی شما:</div>
-          <div className="text-3xl font-black font-mono tracking-widest text-slate-900 select-all py-1">
-            {toPersianDigits(data.verificationCode)}
-          </div>
+          {isLoadingCode ? (
+            <div className="py-2 flex items-center justify-center gap-2 text-xs text-slate-500 font-bold">
+              <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+              <span>در حال صدور کد تأیید اختصاصی...</span>
+            </div>
+          ) : (
+            <div className="text-3xl font-black font-mono tracking-widest text-slate-900 select-all py-1">
+              {toPersianDigits(activeCode)}
+            </div>
+          )}
           <button
             type="button"
             onClick={handleCopyCode}
-            className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer"
+            disabled={!activeCode || isLoadingCode}
+            className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer disabled:opacity-50"
           >
             <Copy className="w-3.5 h-3.5" />
             <span>{copiedCode ? 'کد کپی شد!' : 'کپی کردن کد'}</span>
@@ -162,7 +192,7 @@ export const BaleVerificationModal: React.FC<BaleVerificationModalProps> = ({
         {/* Action Buttons */}
         <div className="space-y-2 pt-1">
           <a
-            href={data.baleBotLink}
+            href={activeBotLink || `https://ble.ir/${activeBotUsername.replace(/^@/, '')}?start=verify_${activeCode}`}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs sm:text-sm font-black shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
