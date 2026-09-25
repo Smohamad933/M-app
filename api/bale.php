@@ -572,98 +572,77 @@ if ($action === 'webhook') {
     // -------------------------------------------------------------------------
     if ($contact && !empty($contact['phone_number'])) {
         $sharedPhoneNorm = normalizePhoneNumber($contact['phone_number']);
-        $pendingInfo = $dbObj->data['bale_pending_verifications'][$chatId] ?? null;
+        $sharedFullName = trim(($contact['first_name'] ?? '') . ' ' . ($contact['last_name'] ?? ''));
 
-        // Find candidate user
-        $targetUserIndex = -1;
+        $pvFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'bale_pending.json';
+        $pVerifs = [];
+        if (file_exists($pvFile)) {
+            $raw = @file_get_contents($pvFile);
+            if ($raw) $pVerifs = @json_decode($raw, true) ?: [];
+        }
+        $pendingInfo = $pVerifs[strval($chatId)] ?? null;
+
+        $targetUser = null;
         if ($pendingInfo && !empty($pendingInfo['userId'])) {
-            foreach ($dbObj->data['users'] as $idx => $u) {
-                if ($u['id'] === $pendingInfo['userId']) {
-                    $targetUserIndex = $idx;
-                    break;
-                }
-            }
+            $targetUser = $dbObj->getUserById($pendingInfo['userId']);
         }
-        
-        // Fallback: look for pending user matching shared phone number
-        if ($targetUserIndex === -1) {
-            foreach ($dbObj->data['users'] as $idx => $u) {
+        if (!$targetUser) {
+            $targetUser = $dbObj->getUserByBaleChatId($chatId);
+        }
+        if (!$targetUser) {
+            foreach ($dbObj->getAllUsers() as $u) {
                 if (!empty($u['phone']) && normalizePhoneNumber($u['phone']) === $sharedPhoneNorm) {
-                    $targetUserIndex = $idx;
+                    $targetUser = $u;
                     break;
                 }
             }
         }
 
-        if ($targetUserIndex !== -1) {
-            $matchedUser = &$dbObj->data['users'][$targetUserIndex];
-            $registeredPhoneNorm = normalizePhoneNumber($matchedUser['phone'] ?? '');
-
-            // STRICT VERIFICATION: Phones MUST MATCH!
-            if ($registeredPhoneNorm !== '' && $registeredPhoneNorm === $sharedPhoneNorm) {
-                $matchedUser['isVerified'] = true;
-                $matchedUser['status'] = 'active';
-                $matchedUser['baleChatId'] = $chatId;
-                $matchedUser['balePhoneNumber'] = $contact['phone_number'];
-                $matchedUser['baleUsername'] = $fromUser['username'] ?? ($matchedUser['baleUsername'] ?? '');
-                
-                unset($dbObj->data['bale_pending_verifications'][$chatId]);
-                $dbObj->saveJson();
-
-                // Send success message with glass/inline buttons and remove reply keyboard
-                $successMsg = "🎉 **احراز هویت و تأیید شماره با موفقیت کامل انجام شد!** ✅\n\n" .
-                    "👤 کاربر گرامی: **{$matchedUser['name']}**\n" .
-                    "📱 شماره تأیید شده: `{$sharedPhoneNorm}`\n\n" .
-                    "حساب کاربری شما در سامانه «بگ تایم» فعال گردید و هم‌اکنون می‌توانید وارد برنامه شوید.";
-
-                $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
-                $webAppUrl = 'https://' . $host . '/index.html';
-
-                $successKb = [
-                    'inline_keyboard' => [
-                        [
-                            ['text' => '🌐 ورود به اپلیکیشن بگ تایم', 'url' => $webAppUrl],
-                        ],
-                        [
-                            ['text' => '📋 مشاهده کارهای من', 'callback_data' => 'my_tasks'],
-                            ['text' => '➕ ثبت تسک جدید', 'callback_data' => 'new_task'],
-                        ],
-                        [
-                            ['text' => '⚙️ تنظیمات اعلان‌ها', 'callback_data' => 'notif_settings'],
-                        ],
-                    ],
-                ];
-
-                // First remove reply keyboard
-                callBaleApi($botToken, 'sendMessage', [
-                    'chat_id' => $chatId,
-                    'text' => 'شماره تماس شما دریافت شد.',
-                    'reply_markup' => ['remove_keyboard' => true],
-                ]);
-
-                // Then send success inline message
-                sendBaleMessage($botToken, $chatId, $successMsg, $successKb);
-                echo json_encode(['ok' => true, 'verified' => true]);
-                exit;
-            } else {
-                // Phone numbers DO NOT MATCH!
-                $mismatchMsg = "❌ **عدم تطابق شماره همراه!**\n\n" .
-                    "شماره همراه حساب بله شما (`{$sharedPhoneNorm}`) با شماره وارد شده در ثبت‌نام بگ تایم (`{$registeredPhoneNorm}`) یکسان نیست!\n\n" .
-                    "طبق الزامات امنیتی، فقط حسابی تأیید می‌شود که شماره ثبت‌نامی و شماره بله آن یکسان باشد.\n" .
-                    "لطفاً در سامانه بگ تایم با همین شماره ثبت‌نام کنید یا از اکانت بله مرتبط استفاده فرمایید.";
-
-                $retryKb = [
-                    'inline_keyboard' => [
-                        [['text' => '🔄 تلاش مجدد', 'callback_data' => 'verify_account']],
-                        [['text' => '🔙 منوی اصلی', 'callback_data' => 'main_menu']],
-                    ]
-                ];
-                sendBaleMessage($botToken, $chatId, $mismatchMsg, $retryKb);
-                echo json_encode(['ok' => true]);
-                exit;
+        if ($targetUser) {
+            $updateFields = [
+                'phone' => $sharedPhoneNorm,
+                'balePhoneNumber' => $contact['phone_number'],
+                'isVerified' => true,
+                'status' => 'active',
+                'baleChatId' => $chatId,
+                'baleUsername' => $fromUser['username'] ?? ($targetUser['baleUsername'] ?? ''),
+            ];
+            if (!empty($sharedFullName) && (empty($targetUser['name']) || strpos($targetUser['name'], 'کاربر بله') === 0 || strpos($targetUser['name'], 'bale_') === 0)) {
+                $updateFields['name'] = $sharedFullName;
+                $targetUser['name'] = $sharedFullName;
             }
+            $dbObj->updateUserProfile($targetUser['id'], $updateFields);
+
+            unset($pVerifs[strval($chatId)]);
+            @file_put_contents($pvFile, json_encode($pVerifs, JSON_UNESCAPED_UNICODE), LOCK_EX);
+
+            $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+            $webAppUrl = 'https://' . $host . '/index.html';
+
+            // Remove reply keyboard first
+            callBaleApi($botToken, 'sendMessage', [
+                'chat_id' => $chatId,
+                'text' => 'شماره تماس شما دریافت شد.',
+                'reply_markup' => ['remove_keyboard' => true],
+            ]);
+
+            $finalSuccessMsg = "✨ **ثبت‌نام و مشخصات شما با موفقیت کامل تأیید شد!** 🎯\n\n" .
+                "👤 نام: **{$targetUser['name']}**\n" .
+                "📱 شماره همراه ثبت‌شده: `{$sharedPhoneNorm}`\n\n" .
+                "🚀 اطلاعات حساب شما در پایگاه داده ذخیره گردید و ورود شما به برنامه بگ تایم فعال شد.";
+
+            $finalKb = [
+                'inline_keyboard' => [
+                    [['text' => '🌐 بازگشت به برنامه بگ تایم', 'url' => $webAppUrl]],
+                    [['text' => '📋 تسک‌های من', 'callback_data' => 'my_tasks']],
+                    [['text' => '➕ ثبت تسک جدید', 'callback_data' => 'new_task']],
+                ]
+            ];
+            sendBaleMessage($botToken, $chatId, $finalSuccessMsg, $finalKb);
+            echo json_encode(['ok' => true, 'verified' => true]);
+            exit;
         } else {
-            $notFoundMsg = "⚠️ حسابی در انتظار احراز هویت با این شماره یافت نشد.\nلطفاً ابتدا کد ۶ رقمی را ارسال فرمایید:";
+            $notFoundMsg = "⚠️ حسابی در انتظار احراز هویت با این شماره یافت نشد.\nلطفاً از منوی اصلی اقدام به اتصال حساب فرمایید.";
             sendBaleMessage($botToken, $chatId, $notFoundMsg, getMainMenuKeyboard());
             echo json_encode(['ok' => true]);
             exit;
@@ -747,6 +726,7 @@ if ($action === 'webhook') {
         }
 
         if ($targetTicketKey) {
+            $isNewUser = false;
             // 1. Check if user already linked by chatId
             $matchedUser = $dbObj->getUserByBaleChatId($chatId);
 
@@ -770,6 +750,7 @@ if ($action === 'webhook') {
 
             // 4. Auto-register user if brand new!
             if (!$matchedUser) {
+                $isNewUser = true;
                 $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
                 if (empty($fromName)) $fromName = 'کاربر بله ' . substr(strval($chatId), -4);
                 $cleanUname = !empty($fromUser['username']) ? preg_replace('/[^a-zA-Z0-9_]/', '', $fromUser['username']) : ('bale_' . substr(strval($chatId), -6));
@@ -804,12 +785,67 @@ if ($action === 'webhook') {
             ];
             saveBaleTicketsData($tickets);
 
-            $confirmMsg = "🎉 **ورود و احراز هویت با موفقیت انجام شد!** ✅\n\n" .
-                "👤 کاربر گرامی: **{$matchedUser['name']}** (@{$matchedUser['username']})\n" .
-                "⚡ درخواست ورود شما در مرورگر با موفقیت تأیید شد و هم‌اکنون وارد پنل کاربری خود در «بگ تایم» شدید.\n\n" .
-                "می‌توانید به مرورگر خود بازگردید و برنامه را مشاهده نمایید.";
+            $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+            $webAppUrl = 'https://' . $host . '/index.html';
 
-            sendBaleMessage($botToken, $chatId, $confirmMsg, getMainMenuKeyboard());
+            // Check if user has phone number or is new
+            $hasPhone = !empty($matchedUser['phone']) && strlen(trim($matchedUser['phone'])) >= 10;
+
+            if (!$hasPhone || $isNewUser) {
+                // Save pending info for contact reception
+                $pvFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'bale_pending.json';
+                $pVerifs = [];
+                if (file_exists($pvFile)) {
+                    $raw = @file_get_contents($pvFile);
+                    if ($raw) $pVerifs = @json_decode($raw, true) ?: [];
+                }
+                $pVerifs[strval($chatId)] = [
+                    'userId' => $matchedUser['id'],
+                    'action' => 'complete_registration_contact',
+                    'time' => time(),
+                ];
+                @file_put_contents($pvFile, json_encode($pVerifs, JSON_UNESCAPED_UNICODE), LOCK_EX);
+
+                $newRegMsg = "🎉 **ثبت‌نام شما با موفقیت در سامانه «بگ تایم» تأیید شد!** ✅\n\n" .
+                    "👤 نام کاربری شما: **{$matchedUser['name']}** (@{$matchedUser['username']})\n\n" .
+                    "📱 جهت تکمیل مشخصات و ثبت در پایگاه داده، لطفاً دکمه «ارسال شماره همراه» زیر را لمس نمایید تا شماره و نام شما به صورت خودکار ثبت گردد:\n\n" .
+                    "*(ورود به برنامه در مرورگر شما هم‌اکنون فعال شده است)*";
+
+                $contactKeyboard = [
+                    'keyboard' => [
+                        [
+                            [
+                                'text' => '📱 ارسال شماره تماس و ثبت در بگ تایم',
+                                'request_contact' => true,
+                            ],
+                        ],
+                    ],
+                    'resize_keyboard' => true,
+                    'one_time_keyboard' => true,
+                ];
+
+                callBaleApi($botToken, 'sendMessage', [
+                    'chat_id' => $chatId,
+                    'text' => $newRegMsg,
+                    'reply_markup' => $contactKeyboard,
+                ]);
+            } else {
+                // Existing account with full details
+                $confirmMsg = "🎉 **ورود شما به بگ تایم با موفقیت تأیید شد!** ✅\n\n" .
+                    "👤 کاربر گرامی: **{$matchedUser['name']}** (@{$matchedUser['username']})\n" .
+                    "⚡ حساب کاربری شما شناسایی گردید و ورود به برنامه با موفقیت انجام شد.\n\n" .
+                    "✨ پایم اوکی شد و به آپ برگردید تا به برنامه‌تان ادامه دهید.";
+
+                $loginKb = [
+                    'inline_keyboard' => [
+                        [['text' => '🌐 بازگشت به برنامه بگ تایم', 'url' => $webAppUrl]],
+                        [['text' => '📋 کارهای امروز من', 'callback_data' => 'my_tasks']],
+                        [['text' => '➕ ثبت تسک جدید', 'callback_data' => 'new_task']],
+                    ]
+                ];
+                sendBaleMessage($botToken, $chatId, $confirmMsg, $loginKb);
+            }
+
             echo json_encode(['ok' => true]);
             exit;
         }
