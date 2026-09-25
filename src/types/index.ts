@@ -353,5 +353,14 @@ export interface GlobalSystemSettings {
     verifyOnRegister: boolean;
     sendNotifications: boolean;
     allowTaskCreation: boolean;
+    providerToken?: string;
+  };
+  /** Extension Sponsored Website / First shortcut in New Tab */
+  extensionSponsoredSite?: {
+    enabled?: boolean;
+    title: string;
+    url: string;
+    icon?: string;
+    badge?: string;
   };
 }

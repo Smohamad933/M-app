@@ -305,6 +305,39 @@ export const UserManagementView: React.FC = () => {
   const [copiedExtLink, setCopiedExtLink] = useState(false);
   const [selectedExtBrowser, setSelectedExtBrowser] = useState<'chrome' | 'edge' | 'firefox'>('chrome');
 
+  // Sponsored Site in Extension State
+  const initialSponsored = globalSettings?.extensionSponsoredSite || {
+    enabled: true,
+    title: 'سامانه ابری بگ تایم',
+    url: 'https://taskrooz.mohusyn.ir',
+    icon: '⭐',
+    badge: 'اسپانسر',
+  };
+  const [sponsoredSiteForm, setSponsoredSiteForm] = useState(initialSponsored);
+  const [isSavingSponsored, setIsSavingSponsored] = useState(false);
+
+  useEffect(() => {
+    if (globalSettings?.extensionSponsoredSite) {
+      setSponsoredSiteForm(globalSettings.extensionSponsoredSite);
+    }
+  }, [globalSettings]);
+
+  const handleSaveSponsoredSite = async () => {
+    setIsSavingSponsored(true);
+    sounds.playPop();
+    try {
+      await api.saveGlobalSettings({
+        extensionSponsoredSite: sponsoredSiteForm,
+      });
+      sounds.playComplete();
+      alert('سایت تبلیغاتی افزونه با موفقیت ذخیره شد و در صفحه شروع (نیوتَب) نمایش داده می‌شود.');
+    } catch (e: any) {
+      alert(e.message || 'خطا در ذخیره سایت تبلیغاتی');
+    } finally {
+      setIsSavingSponsored(false);
+    }
+  };
+
   const handleDownloadExtZip = () => {
     sounds.playPop();
     const link = document.createElement('a');
@@ -2740,6 +2773,91 @@ export const UserManagementView: React.FC = () => {
                     <span>کپی لینک مستقیم خام گیت‌هاب (Raw GitHub Link)</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+
+          {/* Sponsored Site in Extension Configuration */}
+          <div className="p-6 md:p-8 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>تنظیم سایت تبلیغاتی / اسپانسر افزونه (اولین سایت در نیوتَب)</span>
+                </h4>
+                <p className="text-xs text-zinc-400">
+                  این وبسایت به عنوان اولین میانبر زیر سرچ‌بار در صفحه شروع مرورگر تمام کاربران با برچسب اختصاصی نمایش داده می‌شود.
+                </p>
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer bg-zinc-950 px-3 py-1.5 rounded-xl border border-zinc-800">
+                <input
+                  type="checkbox"
+                  checked={sponsoredSiteForm.enabled !== false}
+                  onChange={(e) => setSponsoredSiteForm({ ...sponsoredSiteForm, enabled: e.target.checked })}
+                  className="w-4 h-4 rounded text-amber-500 focus:ring-0 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-zinc-300">نمایش در افزونه</span>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-300">عنوان یا نام برند *</label>
+                <input
+                  type="text"
+                  value={sponsoredSiteForm.title}
+                  onChange={(e) => setSponsoredSiteForm({ ...sponsoredSiteForm, title: e.target.value })}
+                  placeholder="مثال: فروشگاه بگ تایم"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-300">آدرس وب‌سایت (URL) *</label>
+                <input
+                  type="url"
+                  value={sponsoredSiteForm.url}
+                  onChange={(e) => setSponsoredSiteForm({ ...sponsoredSiteForm, url: e.target.value })}
+                  placeholder="https://example.com"
+                  dir="ltr"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-amber-500 font-mono text-left"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-300">آیکون، ایموجی یا آدرس لوگو</label>
+                <input
+                  type="text"
+                  value={sponsoredSiteForm.icon || ''}
+                  onChange={(e) => setSponsoredSiteForm({ ...sponsoredSiteForm, icon: e.target.value })}
+                  placeholder="مثال: ⭐ یا https://.../icon.png"
+                  dir="ltr"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-amber-500 font-mono text-left"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-300">برچسب اختصاصی</label>
+                <input
+                  type="text"
+                  value={sponsoredSiteForm.badge || ''}
+                  onChange={(e) => setSponsoredSiteForm({ ...sponsoredSiteForm, badge: e.target.value })}
+                  placeholder="مثال: اسپانسر یا ویژه"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={handleSaveSponsoredSite}
+                disabled={isSavingSponsored}
+                className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{isSavingSponsored ? 'در حال ذخیره...' : 'ذخیره سایت تبلیغاتی افزونه'}</span>
               </button>
             </div>
           </div>
