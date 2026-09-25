@@ -1,8 +1,9 @@
 /**
  * Bag Time Assistant Extension - New Tab Engine
  * 100% Offline-capable, Multi-Search-Engine, Dynamic Persian Font Inheritance,
+ * Dual-Server Automatic Failover (task.mohusyn.ir & bagtime.negahm.ir),
  * Bale 1-Click Login, Sponsored Shortcuts, Time-based Tasks, Quick Notes,
- * Jalali Calendar & Pomodoro Timer.
+ * and Jalali Calendar.
  */
 
 // Storage Abstraction (chrome.storage.local or localStorage fallback)
@@ -110,7 +111,7 @@ function gregorianToJalali(gy, gm, gd) {
   return [jy, jm, jd];
 }
 
-// Jalali to Gregorian (For calendar calculations)
+// Jalali to Gregorian
 function jalaliToGregorian(jy, jm, jd) {
   let gy = (jy <= 979) ? 621 : 1600;
   jy -= (jy <= 979) ? 0 : 979;
@@ -152,6 +153,133 @@ function getJalaliDateString() {
   const weekday = PERSIAN_WEEKDAYS[now.getDay()];
   const monthName = PERSIAN_MONTHS[jm - 1];
   return `${weekday}، ${toPersianDigits(jd)} ${monthName} ${toPersianDigits(jy)}`;
+}
+
+// ── Official Dual Servers & Auto-Failover System ──
+const BAGTIME_SERVERS = [
+  'https://task.mohusyn.ir',
+  'https://bagtime.negahm.ir'
+];
+
+let activeServerUrl = 'https://task.mohusyn.ir';
+
+async function initServerManager() {
+  const saved = await Storage.get('active_server', null);
+  if (saved && BAGTIME_SERVERS.includes(saved)) {
+    activeServerUrl = saved;
+  } else {
+    activeServerUrl = BAGTIME_SERVERS[0];
+  }
+  updateServerUI();
+  checkBothServersHealth();
+}
+
+function updateServerUI() {
+  const label = activeServerUrl.replace(/^https?:\/\//, '');
+  const badgeEl = document.getElementById('serverBadgeLabel');
+  if (badgeEl) badgeEl.textContent = label;
+
+  const dotEl = document.getElementById('serverDotIndicator');
+  if (dotEl) {
+    dotEl.className = 'server-dot online';
+  }
+
+  // Update open webapp links
+  const openAppBtn = document.getElementById('openWebAppBtn');
+  if (openAppBtn) openAppBtn.href = activeServerUrl;
+
+  const footerLink = document.getElementById('tasksFooterLink');
+  if (footerLink) footerLink.href = activeServerUrl;
+
+  const srvInput = document.getElementById('extServerUrl');
+  if (srvInput) srvInput.value = activeServerUrl;
+
+  // Update dropdown choices
+  const choice1 = document.getElementById('choiceSrv1');
+  const choice2 = document.getElementById('choiceSrv2');
+  if (choice1 && choice2) {
+    if (activeServerUrl.includes('task.mohusyn.ir')) {
+      choice1.classList.add('active');
+      choice2.classList.remove('active');
+    } else {
+      choice2.classList.add('active');
+      choice1.classList.remove('active');
+    }
+  }
+
+  // Update modal pills
+  const modalSrv1Btn = document.getElementById('modalSrv1Btn');
+  const modalSrv2Btn = document.getElementById('modalSrv2Btn');
+  if (modalSrv1Btn && modalSrv2Btn) {
+    if (activeServerUrl.includes('task.mohusyn.ir')) {
+      modalSrv1Btn.classList.add('active');
+      modalSrv2Btn.classList.remove('active');
+    } else {
+      modalSrv2Btn.classList.add('active');
+      modalSrv1Btn.classList.remove('active');
+    }
+  }
+}
+
+async function checkBothServersHealth() {
+  for (const srv of BAGTIME_SERVERS) {
+    const isSrv1 = srv.includes('task.mohusyn.ir');
+    const badgeEl = isSrv1 ? document.getElementById('srv1StatusBadge') : document.getElementById('srv2StatusBadge');
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(`${srv}/api/settings.php`, { method: 'HEAD', signal: controller.signal });
+      clearTimeout(timer);
+      if (badgeEl) {
+        badgeEl.textContent = '🟢 آنلاین';
+        badgeEl.className = 'server-status-pill online';
+      }
+    } catch {
+      if (badgeEl) {
+        badgeEl.textContent = isSrv1 ? 'سرور ۱' : 'سرور ۲';
+        badgeEl.className = 'server-status-pill';
+      }
+    }
+  }
+}
+
+// Smart Fetch with Dual-Server Failover
+async function smartServerFetch(path, options = {}) {
+  const candidates = [
+    activeServerUrl,
+    ...BAGTIME_SERVERS.filter((s) => s !== activeServerUrl)
+  ];
+
+  let lastError = null;
+
+  for (const srv of candidates) {
+    const cleanUrl = srv.replace(/\/+$/, '') + (path.startsWith('/') ? path : '/' + path);
+    const controller = new AbortController();
+    const timeout = options.timeout || 5500;
+    const timer = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const res = await fetch(cleanUrl, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      if (res.status < 500) {
+        if (activeServerUrl !== srv) {
+          activeServerUrl = srv;
+          await Storage.set('active_server', srv);
+          updateServerUI();
+        }
+        return res;
+      }
+    } catch (err) {
+      clearTimeout(timer);
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('هر دو سرور در دسترس نیستند.');
 }
 
 // Search Engines Configuration
@@ -204,13 +332,16 @@ const FONTS_CONFIG = {
   inter: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
 };
 
-// Default User Shortcuts
+// Default User Shortcuts (Exactly 8 shortcuts + 1 sponsored + 1 add button = 10 items in 5x2 grid)
 const DEFAULT_SHORTCUTS = [
-  { id: 'sc_google', title: 'گوگل', url: 'https://www.google.com', icon: '🌐' },
   { id: 'sc_bale', title: 'پیام‌رسان بله', url: 'https://web.bale.ai', icon: '🤖' },
+  { id: 'sc_google', title: 'گوگل', url: 'https://www.google.com', icon: '🌐' },
   { id: 'sc_github', title: 'گیت‌هاب', url: 'https://github.com', icon: '🐙' },
   { id: 'sc_youtube', title: 'یوتیوب', url: 'https://www.youtube.com', icon: '▶️' },
   { id: 'sc_wikipedia', title: 'ویکی‌پدیا', url: 'https://fa.wikipedia.org', icon: '📖' },
+  { id: 'sc_aparat', title: 'آپارات', url: 'https://www.aparat.com', icon: '📺' },
+  { id: 'sc_digikala', title: 'دیجی‌کالا', url: 'https://www.digikala.com', icon: '🛍️' },
+  { id: 'sc_bing', title: 'بینگ', url: 'https://www.bing.com', icon: '🔷' },
 ];
 
 // App State
@@ -226,13 +357,6 @@ let sponsoredSite = null;
 let calViewYear = 1405;
 let calViewMonth = 7; // Mehr
 
-// Focus Timer State
-let focusDurationSeconds = 25 * 60;
-let focusRemainingSeconds = 25 * 60;
-let focusIntervalId = null;
-let focusSessionsCompleted = 0;
-let focusMinutesTotal = 0;
-
 // Bale Login Polling State
 let baleLoginTicket = null;
 let balePollingInterval = null;
@@ -246,8 +370,6 @@ const headerDate = document.getElementById('navLiveDate') || document.getElement
 const calLiveClock = document.getElementById('calBigClock') || document.getElementById('calLiveClock');
 const calLiveDate = document.getElementById('calBigDate') || document.getElementById('calLiveDate');
 const fontSelect = document.getElementById('fontSelect');
-const heroEngineIcon = document.getElementById('heroEngineIcon');
-const heroEngineTitle = document.getElementById('heroEngineTitle');
 const heroSearchForm = document.getElementById('heroSearchForm');
 const heroSearchInput = document.getElementById('heroSearchInput');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
@@ -277,13 +399,6 @@ const calNextMonthBtn = document.getElementById('calNextMonthBtn');
 const calCurrentMonthTitle = document.getElementById('calCurrentMonthTitle');
 const calDaysGrid = document.getElementById('calDaysGrid');
 
-const focusTimerDisplay = document.getElementById('focusTimerDisplay');
-const startTimerBtn = document.getElementById('startTimerBtn');
-const resetTimerBtn = document.getElementById('resetTimerBtn');
-const focusSessionsCount = document.getElementById('focusSessionsCount');
-const focusMinutesTotalEl = document.getElementById('focusMinutesTotal');
-const focusModeLabel = document.getElementById('focusModeLabel');
-
 // Login Modal Elements
 const loginModal = document.getElementById('loginModal');
 const openLoginModalBtn = document.getElementById('openLoginModalBtn');
@@ -304,10 +419,17 @@ const accountBox = document.getElementById('accountBox');
 
 // Add Shortcut Modal
 const addShortcutModal = document.getElementById('addShortcutModal');
-const closeAddShortcutBtn = document.getElementById('closeAddShortcutBtn');
+const closeAddShortcutBtn = document.getElementById('closeShortcutModalBtn');
 const addShortcutForm = document.getElementById('addShortcutForm');
-const shortcutTitleInput = document.getElementById('shortcutTitleInput');
-const shortcutUrlInput = document.getElementById('shortcutUrlInput');
+const shortcutTitleInput = document.getElementById('scTitle');
+const shortcutUrlInput = document.getElementById('scUrl');
+const shortcutIconInput = document.getElementById('scIcon');
+
+// Server Dropdown
+const serverSelectorBtn = document.getElementById('serverSelectorBtn');
+const serverPickerMenu = document.getElementById('serverPickerMenu');
+const choiceSrv1 = document.getElementById('choiceSrv1');
+const choiceSrv2 = document.getElementById('choiceSrv2');
 
 // ── Clock & Date ──
 function updateClock() {
@@ -331,10 +453,9 @@ function applyFont(fontKey, customFontFamily = null) {
   Storage.set('font_family', fontKey);
 }
 
-async function inheritFontsFromServer(serverUrl) {
+async function inheritFontsFromServer() {
   try {
-    const sUrl = (serverUrl || 'https://taskrooz.mohusyn.ir').replace(/\/+$/, '');
-    const res = await fetch(`${sUrl}/api/settings.php`);
+    const res = await smartServerFetch('/api/settings.php');
     if (!res.ok) return;
     const data = await res.json();
     const settings = data.settings || {};
@@ -362,18 +483,12 @@ function setSearchEngine(engineKey) {
   currentSearchEngine = engineKey;
   const cfg = SEARCH_ENGINES[engineKey];
 
-  if (heroEngineIcon) heroEngineIcon.textContent = cfg.icon;
-  if (heroEngineTitle) heroEngineTitle.textContent = cfg.title;
   if (searchEngineIcon) searchEngineIcon.textContent = cfg.icon;
   if (searchEngineName) searchEngineName.textContent = cfg.name;
   if (heroSearchInput) heroSearchInput.placeholder = cfg.placeholder;
 
   document.querySelectorAll('.engine-pill').forEach((pill) => {
-    if (pill.dataset.engine === engineKey) {
-      pill.classList.add('active');
-    } else {
-      pill.classList.remove('active');
-    }
+    pill.classList.toggle('active', pill.dataset.engine === engineKey);
   });
 
   Storage.set('search_engine', engineKey);
@@ -381,16 +496,16 @@ function setSearchEngine(engineKey) {
 
 function handleSearchSubmit(e) {
   e.preventDefault();
-  const q = (heroSearchInput.value || '').trim();
+  const q = heroSearchInput.value.trim();
   if (!q) return;
 
-  const isUrl = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/.test(q) && !q.includes(' ');
-  if (isUrl) {
-    let target = q;
-    if (!target.startsWith('http://') && !target.startsWith('https://')) {
-      target = 'https://' + target;
-    }
-    window.location.href = target;
+  // Direct URL navigation if query looks like a domain
+  if (/^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/.test(q)) {
+    window.location.href = 'https://' + q;
+    return;
+  }
+  if (/^https?:\/\//i.test(q)) {
+    window.location.href = q;
     return;
   }
 
@@ -398,7 +513,7 @@ function handleSearchSubmit(e) {
   window.location.href = engine.url + encodeURIComponent(q);
 }
 
-// ── Shortcuts / Bookmarks (Apps Grid - Exact Wireframe UX) ──
+// ── Shortcuts / Bookmarks (Apps Grid - Exact 5x2 Wireframe) ──
 function renderShortcuts() {
   if (!shortcutsList) return;
   shortcutsList.innerHTML = '';
@@ -470,52 +585,51 @@ function renderShortcuts() {
   shortcutsList.appendChild(addBtn);
 }
 
-async function addShortcut(title, url) {
-  let cleanUrl = url.trim();
-  if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-    cleanUrl = 'https://' + cleanUrl;
+async function addShortcut(title, url, icon = '🔗') {
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
   }
-  const newSc = {
+  shortcuts.push({
     id: 'sc_' + Date.now(),
-    title: title.trim(),
-    url: cleanUrl,
-    icon: '🌐',
-  };
-  shortcuts.push(newSc);
-  await Storage.set('shortcuts', shortcuts);
-  renderShortcuts();
-  AudioFeedback.playCheck();
-}
-
-async function deleteShortcut(idx) {
-  shortcuts.splice(idx, 1);
+    title,
+    url,
+    icon: icon || '🔗',
+  });
   await Storage.set('shortcuts', shortcuts);
   renderShortcuts();
 }
 
-// ── Time-based Tasks Rendering & Management ──
+async function deleteShortcut(index) {
+  shortcuts.splice(index, 1);
+  await Storage.set('shortcuts', shortcuts);
+  renderShortcuts();
+}
+
+// ── Tasks & Real-Time Sync Management ──
 function renderTasks() {
   if (!tasksList) return;
   tasksList.innerHTML = '';
 
-  let filtered = tasks;
-  if (currentFilter === 'pending') {
-    filtered = tasks.filter((t) => !t.completed);
-  } else if (currentFilter === 'completed') {
-    filtered = tasks.filter((t) => t.completed);
+  const filtered = tasks.filter((t) => {
+    if (currentFilter === 'pending') return !t.completed;
+    if (currentFilter === 'completed') return t.completed;
+    return true;
+  });
+
+  if (tasksCountBadge) {
+    tasksCountBadge.textContent = `${toPersianDigits(filtered.length)} تسک`;
   }
 
-  if (tasksCountBadge) tasksCountBadge.textContent = `${toPersianDigits(filtered.length)} تسک`;
+  updateProgress();
 
   if (filtered.length === 0) {
     tasksList.innerHTML = `
       <div class="tasks-empty-state">
         <div class="empty-icon">☕</div>
-        <div class="empty-title">${currentFilter === 'completed' ? 'هنوز کاری تکمیل نشده است' : 'کاری در این لیست وجود ندارد'}</div>
-        <div class="empty-sub">با استفاده از کادر بالا تسک جدید اضافه کنید یا در پلنر اصلی برنامه‌ریزی کنید.</div>
+        <p class="empty-title">کاری در این لیست وجود ندارد</p>
+        <p class="empty-desc">با استفاده از کادر بالا، تسک جدید اضافه کنید یا در پلنر اصلی برنامه‌ریزی کنید.</p>
       </div>
     `;
-    updateProgress();
     return;
   }
 
@@ -523,46 +637,73 @@ function renderTasks() {
     const el = document.createElement('div');
     el.className = `task-item ${task.completed ? 'completed' : ''}`;
 
-    const priorityClass = task.priority || 'medium';
-    const timeDisplay = task.time ? `<span class="task-time-badge">⏰ ${toPersianDigits(task.time)}</span>` : '';
-
     el.innerHTML = `
       <div class="task-item-left">
-        <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} />
+        <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} data-id="${task.id}" />
         <span class="task-item-title">${escapeHtml(task.title)}</span>
       </div>
       <div class="task-item-right">
-        ${timeDisplay}
-        <span class="task-priority-tag ${priorityClass}" title="اولویت ${priorityClass}"></span>
-        <button type="button" class="task-delete-btn" title="حذف">✕</button>
+        ${task.time ? `<span class="task-time-badge">${escapeHtml(toPersianDigits(task.time))}</span>` : ''}
+        <span class="task-priority-tag ${task.priority || 'medium'}" title="اولویت: ${task.priority}"></span>
+        <button type="button" class="task-delete-btn" title="حذف تسک" data-id="${task.id}">✕</button>
       </div>
     `;
 
-    const checkbox = el.querySelector('.task-checkbox');
-    checkbox.addEventListener('change', () => toggleTask(task.id));
+    el.querySelector('.task-checkbox').addEventListener('change', (e) => {
+      toggleTask(task.id, e.target.checked);
+    });
 
-    const delBtn = el.querySelector('.task-delete-btn');
-    delBtn.addEventListener('click', () => deleteTask(task.id));
+    el.querySelector('.task-delete-btn').addEventListener('click', () => {
+      deleteTask(task.id);
+    });
 
     tasksList.appendChild(el);
   });
-
-  updateProgress();
 }
 
-async function toggleTask(id) {
+async function addTask(title, time = '', priority = 'medium') {
+  const newTask = {
+    id: 't_' + Date.now(),
+    title,
+    time,
+    priority,
+    completed: false,
+    date: getTodayDateKey(),
+  };
+
+  tasks.unshift(newTask);
+  await Storage.set('tasks', tasks);
+  renderTasks();
+  AudioFeedback.playCheck();
+
+  // Push to server with failover
+  if (currentAccount && currentAccount.token) {
+    smartServerFetch('/api/tasks.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentAccount.token}`,
+      },
+      body: JSON.stringify({
+        title,
+        time,
+        priority,
+        date: newTask.date,
+      }),
+    }).catch(() => {});
+  }
+}
+
+async function toggleTask(id, completed) {
   const t = tasks.find((item) => item.id === id);
   if (!t) return;
-
-  t.completed = !t.completed;
+  t.completed = completed;
   await Storage.set('tasks', tasks);
   renderTasks();
   if (t.completed) AudioFeedback.playCheck();
 
-  // Push update to Bag Time server if connected
   if (currentAccount && currentAccount.token) {
-    const baseUrl = (currentAccount.serverUrl || 'https://taskrooz.mohusyn.ir').replace(/\/+$/, '');
-    fetch(`${baseUrl}/api/tasks.php`, {
+    smartServerFetch('/api/tasks.php', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -579,8 +720,7 @@ async function deleteTask(id) {
   renderTasks();
 
   if (currentAccount && currentAccount.token) {
-    const baseUrl = (currentAccount.serverUrl || 'https://taskrooz.mohusyn.ir').replace(/\/+$/, '');
-    fetch(`${baseUrl}/api/tasks.php`, {
+    smartServerFetch('/api/tasks.php', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -605,11 +745,9 @@ async function loadDailyNote() {
   const localNote = await Storage.get('daily_note_' + getTodayDateKey(), '');
   if (dailyNoteArea) dailyNoteArea.value = localNote;
 
-  // Sync from server if connected
   if (currentAccount && currentAccount.token) {
     try {
-      const baseUrl = (currentAccount.serverUrl || 'https://taskrooz.mohusyn.ir').replace(/\/+$/, '');
-      const res = await fetch(`${baseUrl}/api/notes.php`, {
+      const res = await smartServerFetch('/api/notes.php', {
         headers: { 'Authorization': `Bearer ${currentAccount.token}` },
       });
       if (res.ok) {
@@ -639,8 +777,7 @@ async function saveDailyNote(manual = false) {
   }
 
   if (currentAccount && currentAccount.token) {
-    const baseUrl = (currentAccount.serverUrl || 'https://taskrooz.mohusyn.ir').replace(/\/+$/, '');
-    fetch(`${baseUrl}/api/notes.php`, {
+    smartServerFetch('/api/notes.php', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -673,23 +810,17 @@ function renderCalendar() {
   const now = new Date();
   const [todayY, todayM, todayD] = gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
 
-  // First day of month in Gregorian to find day of week
   const [gy, gm, gd] = jalaliToGregorian(calViewYear, calViewMonth, 1);
   const firstDayDate = new Date(gy, gm - 1, gd);
-  // Persian week: Saturday is 0, Sunday is 1, ... Friday is 6
   const weekdayOffset = (firstDayDate.getDay() + 1) % 7;
-
-  // Month days count (Jalali months 1-6 have 31 days, 7-11 have 30 days, 12 has 29/30)
   const monthDaysCount = (calViewMonth <= 6) ? 31 : ((calViewMonth <= 11) ? 30 : 29);
 
-  // Empty cells for offset
   for (let i = 0; i < weekdayOffset; i++) {
     const emptyCell = document.createElement('div');
     emptyCell.className = 'cal-day-cell empty';
     calDaysGrid.appendChild(emptyCell);
   }
 
-  // Days
   for (let d = 1; d <= monthDaysCount; d++) {
     const dayCell = document.createElement('div');
     const isToday = (calViewYear === todayY && calViewMonth === todayM && d === todayD);
@@ -700,108 +831,55 @@ function renderCalendar() {
   }
 }
 
-// ── Pomodoro Focus Timer ──
-function updateTimerDisplay() {
-  if (!focusTimerDisplay) return;
-  const m = Math.floor(focusRemainingSeconds / 60);
-  const s = focusRemainingSeconds % 60;
-  focusTimerDisplay.textContent = `${toPersianDigits(String(m).padStart(2, '0'))}:${toPersianDigits(String(s).padStart(2, '0'))}`;
-}
-
-function startFocusTimer() {
-  if (focusIntervalId) {
-    // Pause
-    clearInterval(focusIntervalId);
-    focusIntervalId = null;
-    if (startTimerBtn) startTimerBtn.querySelector('span').textContent = 'ادامه تمرکز ▶';
-    return;
-  }
-
-  if (startTimerBtn) startTimerBtn.querySelector('span').textContent = 'توقف موقت ⏸';
-
-  focusIntervalId = setInterval(() => {
-    if (focusRemainingSeconds > 0) {
-      focusRemainingSeconds--;
-      updateTimerDisplay();
-    } else {
-      // Finished
-      clearInterval(focusIntervalId);
-      focusIntervalId = null;
-      AudioFeedback.playComplete();
-      focusSessionsCompleted++;
-      focusMinutesTotal += Math.round(focusDurationSeconds / 60);
-
-      if (focusSessionsCount) focusSessionsCount.textContent = `${toPersianDigits(focusSessionsCompleted)} جلسه`;
-      if (focusMinutesTotalEl) focusMinutesTotalEl.textContent = `${toPersianDigits(focusMinutesTotal)} دقیقه`;
-      if (startTimerBtn) startTimerBtn.querySelector('span').textContent = 'تمرکز بعدی 🚀';
-      alert('🎉 تبریک! جلسه تمرکز شما با موفقیت به پایان رسید.');
-      resetFocusTimer();
-    }
-  }, 1000);
-}
-
-function resetFocusTimer() {
-  if (focusIntervalId) {
-    clearInterval(focusIntervalId);
-    focusIntervalId = null;
-  }
-  focusRemainingSeconds = focusDurationSeconds;
-  updateTimerDisplay();
-  if (startTimerBtn) startTimerBtn.querySelector('span').textContent = 'شروع تمرکز 🚀';
-}
-
-function setFocusMode(minutes, label) {
-  focusDurationSeconds = minutes * 60;
-  resetFocusTimer();
-  if (focusModeLabel) focusModeLabel.textContent = label;
-}
-
-// ── Account & Live Server Sync ──
+// ── Account & Auth State ──
 async function renderAccountUI() {
   currentAccount = await Storage.get('account', null);
-  if (!accountBox) return;
 
-  if (currentAccount && currentAccount.user && currentAccount.token) {
-    const uName = currentAccount.user.name || currentAccount.user.username;
-    accountBox.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <button type="button" id="userMenuBtn" class="btn-connect" title="حساب متصل است: ${escapeHtml(uName)}">
+  if (accountBox) {
+    accountBox.innerHTML = '';
+    if (currentAccount && currentAccount.user) {
+      const u = currentAccount.user;
+      accountBox.innerHTML = `
+        <div class="user-chip-btn" id="userProfileChip" title="متصل به حساب ${escapeHtml(u.name || u.username)}">
           <span class="dot-status linked"></span>
-          <span>سلام ${escapeHtml(uName)}</span>
-        </button>
-        <button type="button" id="extLogoutBtn" class="btn-connect" style="padding: 0.35rem 0.55rem; color: #f43f5e;" title="خروج از حساب">
-          ✕
-        </button>
-      </div>
-    `;
+          <span class="user-chip-name">${escapeHtml(u.name || u.username)}</span>
+          <button type="button" id="logoutBtn" class="btn-chip-logout" title="خروج از حساب">✕</button>
+        </div>
+      `;
 
-    const logoutBtn = document.getElementById('extLogoutBtn');
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', async () => {
-        if (confirm('آیا می‌خواهید از حساب کاربری بگ تایم در افزونه خارج شوید؟')) {
-          await Storage.set('account', null);
-          currentAccount = null;
-          await renderAccountUI();
-          if (hubSyncNotice) hubSyncNotice.textContent = 'همگام‌سازی محلی (اتصال به سرور غیرفعال است)';
-        }
-      });
-    }
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) {
+            await Storage.set('account', null);
+            currentAccount = null;
+            await renderAccountUI();
+            alert('با موفقیت خارج شدید.');
+          }
+        });
+      }
 
-    if (hubSyncNotice) hubSyncNotice.textContent = `همگام‌سازی زنده با حساب ${uName} 🟢`;
-  } else {
-    accountBox.innerHTML = `
-      <button type="button" id="openLoginModalBtn" class="btn-connect">
-        <span class="dot-status unlinked"></span>
-        <span>اتصال به بگ تایم</span>
-      </button>
-    `;
-    const openBtn = document.getElementById('openLoginModalBtn');
-    if (openBtn) {
+      if (hubSyncNotice) {
+        hubSyncNotice.textContent = `همگام‌سازی زنده فعال است (${escapeHtml(u.name || u.username)})`;
+      }
+    } else {
+      accountBox.innerHTML = `
+        <button type="button" id="openLoginModalBtn" class="btn-connect">
+          <span class="dot-status unlinked"></span>
+          <span>اتصال به بگ تایم</span>
+        </button>
+      `;
+
+      const openBtn = document.getElementById('openLoginModalBtn');
       openBtn.addEventListener('click', () => {
         if (loginModal) loginModal.style.display = 'flex';
       });
+
+      if (hubSyncNotice) {
+        hubSyncNotice.textContent = 'جهت همگام‌سازی دوطرفه با سرور، دکمه اتصال را بزنید.';
+      }
     }
-    if (hubSyncNotice) hubSyncNotice.textContent = 'جهت همگام‌سازی دوطرفه با اپلیکیشن، دکمه اتصال را بزنید.';
   }
 }
 
@@ -809,10 +887,9 @@ async function syncWithServer() {
   if (!currentAccount || !currentAccount.token) return;
 
   if (refreshTasksBtn) refreshTasksBtn.classList.add('spinning');
-  const baseUrl = (currentAccount.serverUrl || 'https://taskrooz.mohusyn.ir').replace(/\/+$/, '');
 
   try {
-    const res = await fetch(`${baseUrl}/api/tasks.php`, {
+    const res = await smartServerFetch('/api/tasks.php', {
       headers: {
         'Authorization': `Bearer ${currentAccount.token}`,
       },
@@ -853,22 +930,18 @@ async function handleStartBaleLogin() {
   startBaleLoginBtn.textContent = 'در حال ایجاد تیکت ورود...';
   if (balePollingStatus) balePollingStatus.style.display = 'flex';
 
-  const baseUrl = (extServerUrl?.value || 'https://taskrooz.mohusyn.ir').trim().replace(/\/+$/, '');
-
   try {
-    const res = await fetch(`${baseUrl}/api/bale.php?action=create_bale_login`);
+    const res = await smartServerFetch('/api/bale.php?action=create_bale_login');
     const data = await res.json();
 
     if (data.ok && data.ticket && data.baleBotLink) {
       baleLoginTicket = data.ticket;
-      // Open Bale Bot deep link
       window.open(data.baleBotLink, '_blank');
 
-      // Start Polling
       if (balePollingInterval) clearInterval(balePollingInterval);
       balePollingInterval = setInterval(async () => {
         try {
-          const chkRes = await fetch(`${baseUrl}/api/bale.php?action=check_bale_login&ticket=${encodeURIComponent(baleLoginTicket)}`);
+          const chkRes = await smartServerFetch(`/api/bale.php?action=check_bale_login&ticket=${encodeURIComponent(baleLoginTicket)}`);
           const chkData = await chkRes.json();
 
           if (chkData.status === 'approved' && chkData.user && chkData.token) {
@@ -878,7 +951,7 @@ async function handleStartBaleLogin() {
             const acc = {
               user: chkData.user,
               token: chkData.token,
-              serverUrl: baseUrl,
+              serverUrl: activeServerUrl,
             };
             await Storage.set('account', acc);
             currentAccount = acc;
@@ -891,7 +964,7 @@ async function handleStartBaleLogin() {
 
             await renderAccountUI();
             await syncWithServer();
-            await inheritFontsFromServer(baseUrl);
+            await inheritFontsFromServer();
           }
         } catch {}
       }, 2000);
@@ -902,7 +975,7 @@ async function handleStartBaleLogin() {
       if (balePollingStatus) balePollingStatus.style.display = 'none';
     }
   } catch (e) {
-    alert('عدم برقراری ارتباط با سرور بله یا سرور بگ تایم.');
+    alert('عدم برقراری ارتباط با سرور بله یا سرورهای بگ تایم.');
     startBaleLoginBtn.disabled = false;
     startBaleLoginBtn.textContent = '🚀 ورود آنی با ربات بله';
     if (balePollingStatus) balePollingStatus.style.display = 'none';
@@ -926,11 +999,11 @@ async function init() {
   if (headerDate) headerDate.textContent = jDateStr;
   if (calLiveDate) calLiveDate.textContent = jDateStr;
 
+  // Initialize Dual-Server Manager
+  await initServerManager();
+
   // Initialize Calendar
   initCalendar();
-
-  // Initialize Pomodoro Timer
-  updateTimerDisplay();
 
   // Load Saved Font
   const savedFont = await Storage.get('font_family', 'vazirmatn');
@@ -988,7 +1061,7 @@ async function init() {
   sponsoredSite = await Storage.get('sponsored_site', {
     enabled: true,
     title: 'سامانه ابری بگ تایم',
-    url: 'https://taskrooz.mohusyn.ir',
+    url: activeServerUrl,
     icon: '⭐',
     badge: 'اسپانسر',
   });
@@ -1047,25 +1120,7 @@ async function init() {
     });
   }
 
-  // Focus Timer Controls
-  if (startTimerBtn) {
-    startTimerBtn.addEventListener('click', startFocusTimer);
-  }
-
-  if (resetTimerBtn) {
-    resetTimerBtn.addEventListener('click', resetFocusTimer);
-  }
-
-  document.querySelectorAll('.btn-timer-mode').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.btn-timer-mode').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      const mins = parseInt(btn.dataset.minutes, 10) || 25;
-      setFocusMode(mins, btn.textContent);
-    });
-  });
-
-  // Task Filters
+  // Task Filter Tabs
   document.querySelectorAll('.filter-tab').forEach((tab) => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.filter-tab').forEach((t) => t.classList.remove('active'));
@@ -1075,54 +1130,76 @@ async function init() {
     });
   });
 
-  // Add Task Form with Time
+  // Add Task Form
   if (addTaskForm) {
-    addTaskForm.addEventListener('submit', async (e) => {
+    addTaskForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const title = (taskInput.value || '').trim();
-      if (!title) return;
-
-      const timeVal = (taskTimeInput?.value || '').trim();
-
-      const newTask = {
-        id: 'task_' + Date.now(),
-        title,
-        time: timeVal,
-        priority: prioritySelect ? prioritySelect.value : 'medium',
-        completed: false,
-        date: getTodayDateKey(),
-      };
-
-      tasks.unshift(newTask);
-      await Storage.set('tasks', tasks);
+      const val = taskInput.value.trim();
+      if (!val) return;
+      const timeVal = taskTimeInput?.value.trim() || '';
+      const prioVal = prioritySelect?.value || 'medium';
+      addTask(val, timeVal, prioVal);
       taskInput.value = '';
       if (taskTimeInput) taskTimeInput.value = '';
-      renderTasks();
-      AudioFeedback.playCheck();
-
-      if (currentAccount && currentAccount.token) {
-        const baseUrl = (currentAccount.serverUrl || 'https://taskrooz.mohusyn.ir').replace(/\/+$/, '');
-        fetch(`${baseUrl}/api/tasks.php`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${currentAccount.token}`,
-          },
-          body: JSON.stringify({
-            title: newTask.title,
-            time: newTask.time,
-            priority: newTask.priority,
-            date: newTask.date,
-          }),
-        }).catch(() => {});
-      }
     });
   }
+
+  // Server Dropdown Handlers
+  if (serverSelectorBtn && serverPickerMenu) {
+    serverSelectorBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = serverPickerMenu.style.display === 'flex';
+      serverPickerMenu.style.display = isOpen ? 'none' : 'flex';
+    });
+  }
+
+  if (choiceSrv1) {
+    choiceSrv1.addEventListener('click', async () => {
+      activeServerUrl = 'https://task.mohusyn.ir';
+      await Storage.set('active_server', activeServerUrl);
+      updateServerUI();
+      if (serverPickerMenu) serverPickerMenu.style.display = 'none';
+      syncWithServer();
+    });
+  }
+
+  if (choiceSrv2) {
+    choiceSrv2.addEventListener('click', async () => {
+      activeServerUrl = 'https://bagtime.negahm.ir';
+      await Storage.set('active_server', activeServerUrl);
+      updateServerUI();
+      if (serverPickerMenu) serverPickerMenu.style.display = 'none';
+      syncWithServer();
+    });
+  }
+
+  const modalSrv1Btn = document.getElementById('modalSrv1Btn');
+  const modalSrv2Btn = document.getElementById('modalSrv2Btn');
+  if (modalSrv1Btn && extServerUrl) {
+    modalSrv1Btn.addEventListener('click', () => {
+      extServerUrl.value = 'https://task.mohusyn.ir';
+      modalSrv1Btn.classList.add('active');
+      if (modalSrv2Btn) modalSrv2Btn.classList.remove('active');
+    });
+  }
+  if (modalSrv2Btn && extServerUrl) {
+    modalSrv2Btn.addEventListener('click', () => {
+      extServerUrl.value = 'https://bagtime.negahm.ir';
+      modalSrv2Btn.classList.add('active');
+      if (modalSrv1Btn) modalSrv1Btn.classList.remove('active');
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (serverPickerMenu && !serverPickerMenu.contains(e.target) && e.target !== serverSelectorBtn) {
+      serverPickerMenu.style.display = 'none';
+    }
+  });
 
   // Load Account & Sync
   await renderAccountUI();
   await syncWithServer();
-  await inheritFontsFromServer(currentAccount?.serverUrl);
+  await inheritFontsFromServer();
 
   if (refreshTasksBtn) {
     refreshTasksBtn.addEventListener('click', syncWithServer);
@@ -1185,11 +1262,13 @@ async function init() {
       e.preventDefault();
       const title = shortcutTitleInput?.value || '';
       const url = shortcutUrlInput?.value || '';
+      const icon = shortcutIconInput?.value || '🔗';
       if (!title || !url) return;
-      addShortcut(title, url);
+      addShortcut(title, url, icon);
       addShortcutModal.style.display = 'none';
       shortcutTitleInput.value = '';
       shortcutUrlInput.value = '';
+      if (shortcutIconInput) shortcutIconInput.value = '🔗';
     });
   }
 
@@ -1201,7 +1280,7 @@ async function init() {
       extLoginSubmitBtn.disabled = true;
       extLoginSubmitBtn.textContent = 'در حال اتصال و تأیید...';
 
-      const sUrl = (extServerUrl.value || 'https://taskrooz.mohusyn.ir').trim().replace(/\/+$/, '');
+      const sUrl = (extServerUrl.value || activeServerUrl).trim().replace(/\/+$/, '');
       const uName = extUsername.value.trim();
       const uPass = extPassword.value.trim();
 
@@ -1225,14 +1304,14 @@ async function init() {
           extPassword.value = '';
           await renderAccountUI();
           await syncWithServer();
-          await inheritFontsFromServer(sUrl);
+          await inheritFontsFromServer();
           AudioFeedback.playCheck();
         } else {
           extLoginError.textContent = data.error || 'اطلاعات ورود نادرست است یا ارتباط با سرور برقرار نشد.';
           extLoginError.style.display = 'block';
         }
       } catch (err) {
-        extLoginError.textContent = 'عدم برقراری ارتباط با آدرس سرور مشخص شده. لطفاً اتصال اینترنت یا آدرس را بررسی فرمایید.';
+        extLoginError.textContent = 'عدم برقراری ارتباط با آدرس سرور مشخص شده. در حال بررسی سرور پشتیبان...';
         extLoginError.style.display = 'block';
       } finally {
         extLoginSubmitBtn.disabled = false;

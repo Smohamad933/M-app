@@ -309,7 +309,7 @@ export const UserManagementView: React.FC = () => {
   const initialSponsored = globalSettings?.extensionSponsoredSite || {
     enabled: true,
     title: 'سامانه ابری بگ تایم',
-    url: 'https://taskrooz.mohusyn.ir',
+    url: 'https://task.mohusyn.ir',
     icon: '⭐',
     badge: 'اسپانسر',
   };

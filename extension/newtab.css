@@ -207,23 +207,181 @@ body {
 }
 
 /* -----------------------------------------------------------------------------
+   Server Indicator & Dropdown (Dual Server Support)
+   ----------------------------------------------------------------------------- */
+.server-picker-wrapper {
+  position: relative;
+}
+
+.btn-server-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-server-indicator:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.server-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.server-dot.online {
+  background: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.server-dot.switching {
+  background: #f59e0b;
+}
+
+.server-dot.offline {
+  background: #ef4444;
+}
+
+.server-chevron {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.server-picker-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 280px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-hero);
+  padding: 0.75rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  direction: rtl;
+}
+
+.server-picker-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  padding: 0.2rem 0.35rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0.25rem;
+}
+
+.server-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.65rem;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  text-align: right;
+  width: 100%;
+}
+
+.server-choice:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.server-choice.active {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.server-choice-left {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.server-radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid #94a3b8;
+  display: inline-block;
+}
+
+.server-choice.active .server-radio-dot {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+.server-choice-name {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  direction: ltr;
+}
+
+.server-status-pill {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-full);
+  background: #e2e8f0;
+  color: var(--text-secondary);
+}
+
+.server-status-pill.online {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.server-status-pill.offline {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.server-picker-note {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  padding: 0.35rem 0.2rem 0.1rem;
+}
+
+/* -----------------------------------------------------------------------------
    2. MAIN 3-COLUMN WORKSPACE (EXACT WIREFRAME UX)
    ----------------------------------------------------------------------------- */
 .ux-workspace {
   flex: 1;
-  max-width: 1420px;
+  max-width: 1440px;
   width: 100%;
   margin: 0 auto;
-  padding: 1.5rem 1.5rem 2.5rem;
+  padding: 1.25rem 1.5rem 2.5rem;
   display: grid;
-  grid-template-columns: 340px 1fr 310px;
+  grid-template-columns: 320px minmax(500px, 1fr) 340px;
+  grid-template-areas: "col-left col-center col-tasks";
+  direction: ltr; /* Enforces physical Left, Center, Right columns */
   gap: 1.5rem;
   align-items: stretch;
 }
 
 @media (max-width: 1200px) {
   .ux-workspace {
-    grid-template-columns: 320px 1fr 290px;
+    grid-template-columns: 300px 1fr 310px;
     gap: 1.15rem;
   }
 }
@@ -231,6 +389,10 @@ body {
 @media (max-width: 1024px) {
   .ux-workspace {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "col-center"
+      "col-tasks"
+      "col-left";
   }
 }
 
@@ -249,6 +411,8 @@ body {
    ستون سمت راست: تسک لیست (Task List)
    ----------------------------------------------------------------------------- */
 .col-tasks {
+  grid-area: col-tasks;
+  direction: rtl;
   display: flex;
   flex-direction: column;
 }
@@ -633,11 +797,13 @@ body {
    ستون وسط: سرچ بار + موتور جستجوها + آپ ها + موزیک پلیر
    ----------------------------------------------------------------------------- */
 .col-center {
+  grid-area: col-center;
+  direction: rtl;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
+  justify-content: flex-start;
+  gap: 1.6rem;
 }
 
 .center-search-block {
@@ -800,10 +966,10 @@ body {
 
 .apps-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.9rem;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.85rem;
   width: 100%;
-  max-width: 580px;
+  max-width: 600px;
 }
 
 @media (max-width: 600px) {
@@ -961,6 +1127,8 @@ body {
    ستون سمت چپ: تقویم و ساعت (بالا) + یادداشت ها (پایین)
    ----------------------------------------------------------------------------- */
 .col-left {
+  grid-area: col-left;
+  direction: rtl;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -1327,6 +1495,39 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+}
+
+.modal-server-pills {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.server-choice-pill {
+  flex: 1;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: #f8fafc;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  direction: ltr;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.server-choice-pill:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.server-choice-pill.active {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
 }
 
 .form-group {

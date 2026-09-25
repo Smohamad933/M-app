@@ -12,7 +12,7 @@
 </head>
 <body>
 
-  <!-- 1. تب بار بالا (Top Bar) -->
+  <!-- 1. تب بار بالا (Top Bar - Exact Wireframe Alignment) -->
   <header class="top-nav">
     <div class="nav-brand">
       <img src="icons/icon-48.png" alt="Bag Time Logo" class="brand-logo">
@@ -31,6 +31,35 @@
     </div>
 
     <div class="nav-controls">
+      <!-- Dual Server Status Pill & Dropdown -->
+      <div class="server-picker-wrapper">
+        <button type="button" id="serverSelectorBtn" class="btn-server-indicator" title="وضعیت سرورهای بگ تایم (کلیک برای تغییر یا بررسی وضعیت)">
+          <span id="serverDotIndicator" class="server-dot online"></span>
+          <span id="serverBadgeLabel">task.mohusyn.ir</span>
+          <span class="server-chevron">▾</span>
+        </button>
+        <div id="serverPickerMenu" class="server-picker-dropdown" style="display: none;">
+          <div class="server-picker-title">سرورهای رسمی بگ تایم</div>
+          <button type="button" class="server-choice active" id="choiceSrv1" data-server="https://task.mohusyn.ir">
+            <div class="server-choice-left">
+              <span class="server-radio-dot"></span>
+              <span class="server-choice-name">task.mohusyn.ir</span>
+            </div>
+            <span class="server-status-pill online" id="srv1StatusBadge">سرور ۱</span>
+          </button>
+          <button type="button" class="server-choice" id="choiceSrv2" data-server="https://bagtime.negahm.ir">
+            <div class="server-choice-left">
+              <span class="server-radio-dot"></span>
+              <span class="server-choice-name">bagtime.negahm.ir</span>
+            </div>
+            <span class="server-status-pill online" id="srv2StatusBadge">سرور ۲</span>
+          </button>
+          <div class="server-picker-note">
+            ⚡ در صورت قطعی یا اختلال هر سرور، ارتباط به طور خودکار به سرور فعال منتقل می‌شود.
+          </div>
+        </div>
+      </div>
+
       <!-- Font Selector -->
       <div class="font-picker-wrapper" title="تغییر قلم و فونت دلخواه">
         <span class="font-icon">🔤</span>
@@ -53,8 +82,8 @@
         </button>
       </div>
 
-      <!-- Open App Link -->
-      <a id="openWebAppBtn" href="https://taskrooz.mohusyn.ir" target="_blank" class="btn-open-app" title="باز کردن سامانه اصلی بگ تایم">
+      <!-- Open App Link (Dynamic Active Server) -->
+      <a id="openWebAppBtn" href="https://task.mohusyn.ir" target="_blank" class="btn-open-app" title="باز کردن سامانه اصلی بگ تایم">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
         <span>پلنر اصلی</span>
       </a>
@@ -62,9 +91,150 @@
   </header>
 
   <!-- MAIN 3-COLUMN WORKSPACE (EXACT WIREFRAME UX) -->
+  <!-- direction: ltr enforces physical order: Left Column | Center Column | Right Column -->
   <main class="ux-workspace">
 
-    <!-- ستون سمت راست: تسک لیست (Task List) -->
+    <!-- ستون سمت چپ: تقویم و ساعت (بالا) + یادداشت ها (پایین) -->
+    <aside class="col-left">
+
+      <!-- جعبه بالا: تقویم و ساعت -->
+      <section class="ux-card calendar-clock-card">
+        <div class="card-header-clean">
+          <span class="header-tag">تقویم و ساعت</span>
+          <span id="calBigClock" class="clock-live-text">۰۰:۰۰:۰۰</span>
+        </div>
+
+        <div class="cal-date-banner" id="calBigDate">
+          جمعه، ۳ مهر ۱۴۰۵
+        </div>
+
+        <!-- Jalali Calendar Widget -->
+        <div class="jalali-calendar-box">
+          <div class="cal-nav-bar">
+            <button type="button" id="calPrevMonthBtn" class="cal-arrow-btn" title="ماه قبل">›</button>
+            <span id="calCurrentMonthTitle" class="cal-month-title">مهر ۱۴۰۵</span>
+            <button type="button" id="calNextMonthBtn" class="cal-arrow-btn" title="ماه بعد">‹</button>
+          </div>
+
+          <div class="cal-weekdays">
+            <span>ش</span>
+            <span>ی</span>
+            <span>د</span>
+            <span>س</span>
+            <span>چ</span>
+            <span>پ</span>
+            <span>ج</span>
+          </div>
+
+          <div id="calDaysGrid" class="cal-days-grid">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- جعبه پایین: یادداشت ها -->
+      <section class="ux-card notes-card">
+        <div class="card-header-clean">
+          <span class="header-tag">یادداشت‌ها</span>
+          <div class="note-actions">
+            <button type="button" id="copyNoteBtn" class="btn-text-action" title="کپی متن">کپی</button>
+            <span class="sep">|</span>
+            <button type="button" id="saveNoteBtn" class="btn-text-action highlight" title="ذخیره">ذخیره</button>
+          </div>
+        </div>
+
+        <div class="note-input-container">
+          <textarea
+            id="dailyNoteArea"
+            class="note-field"
+            placeholder="یادداشت‌های روزانه، شماره‌های ضروری یا ایده‌های سریع خود را اینجا بنویسید..."
+          ></textarea>
+        </div>
+
+        <div class="note-bottom-bar">
+          <span id="noteStatusText" class="note-status-label">ذخیره خودکار با تایپ ✓</span>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- ستون وسط: سرچ بار + موتور جستجوها + آپ ها + موزیک پلیر در آینده -->
+    <section class="col-center">
+      
+      <!-- سرچ بار و موتور جستجوها -->
+      <div class="center-search-block">
+        <form id="heroSearchForm" class="central-search-form" autocomplete="off">
+          <div class="search-input-wrapper">
+            <button type="submit" class="search-submit-btn" title="شروع جستجو (Enter)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <span>جستجو</span>
+            </button>
+
+            <input
+              type="text"
+              id="heroSearchInput"
+              class="central-search-input"
+              placeholder="جستجو در وب یا وارد کردن آدرس وبسایت..."
+              autocomplete="off"
+              spellcheck="false"
+              autofocus
+            />
+
+            <button type="button" id="clearSearchBtn" class="search-clear-btn" title="پاک کردن متن">✕</button>
+
+            <div id="searchEngineBadge" class="search-engine-badge" title="کلیک برای تغییر موتور جستجو">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+              <span id="searchEngineName">گوگل</span>
+              <span id="searchEngineIcon">🌐</span>
+            </div>
+          </div>
+
+          <!-- موتور جستجو ها (Engine Pills) -->
+          <div class="engine-pills-row">
+            <button type="button" class="engine-pill active" data-engine="google">
+              <span class="pill-icon">🌐</span>
+              <span>گوگل</span>
+            </button>
+            <button type="button" class="engine-pill" data-engine="bing">
+              <span class="pill-icon">🔷</span>
+              <span>بینگ</span>
+            </button>
+            <button type="button" class="engine-pill" data-engine="duckduckgo">
+              <span class="pill-icon">🦆</span>
+              <span>DuckDuckGo</span>
+            </button>
+            <button type="button" class="engine-pill" data-engine="yahoo">
+              <span class="pill-icon">🟣</span>
+              <span>یاهو</span>
+            </button>
+            <button type="button" class="engine-pill" data-engine="ecosia">
+              <span class="pill-icon">🌱</span>
+              <span>Ecosia</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- آپ ها (Apps / Shortcuts Grid - 2 rows of 5 rounded squares = 10 items) -->
+      <div class="apps-grid-section">
+        <div class="apps-section-title">آپ‌ها و برنامه‌های پرکاربرد</div>
+        <div id="shortcutsList" class="apps-grid">
+          <!-- Item 1: Admin Sponsored Site, Items 2-9: Apps, Item 10: Add Button -->
+        </div>
+      </div>
+
+      <!-- موزیک پلیر در آینده (Music Player Future Pill - Centered at Bottom) -->
+      <div class="music-player-pill-wrapper">
+        <div class="music-player-pill" title="موزیک پلیر و صداهای آرامش‌بخش تمرکز (به‌زودی)">
+          <span class="music-icon">🎵</span>
+          <span class="music-text">موزیک پلیر در آینده</span>
+          <span class="music-badge">بزودی</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ستون سمت راست: تسک لیست (Task List - Full Height) -->
     <aside class="col-tasks">
       <section class="ux-card task-list-card">
         <div class="card-header">
@@ -140,7 +310,7 @@
         <!-- Card Footer Link -->
         <div class="card-footer-row">
           <span class="footer-tip">💡 کلید <kbd>/</kbd> برای جستجو</span>
-          <a href="https://taskrooz.mohusyn.ir" target="_blank" class="footer-action-link">
+          <a id="tasksFooterLink" href="https://task.mohusyn.ir" target="_blank" class="footer-action-link">
             <span>مدیریت کامل زمان</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
@@ -148,155 +318,15 @@
       </section>
     </aside>
 
-    <!-- ستون وسط: سرچ بار + موتور جستجوها + آپ ها + موزیک پلیر -->
-    <section class="col-center">
-      
-      <!-- سرچ بار و موتور جستجوها -->
-      <div class="center-search-block">
-        <form id="heroSearchForm" class="central-search-form" autocomplete="off">
-          <div class="search-input-wrapper">
-            <button type="submit" class="search-submit-btn" title="شروع جستجو (Enter)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <span>جستجو</span>
-            </button>
-
-            <input
-              type="text"
-              id="heroSearchInput"
-              class="central-search-input"
-              placeholder="جستجو در وب یا وارد کردن آدرس وبسایت..."
-              autocomplete="off"
-              spellcheck="false"
-              autofocus
-            />
-
-            <button type="button" id="clearSearchBtn" class="search-clear-btn" title="پاک کردن متن">✕</button>
-
-            <div id="searchEngineBadge" class="search-engine-badge" title="کلیک برای تغییر موتور جستجو">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
-              <span id="searchEngineName">گوگل</span>
-              <span id="searchEngineIcon">🌐</span>
-            </div>
-          </div>
-
-          <!-- موتور جستجو ها (Engine Pills) -->
-          <div class="engine-pills-row">
-            <button type="button" class="engine-pill active" data-engine="google">
-              <span class="pill-icon">🌐</span>
-              <span>گوگل</span>
-            </button>
-            <button type="button" class="engine-pill" data-engine="bing">
-              <span class="pill-icon">🔷</span>
-              <span>بینگ</span>
-            </button>
-            <button type="button" class="engine-pill" data-engine="duckduckgo">
-              <span class="pill-icon">🦆</span>
-              <span>DuckDuckGo</span>
-            </button>
-            <button type="button" class="engine-pill" data-engine="yahoo">
-              <span class="pill-icon">🟣</span>
-              <span>یاهو</span>
-            </button>
-            <button type="button" class="engine-pill" data-engine="ecosia">
-              <span class="pill-icon">🌱</span>
-              <span>Ecosia</span>
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- آپ ها (Apps / Shortcuts Grid - 2 rows of rounded squares) -->
-      <div class="apps-grid-section">
-        <div class="apps-section-title">آپ‌ها و میانبرها</div>
-        <div id="shortcutsList" class="apps-grid">
-          <!-- Item 1: Admin Sponsored Site, followed by user shortcuts -->
-        </div>
-      </div>
-
-      <!-- موزیک پلیر در آینده (Music Player Future Pill) -->
-      <div class="music-player-pill-wrapper">
-        <div class="music-player-pill" title="موزیک پلیر و صداهای آرامش‌بخش تمرکز (به‌زودی)">
-          <span class="music-icon">🎵</span>
-          <span class="music-text">موزیک پلیر در آینده</span>
-          <span class="music-badge">بزودی</span>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- ستون سمت چپ: تقویم و ساعت (بالا) + یادداشت ها (پایین) -->
-    <aside class="col-left">
-
-      <!-- جعبه بالا: تقویم و ساعت -->
-      <section class="ux-card calendar-clock-card">
-        <div class="card-header-clean">
-          <span class="header-tag">تقویم و ساعت</span>
-          <span id="calBigClock" class="clock-live-text">۰۰:۰۰:۰۰</span>
-        </div>
-
-        <div class="cal-date-banner" id="calBigDate">
-          جمعه، ۳ مهر ۱۴۰۵
-        </div>
-
-        <!-- Jalali Calendar Widget -->
-        <div class="jalali-calendar-box">
-          <div class="cal-nav-bar">
-            <button type="button" id="calPrevMonthBtn" class="cal-arrow-btn" title="ماه قبل">›</button>
-            <span id="calCurrentMonthTitle" class="cal-month-title">مهر ۱۴۰۵</span>
-            <button type="button" id="calNextMonthBtn" class="cal-arrow-btn" title="ماه بعد">‹</button>
-          </div>
-
-          <div class="cal-weekdays">
-            <span>ش</span>
-            <span>ی</span>
-            <span>د</span>
-            <span>س</span>
-            <span>چ</span>
-            <span>پ</span>
-            <span>ج</span>
-          </div>
-
-          <div id="calDaysGrid" class="cal-days-grid">
-            <!-- Populated dynamically -->
-          </div>
-        </div>
-      </section>
-
-      <!-- جعبه پایین: یادداشت ها -->
-      <section class="ux-card notes-card">
-        <div class="card-header-clean">
-          <span class="header-tag">یادداشت‌ها</span>
-          <div class="note-actions">
-            <button type="button" id="copyNoteBtn" class="btn-text-action" title="کپی متن">کپی</button>
-            <span class="sep">|</span>
-            <button type="button" id="saveNoteBtn" class="btn-text-action highlight" title="ذخیره">ذخیره</button>
-          </div>
-        </div>
-
-        <div class="note-input-container">
-          <textarea
-            id="dailyNoteArea"
-            class="note-field"
-            placeholder="یادداشت‌های سریع، نکات مهم یا شماره تماس‌های ضروری را اینجا بنویسید..."
-          ></textarea>
-        </div>
-
-        <div class="note-bottom-bar">
-          <span id="noteStatusText" class="note-status-label">ذخیره خودکار با تایپ ✓</span>
-        </div>
-      </section>
-
-    </aside>
-
   </main>
 
-  <!-- Bag Time Account Login Modal (BALE 1-CLICK HERO + Credentials) -->
+  <!-- Login Modal (Bale Bot 1-Click / Manual) -->
   <div id="loginModal" class="modal-overlay" style="display: none;">
     <div class="modal-dialog">
       <div class="modal-header">
         <div class="modal-header-title">
           <span class="modal-icon">🔐</span>
-          <h3>اتصال به حساب کاربری بگ تایم</h3>
+          <h3>ورود به حساب بگ تایم</h3>
         </div>
         <button type="button" id="closeLoginModalBtn" class="modal-close-btn">✕</button>
       </div>
@@ -335,8 +365,12 @@
       <div id="manualLoginContent" class="tab-content" style="display: none;">
         <form id="extLoginForm" class="modal-form">
           <div class="form-group">
-            <label class="form-label">آدرس سرور بگ تایم</label>
-            <input type="url" id="extServerUrl" class="form-input" value="https://taskrooz.mohusyn.ir" required dir="ltr" />
+            <label class="form-label">انتخاب سرور بگ تایم</label>
+            <div class="modal-server-pills">
+              <button type="button" class="server-choice-pill active" id="modalSrv1Btn" data-url="https://task.mohusyn.ir">task.mohusyn.ir</button>
+              <button type="button" class="server-choice-pill" id="modalSrv2Btn" data-url="https://bagtime.negahm.ir">bagtime.negahm.ir</button>
+            </div>
+            <input type="url" id="extServerUrl" class="form-input" value="https://task.mohusyn.ir" required dir="ltr" />
           </div>
 
           <div class="form-group">
@@ -368,27 +402,33 @@
           <span class="modal-icon">🔗</span>
           <h3>افزودن میانبر سایت جدید</h3>
         </div>
-        <button type="button" id="closeAddShortcutBtn" class="modal-close-btn">✕</button>
+        <button type="button" id="closeShortcutModalBtn" class="modal-close-btn">✕</button>
       </div>
 
       <form id="addShortcutForm" class="modal-form">
         <div class="form-group">
-          <label class="form-label">نام یا عنوان سایت *</label>
-          <input type="text" id="shortcutTitleInput" class="form-input" placeholder="مثال: یوتیوب، گیت‌هاب یا وبلاگ" required />
+          <label class="form-label">عنوان سایت</label>
+          <input type="text" id="scTitle" class="form-input" placeholder="مثال: آپارات" required />
         </div>
 
         <div class="form-group">
-          <label class="form-label">آدرس اینترنتی (URL) *</label>
-          <input type="text" id="shortcutUrlInput" class="form-input" placeholder="https://..." required dir="ltr" />
+          <label class="form-label">آدرس سایت (URL)</label>
+          <input type="url" id="scUrl" class="form-input" placeholder="https://..." required dir="ltr" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">آیکون یا ایموجی</label>
+          <input type="text" id="scIcon" class="form-input" placeholder="مثال: 📺 یا آدرس عکس" value="🔗" />
         </div>
 
         <button type="submit" class="btn-modal-submit">
-          <span>افزودن میانبر</span>
+          <span>افزودن میانبر به صفحه</span>
         </button>
       </form>
     </div>
   </div>
 
+  <!-- Extension Main Logic -->
   <script src="newtab.js"></script>
 </body>
 </html>

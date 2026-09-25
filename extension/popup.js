@@ -61,7 +61,7 @@ async function loadPopup() {
     // Push to server if account is connected
     const account = await Storage.get('auth_account', null);
     if (account && account.token) {
-      const baseUrl = (account.serverUrl || 'https://taskrooz.mohusyn.ir').replace(/\/+$/, '');
+      const baseUrl = (account.serverUrl || 'https://task.mohusyn.ir').replace(/\/+$/, '');
       fetch(`${baseUrl}/api/tasks.php`, {
         method: 'POST',
         headers: {
