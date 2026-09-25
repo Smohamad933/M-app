@@ -24,9 +24,7 @@ export const ExtensionDownloadModal: React.FC<ExtensionDownloadModalProps> = ({ 
 
   if (!isOpen) return null;
 
-  const directZipUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/bagtime-extension.zip`
-    : '/bagtime-extension.zip';
+  const directZipUrl = '/api/download.php?file=extension';
 
   const rawGithubUrl = 'https://raw.githubusercontent.com/Smohamad933/M-app/arena/01a0c425-m-app/bagtime-extension.zip';
 

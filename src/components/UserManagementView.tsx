@@ -341,7 +341,7 @@ export const UserManagementView: React.FC = () => {
   const handleDownloadExtZip = () => {
     sounds.playPop();
     const link = document.createElement('a');
-    link.href = '/bagtime-extension.zip';
+    link.href = '/api/download.php?file=extension';
     link.download = 'bagtime-extension.zip';
     document.body.appendChild(link);
     link.click();
@@ -2799,12 +2799,12 @@ export const UserManagementView: React.FC = () => {
             {/* Direct Links Bar */}
             <div className="pt-4 border-t border-zinc-800 flex flex-wrap items-center justify-center gap-3 text-xs">
               <a
-                href="/bagtime-extension.zip"
+                href="/api/download.php?file=extension"
                 download="bagtime-extension.zip"
                 className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold flex items-center gap-2 transition-colors cursor-pointer"
               >
                 <Download className="w-4 h-4 text-indigo-400" />
-                <span>دانلود مستقیم از هاست (/bagtime-extension.zip)</span>
+                <span>دانلود مستقیم از هاست (bagtime-extension.zip)</span>
               </a>
 
               <button
