@@ -46,6 +46,24 @@ function cleanBaleToken($t) {
     return $clean;
 }
 
+function getBaleTicketsData() {
+    $filePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'bale_tickets.json';
+    if (file_exists($filePath)) {
+        $raw = @file_get_contents($filePath);
+        $data = $raw ? @json_decode($raw, true) : null;
+        if (is_array($data)) return $data;
+    }
+    return [];
+}
+
+function saveBaleTicketsData($tickets) {
+    $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+    if (!is_dir($dir)) @mkdir($dir, 0777, true);
+    $filePath = $dir . DIRECTORY_SEPARATOR . 'bale_tickets.json';
+    @file_put_contents($filePath, json_encode($tickets, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    @chmod($filePath, 0666);
+}
+
 /**
  * Send HTTP request to Bale Bot API
  */
@@ -256,26 +274,24 @@ if ($action === 'set_webhook') {
 // -----------------------------------------------------------------------------
 if ($action === 'create_bale_login') {
     $ticket = 'bale_login_' . time() . '_' . substr(bin2hex(random_bytes(4)), 0, 8);
-    if (!isset($dbObj->data['bale_login_tickets'])) {
-        $dbObj->data['bale_login_tickets'] = [];
-    }
+    $tickets = getBaleTicketsData();
     // Clean expired tickets (> 10 mins)
     $now = time();
-    foreach ($dbObj->data['bale_login_tickets'] as $k => $v) {
+    foreach ($tickets as $k => $v) {
         if (($now - ($v['createdAt'] ?? 0)) > 600) {
-            unset($dbObj->data['bale_login_tickets'][$k]);
+            unset($tickets[$k]);
         }
     }
 
-    $dbObj->data['bale_login_tickets'][$ticket] = [
+    $tickets[$ticket] = [
         'status' => 'pending',
         'createdAt' => $now,
     ];
-    $dbObj->saveJson();
+    saveBaleTicketsData($tickets);
 
     $cleanBotUser = ltrim($botUsername, '@');
     if (empty($cleanBotUser)) $cleanBotUser = 'BagTime_Bot';
-    $baleLink = "https://ble.ir/" . $cleanBotUser . "?start=login_" . $ticket;
+    $baleLink = "https://ble.ir/" . $cleanBotUser . "?start=" . $ticket;
 
     jsonResponse([
         'ok' => true,
@@ -290,17 +306,30 @@ if ($action === 'create_bale_login') {
 // 4. Check Automatic Bale Login Status
 // -----------------------------------------------------------------------------
 if ($action === 'check_bale_login') {
-    $ticket = $_GET['ticket'] ?? ($_POST['ticket'] ?? '');
-    if (empty($ticket) || empty($dbObj->data['bale_login_tickets'][$ticket])) {
+    $ticket = trim($_GET['ticket'] ?? ($_POST['ticket'] ?? ''));
+    $tickets = getBaleTicketsData();
+
+    $foundTicket = $tickets[$ticket] ?? null;
+    if (!$foundTicket) {
+        // Try fuzzy match
+        foreach ($tickets as $k => $v) {
+            if ($k === $ticket || strpos($ticket, $k) !== false || strpos($k, $ticket) !== false) {
+                $foundTicket = $v;
+                break;
+            }
+        }
+    }
+
+    if (!$foundTicket) {
         jsonResponse(['status' => 'not_found', 'error' => 'تیکت ورود معتبر نیست یا منقضی شده است.'], 404);
     }
-    $ticketData = $dbObj->data['bale_login_tickets'][$ticket];
-    if (($ticketData['status'] ?? '') === 'approved' && !empty($ticketData['user'])) {
-        $_SESSION['user_id'] = $ticketData['user']['id'];
+
+    if (($foundTicket['status'] ?? '') === 'approved' && !empty($foundTicket['user'])) {
+        $_SESSION['user_id'] = $foundTicket['user']['id'];
         jsonResponse([
             'status' => 'approved',
-            'token' => $ticketData['token'],
-            'user' => $ticketData['user'],
+            'token' => $foundTicket['token'],
+            'user' => $foundTicket['user'],
             'message' => 'ورود با بله با موفقیت تأیید شد.',
         ]);
     }
@@ -694,56 +723,71 @@ if ($action === 'webhook') {
     }
 
     // -------------------------------------------------------------------------
-    // AUTOMATIC BALE LOGIN (One-Click instant login via /start login_TICKET)
+    // AUTOMATIC BALE LOGIN (One-Click instant login via /start login_TICKET or /start TICKET)
     // -------------------------------------------------------------------------
-    if (preg_match('/^\/start\s+login_([a-zA-Z0-9_]+)$/is', $rawText, $autoLoginMatch)) {
-        $ticketId = trim($autoLoginMatch[1]);
-        if (isset($dbObj->data['bale_login_tickets'][$ticketId])) {
-            $matchedUser = null;
-            // 1. Check if user is linked by chatId
-            foreach ($dbObj->data['users'] as &$u) {
-                if (!empty($u['baleChatId']) && strval($u['baleChatId']) === strval($chatId)) {
-                    $matchedUser = &$u;
+    $loginTicketMatch = null;
+    if (preg_match('/(?:login_)?(bale_login_[a-zA-Z0-9_]+)/i', $rawText, $autoLoginMatch)) {
+        $loginTicketMatch = trim($autoLoginMatch[1]);
+    }
+
+    if ($loginTicketMatch) {
+        $tickets = getBaleTicketsData();
+        $targetTicketKey = null;
+
+        if (isset($tickets[$loginTicketMatch])) {
+            $targetTicketKey = $loginTicketMatch;
+        } else {
+            // Fuzzy search key
+            foreach ($tickets as $k => $v) {
+                if ($k === $loginTicketMatch || strpos($loginTicketMatch, $k) !== false || strpos($k, $loginTicketMatch) !== false) {
+                    $targetTicketKey = $k;
                     break;
                 }
             }
-            // 2. Fallback check by username
+        }
+
+        if ($targetTicketKey) {
+            // 1. Check if user already linked by chatId
+            $matchedUser = $dbObj->getUserByBaleChatId($chatId);
+
+            // 2. Fallback check by Bale username
             if (!$matchedUser && !empty($fromUser['username'])) {
-                $bUserLower = strtolower($fromUser['username']);
-                foreach ($dbObj->data['users'] as &$u) {
-                    if (strtolower($u['username']) === $bUserLower || (strtolower($u['username']) === 'mohusyn' && $bUserLower === 'mohusyn')) {
-                        $matchedUser = &$u;
-                        $matchedUser['baleChatId'] = $chatId;
-                        break;
-                    }
+                $matchedUser = $dbObj->getUserByUsername($fromUser['username']);
+                if ($matchedUser) {
+                    $dbObj->updateUserProfile($matchedUser['id'], ['baleChatId' => $chatId, 'baleUsername' => $fromUser['username']]);
+                    $matchedUser['baleChatId'] = $chatId;
                 }
             }
 
-            // 3. Auto-create account if new user
+            // 3. Fallback: Check if Mohusyn
+            if (!$matchedUser && strtolower($fromUser['username'] ?? '') === 'mohusyn') {
+                $matchedUser = $dbObj->getUserByUsername('Mohusyn');
+                if ($matchedUser) {
+                    $dbObj->updateUserProfile($matchedUser['id'], ['baleChatId' => $chatId]);
+                    $matchedUser['baleChatId'] = $chatId;
+                }
+            }
+
+            // 4. Auto-register user if brand new!
             if (!$matchedUser) {
                 $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
-                if (empty($fromName)) $fromName = 'کاربر بله ' . substr($chatId, -4);
-                $newUsername = 'bale_' . substr($chatId, -6);
-                $newUserId = 'usr_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4);
-                $randomPass = substr(bin2hex(random_bytes(4)), 0, 8);
+                if (empty($fromName)) $fromName = 'کاربر بله ' . substr(strval($chatId), -4);
+                $cleanUname = !empty($fromUser['username']) ? preg_replace('/[^a-zA-Z0-9_]/', '', $fromUser['username']) : ('bale_' . substr(strval($chatId), -6));
+                if (empty($cleanUname)) $cleanUname = 'bale_' . substr(strval($chatId), -6);
 
-                $matchedUser = [
-                    'id' => $newUserId,
-                    'numericId' => 1000 + count($dbObj->data['users']),
-                    'username' => $newUsername,
-                    'name' => $fromName,
-                    'password' => $randomPass,
-                    'password_hash' => password_hash($randomPass, PASSWORD_DEFAULT),
-                    'role' => 'user',
-                    'status' => 'active',
-                    'isVerified' => true,
+                $testUname = $cleanUname;
+                $counter = 1;
+                while ($dbObj->getUserByUsername($testUname)) {
+                    $testUname = $cleanUname . '_' . $counter++;
+                }
+
+                $randomPass = substr(bin2hex(random_bytes(5)), 0, 10);
+                $matchedUser = $dbObj->createUser($testUname, $randomPass, $fromName, 'user', [
                     'baleChatId' => $chatId,
                     'baleUsername' => $fromUser['username'] ?? '',
-                    'createdAt' => date('Y-m-d H:i:s'),
-                    'isProfileCompleted' => true,
-                    'subscription' => ['plan' => 'free'],
-                ];
-                $dbObj->data['users'][] = $matchedUser;
+                    'isVerified' => true,
+                    'status' => 'active',
+                ]);
             }
 
             // Generate session and token
@@ -752,18 +796,18 @@ if ($action === 'webhook') {
             unset($cleanUser['password_hash']);
             unset($cleanUser['password']);
 
-            $dbObj->data['bale_login_tickets'][$ticketId] = [
+            $tickets[$targetTicketKey] = [
                 'status' => 'approved',
                 'token' => $token,
                 'user' => $cleanUser,
                 'approvedAt' => time(),
             ];
-            $dbObj->saveJson();
+            saveBaleTicketsData($tickets);
 
-            $confirmMsg = "🎉 **ورود موفقیت‌آمیز به سامانه بگ تایم!**\n\n" .
-                "👤 کاربر گرامی: **{$matchedUser['name']}**\n" .
-                "⚡ درخواست ورود شما در مرورگر با موفقیت تأیید شد و هم‌اکنون وارد پنل کاربری خود شدید.\n\n" .
-                "می‌توانید به مرورگر خود بازگردید.";
+            $confirmMsg = "🎉 **ورود و احراز هویت با موفقیت انجام شد!** ✅\n\n" .
+                "👤 کاربر گرامی: **{$matchedUser['name']}** (@{$matchedUser['username']})\n" .
+                "⚡ درخواست ورود شما در مرورگر با موفقیت تأیید شد و هم‌اکنون وارد پنل کاربری خود در «بگ تایم» شدید.\n\n" .
+                "می‌توانید به مرورگر خود بازگردید و برنامه را مشاهده نمایید.";
 
             sendBaleMessage($botToken, $chatId, $confirmMsg, getMainMenuKeyboard());
             echo json_encode(['ok' => true]);
@@ -782,26 +826,32 @@ if ($action === 'webhook') {
     }
 
     if ($incomingCode) {
-        $matchedIndex = -1;
-        foreach ($dbObj->data['users'] as $idx => $u) {
-            $storedCode = toEnglishDigits(trim($u['verificationCode'] ?? ''));
-            if (!empty($storedCode) && $storedCode === $incomingCode) {
-                $matchedIndex = $idx;
-                break;
+        $userFound = $dbObj->getUserByVerificationCode($incomingCode);
+
+        // If not found by exact code, also search in all users
+        if (!$userFound) {
+            foreach ($dbObj->getAllUsers() as $u) {
+                $storedCode = toEnglishDigits(trim($u['verificationCode'] ?? ''));
+                if (!empty($storedCode) && $storedCode === $incomingCode) {
+                    $userFound = $u;
+                    break;
+                }
             }
         }
 
-        // If not found by exact code, also search if any unverified user has matching phone or username
-        if ($matchedIndex !== -1) {
-            $userFound = $dbObj->data['users'][$matchedIndex];
-
-            // Save pending verification state for chatId
-            $dbObj->data['bale_pending_verifications'][$chatId] = [
+        if ($userFound) {
+            $pvFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'bale_pending.json';
+            $pVerifs = [];
+            if (file_exists($pvFile)) {
+                $raw = @file_get_contents($pvFile);
+                if ($raw) $pVerifs = @json_decode($raw, true) ?: [];
+            }
+            $pVerifs[strval($chatId)] = [
                 'userId' => $userFound['id'],
                 'code' => $incomingCode,
                 'time' => time(),
             ];
-            $dbObj->saveJson();
+            @file_put_contents($pvFile, json_encode($pVerifs, JSON_UNESCAPED_UNICODE), LOCK_EX);
 
             // Ask for contact sharing using ReplyKeyboardMarkup with request_contact: true
             $step2Msg = "✅ **کد تأیید ۶ رقمی صحیح است.**\n\n" .

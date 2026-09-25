@@ -255,6 +255,55 @@ export const LoginScreen: React.FC = () => {
           </div>
         )}
 
+        {/* HERO: DIRECT BALE 1-CLICK LOGIN / REGISTER */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 p-4 sm:p-5 text-white shadow-xl shadow-emerald-500/20 border border-emerald-400/30 space-y-3.5">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black backdrop-blur-xs">
+                <span>⚡ سریع‌ترین روش</span>
+              </div>
+              <h3 className="text-sm sm:text-base font-black leading-tight text-white">
+                ورود یا ثبت‌نام مستقیم با پیام‌رسان بله
+              </h3>
+              <p className="text-[11px] text-emerald-100 font-medium leading-relaxed">
+                تنها با ۱ کلیک در ربات بله، بدون نیاز به کلمه عبور یا پر کردن فرم‌های طولانی!
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/20">
+              <Bot className="w-6 h-6 text-white" />
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleStartAutoBaleLogin}
+            disabled={isStartingBaleLogin}
+            className="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-50 text-emerald-800 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+          >
+            {isStartingBaleLogin ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin text-emerald-600" />
+                <span>در حال ایجاد نشست بله...</span>
+              </>
+            ) : (
+              <>
+                <Bot className="w-4 h-4 text-emerald-600" />
+                <span>ورود و ثبت‌نام آنی با بازوی بله 🚀</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* OR DIVIDER */}
+        <div className="relative my-1 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-200"></div>
+          </div>
+          <div className="relative bg-white px-3 text-[11px] font-bold text-slate-400">
+            یا با نام کاربری و کلمه عبور
+          </div>
+        </div>
+
         {/* Tab switch between Login and Register (Dribbble pill style) */}
         <div className="grid grid-cols-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/60 text-xs font-extrabold">
           <button
@@ -436,7 +485,7 @@ export const LoginScreen: React.FC = () => {
           )}
 
           {/* Form Actions */}
-          <div className="pt-2 space-y-3">
+          <div className="pt-2">
             <button
               type="submit"
               disabled={loading}
@@ -452,27 +501,6 @@ export const LoginScreen: React.FC = () => {
               ) : (
                 <Check className="w-4 h-4 stroke-[2.5]" />
               )}
-            </button>
-
-            {/* OR DIVIDER */}
-            <div className="relative my-2 flex items-center justify-center">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200"></div>
-              </div>
-              <div className="relative bg-white px-3 text-[11px] font-bold text-slate-400">
-                یا ورود مستقیم
-              </div>
-            </div>
-
-            {/* ONE-CLICK AUTOMATIC BALE LOGIN BUTTON */}
-            <button
-              type="button"
-              onClick={handleStartAutoBaleLogin}
-              disabled={isStartingBaleLogin}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
-            >
-              <Bot className="w-4 h-4" />
-              <span>{isStartingBaleLogin ? "در حال ایجاد نشست بله..." : "ورود خودکار و سریع با پیام‌رسان بله ⚡"}</span>
             </button>
           </div>
         </form>

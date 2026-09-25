@@ -453,6 +453,58 @@ class TaskRoozDB {
         return null;
     }
 
+    public function getUserByBaleChatId($chatId) {
+        if (empty($chatId)) return null;
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("SELECT * FROM users WHERE bale_chat_id = ? LIMIT 1");
+                $stmt->execute([strval($chatId)]);
+                $u = $stmt->fetch();
+                if ($u) return $this->normalizeUserRow($u);
+            } catch (Exception $e) {}
+        }
+        foreach ($this->getAllUsers() as $u) {
+            if (!empty($u['baleChatId']) && strval($u['baleChatId']) === strval($chatId)) {
+                return $u;
+            }
+        }
+        return null;
+    }
+
+    public function getUserByVerificationCode($code) {
+        if (empty($code)) return null;
+        $clean = trim(strval($code));
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("SELECT * FROM users WHERE verification_code = ? LIMIT 1");
+                $stmt->execute([$clean]);
+                $u = $stmt->fetch();
+                if ($u) return $this->normalizeUserRow($u);
+            } catch (Exception $e) {}
+        }
+        foreach ($this->getAllUsers() as $u) {
+            if (!empty($u['verificationCode']) && trim(strval($u['verificationCode'])) === $clean) {
+                return $u;
+            }
+        }
+        return null;
+    }
+
+    private function normalizeUserRow($u) {
+        if (!$u) return null;
+        if (!empty($u['skills_json']) && is_string($u['skills_json'])) $u['skills'] = json_decode($u['skills_json'], true);
+        if (!empty($u['timeline_json']) && is_string($u['timeline_json'])) $u['dailyTimeline'] = json_decode($u['timeline_json'], true);
+        if (isset($u['birth_date']) && !isset($u['birthDate'])) $u['birthDate'] = $u['birth_date'];
+        if (isset($u['job_title']) && !isset($u['jobTitle'])) $u['jobTitle'] = $u['job_title'];
+        if (isset($u['verification_code']) && !isset($u['verificationCode'])) $u['verificationCode'] = $u['verification_code'];
+        if (isset($u['is_verified']) && !isset($u['isVerified'])) $u['isVerified'] = !empty($u['is_verified']);
+        if (isset($u['bale_chat_id']) && !isset($u['baleChatId'])) $u['baleChatId'] = $u['bale_chat_id'];
+        if (isset($u['bale_username']) && !isset($u['baleUsername'])) $u['baleUsername'] = $u['bale_username'];
+        if (isset($u['numeric_id']) && !isset($u['numericId'])) $u['numericId'] = (int)$u['numeric_id'];
+        $u['isProfileCompleted'] = !empty($u['is_profile_completed']) || ($u['role'] === 'admin') || (!empty($u['birthDate']) && !empty($u['city']));
+        return $u;
+    }
+
     public function createUser($username, $password, $name, $role = 'user', $extra = []) {
         $usernameClean = trim($username);
         $usernameLower = strtolower($usernameClean);
@@ -922,6 +974,18 @@ class TaskRoozDB {
                     // Older schema without the avatar column — retry without it
                     $stmt = $this->pdo->prepare("UPDATE users SET name = ?, phone = ?, email = ?, province = ?, city = ?, birth_date = ?, job_title = ?, skills_json = ?, timeline_json = ? WHERE id = ?");
                     $stmt->execute([trim((string)$name), $phone, $email, $province, $city, $birthDate, $jobTitle, $skills, $timeline, $id]);
+                }
+                if (isset($fields['status'])) {
+                    @$this->pdo->prepare("UPDATE users SET status = ? WHERE id = ?")->execute([$fields['status'], $id]);
+                }
+                if (isset($fields['isVerified'])) {
+                    @$this->pdo->prepare("UPDATE users SET is_verified = ? WHERE id = ?")->execute([$fields['isVerified'] ? 1 : 0, $id]);
+                }
+                if (isset($fields['baleChatId'])) {
+                    @$this->pdo->prepare("UPDATE users SET bale_chat_id = ? WHERE id = ?")->execute([strval($fields['baleChatId']), $id]);
+                }
+                if (isset($fields['baleUsername'])) {
+                    @$this->pdo->prepare("UPDATE users SET bale_username = ? WHERE id = ?")->execute([$fields['baleUsername'], $id]);
                 }
                 if (!empty($password)) {
                     $hash = password_hash($password, PASSWORD_DEFAULT);
