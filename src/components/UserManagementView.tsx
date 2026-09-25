@@ -437,6 +437,56 @@ export const UserManagementView: React.FC = () => {
     }
   };
 
+  const handleCheckWebhookInfo = async () => {
+    sounds.playPop();
+    try {
+      const res = await fetch('/api/bale.php?action=get_webhook_info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: baleForm.token }),
+      }).then(r => r.json());
+
+      if (res.ok && res.result) {
+        sounds.playComplete();
+        const info = res.result;
+        alert(
+          `اطلاعات وب‌هوک در بله:\n\nآدرس وب‌هوک فعال: ${info.url || 'تنظیم نشده (در حال استفاده از getUpdates)'}\nپیام‌های در صف: ${info.pending_update_count ?? 0}\nآخرین خطای وب‌هوک: ${info.last_error_message || 'هیچ خطایی وجود ندارد ✓'}`
+        );
+      } else {
+        alert('خطا در دریافت وضعیت وب‌هوک: ' + (res.description || 'نامشخص'));
+      }
+    } catch (e: any) {
+      alert('خطا در ارتباط با سرور: ' + e.message);
+    }
+  };
+
+  const handleTestInvoice = async () => {
+    const chatId = prompt('شناسه عددی چت شما در بله (Chat ID) را جهت ارسال فاکتور تستی وارد کنید:\n(می‌توانید از ربات بله با زدن دکمه «شناسه چت من» آن را کپی کنید)');
+    if (!chatId) return;
+
+    sounds.playPop();
+    try {
+      const res = await fetch('/api/bale.php?action=test_invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: baleForm.token,
+          providerToken: baleForm.providerToken,
+          chatId: chatId.trim(),
+        }),
+      }).then(r => r.json());
+
+      if (res.ok) {
+        sounds.playComplete();
+        alert('درخواست فاکتور با موفقیت ارسال شد! لطفاً صفحه چت با بازوی بله خود را بررسی کنید.');
+      } else {
+        alert(res.message || 'خطا در ارسال فاکتور پرداخت بله.');
+      }
+    } catch (e: any) {
+      alert('خطا: ' + e.message);
+    }
+  };
+
   // Admin App Developers Manager (configured by admin with photo, name, role)
   const [developersList, setDevelopersList] = useState<AppDeveloper[]>(() => {
     if (globalSettings?.appDevelopers && globalSettings.appDevelopers.length > 0) {
@@ -3220,6 +3270,28 @@ export const UserManagementView: React.FC = () => {
               >
                 <Code2 className="w-4 h-4 text-cyan-400" />
                 <span>تنظیم خودکار وب‌هوک (setWebhook)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCheckWebhookInfo}
+                disabled={!baleForm.token.trim()}
+                className="px-5 py-3 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-amber-300 font-bold text-xs transition-colors cursor-pointer border border-amber-500/30 flex items-center gap-2 disabled:opacity-40"
+                title="استعلام آدرس وب‌هوک ثبت شده در سرورهای بله"
+              >
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <span>استعلام وضعیت وب‌هوک (getWebhookInfo)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleTestInvoice}
+                disabled={!baleForm.token.trim() || !baleForm.providerToken?.trim()}
+                className="px-5 py-3 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 font-bold text-xs transition-colors cursor-pointer border border-emerald-500/40 flex items-center gap-2 disabled:opacity-40"
+                title="ارسال فاکتور تست ۱۰ هزار ریالی جهت اطمینان از عملکرد توکن پرداخت"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <span>تست ارسال فاکتور پرداخت (sendInvoice)</span>
               </button>
             </div>
           </div>

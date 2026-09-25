@@ -90,9 +90,97 @@
     </div>
   </header>
 
+  <!-- MANDATORY LOGIN LOCK GATE (Active until user logs in) -->
+  <div id="mandatoryAuthGate" class="mandatory-auth-gate" style="display: none;">
+    <div class="auth-gate-card">
+      <div class="auth-gate-header">
+        <div class="auth-gate-logo-box">
+          <img src="icons/icon-128.png" alt="Bag Time Logo" class="auth-gate-logo" />
+        </div>
+        <h2 class="auth-gate-title">ورود به بگ تایم (الزامی)</h2>
+        <p class="auth-gate-subtitle">
+          جهت فعال‌سازی و استفاده از امکانات دستیار نیوتَب و همگام‌سازی کارهای روزانه، ورود به حساب کاربری الزامی است.
+        </p>
+
+        <!-- Server Health Indicator inside Gate -->
+        <div class="auth-gate-server-chip">
+          <span class="server-dot online"></span>
+          <span>سرور متصل: </span>
+          <strong id="gateActiveServerLabel">task.mohusyn.ir</strong>
+          <span class="gate-failover-tip">(سوئیچ خودکار بین task و bagtime فعال است)</span>
+        </div>
+      </div>
+
+      <!-- Auth Method Tabs -->
+      <div class="auth-gate-tabs">
+        <button type="button" id="gateTabBale" class="auth-tab-btn active">
+          <span>⚡ ورود سریع با ربات بله</span>
+        </button>
+        <button type="button" id="gateTabPassword" class="auth-tab-btn">
+          <span>🔑 نام کاربری و کلمه عبور</span>
+        </button>
+      </div>
+
+      <!-- Tab 1: Bale 1-Click Login -->
+      <div id="gateBaleContent" class="gate-tab-content active">
+        <div class="gate-bale-box">
+          <div class="gate-bale-robot">🤖</div>
+          <h4 class="gate-bale-title">ورود فوری و ۱-کلیکه با ربات بله</h4>
+          <p class="gate-bale-desc">
+            کافیست دکمه زیر را لمس کرده و در ربات بله گزینه «شروع / Start» را بزنید. افزونه بلافاصله متصل و قفل‌گشایی می‌شود.
+          </p>
+
+          <button type="button" id="gateStartBaleBtn" class="btn-gate-primary">
+            <span>🚀 ورود آنی با ربات بله</span>
+          </button>
+
+          <div id="gateBalePollingStatus" class="gate-polling-box" style="display: none;">
+            <div class="spinner-dot"></div>
+            <span>در انتظار تأیید در ربات بله... لطفاً در بله Start را بزنید.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Username & Password -->
+      <div id="gatePasswordContent" class="gate-tab-content" style="display: none;">
+        <form id="gateLoginForm" class="gate-form">
+          <div class="form-group">
+            <label class="form-label">انتخاب سرور بگ تایم</label>
+            <div class="modal-server-pills">
+              <button type="button" class="server-choice-pill active" id="gateSrv1Btn" data-url="https://task.mohusyn.ir">task.mohusyn.ir</button>
+              <button type="button" class="server-choice-pill" id="gateSrv2Btn" data-url="https://bagtime.negahm.ir">bagtime.negahm.ir</button>
+            </div>
+            <input type="hidden" id="gateServerUrl" value="https://task.mohusyn.ir" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">نام کاربری</label>
+            <input type="text" id="gateUsername" class="form-input" placeholder="مثال: Mohusyn" required dir="ltr" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">کلمه عبور</label>
+            <input type="password" id="gatePassword" class="form-input" placeholder="کلمه عبور شما..." required />
+          </div>
+
+          <div id="gateLoginError" class="modal-error-box" style="display: none;"></div>
+
+          <button type="submit" id="gateLoginSubmitBtn" class="btn-gate-primary">
+            <span>ورود و قفل‌گشایی دستیار ⚡</span>
+          </button>
+        </form>
+      </div>
+
+      <div class="auth-gate-footer">
+        <span>حساب کاربری ندارید؟ </span>
+        <a id="gateRegisterLink" href="https://task.mohusyn.ir" target="_blank" class="gate-register-link">ثبت‌نام در سامانه بگ تایم</a>
+      </div>
+    </div>
+  </div>
+
   <!-- MAIN 3-COLUMN WORKSPACE (EXACT WIREFRAME UX) -->
   <!-- direction: ltr enforces physical order: Left Column | Center Column | Right Column -->
-  <main class="ux-workspace">
+  <main class="ux-workspace" id="mainWorkspace" style="display: none;">
 
     <!-- ستون سمت چپ: تقویم و ساعت (بالا) + یادداشت ها (پایین) -->
     <aside class="col-left">
