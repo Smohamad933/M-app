@@ -480,10 +480,14 @@ export const api = {
     );
   },
 
-  async setBaleWebhook(token?: string): Promise<{ ok: boolean; webhookUrl: string; error?: string; message?: string }> {
+  async setBaleWebhook(token?: string, url?: string): Promise<{ ok: boolean; webhookUrl: string; error?: string; message?: string }> {
+    const defaultUrl = (typeof window !== 'undefined' && window.location.origin)
+      ? `${window.location.origin.replace(/^http:\/\//, 'https://')}/api/bale.php?action=webhook`
+      : undefined;
+    const webhookUrl = url || defaultUrl;
     return await request<{ ok: boolean; webhookUrl: string; error?: string; message?: string }>(
       'api/bale.php?action=set_webhook',
-      { method: 'POST', body: JSON.stringify({ token }) }
+      { method: 'POST', body: JSON.stringify({ token, url: webhookUrl }) }
     );
   },
 

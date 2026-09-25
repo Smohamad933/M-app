@@ -220,9 +220,16 @@ if ($action === 'set_webhook') {
         jsonResponse(['ok' => false, 'error' => 'ابتدا توکن ربات بله را ذخیره کنید.'], 200);
     }
 
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $webhookUrl = $input['url'] ?? ($_POST['url'] ?? ($protocol . $host . '/api/bale.php?action=webhook'));
+    $rawUrl = trim($input['url'] ?? ($_POST['url'] ?? ''));
+    if (empty($rawUrl)) {
+        $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+        $rawUrl = 'https://' . $host . '/api/bale.php?action=webhook';
+    }
+    // Bale API strictly requires HTTPS protocol! Force https://
+    if (strpos($rawUrl, 'http://') === 0) {
+        $rawUrl = 'https://' . substr($rawUrl, 7);
+    }
+    $webhookUrl = $rawUrl;
 
     $res = callBaleApi($cleanedToken, 'setWebhook', ['url' => $webhookUrl]);
     
@@ -580,9 +587,8 @@ if ($action === 'webhook') {
                     "📱 شماره تأیید شده: `{$sharedPhoneNorm}`\n\n" .
                     "حساب کاربری شما در سامانه «بگ تایم» فعال گردید و هم‌اکنون می‌توانید وارد برنامه شوید.";
 
-                $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
-                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-                $webAppUrl = $protocol . $host . '/index.html';
+                $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+                $webAppUrl = 'https://' . $host . '/index.html';
 
                 $successKb = [
                     'inline_keyboard' => [

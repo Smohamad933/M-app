@@ -390,7 +390,8 @@ export const UserManagementView: React.FC = () => {
   const handleSetBaleWebhook = async () => {
     sounds.playPop();
     try {
-      const res = await api.setBaleWebhook(baleForm.token);
+      const explicitHttpsUrl = `${window.location.origin.replace(/^http:\/\//, 'https://')}/api/bale.php?action=webhook`;
+      const res = await api.setBaleWebhook(baleForm.token, explicitHttpsUrl);
       if (res.ok) {
         sounds.playComplete();
         alert('وب‌هوک ربات بله با موفقیت تنظیم شد:\n' + res.webhookUrl);
