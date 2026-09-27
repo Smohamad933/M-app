@@ -594,6 +594,14 @@ if ($action === 'check_bale_login') {
             'message' => 'ورود با بله با موفقیت تأیید شد.',
         ]);
     }
+
+    if (($foundTicket['status'] ?? '') === 'waiting_contact') {
+        jsonResponse([
+            'status' => 'waiting_contact',
+            'message' => 'در انتظار لمس دکمه «ارسال شماره تماس» در پیام‌رسان بله...',
+        ]);
+    }
+
     jsonResponse(['status' => 'pending']);
 }
 
@@ -1130,12 +1138,44 @@ if ($isWebhook) {
             $targetUser = $dbObj->getUserByBaleChatId($chatId);
         }
         if (!$targetUser) {
+            $tickets = getBaleTicketsData();
+            foreach ($tickets as $tKey => $tVal) {
+                if (strval($tVal['chatId'] ?? '') === strval($chatId) && !empty($tVal['userId'])) {
+                    $targetUser = $dbObj->getUserById($tVal['userId']);
+                    if ($targetUser) break;
+                }
+            }
+        }
+        if (!$targetUser) {
             foreach ($dbObj->getAllUsers() as $u) {
                 if (!empty($u['phone']) && normalizePhoneNumber($u['phone']) === $sharedPhoneNorm) {
                     $targetUser = $u;
                     break;
                 }
             }
+        }
+
+        if (!$targetUser) {
+            $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
+            if (empty($fromName)) $fromName = $sharedFullName ?: ('کاربر بله ' . substr(strval($chatId), -4));
+            $cleanUname = !empty($fromUser['username']) ? preg_replace('/[^a-zA-Z0-9_]/', '', $fromUser['username']) : ('bale_' . substr(strval($chatId), -6));
+            if (empty($cleanUname)) $cleanUname = 'bale_' . substr(strval($chatId), -6);
+
+            $testUname = $cleanUname;
+            $counter = 1;
+            while ($dbObj->getUserByUsername($testUname)) {
+                $testUname = $cleanUname . '_' . $counter++;
+            }
+
+            $targetUser = $dbObj->createUser($testUname, bin2hex(random_bytes(5)), $fromName, 'user', [
+                'baleChatId' => $chatId,
+                'baleUsername' => $fromUser['username'] ?? '',
+                'phone' => $sharedPhoneNorm,
+                'balePhoneNumber' => $contact['phone_number'],
+                'isVerified' => true,
+                'status' => 'active',
+            ]);
+            broadcastBaleUserToPeer($targetUser);
         }
 
         if ($targetUser) {
@@ -1152,9 +1192,35 @@ if ($isWebhook) {
                 $targetUser['name'] = $sharedFullName;
             }
             $dbObj->updateUserProfile($targetUser['id'], $updateFields);
+            $targetUser['phone'] = $sharedPhoneNorm;
 
             unset($pVerifs[strval($chatId)]);
             @file_put_contents($pvFile, json_encode($pVerifs, JSON_UNESCAPED_UNICODE), LOCK_EX);
+
+            // Approve any active login tickets for this user or chatId
+            $tickets = getBaleTicketsData();
+            $ticketsModified = false;
+            foreach ($tickets as $tKey => &$tVal) {
+                if (
+                    (strval($tVal['chatId'] ?? '') === strval($chatId) || ($tVal['userId'] ?? '') === $targetUser['id']) &&
+                    ($tVal['status'] ?? '') !== 'approved'
+                ) {
+                    $token = base64_encode($targetUser['id'] . ':' . time());
+                    $cleanUser = $targetUser;
+                    $cleanUser['phone'] = $sharedPhoneNorm;
+                    unset($cleanUser['password_hash']);
+                    unset($cleanUser['password']);
+
+                    $tVal['status'] = 'approved';
+                    $tVal['token'] = $token;
+                    $tVal['user'] = $cleanUser;
+                    $tVal['approvedAt'] = time();
+                    $ticketsModified = true;
+                }
+            }
+            if ($ticketsModified) {
+                saveBaleTicketsData($tickets);
+            }
 
             $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
             $webAppUrl = 'https://' . $host . '/index.html';
@@ -1162,7 +1228,7 @@ if ($isWebhook) {
             // Remove reply keyboard first
             callBaleApi($botToken, 'sendMessage', [
                 'chat_id' => $chatId,
-                'text' => 'شماره تماس شما دریافت شد.',
+                'text' => '✅ شماره تماس شما با موفقیت دریافت و تأیید شد.',
                 'reply_markup' => ['remove_keyboard' => true],
             ]);
 
@@ -1448,6 +1514,50 @@ if ($isWebhook) {
                 'status' => 'active',
             ]);
             broadcastBaleUserToPeer($matchedUser);
+        }
+
+        $userPhone = trim($matchedUser['phone'] ?? '');
+        if (empty($userPhone)) {
+            // User does not have a registered phone yet!
+            // Mandatorily prompt for contact sharing via Bale keyboard before approving the ticket!
+            $tickets[$targetTicketKey] = [
+                'ticket' => $targetTicketKey,
+                'status' => 'waiting_contact',
+                'chatId' => $chatId,
+                'userId' => $matchedUser['id'],
+                'isNewUser' => $isNewUser,
+                'createdAt' => time(),
+            ];
+            saveBaleTicketsData($tickets);
+
+            $displayName = $matchedUser['name'] ?: $matchedUser['username'];
+            $reqContactMsg = "👋 **سلام {$displayName} عزیز، به سامانه «بگ تایم» خوش آمدید!**\n\n" .
+                "⚠️ **مرحله الزامی (احراز هویت و ثبت شماره همراه در پنل):**\n" .
+                "جهت ثبت رسمی حساب کاربری شما در پایگاه داده و پنل مدیریت، دریافت مستقیم شماره همراه از پیام‌رسان بله الزامی می‌باشد.\n\n" .
+                "👇 لطفاً دکمه زیر را لمس نمایید تا شماره همراه شما به صورت خودکار و امن به سامانه متصل گردد:";
+
+            $contactKb = [
+                'keyboard' => [
+                    [
+                        [
+                            'text' => '📱 ارسال شماره تماس و فعال‌سازی حساب',
+                            'request_contact' => true,
+                        ],
+                    ],
+                ],
+                'resize_keyboard' => true,
+                'one_time_keyboard' => true,
+            ];
+
+            callBaleApi($botToken, 'sendMessage', [
+                'chat_id' => $chatId,
+                'text' => $reqContactMsg,
+                'reply_markup' => $contactKb,
+            ]);
+
+            logBale('BALE_WAITING_CONTACT', ['chatId' => $chatId, 'userId' => $matchedUser['id'], 'ticket' => $targetTicketKey]);
+            echo json_encode(['ok' => true, 'status' => 'waiting_contact']);
+            exit;
         }
 
         // Generate session and token

@@ -55,6 +55,7 @@ export const LoginScreen: React.FC = () => {
   const [showOnboardingPassword, setShowOnboardingPassword] = useState(false);
   const [isSubmittingOnboarding, setIsSubmittingOnboarding] = useState(false);
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
+  const [balePollingStep, setBalePollingStep] = useState<'pending' | 'waiting_contact'>('pending');
 
   // Bale Auto-Login Polling Effect
   useEffect(() => {
@@ -65,7 +66,9 @@ export const LoginScreen: React.FC = () => {
       try {
         const res = await api.checkBaleLoginStatus(baleLoginModalData.ticket);
         if (!isMounted) return;
-        if (res.status === 'approved' && res.token && res.user) {
+        if (res.status === 'waiting_contact') {
+          setBalePollingStep('waiting_contact');
+        } else if (res.status === 'approved' && res.token && res.user) {
           clearInterval(interval);
           setBalePollingActive(false);
           setBaleLoginModalData(null);
@@ -155,6 +158,7 @@ export const LoginScreen: React.FC = () => {
   const handleStartAutoBaleLogin = async () => {
     setIsStartingBaleLogin(true);
     setError(null);
+    setBalePollingStep('pending');
     try {
       const res = await api.createBaleLoginTicket();
       if (res && res.ticket) {
@@ -743,10 +747,17 @@ export const LoginScreen: React.FC = () => {
             </div>
 
             {/* Status indicator */}
-            <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/60 flex items-center justify-center gap-2.5 text-xs text-emerald-800 font-bold">
-              <RefreshCw className="w-4 h-4 animate-spin text-emerald-600 shrink-0" />
-              <span>در انتظار تأیید ورود شما در بله...</span>
-            </div>
+            {balePollingStep === 'waiting_contact' ? (
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center gap-2 text-xs text-amber-900 font-bold animate-pulse">
+                <Phone className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>لطفاً در بله دکمه «📱 ارسال شماره تماس» را لمس کنید</span>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/60 flex items-center justify-center gap-2.5 text-xs text-emerald-800 font-bold">
+                <RefreshCw className="w-4 h-4 animate-spin text-emerald-600 shrink-0" />
+                <span>در انتظار تأیید ورود شما در بله...</span>
+              </div>
+            )}
 
             <div className="space-y-2 pt-1">
               <a

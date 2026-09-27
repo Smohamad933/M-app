@@ -497,7 +497,7 @@ export const api = {
   },
 
   async checkBaleLoginStatus(ticket: string): Promise<{
-    status: 'pending' | 'approved' | 'not_found';
+    status: 'pending' | 'waiting_contact' | 'approved' | 'not_found';
     token?: string;
     user?: User;
     isNewUser?: boolean;

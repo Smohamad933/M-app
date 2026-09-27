@@ -1040,6 +1040,10 @@ async function handleStartBaleLogin() {
           const chkRes = await smartServerFetch(`/api/bale.php?action=check_bale_login&ticket=${encodeURIComponent(baleLoginTicket)}`);
           const chkData = await chkRes.json();
 
+          if (chkData.status === 'waiting_contact' && balePollingStatus) {
+            balePollingStatus.textContent = '📱 لطفاً در بله دکمه «ارسال شماره تماس» را لمس کنید...';
+          }
+
           if (chkData.status === 'approved' && chkData.user && chkData.token) {
             clearInterval(balePollingInterval);
             balePollingInterval = null;
