@@ -35,6 +35,35 @@ if ($action === 'update_profile' || ($input['action'] ?? '') === 'update_profile
             $fields[$k] = $input[$k];
         }
     }
+
+    // Username change support
+    if (!empty($input['username'])) {
+        $candidateUname = strtolower(trim((string)$input['username']));
+        $currUname = strtolower($currentUser['username'] ?? '');
+        if ($candidateUname !== $currUname) {
+            if ($currUname === 'mohusyn' || $candidateUname === 'mohusyn') {
+                jsonResponse(['error' => 'نام کاربری مدیر سیستم قابل تغییر نیست.'], 400);
+            }
+            if (!preg_match('/^[a-zA-Z0-9_]{3,30}$/', $candidateUname)) {
+                jsonResponse(['error' => 'نام کاربری باید بین ۳ تا ۳۰ کاراکتر و شامل حروف انگلیسی، اعداد یا زیرخط باشد.'], 400);
+            }
+            $existingUser = $db->getUserByUsername($candidateUname);
+            if ($existingUser && ($existingUser['id'] ?? '') !== $currentUser['id']) {
+                jsonResponse(['error' => 'این نام کاربری قبلاً توسط کاربر دیگری ثبت شده است.'], 400);
+            }
+            $fields['username'] = $candidateUname;
+        }
+    }
+
+    $passwordToSet = null;
+    if (!empty($input['password'])) {
+        $pwd = (string)$input['password'];
+        if (mb_strlen($pwd) < 4) {
+            jsonResponse(['error' => 'رمز عبور باید حداقل ۴ کاراکتر باشد.'], 400);
+        }
+        $passwordToSet = $pwd;
+    }
+
     if (array_key_exists('skills', $input) && is_array($input['skills'])) {
         $fields['skills'] = array_values(array_filter(array_map('strval', $input['skills'])));
     }
@@ -51,31 +80,33 @@ if ($action === 'update_profile' || ($input['action'] ?? '') === 'update_profile
             jsonResponse(['error' => 'عکس پروفایل معتبر نیست (حداکثر ۶۰۰ کیلوبایت).'], 400);
         }
     }
-    if (empty($fields) && empty($input['password'])) {
+    if (empty($fields) && empty($passwordToSet)) {
         jsonResponse(['error' => 'هیچ اطلاعاتی برای ویرایش ارسال نشده است.'], 400);
     }
 
-    $ok = $db->updateUserProfile($currentUser['id'], $fields, !empty($input['password']) ? (string)$input['password'] : null);
+    $ok = $db->updateUserProfile($currentUser['id'], $fields, $passwordToSet);
     if (!$ok) {
         jsonResponse(['error' => 'کاربر پیدا نشد.'], 404);
     }
 
+    $freshUser = $db->getUserById($currentUser['id']);
     jsonResponse([
         'message' => 'پروفایل شما با موفقیت به‌روزرسانی شد.',
         'user' => [
             'id' => $currentUser['id'],
-            'username' => $currentUser['username'],
+            'username' => $fields['username'] ?? $currentUser['username'],
             'name' => $fields['name'] ?? $currentUser['name'],
             'role' => $currentUser['role'],
-            'avatar' => array_key_exists('avatar', $fields) ? $fields['avatar'] : null,
-            'phone' => $fields['phone'] ?? null,
-            'email' => $fields['email'] ?? null,
-            'province' => $fields['province'] ?? null,
-            'city' => $fields['city'] ?? null,
-            'birthDate' => $fields['birthDate'] ?? null,
-            'jobTitle' => $fields['jobTitle'] ?? null,
-            'skills' => $fields['skills'] ?? null,
-            'dailyTimeline' => $fields['dailyTimeline'] ?? null,
+            'subscription' => $freshUser['subscription'] ?? $currentUser['subscription'] ?? ['plan' => ($currentUser['role'] === 'admin' ? 'pro' : 'free')],
+            'avatar' => array_key_exists('avatar', $fields) ? $fields['avatar'] : ($currentUser['avatar'] ?? null),
+            'phone' => $fields['phone'] ?? ($currentUser['phone'] ?? null),
+            'email' => $fields['email'] ?? ($currentUser['email'] ?? null),
+            'province' => $fields['province'] ?? ($currentUser['province'] ?? null),
+            'city' => $fields['city'] ?? ($currentUser['city'] ?? null),
+            'birthDate' => $fields['birthDate'] ?? ($currentUser['birthDate'] ?? null),
+            'jobTitle' => $fields['jobTitle'] ?? ($currentUser['jobTitle'] ?? null),
+            'skills' => $fields['skills'] ?? ($currentUser['skills'] ?? []),
+            'dailyTimeline' => $fields['dailyTimeline'] ?? ($currentUser['dailyTimeline'] ?? []),
             'baleChatId' => $fields['baleChatId'] ?? ($currentUser['baleChatId'] ?? null),
             'baleUsername' => $fields['baleUsername'] ?? ($currentUser['baleUsername'] ?? null),
             'baleNotifToken' => $fields['baleNotifToken'] ?? ($currentUser['baleNotifToken'] ?? null),

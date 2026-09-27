@@ -20,6 +20,7 @@ import {
   Wrench,
   Clock,
   UserRound,
+  AtSign,
   Sparkles,
   ShieldCheck,
   Laptop,
@@ -132,6 +133,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
     sleep: currentUser?.dailyTimeline?.sleep || '',
   });
   const [avatar, setAvatar] = useState<string | undefined>(currentUser?.avatar);
+  const [username, setUsername] = useState(currentUser?.username || '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -283,6 +285,19 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
       setError('نام و نام خانوادگی الزامی است.');
       return;
     }
+    const cleanUname = username.trim().toLowerCase();
+    if (!cleanUname) {
+      setError('نام کاربری الزامی است.');
+      return;
+    }
+    if (cleanUname.length < 3) {
+      setError('نام کاربری باید حداقل ۳ کاراکتر انگلیسی باشد.');
+      return;
+    }
+    if (!/^[a-z0-9_]{3,30}$/.test(cleanUname)) {
+      setError('نام کاربری فقط می‌تواند شامل حروف کوچک انگلیسی، عدد و زیرخط (_) باشد.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -294,6 +309,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
       await updateMyProfile({
         id: currentUser.id,
         name: name.trim(),
+        username: cleanUname,
         phone: phone.trim(),
         email: email.trim(),
         baleChatId: baleChatId.trim() || undefined,
@@ -466,6 +482,28 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
               نام و نام خانوادگی <span className="text-rose-500">*</span>
             </label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputCls} required />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <AtSign className="w-3.5 h-3.5 text-slate-400" />
+                نام کاربری (جهت ورود) <span className="text-rose-500">*</span>
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">حداقل ۳ حرف</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs font-bold">@</span>
+              <input
+                type="text"
+                value={username}
+                disabled={currentUser?.role === 'admin' && currentUser?.username?.toLowerCase() === 'mohusyn'}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                className={`${inputCls} pl-8 font-mono text-left`}
+                dir="ltr"
+                placeholder="username"
+                required
+              />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">

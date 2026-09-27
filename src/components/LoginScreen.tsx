@@ -17,6 +17,9 @@ import {
   Bot,
   RefreshCw,
   ExternalLink,
+  Eye,
+  EyeOff,
+  Sparkles,
 } from 'lucide-react';
 
 import { BaleVerificationModal, type BaleVerificationInfo } from './BaleVerificationModal';
@@ -40,6 +43,19 @@ export const LoginScreen: React.FC = () => {
   } | null>(null);
   const [balePollingActive, setBalePollingActive] = useState(false);
 
+  // Bale Onboarding State (Set custom name, username, and password)
+  const [baleOnboardingData, setBaleOnboardingData] = useState<{
+    user: any;
+    token: string;
+  } | null>(null);
+  const [onboardingName, setOnboardingName] = useState('');
+  const [onboardingUsername, setOnboardingUsername] = useState('');
+  const [onboardingPassword, setOnboardingPassword] = useState('');
+  const [onboardingConfirmPassword, setOnboardingConfirmPassword] = useState('');
+  const [showOnboardingPassword, setShowOnboardingPassword] = useState(false);
+  const [isSubmittingOnboarding, setIsSubmittingOnboarding] = useState(false);
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
+
   // Bale Auto-Login Polling Effect
   useEffect(() => {
     if (!balePollingActive || !baleLoginModalData?.ticket) return;
@@ -54,7 +70,20 @@ export const LoginScreen: React.FC = () => {
           setBalePollingActive(false);
           setBaleLoginModalData(null);
           setAuthToken(res.token);
-          completeBaleVerification(res.user);
+
+          const isPlaceholderUsername = (res.user.username || '').toLowerCase().startsWith('bale_');
+          if (res.isNewUser || isPlaceholderUsername) {
+            setBaleOnboardingData({
+              user: res.user,
+              token: res.token,
+            });
+            setOnboardingName(res.user.name || '');
+            setOnboardingUsername(isPlaceholderUsername ? '' : res.user.username);
+            setOnboardingPassword('');
+            setOnboardingConfirmPassword('');
+          } else {
+            completeBaleVerification(res.user);
+          }
         }
       } catch (e) {
         // Continue polling
@@ -66,6 +95,62 @@ export const LoginScreen: React.FC = () => {
       clearInterval(interval);
     };
   }, [balePollingActive, baleLoginModalData, completeBaleVerification]);
+
+  const handleCompleteBaleOnboarding = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!baleOnboardingData) return;
+
+    if (!onboardingName.trim()) {
+      setOnboardingError('لطفاً نام و نام خانوادگی خود را وارد کنید.');
+      return;
+    }
+    const cleanUname = onboardingUsername.trim().toLowerCase();
+    if (!cleanUname || cleanUname.length < 3) {
+      setOnboardingError('نام کاربری باید حداقل ۳ کاراکتر انگلیسی باشد.');
+      return;
+    }
+    if (!/^[a-z0-9_]{3,30}$/.test(cleanUname)) {
+      setOnboardingError('نام کاربری فقط می‌تواند شامل حروف کوچک انگلیسی، عدد و زیرخط (_) باشد.');
+      return;
+    }
+    if (cleanUname === 'mohusyn') {
+      setOnboardingError('این نام کاربری رزرو شده است.');
+      return;
+    }
+    if (!onboardingPassword || onboardingPassword.length < 4) {
+      setOnboardingError('رمز عبور باید حداقل ۴ کاراکتر باشد.');
+      return;
+    }
+    if (onboardingPassword !== onboardingConfirmPassword) {
+      setOnboardingError('رمز عبور و تکرار آن یکسان نیستند.');
+      return;
+    }
+
+    setIsSubmittingOnboarding(true);
+    setOnboardingError(null);
+    try {
+      setAuthToken(baleOnboardingData.token);
+      const updatedUser = await api.updateMyProfile({
+        id: baleOnboardingData.user.id,
+        name: onboardingName.trim(),
+        username: cleanUname,
+        password: onboardingPassword,
+      });
+      setBaleOnboardingData(null);
+      completeBaleVerification(updatedUser);
+    } catch (err: any) {
+      setOnboardingError(err?.message || 'خطا در ثبت نام کاربری و رمز عبور');
+    } finally {
+      setIsSubmittingOnboarding(false);
+    }
+  };
+
+  const handleSkipBaleOnboarding = () => {
+    if (!baleOnboardingData) return;
+    const user = baleOnboardingData.user;
+    setBaleOnboardingData(null);
+    completeBaleVerification(user);
+  };
 
   const handleStartAutoBaleLogin = async () => {
     setIsStartingBaleLogin(true);
@@ -698,6 +783,143 @@ export const LoginScreen: React.FC = () => {
           data={baleVerificationData}
           onClose={() => setBaleVerificationData(null)}
         />
+      )}
+
+      {/* BALE POST-LOGIN ONBOARDING MODAL */}
+      {baleOnboardingData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+          dir="rtl"
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 relative border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <Sparkles className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-black text-slate-900">
+                تنظیم مشخصات ورود به بگ تایم
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                ورود شما با بله انجام شد. لطفاً نام کاربری و رمز دلخواهتان را تعیین کنید تا در دفعات بعدی نیز بتوانید بدون نیاز به بله به سامانه وارد شوید.
+              </p>
+            </div>
+
+            {onboardingError && (
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold leading-relaxed">
+                {onboardingError}
+              </div>
+            )}
+
+            <form onSubmit={handleCompleteBaleOnboarding} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-700">
+                  نام و نام خانوادگی <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={onboardingName}
+                  onChange={(e) => setOnboardingName(e.target.value)}
+                  placeholder="مثال: علیرضا احمدی"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#f8fafc] border border-slate-200 text-slate-800 text-xs outline-none focus:border-slate-800 focus:bg-white transition-all"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700">
+                    نام کاربری انگلیسی (Username) <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-mono">حداقل ۳ حرف</span>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs font-bold">@</span>
+                  <input
+                    type="text"
+                    required
+                    dir="ltr"
+                    value={onboardingUsername}
+                    onChange={(e) => setOnboardingUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                    placeholder="alireza_ahmadi"
+                    className="w-full px-3.5 pl-8 py-2.5 rounded-xl bg-[#f8fafc] border border-slate-200 text-slate-800 font-mono text-xs text-left outline-none focus:border-slate-800 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    رمز عبور <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showOnboardingPassword ? 'text' : 'password'}
+                      required
+                      dir="ltr"
+                      value={onboardingPassword}
+                      onChange={(e) => setOnboardingPassword(e.target.value)}
+                      placeholder="حداقل ۴ کاراکتر"
+                      className="w-full px-3.5 pr-8 py-2.5 rounded-xl bg-[#f8fafc] border border-slate-200 text-slate-800 text-xs outline-none focus:border-slate-800 focus:bg-white transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowOnboardingPassword(!showOnboardingPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showOnboardingPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    تکرار رمز عبور <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type={showOnboardingPassword ? 'text' : 'password'}
+                    required
+                    dir="ltr"
+                    value={onboardingConfirmPassword}
+                    onChange={(e) => setOnboardingConfirmPassword(e.target.value)}
+                    placeholder="تکرار رمز عبور"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#f8fafc] border border-slate-200 text-slate-800 text-xs outline-none focus:border-slate-800 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 space-y-2">
+                <button
+                  type="submit"
+                  disabled={isSubmittingOnboarding}
+                  className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-black text-white text-xs font-black transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
+                >
+                  {isSubmittingOnboarding ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>در حال ذخیره اطلاعات...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>ثبت اطلاعات و ورود به برنامه 🚀</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSkipBaleOnboarding}
+                  className="w-full py-2 text-slate-400 hover:text-slate-700 text-[11px] font-bold transition-colors cursor-pointer text-center block"
+                >
+                  فعلاً رد کردن و ورود مستقیم
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

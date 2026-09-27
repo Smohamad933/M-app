@@ -568,18 +568,29 @@ if ($action === 'check_bale_login') {
     }
 
     if (($foundTicket['status'] ?? '') === 'approved' && !empty($foundTicket['user'])) {
-        $_SESSION['user_id'] = $foundTicket['user']['id'];
-
-        // Guarantee user record is directly in database
-        if (is_array($foundTicket['user'])) {
-            $uData = $foundTicket['user'];
-            $dbObj->createUser($uData['username'], bin2hex(random_bytes(5)), $uData['name'] ?? $uData['username'], $uData['role'] ?? 'user', $uData);
+        $uData = $foundTicket['user'];
+        $existing = $dbObj->getUserById($uData['id'] ?? '');
+        if (!$existing && !empty($uData['username'])) {
+            $existing = $dbObj->getUserByUsername($uData['username']);
         }
+        if (!$existing && !empty($uData['baleChatId'])) {
+            $existing = $dbObj->getUserByBaleChatId($uData['baleChatId']);
+        }
+
+        if (!$existing && is_array($uData)) {
+            $existing = $dbObj->createUser($uData['username'], bin2hex(random_bytes(5)), $uData['name'] ?? $uData['username'], $uData['role'] ?? 'user', $uData);
+        }
+
+        $targetUser = $existing ?: $uData;
+        $_SESSION['user_id'] = $targetUser['id'];
+
+        $isNewUser = !empty($foundTicket['isNewUser']) || (strpos($targetUser['username'], 'bale_') === 0);
 
         jsonResponse([
             'status' => 'approved',
             'token' => $foundTicket['token'],
-            'user' => $foundTicket['user'],
+            'user' => $targetUser,
+            'isNewUser' => $isNewUser,
             'message' => 'ورود با بله با موفقیت تأیید شد.',
         ]);
     }
@@ -1449,6 +1460,7 @@ if ($isWebhook) {
             'status' => 'approved',
             'token' => $token,
             'user' => $cleanUser,
+            'isNewUser' => $isNewUser,
             'approvedAt' => time(),
         ];
         saveBaleTicketsData($tickets);

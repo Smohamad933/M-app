@@ -52,6 +52,7 @@ class TaskRoozDB {
                   `job_title` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
                   `skills_json` text COLLATE utf8mb4_unicode_ci,
                   `timeline_json` text COLLATE utf8mb4_unicode_ci,
+                  `subscription_json` text DEFAULT NULL,
                   `avatar` longtext COLLATE utf8mb4_unicode_ci,
                   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
                   PRIMARY KEY (`id`),
@@ -532,7 +533,7 @@ class TaskRoozDB {
         $usernameClean = trim($username);
         $usernameLower = strtolower($usernameClean);
         $hash = password_hash($password, PASSWORD_DEFAULT);
-        $id = 'usr_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4);
+        $id = (!empty($extra['id']) && is_string($extra['id'])) ? $extra['id'] : ('usr_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4));
         $now = date('Y-m-d H:i:s');
         $phone = $extra['phone'] ?? '';
         $email = $extra['email'] ?? $extra['gmail'] ?? '';
@@ -557,11 +558,18 @@ class TaskRoozDB {
                 $maxNum = max($maxNum, (int)$existingU['numericId']);
             }
         }
-        $numericId = ($role === 'admin' && $usernameLower === 'mohusyn') ? 1000 : ($maxNum + 1);
+        $numericId = (!empty($extra['numericId']) && is_numeric($extra['numericId']))
+            ? (int)$extra['numericId']
+            : (($role === 'admin' && $usernameLower === 'mohusyn') ? 1000 : ($maxNum + 1));
         $isCompleted = !empty($birthDate) && !empty($jobTitle) && !empty($city);
 
         $status = $extra['status'] ?? 'active';
         $isDemo = !empty($extra['isDemo']);
+
+        $defaultSub = ['plan' => $role === 'admin' ? 'pro' : 'free'];
+        $subscription = (!empty($extra['subscription']) && is_array($extra['subscription']))
+            ? $extra['subscription']
+            : $defaultSub;
 
         $userObj = [
             'id' => $id,
@@ -581,7 +589,7 @@ class TaskRoozDB {
             'jobTitle' => $jobTitle,
             'skills' => is_array($skills) ? $skills : [],
             'dailyTimeline' => is_array($timeline) ? $timeline : [],
-            'subscription' => ['plan' => $role === 'admin' ? 'pro' : 'free'],
+            'subscription' => $subscription,
             'isProfileCompleted' => $role === 'admin' || $isCompleted,
             'verificationCode' => $extra['verificationCode'] ?? null,
             'isVerified' => !empty($extra['isVerified']),
@@ -600,9 +608,11 @@ class TaskRoozDB {
                 $verCode = $extra['verificationCode'] ?? null;
                 $baleChatId = $extra['baleChatId'] ?? null;
                 $baleUsername = $extra['baleUsername'] ?? null;
+                $subJson = json_encode($subscription, JSON_UNESCAPED_UNICODE);
+
                 $stmt = $this->pdo->prepare("
-                    INSERT INTO users (id, numeric_id, username, password_hash, name, role, status, is_verified, verification_code, bale_chat_id, bale_username, phone, email, province, city, birth_date, job_title, skills_json, timeline_json, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO users (id, numeric_id, username, password_hash, name, role, status, is_verified, verification_code, bale_chat_id, bale_username, subscription_json, phone, email, province, city, birth_date, job_title, skills_json, timeline_json, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE 
                         name = VALUES(name),
                         password_hash = VALUES(password_hash),
@@ -612,6 +622,7 @@ class TaskRoozDB {
                         verification_code = VALUES(verification_code),
                         bale_chat_id = VALUES(bale_chat_id),
                         bale_username = VALUES(bale_username),
+                        subscription_json = COALESCE(users.subscription_json, VALUES(subscription_json)),
                         phone = VALUES(phone),
                         email = VALUES(email),
                         province = VALUES(province),
@@ -620,7 +631,7 @@ class TaskRoozDB {
                 ");
                 $stmt->execute([
                     $id, $numericId, $usernameClean, $hash, $name, $role, $status, $isVer, $verCode, $baleChatId, $baleUsername,
-                    $phone, $email, $province, $city, $birthDate, $jobTitle,
+                    $subJson, $phone, $email, $province, $city, $birthDate, $jobTitle,
                     json_encode($skills), json_encode($timeline), $now
                 ]);
             } catch (Exception $e) {}
@@ -630,18 +641,23 @@ class TaskRoozDB {
         $this->loadJson();
         $existingIdx = -1;
         foreach ($this->data['users'] as $idx => $u) {
-            if (isset($u['username']) && strtolower($u['username']) === $usernameLower) {
+            if (
+                (isset($u['username']) && strtolower($u['username']) === $usernameLower) ||
+                ($u['id'] === $id) ||
+                (!empty($u['baleChatId']) && !empty($extra['baleChatId']) && strval($u['baleChatId']) === strval($extra['baleChatId']))
+            ) {
                 $existingIdx = $idx;
                 break;
             }
         }
         if ($existingIdx >= 0) {
-            if (isset($this->data['users'][$existingIdx]['subscription'])) {
+            if (!empty($this->data['users'][$existingIdx]['subscription'])) {
                 $userObj['subscription'] = $this->data['users'][$existingIdx]['subscription'];
             }
-            if (isset($this->data['users'][$existingIdx]['status'])) {
+            if (!empty($this->data['users'][$existingIdx]['status'])) {
                 $userObj['status'] = $this->data['users'][$existingIdx]['status'];
             }
+            $userObj['id'] = $this->data['users'][$existingIdx]['id'];
             $this->data['users'][$existingIdx] = array_merge($this->data['users'][$existingIdx], $userObj);
             $userObj = $this->data['users'][$existingIdx];
         } else {
@@ -759,15 +775,21 @@ class TaskRoozDB {
             if ($this->mode === 'mysql' && $this->pdo) {
                 try {
                     $isVer = !empty($uObj['isVerified']) ? 1 : 0;
+                    $subJson = json_encode($uObj['subscription'] ?? ['plan' => (($uObj['role'] ?? '') === 'admin' ? 'pro' : 'free')], JSON_UNESCAPED_UNICODE);
                     $stmt = $this->pdo->prepare("
-                        INSERT INTO users (id, numeric_id, username, password_hash, name, role, status, is_verified, bale_chat_id, bale_username, phone, email, province, city, birth_date, job_title, skills_json, timeline_json, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON DUPLICATE KEY UPDATE name = VALUES(name), role = VALUES(role), status = VALUES(status), bale_chat_id = VALUES(bale_chat_id)
+                        INSERT INTO users (id, numeric_id, username, password_hash, name, role, status, is_verified, bale_chat_id, bale_username, subscription_json, phone, email, province, city, birth_date, job_title, skills_json, timeline_json, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE 
+                            name = VALUES(name), 
+                            role = VALUES(role), 
+                            status = VALUES(status), 
+                            bale_chat_id = VALUES(bale_chat_id),
+                            subscription_json = COALESCE(users.subscription_json, VALUES(subscription_json))
                     ");
                     $stmt->execute([
                         $uObj['id'], $uObj['numericId'], $uObj['username'], $u['password_hash'] ?? password_hash('123456', PASSWORD_DEFAULT),
                         $uObj['name'], $uObj['role'], $uObj['status'], $isVer, $uObj['baleChatId'], $uObj['baleUsername'],
-                        $uObj['phone'], $uObj['email'], $uObj['province'], $uObj['city'], $uObj['birthDate'], $uObj['jobTitle'],
+                        $subJson, $uObj['phone'], $uObj['email'], $uObj['province'], $uObj['city'], $uObj['birthDate'], $uObj['jobTitle'],
                         json_encode($uObj['skills']), json_encode($uObj['dailyTimeline']), $uObj['createdAt']
                     ]);
                 } catch (Exception $e) {}
@@ -818,15 +840,21 @@ class TaskRoozDB {
                                     if ($this->mode === 'mysql' && $this->pdo) {
                                         try {
                                             $isVer = 1;
+                                            $subJson = json_encode($uObj['subscription'] ?? ['plan' => (($uObj['role'] ?? '') === 'admin' ? 'pro' : 'free')], JSON_UNESCAPED_UNICODE);
                                             $stmt = $this->pdo->prepare("
-                                                INSERT INTO users (id, numeric_id, username, password_hash, name, role, status, is_verified, bale_chat_id, bale_username, phone, email, province, city, birth_date, job_title, skills_json, timeline_json, created_at)
-                                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                                ON DUPLICATE KEY UPDATE name = VALUES(name), role = VALUES(role), status = VALUES(status), bale_chat_id = VALUES(bale_chat_id)
+                                                INSERT INTO users (id, numeric_id, username, password_hash, name, role, status, is_verified, bale_chat_id, bale_username, subscription_json, phone, email, province, city, birth_date, job_title, skills_json, timeline_json, created_at)
+                                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                ON DUPLICATE KEY UPDATE 
+                                                    name = VALUES(name), 
+                                                    role = VALUES(role), 
+                                                    status = VALUES(status), 
+                                                    bale_chat_id = VALUES(bale_chat_id),
+                                                    subscription_json = COALESCE(users.subscription_json, VALUES(subscription_json))
                                             ");
                                             $stmt->execute([
                                                 $uObj['id'], $uObj['numericId'], $uObj['username'], password_hash('123456', PASSWORD_DEFAULT),
                                                 $uObj['name'], $uObj['role'], $uObj['status'], $isVer, $uObj['baleChatId'], $uObj['baleUsername'],
-                                                $uObj['phone'], $uObj['email'], $uObj['province'], $uObj['city'], $uObj['birthDate'], $uObj['jobTitle'],
+                                                $subJson, $uObj['phone'], $uObj['email'], $uObj['province'], $uObj['city'], $uObj['birthDate'], $uObj['jobTitle'],
                                                 json_encode($uObj['skills']), json_encode($uObj['dailyTimeline']), $uObj['createdAt']
                                             ]);
                                         } catch (Exception $e) {}
@@ -1235,6 +1263,16 @@ class TaskRoozDB {
                 $timeline = json_encode($fields['dailyTimeline'] ?? (empty($existing['timeline_json']) ? [] : json_decode($existing['timeline_json'], true)), JSON_UNESCAPED_UNICODE);
                 $avatar = $fields['avatar'] ?? ($existing['avatar'] ?? null);
 
+                if (!empty($fields['username'])) {
+                    $newUname = strtolower(trim((string)$fields['username']));
+                    if ($newUname !== '' && $newUname !== 'mohusyn' && strtolower($existing['username'] ?? '') !== 'mohusyn') {
+                        try {
+                            $stmt = $this->pdo->prepare("UPDATE users SET username = ? WHERE id = ?");
+                            $stmt->execute([$newUname, $id]);
+                        } catch (Exception $eU) {}
+                    }
+                }
+
                 try {
                     $stmt = $this->pdo->prepare("UPDATE users SET name = ?, phone = ?, email = ?, province = ?, city = ?, birth_date = ?, job_title = ?, skills_json = ?, timeline_json = ?, avatar = ? WHERE id = ?");
                     $stmt->execute([trim((string)$name), $phone, $email, $province, $city, $birthDate, $jobTitle, $skills, $timeline, $avatar, $id]);
@@ -1270,6 +1308,9 @@ class TaskRoozDB {
         foreach ($this->data['users'] as &$u) {
             if ($u['id'] === $id) {
                 if (isset($fields['name'])) $u['name'] = trim($fields['name']);
+                if (!empty($fields['username']) && strtolower($u['username'] ?? '') !== 'mohusyn' && strtolower($fields['username']) !== 'mohusyn') {
+                    $u['username'] = strtolower(trim($fields['username']));
+                }
                 foreach (['phone', 'email', 'province', 'city', 'birthDate', 'jobTitle', 'avatar', 'baleChatId', 'baleUsername', 'baleNotifToken', 'baleNotificationsEnabled', 'verificationCode', 'isVerified', 'status'] as $k) {
                     if (array_key_exists($k, $fields)) $u[$k] = $fields[$k];
                 }

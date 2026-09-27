@@ -85,6 +85,7 @@ interface TaskContextType {
   updateMyProfile: (data: {
     id: string;
     name?: string;
+    username?: string;
     phone?: string;
     email?: string;
     province?: string;
@@ -1375,6 +1376,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateMyProfile = async (data: {
     id: string;
     name?: string;
+    username?: string;
     phone?: string;
     email?: string;
     province?: string;

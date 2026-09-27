@@ -500,6 +500,7 @@ export const api = {
     status: 'pending' | 'approved' | 'not_found';
     token?: string;
     user?: User;
+    isNewUser?: boolean;
     message?: string;
   }> {
     return await request<any>(`api/bale.php?action=check_bale_login&ticket=${encodeURIComponent(ticket)}`);
@@ -866,6 +867,7 @@ export const api = {
   async updateMyProfile(data: {
     id: string;
     name?: string;
+    username?: string;
     phone?: string;
     email?: string;
     province?: string;
@@ -909,7 +911,7 @@ export const api = {
           const existingUser = existingUsers.find((u) => u.id === data.id);
           const updatedUser: User = {
             id: data.id,
-            username: existingUser?.username || 'user',
+            username: data.username || existingUser?.username || 'user',
             name: data.name || existingUser?.name || '',
             role: existingUser?.role || 'user',
             phone: data.phone ?? existingUser?.phone,
