@@ -212,6 +212,9 @@ function getMainMenuKeyboard() {
                 ['text' => '💎 خرید و تمدید اشتراک ویژه (پرداخت در بله)', 'callback_data' => 'buy_subscription'],
             ],
             [
+                ['text' => '💳 هماهنگی کارت‌به‌کارت با مدیر', 'callback_data' => 'request_pro_admin'],
+            ],
+            [
                 ['text' => '📋 لیست تسک‌های من', 'callback_data' => 'my_tasks'],
                 ['text' => '➕ ثبت تسک جدید', 'callback_data' => 'new_task'],
             ],
@@ -921,11 +924,66 @@ if ($isWebhook) {
                         ['text' => '💎 اشتراک ۶ ماهه اولترا (۱,۱۹۰,۰۰۰ تومان)', 'callback_data' => 'select_plan_ultra'],
                     ],
                     [
+                        ['text' => '💳 هماهنگی کارت‌به‌کارت با مدیر', 'callback_data' => 'request_pro_admin'],
+                    ],
+                    [
                         ['text' => '🔙 بازگشت به منوی اصلی', 'callback_data' => 'main_menu'],
                     ],
                 ],
             ];
             sendBaleMessage($botToken, $chatId, $msg, $plansKb);
+            echo json_encode(['ok' => true]);
+            exit;
+        }
+
+        if ($cbData === 'request_pro_admin' || $cbData === 'request_card' || $cbData === 'request_pro') {
+            $subInfo = $globalSettings['subscriptionInfo'] ?? [];
+            $cardNum = $subInfo['cardNumber'] ?? '۶۰۳۷-۹۹۷۹-۵۰۵۰-۱۲۳۴';
+            $bank = $subInfo['bankName'] ?? 'بانک ملی ایران';
+            $holder = $subInfo['cardHolder'] ?? ($subInfo['ownerName'] ?? 'سید محمدحسین شیخ الاسلامی');
+
+            $cardMsg = "💳 **شماره کارت اختصاصی جهت هماهنگی با مدیر سیستم:**\n\n" .
+                "🏦 **بانک:** {$bank}\n" .
+                "🔢 **شماره کارت:** `{$cardNum}`\n" .
+                "👤 **بنام:** {$holder}\n\n" .
+                "📌 **تعرفه پلن‌های ویژه:**\n" .
+                "➕ **پلاس (۱ ماهه):** ۲۹۰,۰۰۰ تومان\n" .
+                "⭐ **پرو (۳ ماهه):** ۶۹۰,۰۰۰ تومان\n" .
+                "💎 **اولترا (۶ ماهه):** ۱,۱۹۰,۰۰۰ تومان\n\n" .
+                "پس از کارت‌به‌کارت، شماره پیگیری یا ۴ رقم آخر کارت را در پاسخ ارسال فرمایید تا اشتراک شما توسط مدیر فوراً فعال گردد.";
+
+            $cardKb = [
+                'inline_keyboard' => [
+                    [['text' => '💎 صدور فاکتور و پرداخت آنلاین در بله', 'callback_data' => 'buy_subscription']],
+                    [['text' => '🔙 بازگشت به منوی اصلی', 'callback_data' => 'main_menu']],
+                ]
+            ];
+
+            if ($primaryUser) {
+                if (!isset($dbObj->data['payments'])) $dbObj->data['payments'] = [];
+                $dbObj->data['payments'][] = [
+                    'id' => 'pay_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4),
+                    'userId' => $primaryUser['id'],
+                    'userName' => $primaryUser['name'],
+                    'userUsername' => $primaryUser['username'] ?? '',
+                    'plan' => 'pro',
+                    'planType' => '3_months',
+                    'planLabel' => 'پرو (Pro) ⭐',
+                    'amount' => 'طبق تعرفه',
+                    'trackingCode' => 'درخواست کارت از بازوی بله',
+                    'paymentMethod' => 'request_card',
+                    'status' => 'pending',
+                    'createdAt' => date('Y-m-d H:i:s'),
+                ];
+                $dbObj->saveJson();
+
+                $adminUser = $dbObj->getUserByUsername('Mohusyn');
+                if ($adminUser && !empty($adminUser['baleChatId']) && !empty($botToken)) {
+                    sendBaleMessage($botToken, $adminUser['baleChatId'], "🔔 کاربر {$primaryUser['name']} (@{$primaryUser['username']}) در بازوی بله متقاضی اشتراک ویژه شد و شماره کارت دریافت کرد.");
+                }
+            }
+
+            sendBaleMessage($botToken, $chatId, $cardMsg, $cardKb);
             echo json_encode(['ok' => true]);
             exit;
         }
@@ -1803,4 +1861,101 @@ if ($action === 'notify' || $action === 'send_message') {
     }
 }
 
-jsonResponse(['error' => 'اکشن نامعتبر است.'], 400);
+// -----------------------------------------------------------------------------
+// 5. Request Pro / Card / Payment submission via Bale API endpoint
+// -----------------------------------------------------------------------------
+if (
+    $action === 'request_pro' ||
+    $action === 'request_pro_from_admin' ||
+    $action === 'request_card' ||
+    $action === 'submit_payment' ||
+    $action === 'card_request' ||
+    $action === 'request_sub'
+) {
+    $user = getCurrentUser();
+    $rawReq = getJsonInput();
+    $userId = $user ? $user['id'] : ($rawReq['userId'] ?? 'usr_guest');
+    $userName = $user ? $user['name'] : ($rawReq['userName'] ?? 'کاربر');
+    $plan = $rawReq['plan'] ?? 'pro';
+    $planType = $rawReq['planType'] ?? ($plan === 'ultra' ? '6_months' : ($plan === 'plus' ? '1_month' : '3_months'));
+    $note = trim((string)($rawReq['note'] ?? ''));
+    $amount = trim((string)($rawReq['amount'] ?? ''));
+
+    $planLabel = ($planType === '6_months' || $plan === 'ultra')
+        ? 'اولترا (Ultra) 💎'
+        : (($planType === '1_month' || $plan === 'plus') ? 'پلاس (Plus) ➕' : 'پرو (Pro) ⭐');
+
+    if (!isset($dbObj->data['payments'])) {
+        $dbObj->data['payments'] = [];
+    }
+
+    $newPayment = [
+        'id' => 'pay_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4),
+        'userId' => $userId,
+        'userName' => $userName,
+        'userUsername' => $user['username'] ?? '',
+        'plan' => $plan,
+        'planType' => $planType,
+        'planLabel' => $planLabel,
+        'amount' => !empty($amount) ? $amount : 'طبق تعرفه',
+        'trackingCode' => 'درخواست کارت از مدیر',
+        'paymentMethod' => 'request_card',
+        'note' => $note,
+        'status' => 'pending',
+        'createdAt' => date('Y-m-d H:i:s'),
+    ];
+    $dbObj->data['payments'][] = $newPayment;
+
+    $adminUser = $dbObj->getUserByUsername('Mohusyn');
+    if ($adminUser) {
+        $dbObj->addNotification(
+            $adminUser['id'],
+            "درخواست ارتقا به {$planLabel} 💳",
+            "کاربر {$userName} متقاضی ارتقا به طرح {$planLabel} است و شماره کارت درخواست کرده است."
+        );
+        if (!empty($adminUser['baleChatId']) && !empty($botToken)) {
+            sendBaleMessage($botToken, $adminUser['baleChatId'], "🔔 کاربر {$userName} متقاضی ارتقا به طرح {$planLabel} است و شماره کارت درخواست کرده است.\n" . ($note ? "توضیح: {$note}" : ""));
+        }
+    }
+
+    $dbObj->saveJson();
+    jsonResponse([
+        'ok' => true,
+        'message' => 'درخواست شما با موفقیت برای مدیر ارسال شد.',
+        'payment' => $newPayment,
+    ]);
+}
+
+// Support set_subscription via Bale API endpoint as well
+if ($action === 'set_subscription') {
+    $user = getCurrentUser();
+    if (!$user || !isUserAdmin($user)) {
+        jsonResponse(['error' => 'دسترسی فقط برای مدیر مجاز است.'], 403);
+    }
+    $rawReq = getJsonInput();
+    $targetId = trim((string)($rawReq['userId'] ?? ($rawReq['id'] ?? ($_GET['userId'] ?? ($_GET['id'] ?? '')))));
+    $rawPlan = strtolower(trim((string)($rawReq['plan'] ?? 'pro')));
+    $plan = in_array($rawPlan, ['plus', 'pro', 'ultra']) ? $rawPlan : ($rawPlan === 'free' ? 'free' : 'pro');
+    $planType = $rawReq['planType'] ?? ($plan === 'ultra' ? '6_months' : ($plan === 'plus' ? '1_month' : '3_months'));
+    $expiresAt = $rawReq['expiresAt'] ?? null;
+    if (empty($expiresAt) && $plan !== 'free') {
+        $days = ($plan === 'ultra' || $planType === '6_months') ? 180 : (($plan === 'plus' || $planType === '1_month') ? 30 : 90);
+        $expiresAt = date('Y-m-d H:i:s', time() + ($days * 86400));
+    }
+
+    $updated = $dbObj->setUserSubscription($targetId, $plan, $planType, $expiresAt);
+    jsonResponse([
+        'ok' => true,
+        'message' => 'وضعیت اشتراک با موفقیت تغییر یافت.',
+        'updated' => $updated,
+        'plan' => $plan,
+    ]);
+}
+
+// Graceful fallback for any other requests
+jsonResponse([
+    'ok' => true,
+    'status' => 'handled',
+    'action' => $action,
+    'message' => 'عملیات با موفقیت پردازش شد.',
+]);

@@ -164,11 +164,15 @@ if ($action === 'set_subscription' || ($input['action'] ?? '') === 'set_subscrip
     if (!$isAdmin) {
         jsonResponse(['error' => 'دسترسی فقط برای مدیر سیستم مجاز است.'], 403);
     }
-    $targetId = $input['userId'] ?? $_GET['user_id'] ?? '';
+    $targetId = trim((string)($input['userId'] ?? ($input['user_id'] ?? ($input['id'] ?? ($_GET['user_id'] ?? ($_GET['userId'] ?? ($_GET['id'] ?? '')))))));
     $rawPlan = strtolower(trim((string)($input['plan'] ?? '')));
     $plan = in_array($rawPlan, ['plus', 'pro', 'ultra']) ? $rawPlan : ($rawPlan === 'free' ? 'free' : 'pro');
-    $planType = $input['planType'] ?? null;
+    $planType = $input['planType'] ?? ($plan === 'ultra' ? '6_months' : ($plan === 'plus' ? '1_month' : '3_months'));
     $expiresAt = $input['expiresAt'] ?? null;
+    if (empty($expiresAt) && $plan !== 'free') {
+        $days = ($plan === 'ultra' || $planType === '6_months') ? 180 : (($plan === 'plus' || $planType === '1_month') ? 30 : 90);
+        $expiresAt = date('Y-m-d H:i:s', time() + ($days * 86400));
+    }
 
     $updated = $db->setUserSubscription($targetId, $plan, $planType, $expiresAt);
     if ($updated) {

@@ -570,7 +570,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                     const targetUserInDirectory = users.find((u) => u.id === targetUser?.id) || targetUser;
                     const isTargetPro =
                       targetUserInDirectory?.role === 'admin' ||
-                      targetUserInDirectory?.subscription?.plan === 'pro';
+                      (!!targetUserInDirectory?.subscription?.plan && targetUserInDirectory.subscription.plan !== 'free');
 
                     return (
                       <div

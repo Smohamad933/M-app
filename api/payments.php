@@ -49,16 +49,25 @@ if ($method === 'POST') {
     $postAction = $input['action'] ?? $action;
 
     // A. Submit Payment Receipt by User
-    if (empty($postAction) || $postAction === 'submit' || $postAction === 'pay') {
+    if (
+        empty($postAction) ||
+        $postAction === 'submit' ||
+        $postAction === 'pay' ||
+        $postAction === 'request' ||
+        $postAction === 'request_card' ||
+        $postAction === 'request_pro' ||
+        $postAction === 'request_pro_from_admin' ||
+        $postAction === 'card_request'
+    ) {
         $plan = $input['plan'] ?? 'pro';
-        $planType = $input['planType'] ?? '3_months';
+        $planType = $input['planType'] ?? ($plan === 'ultra' ? '6_months' : ($plan === 'plus' ? '1_month' : '3_months'));
         $amount = trim((string)($input['amount'] ?? ''));
         $trackingCode = trim((string)($input['trackingCode'] ?? ''));
         $paymentMethod = $input['paymentMethod'] ?? 'card_to_card';
         $note = trim((string)($input['note'] ?? ''));
 
         if (empty($trackingCode)) {
-            jsonResponse(['error' => 'وارد کردن شماره پیگیری یا ۴ رقم آخر کارت الزامی است.'], 400);
+            $trackingCode = 'درخواست هماهنگی کارت با مدیر';
         }
 
         $planLabel = ($planType === '6_months' || $plan === 'ultra')

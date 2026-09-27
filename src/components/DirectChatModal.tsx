@@ -207,7 +207,7 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
             const targetUserInDirectory = users.find((u) => u.id === friendId) || friend;
             const isTargetPro =
               targetUserInDirectory?.role === 'admin' ||
-              targetUserInDirectory?.subscription?.plan === 'pro';
+              (!!targetUserInDirectory?.subscription?.plan && targetUserInDirectory.subscription.plan !== 'free');
 
             return (
               <div

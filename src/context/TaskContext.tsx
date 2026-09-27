@@ -756,7 +756,10 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const appOperatingMode: AppOperatingMode = globalSettings?.appOperatingMode || 'commercial';
   const isDemoMode = appOperatingMode === 'community_demo';
-  const isPro = isDemoMode || currentUser?.role === 'admin' || currentUser?.subscription?.plan === 'pro';
+  const isPro =
+    isDemoMode ||
+    currentUser?.role === 'admin' ||
+    (!!currentUser?.subscription?.plan && currentUser.subscription.plan !== 'free');
 
   const setAppOperatingMode = async (mode: AppOperatingMode) => {
     await updateGlobalSettings({ appOperatingMode: mode });

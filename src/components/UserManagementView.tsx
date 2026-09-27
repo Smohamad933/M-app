@@ -1095,16 +1095,16 @@ export const UserManagementView: React.FC = () => {
             </div>
 
             <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800/80 hover:border-zinc-700 transition-colors">
-              <div className="text-xs text-zinc-400 mb-1">اشتراک ویژه Pro ⭐</div>
+              <div className="text-xs text-zinc-400 mb-1">اشتراک‌های ویژه ⭐</div>
               <div className="text-2xl font-black text-amber-400">
-                {toPersianDigits(users.filter((u) => u.role === 'admin' || u.subscription?.plan === 'pro').length)}
+                {toPersianDigits(users.filter((u) => u.role === 'admin' || (!!u.subscription?.plan && u.subscription.plan !== 'free')).length)}
               </div>
             </div>
 
             <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800/80 hover:border-zinc-700 transition-colors">
               <div className="text-xs text-zinc-400 mb-1">کاربران پلن رایگان</div>
               <div className="text-2xl font-black text-slate-300">
-                {toPersianDigits(users.filter((u) => u.role !== 'admin' && u.subscription?.plan !== 'pro').length)}
+                {toPersianDigits(users.filter((u) => u.role !== 'admin' && (!u.subscription?.plan || u.subscription.plan === 'free')).length)}
               </div>
             </div>
 
@@ -1287,7 +1287,7 @@ export const UserManagementView: React.FC = () => {
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>اشتراک ویژه Pro ({toPersianDigits(users.filter((u) => u.role === 'admin' || u.subscription?.plan === 'pro').length)})</span>
+              <span>اشتراک ویژه ({toPersianDigits(users.filter((u) => u.role === 'admin' || (!!u.subscription?.plan && u.subscription.plan !== 'free')).length)})</span>
             </button>
 
             <button
@@ -1299,7 +1299,7 @@ export const UserManagementView: React.FC = () => {
                   : 'bg-zinc-900/60 text-zinc-400 border border-zinc-800 hover:text-white'
               }`}
             >
-              پلن رایگان ({toPersianDigits(users.filter((u) => u.role !== 'admin' && u.subscription?.plan !== 'pro').length)})
+              پلن رایگان ({toPersianDigits(users.filter((u) => u.role !== 'admin' && (!u.subscription?.plan || u.subscription.plan === 'free')).length)})
             </button>
           </div>
 
@@ -1337,8 +1337,9 @@ export const UserManagementView: React.FC = () => {
             <div className="divide-y divide-zinc-800/60">
               {users
                 .filter((u) => {
-                  if (planFilter === 'pro') return u.role === 'admin' || u.subscription?.plan === 'pro';
-                  if (planFilter === 'free') return u.role !== 'admin' && u.subscription?.plan !== 'pro';
+                  const isPrem = u.role === 'admin' || (!!u.subscription?.plan && u.subscription.plan !== 'free');
+                  if (planFilter === 'pro') return isPrem;
+                  if (planFilter === 'free') return !isPrem;
                   return true;
                 })
                 .map((u) => {
@@ -1347,7 +1348,7 @@ export const UserManagementView: React.FC = () => {
                 const done = u.completedTasks || 0;
                 const percent = total > 0 ? Math.round((done / total) * 100) : 0;
                 const skills = Array.isArray(u.skills) ? u.skills : [];
-                const isUserPro = u.role === 'admin' || u.subscription?.plan === 'pro';
+                const isUserPremium = u.role === 'admin' || (!!u.subscription?.plan && u.subscription.plan !== 'free');
 
                 return (
                   <div
@@ -1390,7 +1391,7 @@ export const UserManagementView: React.FC = () => {
                               <Sparkles className="w-3 h-3 text-emerald-400" />
                               <span>دمو کامیونیتی (Beta) 🚀</span>
                             </span>
-                          ) : isUserPro ? (
+                          ) : isUserPremium ? (
                             <SubscriptionBadge user={u} size="sm" />
                           ) : (
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/50">
@@ -1527,19 +1528,19 @@ export const UserManagementView: React.FC = () => {
                             disabled={updatingSubUserId === u.id}
                             onClick={() => setSubscriptionModalUser(u)}
                             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50 ${
-                              isUserPro
+                              isUserPremium
                                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
                                 : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 hover:text-white'
                             }`}
-                            title="تنظیم و تغییر دوره اشتراک Pro کاربر"
+                            title="تنظیم و تغییر دوره اشتراک ویژه کاربر"
                           >
                             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                             <span>
                               {updatingSubUserId === u.id
                                 ? 'در حال ثبت...'
-                                : isUserPro
-                                ? 'مدیریت Pro ⭐'
-                                : 'فعال‌سازی Pro ⭐'}
+                                : isUserPremium
+                                ? 'مدیریت اشتراک ⭐'
+                                : 'فعال‌سازی اشتراک ⭐'}
                             </span>
                           </button>
                         )}
@@ -4072,7 +4073,7 @@ export const UserManagementView: React.FC = () => {
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-white">مدیریت و فعال‌سازی اشتراک Pro</h3>
+                  <h3 className="text-sm font-black text-white">مدیریت و فعال‌سازی اشتراک ویژه</h3>
                   <p className="text-[11px] text-zinc-400 font-bold">
                     {subscriptionModalUser.name} (@{subscriptionModalUser.username})
                   </p>
@@ -4086,8 +4087,19 @@ export const UserManagementView: React.FC = () => {
               </button>
             </div>
 
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-zinc-800/60 border border-zinc-700/60 text-xs">
+              <span className="text-zinc-400 font-bold">وضعیت اشتراک فعلی:</span>
+              {subscriptionModalUser.role === 'admin' || (!!subscriptionModalUser.subscription?.plan && subscriptionModalUser.subscription.plan !== 'free') ? (
+                <SubscriptionBadge user={subscriptionModalUser} size="sm" />
+              ) : (
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-zinc-700 text-zinc-300 font-bold border border-zinc-600">
+                  کاربر عادی (رایگان)
+                </span>
+              )}
+            </div>
+
             <div className="text-xs text-zinc-300">
-              دوره اشتراک Pro مورد نظر برای این کاربر را انتخاب کنید:
+              دوره اشتراک ویژه مورد نظر برای این کاربر را انتخاب کنید:
             </div>
 
             <div className="grid grid-cols-1 gap-2.5">
@@ -4163,7 +4175,7 @@ export const UserManagementView: React.FC = () => {
                 onClick={() => handleUpdateSubscription(subscriptionModalUser.id, 'free')}
                 className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition-colors cursor-pointer"
               >
-                لغو اشتراک Pro (تبدیل به رایگان)
+                لغو اشتراک (تبدیل به پلن عادی)
               </button>
 
               <button
