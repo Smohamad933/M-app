@@ -248,16 +248,14 @@ export const LoginScreen: React.FC = () => {
           setLoading(false);
           return;
         }
-        if (!phone.trim()) {
-          setError("شماره تماس (موبایل) الزامی است.");
-          setLoading(false);
-          return;
-        }
-        const cleanPhone = phone.trim().replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString());
-        if (!/^09\d{9}$/.test(cleanPhone)) {
-          setError("شماره موبایل باید ۱۱ رقم بوده و با ۰۹ شروع شود (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).");
-          setLoading(false);
-          return;
+        let cleanPhone = '';
+        if (phone.trim()) {
+          cleanPhone = phone.trim().replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString());
+          if (!/^09\d{9}$/.test(cleanPhone)) {
+            setError("شماره موبایل وارد شده باید ۱۱ رقم بوده و با ۰۹ شروع شود (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).");
+            setLoading(false);
+            return;
+          }
         }
         if (username.trim().length < 3) {
           setError("نام کاربری باید حداقل ۳ کاراکتر باشد.");
@@ -536,15 +534,14 @@ export const LoginScreen: React.FC = () => {
                 <label className="font-extrabold text-slate-700 flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-slate-400" />
                   <span>
-                    شماره تماس (موبایل) <span className="text-rose-500">*</span>
+                    شماره تماس (اختیاری)
                   </span>
                 </label>
                 <input
                   type="tel"
-                  required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="مثال: ۰۹۱۲۳۴۵۶۷۸۹ (الزامی)"
+                  placeholder="مثال: ۰۹۱۲۳۴۵۶۷۸۹ (اختیاری)"
                   className="w-full px-4 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 font-mono text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
                 />
               </div>
