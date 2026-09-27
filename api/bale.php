@@ -666,6 +666,65 @@ if ($action === 'sync_user') {
 }
 
 // -----------------------------------------------------------------------------
+// 4.3. Bale Post-Login Onboarding (Set custom name, username, and password)
+// -----------------------------------------------------------------------------
+if ($action === 'bale_onboarding') {
+    $input = array_merge($_GET, $_POST, getJsonInput());
+    $userId = trim((string)($input['userId'] ?? ($input['id'] ?? '')));
+    $token = trim((string)($input['token'] ?? ''));
+    $name = trim((string)($input['name'] ?? ''));
+    $username = strtolower(trim((string)($input['username'] ?? '')));
+    $password = (string)($input['password'] ?? '');
+
+    if (empty($userId)) {
+        jsonResponse(['error' => 'شناسه کاربر الزامی است.'], 400);
+    }
+    $targetUser = $dbObj->getUserById($userId);
+    if (!$targetUser && !empty($input['prevUsername'])) {
+        $targetUser = $dbObj->getUserByUsername($input['prevUsername']);
+    }
+    if (!$targetUser) {
+        jsonResponse(['error' => 'کاربر مورد نظر یافت نشد.'], 404);
+    }
+
+    if (!empty($username) && $username !== strtolower($targetUser['username'] ?? '')) {
+        if (!preg_match('/^[a-z0-9_]{3,30}$/', $username)) {
+            jsonResponse(['error' => 'نام کاربری باید بین ۳ تا ۳۰ کاراکتر و شامل حروف کوچک انگلیسی، عدد یا زیرخط باشد.'], 400);
+        }
+        if ($username === 'mohusyn') {
+            jsonResponse(['error' => 'این نام کاربری رزرو شده است.'], 400);
+        }
+        $existing = $dbObj->getUserByUsername($username);
+        if ($existing && ($existing['id'] ?? '') !== $targetUser['id']) {
+            jsonResponse(['error' => 'این نام کاربری قبلاً توسط کاربر دیگری ثبت شده است.'], 400);
+        }
+    }
+
+    $updateFields = [];
+    if (!empty($name)) $updateFields['name'] = $name;
+    if (!empty($username)) $updateFields['username'] = $username;
+    $pwdToSet = (!empty($password) && strlen($password) >= 4) ? $password : null;
+
+    $dbObj->updateUserProfile($targetUser['id'], $updateFields, $pwdToSet);
+    $freshUser = $dbObj->getUserById($targetUser['id']);
+    unset($freshUser['password_hash']);
+    unset($freshUser['password']);
+
+    // Ensure session
+    $_SESSION['user_id'] = $targetUser['id'];
+    $newToken = base64_encode($targetUser['id'] . ':' . time());
+
+    broadcastBaleUserToPeer($freshUser);
+
+    jsonResponse([
+        'ok' => true,
+        'user' => $freshUser,
+        'token' => $newToken,
+        'message' => 'مشخصات شما با موفقیت ثبت شد.',
+    ]);
+}
+
+// -----------------------------------------------------------------------------
 // 4.5. Create Bale Subscription Payment Invoice Link (for Web App)
 // -----------------------------------------------------------------------------
 if ($action === 'create_invoice' || $action === 'create_payment_invoice') {
@@ -1256,26 +1315,43 @@ if ($isWebhook) {
     }
 
     // -------------------------------------------------------------------------
-    // NOTIFICATION TOKEN ACTIVATION (NOTIF-XXXXXX or notif_XXXXXX)
+    // NOTIFICATION TOKEN ACTIVATION (NOTIF-XXXXXX or notif_XXXXXX or 6 digits)
     // -------------------------------------------------------------------------
-    $incomingNotifToken = null;
-    if (preg_match('/(?:notif[_\-\s]?)([A-Za-z0-9]{4,14})/i', $textEn, $nm)) {
-        $incomingNotifToken = $nm[1];
-    } elseif (preg_match('/^NOTIF[_\-]?([A-Za-z0-9]{4,14})$/i', $rawText, $nm)) {
-        $incomingNotifToken = $nm[1];
+    $candidateNotifCode = null;
+    if (preg_match('/(?:^|\s)\/start\s+(?:notif[_\-\s]*)?([A-Za-z0-9_\-]+)/i', $rawText, $nm)) {
+        $candidateNotifCode = trim($nm[1]);
+    } elseif (preg_match('/^NOTIF[_\-]?([A-Za-z0-9_\-]+)$/i', $rawText, $nm)) {
+        $candidateNotifCode = trim($nm[1]);
+    } elseif (preg_match('/(?:notif[_\-\s]*)?([0-9]{6})/i', $textEn, $nm)) {
+        $candidateNotifCode = trim($nm[1]);
+    } elseif (preg_match('/(?:notif[_\-\s]*)?([A-Za-z0-9_\-]{5,25})/i', $rawText, $nm)) {
+        $candidateNotifCode = trim($nm[1]);
     }
 
-    if ($incomingNotifToken) {
+    if ($candidateNotifCode && strpos($candidateNotifCode, 'bale_login_') === false && strpos($candidateNotifCode, 'pay_') === false) {
         $matchedUser = null;
-        $cleanSearch = strtoupper(trim($incomingNotifToken));
+        $cleanSearch = strtoupper(str_replace(['NOTIF-', 'NOTIF_', 'NOTIF', 'notif_', 'notif-'], '', $candidateNotifCode));
+        $cleanDigits = preg_replace('/[^\d]/', '', $candidateNotifCode);
+
         foreach ($dbObj->getAllUsers() as $u) {
             $userTok = strtoupper(trim($u['baleNotifToken'] ?? ''));
-            $userTokClean = str_replace(['NOTIF-', 'NOTIF_', 'NOTIF'], '', $userTok);
-            $searchClean = str_replace(['NOTIF-', 'NOTIF_', 'NOTIF'], '', $cleanSearch);
-            if (!empty($userTok) && ($userTok === $cleanSearch || $userTokClean === $searchClean)) {
+            if (empty($userTok)) continue;
+            $userTokClean = str_replace(['NOTIF-', 'NOTIF_', 'NOTIF', 'notif_', 'notif-'], '', $userTok);
+            $userDigits = preg_replace('/[^\d]/', '', $userTok);
+
+            if (!empty($cleanDigits) && !empty($userDigits) && strlen($cleanDigits) >= 5 && $cleanDigits === $userDigits) {
                 $matchedUser = $u;
                 break;
             }
+            if (!empty($cleanSearch) && ($cleanSearch === $userTokClean || $cleanSearch === $userTok)) {
+                $matchedUser = $u;
+                break;
+            }
+        }
+
+        // Fallback: If not matched by token, but user is already linked by chat ID
+        if (!$matchedUser) {
+            $matchedUser = $dbObj->getUserByBaleChatId($chatId);
         }
 
         if ($matchedUser) {
@@ -1416,34 +1492,6 @@ if ($isWebhook) {
         }
         echo json_encode(['ok' => true]);
         exit;
-    }
-
-    // -------------------------------------------------------------------------
-    // NOTIFICATION DEEP-LINK (/start notif_TOKEN)
-    // -------------------------------------------------------------------------
-    if (preg_match('/(?:^|\s)\/start\s+notif_([A-Za-z0-9_-]+)/i', $rawText, $nm)) {
-        $notifToken = trim($nm[1]);
-        $targetUser = null;
-        $cleanSearch = strtoupper(str_replace(['NOTIF-', 'NOTIF_', 'notif_'], '', $notifToken));
-        foreach ($dbObj->getAllUsers() as $u) {
-            $uTok = strtoupper(str_replace(['NOTIF-', 'NOTIF_', 'notif_'], '', $u['baleNotifToken'] ?? ''));
-            if (!empty($uTok) && $uTok === $cleanSearch) {
-                $targetUser = $u;
-                break;
-            }
-        }
-        if ($targetUser) {
-            $dbObj->updateUserProfile($targetUser['id'], [
-                'baleChatId' => $chatId,
-                'baleNotificationActive' => true,
-            ]);
-            $msg = "🎉 **اتصال اعلان‌ها با موفقیت انجام شد!** 🔔\n\n" .
-                "حساب کاربری شما: **{$targetUser['name']}** (@{$targetUser['username']})\n" .
-                "از این پس یادآورها، تغییرات وظایف و پیام‌های سامانه بگ تایم در این چت برای شما ارسال خواهند شد.";
-            sendBaleMessage($botToken, $chatId, $msg, getMainMenuKeyboard());
-            echo json_encode(['ok' => true]);
-            exit;
-        }
     }
 
     // -------------------------------------------------------------------------

@@ -80,6 +80,12 @@ class TaskRoozDB {
             if (!isset($columns['bale_username'])) {
                 @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `bale_username` varchar(100) DEFAULT NULL");
             }
+            if (!isset($columns['bale_notif_token'])) {
+                @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `bale_notif_token` varchar(50) DEFAULT NULL");
+            }
+            if (!isset($columns['bale_notif_enabled'])) {
+                @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `bale_notif_enabled` tinyint(1) DEFAULT 0");
+            }
             if (!isset($columns['numeric_id'])) {
                 @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `numeric_id` int(11) DEFAULT 1000");
             }
@@ -400,6 +406,8 @@ class TaskRoozDB {
                     if (isset($u['is_verified']) && !isset($u['isVerified'])) $u['isVerified'] = !empty($u['is_verified']);
                     if (isset($u['bale_chat_id']) && !isset($u['baleChatId'])) $u['baleChatId'] = $u['bale_chat_id'];
                     if (isset($u['bale_username']) && !isset($u['baleUsername'])) $u['baleUsername'] = $u['bale_username'];
+                    if (isset($u['bale_notif_token']) && !isset($u['baleNotifToken'])) $u['baleNotifToken'] = $u['bale_notif_token'];
+                    if (isset($u['bale_notif_enabled']) && !isset($u['baleNotificationsEnabled'])) $u['baleNotificationsEnabled'] = !empty($u['bale_notif_enabled']);
                     if (isset($u['numeric_id']) && !isset($u['numericId'])) $u['numericId'] = (int)$u['numeric_id'];
                     $u['isProfileCompleted'] = !empty($u['is_profile_completed']) || ($u['role'] === 'admin') || (!empty($u['birthDate']) && !empty($u['city']));
                     return $u;
@@ -445,6 +453,8 @@ class TaskRoozDB {
                     if (isset($u['is_verified']) && !isset($u['isVerified'])) $u['isVerified'] = !empty($u['is_verified']);
                     if (isset($u['bale_chat_id']) && !isset($u['baleChatId'])) $u['baleChatId'] = $u['bale_chat_id'];
                     if (isset($u['bale_username']) && !isset($u['baleUsername'])) $u['baleUsername'] = $u['bale_username'];
+                    if (isset($u['bale_notif_token']) && !isset($u['baleNotifToken'])) $u['baleNotifToken'] = $u['bale_notif_token'];
+                    if (isset($u['bale_notif_enabled']) && !isset($u['baleNotificationsEnabled'])) $u['baleNotificationsEnabled'] = !empty($u['bale_notif_enabled']);
                     $u['isProfileCompleted'] = !empty($u['is_profile_completed']) || ($u['role'] === 'admin') || (!empty($u['birthDate']) && !empty($u['city']));
                     return $u;
                 }
@@ -679,6 +689,7 @@ class TaskRoozDB {
                         u.id, u.numeric_id as numericId, u.username, u.name, u.role, u.status,
                         u.is_verified as isVerified, u.verification_code as verificationCode,
                         u.bale_chat_id as baleChatId, u.bale_username as baleUsername,
+                        u.bale_notif_token as baleNotifToken, u.bale_notif_enabled as baleNotificationsEnabled,
                         u.subscription_json as subscriptionJson,
                         u.phone, u.email, u.province, u.city,
                         u.birth_date as birthDate, u.job_title as jobTitle, u.skills_json, u.timeline_json, u.avatar,
@@ -705,6 +716,8 @@ class TaskRoozDB {
                         $u['dailyTimeline'] = !empty($u['timeline_json']) ? json_decode($u['timeline_json'], true) : [];
                         $u['isVerified'] = !empty($u['isVerified']);
                         $u['numericId'] = (int)($u['numericId'] ?? 1000);
+                        $u['baleNotifToken'] = $u['baleNotifToken'] ?? null;
+                        $u['baleNotificationsEnabled'] = !empty($u['baleNotificationsEnabled']);
                         $u['subscription'] = !empty($u['subscriptionJson'])
                             ? json_decode($u['subscriptionJson'], true)
                             : ['plan' => (($u['role'] ?? '') === 'admin' ? 'pro' : 'free')];
@@ -763,6 +776,8 @@ class TaskRoozDB {
                 'isVerified' => !empty($u['isVerified']),
                 'baleChatId' => $u['baleChatId'] ?? null,
                 'baleUsername' => $u['baleUsername'] ?? null,
+                'baleNotifToken' => $u['baleNotifToken'] ?? ($u['bale_notif_token'] ?? null),
+                'baleNotificationsEnabled' => !empty($u['baleNotificationsEnabled']) || !empty($u['bale_notif_enabled']),
                 'subscription' => $u['subscription'] ?? ['plan' => (($u['role'] ?? '') === 'admin' ? 'pro' : 'free')],
                 'createdAt' => $u['createdAt'] ?? $u['created_at'] ?? date('Y-m-d H:i:s'),
                 'totalTasks' => $total,
@@ -1295,6 +1310,12 @@ class TaskRoozDB {
                 }
                 if (isset($fields['baleUsername'])) {
                     @$this->pdo->prepare("UPDATE users SET bale_username = ? WHERE id = ?")->execute([$fields['baleUsername'], $id]);
+                }
+                if (isset($fields['baleNotifToken'])) {
+                    @$this->pdo->prepare("UPDATE users SET bale_notif_token = ? WHERE id = ?")->execute([strval($fields['baleNotifToken']), $id]);
+                }
+                if (isset($fields['baleNotificationsEnabled'])) {
+                    @$this->pdo->prepare("UPDATE users SET bale_notif_enabled = ? WHERE id = ?")->execute([$fields['baleNotificationsEnabled'] ? 1 : 0, $id]);
                 }
                 if (!empty($password)) {
                     $hash = password_hash($password, PASSWORD_DEFAULT);

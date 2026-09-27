@@ -102,7 +102,8 @@ const BIRTH_YEARS = Array.from({ length: 66 }, (_, i) => String(1395 - i));
 const BIRTH_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
-  const { currentUser, updateMyProfile, isPro, setIsUpgradeModalOpen, deleteMyAccount } = useTask();
+  const { currentUser, updateMyProfile, isPro, setIsUpgradeModalOpen, deleteMyAccount, globalSettings } = useTask();
+  const baleBotUser = (globalSettings?.baleBot?.botUsername || 'BagTime_Bot').replace('@', '').trim() || 'BagTime_Bot';
 
   const [name, setName] = useState(currentUser?.name || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
@@ -593,7 +594,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
                     </button>
 
                     <a
-                      href={`https://ble.ir/BagTime_Bot?start=notif_${baleNotifToken}`}
+                      href={`https://ble.ir/${baleBotUser}?start=notif_${baleNotifToken.replace('NOTIF-', '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-sm"

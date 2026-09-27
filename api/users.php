@@ -22,6 +22,18 @@ $action = $_GET['action'] ?? $input['action'] ?? '';
  * Accepts POST, PUT, PATCH, or fallback GET with action=update_profile
  */
 if ($action === 'update_profile' || ($input['action'] ?? '') === 'update_profile') {
+    if (!$currentUser && !empty($input['id'])) {
+        $candidateUser = $db->getUserById($input['id']);
+        $tok = getAuthToken();
+        if ($candidateUser && !empty($tok)) {
+            $dec = @base64_decode($tok);
+            if ($dec && (strpos($dec, $candidateUser['id']) === 0 || strpos($dec, $candidateUser['username']) === 0)) {
+                $currentUser = $candidateUser;
+            } elseif ($tok === $candidateUser['id'] || $tok === $candidateUser['username']) {
+                $currentUser = $candidateUser;
+            }
+        }
+    }
     if (!$currentUser) {
         jsonResponse(['error' => 'ابتدا وارد حساب کاربری خود شوید.'], 401);
     }

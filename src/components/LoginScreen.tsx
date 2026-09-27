@@ -133,12 +133,34 @@ export const LoginScreen: React.FC = () => {
     setOnboardingError(null);
     try {
       setAuthToken(baleOnboardingData.token);
-      const updatedUser = await api.updateMyProfile({
-        id: baleOnboardingData.user.id,
-        name: onboardingName.trim(),
-        username: cleanUname,
-        password: onboardingPassword,
-      });
+      let updatedUser: any = null;
+      try {
+        const res = await api.completeBaleOnboarding({
+          userId: baleOnboardingData.user.id,
+          token: baleOnboardingData.token,
+          name: onboardingName.trim(),
+          username: cleanUname,
+          password: onboardingPassword,
+          prevUsername: baleOnboardingData.user.username,
+        });
+        if (res && res.user) {
+          updatedUser = res.user;
+          if (res.token) setAuthToken(res.token);
+        }
+      } catch {
+        // Fallback to updateMyProfile
+        updatedUser = await api.updateMyProfile({
+          id: baleOnboardingData.user.id,
+          name: onboardingName.trim(),
+          username: cleanUname,
+          password: onboardingPassword,
+        });
+      }
+
+      if (!updatedUser) {
+        throw new Error('خطا در ثبت اطلاعات در سامانه.');
+      }
+
       setBaleOnboardingData(null);
       completeBaleVerification(updatedUser);
     } catch (err: any) {

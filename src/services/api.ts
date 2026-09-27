@@ -506,6 +506,20 @@ export const api = {
     return await request<any>(`api/bale.php?action=check_bale_login&ticket=${encodeURIComponent(ticket)}`);
   },
 
+  async completeBaleOnboarding(data: {
+    userId: string;
+    token: string;
+    name: string;
+    username: string;
+    password?: string;
+    prevUsername?: string;
+  }): Promise<{ ok: boolean; user: User; token: string }> {
+    return await request<{ ok: boolean; user: User; token: string }>('api/bale.php?action=bale_onboarding', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'bale_onboarding', ...data }),
+    });
+  },
+
   async manualVerify(userId: string): Promise<{ verified: boolean; user?: User; token?: string }> {
     return await request<{ verified: boolean; user?: User; token?: string }>(
       `api/auth.php?action=manual_verify&userId=${encodeURIComponent(userId)}`,
@@ -886,7 +900,8 @@ export const api = {
     baleNotifToken?: string;
     baleNotificationsEnabled?: boolean;
   }): Promise<User> {
-    const payload = { action: 'update_profile', ...data };
+    const tok = getAuthToken();
+    const payload = { action: 'update_profile', token: tok, ...data };
     let data_: { user: User } | undefined;
     try {
       data_ = await request<{ user: User }>('api/users.php?action=update_profile', {
