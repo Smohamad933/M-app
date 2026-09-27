@@ -478,7 +478,9 @@ export const TeamProjectsView: React.FC = () => {
                   <p className="text-[11px] text-slate-400">اولین پیام یا به‌روزرسانی کار تیمی را بنویسید.</p>
                 </div>
               ) : (
-                projectMessages.map((msg) => {
+                projectMessages
+                  .filter((msg): msg is any => Boolean(msg && typeof msg === 'object' && msg.id && msg.senderId))
+                  .map((msg) => {
                   const isMe = msg.senderId === currentUser?.id;
                   const timeStr = msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
 

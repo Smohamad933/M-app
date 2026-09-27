@@ -95,7 +95,9 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
 
     try {
       const saved = await api.sendDirectMessage(friendId, text);
-      setMessages((prev) => prev.map((m) => (m.id === tempMsg.id ? saved : m)));
+      if (saved && saved.id) {
+        setMessages((prev) => prev.map((m) => (m.id === tempMsg.id ? saved : m)));
+      }
     } catch (err: any) {
       alert(err.message || 'خطا در ارسال پیام');
     } finally {
@@ -118,7 +120,9 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
 
       const confirmationText = `✅ اشتراک ویژه «${planLabel}» شما با موفقیت تأیید و در سیستم فعال گردید. از امکانات تسک‌روز لذت ببرید! ⭐`;
       const reply = await api.sendDirectMessage(friendId, confirmationText);
-      setMessages((prev) => [...prev, reply]);
+      if (reply && reply.id) {
+        setMessages((prev) => [...prev, reply]);
+      }
     } catch (err: any) {
       alert(err.message || 'خطا در فعال‌سازی اشتراک');
     } finally {
@@ -186,7 +190,9 @@ export const DirectChatModal: React.FC<DirectChatModalProps> = ({
             </div>
           )}
 
-          {messages.map((msg) => {
+          {messages
+            .filter((msg): msg is DirectChatMessage => Boolean(msg && typeof msg === 'object' && msg.id && msg.senderId))
+            .map((msg) => {
             const isMe = msg.senderId === currentUser?.id;
             const timeStr = msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
 

@@ -1640,11 +1640,15 @@ export const api = {
   },
 
   async sendDirectMessage(receiverId: string, text: string): Promise<DirectChatMessage> {
-    const res = await request<{ data: DirectChatMessage; message: string }>('api/messages.php', {
+    const res = await request<any>('api/messages.php', {
       method: 'POST',
       body: JSON.stringify({ receiverId, text }),
     });
-    return res.data;
+    const messageObj = res?.data || (res?.id && res?.senderId ? res : null);
+    if (!messageObj) {
+      throw new Error(res?.error || res?.message || 'خطا در ارسال پیام به سرور.');
+    }
+    return messageObj;
   },
 
   async getConversations(): Promise<any[]> {

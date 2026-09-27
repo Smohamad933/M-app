@@ -974,12 +974,60 @@ class TaskRoozDB {
         $this->saveJson();
 
         // Automatically dispatch to Bale Messenger if user or admin has Bale enabled!
-        if (file_exists(__DIR__ . '/bale.php')) {
-            require_once __DIR__ . '/bale.php';
-            sendBaleNotificationToUser($userId, $title, $message);
-        }
+        $this->dispatchBaleNotification($userId, $title, $message);
 
         return $newNotif;
+    }
+
+    /**
+     * Dispatch notification to user's Bale Messenger chat without executing external scripts
+     */
+    public function dispatchBaleNotification($userId, $title, $message) {
+        try {
+            $settings = $this->getGlobalSettings();
+            $baleConfig = $settings['baleBot'] ?? [];
+            if (empty($baleConfig['enabled']) || empty($baleConfig['sendNotifications'])) {
+                return;
+            }
+            $rawToken = trim($baleConfig['token'] ?? '');
+            if (empty($rawToken)) return;
+
+            $tokenClean = trim($rawToken, " \t\n\r\0\x0B/");
+            if (preg_match('/(?:tapi\.bale\.ai\/)?(?:bot)?([0-9]+:[A-Za-z0-9_-]+)/i', $tokenClean, $m)) {
+                $tokenClean = $m[1];
+            } elseif (stripos($tokenClean, 'bot') === 0) {
+                $tokenClean = substr($tokenClean, 3);
+            }
+            if (empty($tokenClean)) return;
+
+            $chatId = null;
+            $user = $this->getUserById($userId);
+            if ($user && !empty($user['baleChatId']) && !empty($user['baleNotificationActive'])) {
+                $chatId = $user['baleChatId'];
+            } elseif (strtolower($userId) === 'mohusyn' || $userId === 'usr_admin_mohusyn') {
+                $admin = $this->getUserByUsername('Mohusyn');
+                if ($admin && !empty($admin['baleChatId'])) {
+                    $chatId = $admin['baleChatId'];
+                }
+            }
+
+            if (!$chatId) return;
+
+            $fullText = "📢 **{$title}**\n\n{$message}";
+            $url = 'https://tapi.bale.ai/bot' . $tokenClean . '/sendMessage';
+            $payload = json_encode(['chat_id' => $chatId, 'text' => $fullText], JSON_UNESCAPED_UNICODE);
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json; charset=utf-8']);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            @curl_exec($ch);
+            @curl_close($ch);
+        } catch (Exception $e) {}
     }
 
     public function parseUserAgentInfo($ua = '') {

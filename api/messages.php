@@ -158,7 +158,19 @@ if ($method === 'POST') {
 
     $dbObj->saveJson();
 
-    jsonResponse(['message' => 'پیام با موفقیت ارسال شد.', 'data' => $newMsg], 201);
+    jsonResponse([
+        'ok' => true,
+        'message' => 'پیام با موفقیت ارسال شد.',
+        'data' => $newMsg,
+        'id' => $newMsg['id'],
+        'senderId' => $newMsg['senderId'],
+        'receiverId' => $newMsg['receiverId'],
+        'text' => $newMsg['text'],
+        'createdAt' => $newMsg['createdAt'],
+        'senderName' => $newMsg['senderName'],
+        'senderAvatar' => $newMsg['senderAvatar'],
+        'read' => false,
+    ], 201);
 }
 
 jsonResponse(['error' => 'درخواست نامعتبر است.'], 400);

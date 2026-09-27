@@ -186,27 +186,29 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
     try {
       const sent = await api.sendDirectMessage(activePartner.id, text);
-      setMessages((prev) => prev.map((m) => (m.id === tempMsg.id ? sent : m)));
-      // Update conversations preview
-      setConversations((prev) => {
-        const existing = prev.find((c) => c.partnerId === activePartner.id);
-        if (existing) {
-          return prev.map((c) =>
-            c.partnerId === activePartner.id ? { ...c, lastMessage: sent } : c
-          );
-        }
-        return [
-          {
-            partnerId: activePartner.id,
-            partnerName: activePartner.name,
-            partnerUsername: activePartner.username,
-            partnerAvatar: activePartner.avatar,
-            lastMessage: sent,
-            unreadCount: 0,
-          },
-          ...prev,
-        ];
-      });
+      if (sent && sent.id) {
+        setMessages((prev) => prev.map((m) => (m.id === tempMsg.id ? sent : m)));
+        // Update conversations preview
+        setConversations((prev) => {
+          const existing = prev.find((c) => c.partnerId === activePartner.id);
+          if (existing) {
+            return prev.map((c) =>
+              c.partnerId === activePartner.id ? { ...c, lastMessage: sent } : c
+            );
+          }
+          return [
+            {
+              partnerId: activePartner.id,
+              partnerName: activePartner.name,
+              partnerUsername: activePartner.username,
+              partnerAvatar: activePartner.avatar,
+              lastMessage: sent,
+              unreadCount: 0,
+            },
+            ...prev,
+          ];
+        });
+      }
     } catch (err: any) {
       alert(err.message || 'خطا در ارسال پیام');
     } finally {
@@ -230,7 +232,9 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
       // Automatically send an official confirmation reply in the chat
       const confirmationText = `✅ اشتراک ویژه «${planLabel}» شما با موفقیت تأیید و در سیستم فعال گردید. هم‌اکنون به تمامی امکانات پروژه‌های تیمی، وظایف نامحدود و اتاق‌های تمرکز تسک‌روز دسترسی دارید! ⭐`;
       const reply = await api.sendDirectMessage(target.id, confirmationText);
-      setMessages((prev) => [...prev, reply]);
+      if (reply && reply.id) {
+        setMessages((prev) => [...prev, reply]);
+      }
     } catch (err: any) {
       alert(err.message || 'خطا در فعال‌سازی اشتراک');
     } finally {
@@ -546,7 +550,9 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                     </div>
                   </div>
                 ) : (
-                  messages.map((m) => {
+                  messages
+                    .filter((m): m is DirectChatMessage => Boolean(m && typeof m === 'object' && m.id && m.senderId))
+                    .map((m) => {
                     const isMe = m.senderId === currentUser?.id;
                     const timeStr = m.createdAt ? m.createdAt.slice(11, 16) : '';
 
