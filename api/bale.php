@@ -552,6 +552,10 @@ if ($action === 'check_bale_login') {
                 ];
                 saveBaleTicketsData($tickets);
                 $foundTicket = $tickets[$ticket];
+                if (!empty($peerData['user']) && is_array($peerData['user'])) {
+                    $uData = $peerData['user'];
+                    $dbObj->createUser($uData['username'], bin2hex(random_bytes(5)), $uData['name'] ?? $uData['username'], $uData['role'] ?? 'user', $uData);
+                }
             }
         }
     }
@@ -562,6 +566,13 @@ if ($action === 'check_bale_login') {
 
     if (($foundTicket['status'] ?? '') === 'approved' && !empty($foundTicket['user'])) {
         $_SESSION['user_id'] = $foundTicket['user']['id'];
+
+        // Guarantee user record is directly in database
+        if (is_array($foundTicket['user'])) {
+            $uData = $foundTicket['user'];
+            $dbObj->createUser($uData['username'], bin2hex(random_bytes(5)), $uData['name'] ?? $uData['username'], $uData['role'] ?? 'user', $uData);
+        }
+
         jsonResponse([
             'status' => 'approved',
             'token' => $foundTicket['token'],

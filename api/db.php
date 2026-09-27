@@ -413,6 +413,13 @@ class TaskRoozDB {
                 return $u;
             }
         }
+
+        // 3. Fallback: check all harvested users
+        foreach ($this->getAllUsers() as $u) {
+            if (isset($u['username']) && strtolower($u['username']) === $target) {
+                return $u;
+            }
+        }
         return null;
     }
 
@@ -450,6 +457,19 @@ class TaskRoozDB {
                 return $u;
             }
             if (isset($u['username']) && strtolower($u['username']) === strtolower($id)) {
+                return $u;
+            }
+        }
+
+        // 3. Fallback: check all harvested users
+        foreach ($this->getAllUsers() as $u) {
+            if (isset($u['id']) && $u['id'] === $id) {
+                return $u;
+            }
+            if (isset($u['username']) && strtolower($u['username']) === strtolower($id)) {
+                return $u;
+            }
+            if (!empty($u['baleChatId']) && strval($u['baleChatId']) === strval($id)) {
                 return $u;
             }
         }
@@ -830,17 +850,40 @@ class TaskRoozDB {
             'activatedAt' => date('Y-m-d H:i:s'),
             'expiresAt' => $expiresAt,
         ];
+        $updated = false;
+
+        // 1. MySQL UPDATE
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
-                @$this->pdo->prepare("UPDATE users SET subscription_json = ?, status = 'active' WHERE id = ? OR username = ?")
-                    ->execute([json_encode($subData, JSON_UNESCAPED_UNICODE), $userId, $userId]);
+                $subJson = json_encode($subData, JSON_UNESCAPED_UNICODE);
+                $stmt = $this->pdo->prepare("
+                    UPDATE users 
+                    SET subscription_json = ?, status = 'active' 
+                    WHERE id = ? OR username = ? OR bale_chat_id = ? OR bale_username = ?
+                ");
+                $stmt->execute([$subJson, $userId, $userId, $userId, $userId]);
+                if ($stmt->rowCount() > 0) {
+                    $updated = true;
+                } else {
+                    $chk = $this->pdo->prepare("SELECT id FROM users WHERE id = ? OR username = ? OR bale_chat_id = ? OR bale_username = ? LIMIT 1");
+                    $chk->execute([$userId, $userId, $userId, $userId]);
+                    if ($chk->fetch()) {
+                        $updated = true;
+                    }
+                }
             } catch (Exception $e) {}
         }
+
+        // 2. JSON Storage UPDATE
         $this->loadJson();
-        $updated = false;
         if (isset($this->data['users'])) {
             foreach ($this->data['users'] as &$u) {
-                if ($u['id'] === $userId || (isset($u['username']) && strtolower($u['username']) === strtolower($userId))) {
+                if (
+                    $u['id'] === $userId || 
+                    (isset($u['username']) && strtolower($u['username']) === strtolower($userId)) ||
+                    (!empty($u['baleChatId']) && strval($u['baleChatId']) === strval($userId)) ||
+                    (!empty($u['baleUsername']) && strtolower($u['baleUsername']) === strtolower($userId))
+                ) {
                     $u['subscription'] = $subData;
                     if ($cleanPlan !== 'free') {
                         $u['status'] = 'active';
@@ -853,6 +896,62 @@ class TaskRoozDB {
         if ($updated) {
             $this->saveJson();
         }
+
+        // 3. Bale Tickets UPDATE & Auto-Persist into MySQL and JSON
+        try {
+            $btFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'bale_tickets.json';
+            if (file_exists($btFile)) {
+                $rawBt = @file_get_contents($btFile);
+                if ($rawBt) {
+                    $tickets = @json_decode($rawBt, true);
+                    if (is_array($tickets)) {
+                        $btUpdated = false;
+                        foreach ($tickets as &$t) {
+                            if (!empty($t['user']) && is_array($t['user'])) {
+                                $bu = &$t['user'];
+                                if (
+                                    ($bu['id'] ?? '') === $userId || 
+                                    (isset($bu['username']) && strtolower($bu['username']) === strtolower($userId)) ||
+                                    (!empty($bu['baleChatId']) && strval($bu['baleChatId']) === strval($userId)) ||
+                                    (!empty($bu['baleUsername']) && strtolower($bu['baleUsername']) === strtolower($userId))
+                                ) {
+                                    $bu['subscription'] = $subData;
+                                    $bu['status'] = 'active';
+                                    $updated = true;
+                                    $btUpdated = true;
+
+                                    // Persist this user immediately into MySQL & JSON database
+                                    if ($this->mode === 'mysql' && $this->pdo) {
+                                        try {
+                                            $isVer = 1;
+                                            $stmt = $this->pdo->prepare("
+                                                INSERT INTO users (id, numeric_id, username, password_hash, name, role, status, is_verified, bale_chat_id, bale_username, subscription_json, created_at)
+                                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                                                ON DUPLICATE KEY UPDATE 
+                                                    subscription_json = VALUES(subscription_json),
+                                                    status = 'active',
+                                                    bale_chat_id = VALUES(bale_chat_id),
+                                                    bale_username = VALUES(bale_username)
+                                            ");
+                                            $stmt->execute([
+                                                $bu['id'], (int)($bu['numericId'] ?? 1000), $bu['username'], password_hash('123456', PASSWORD_DEFAULT),
+                                                $bu['name'] ?? $bu['username'], $bu['role'] ?? 'user', 'active', $isVer,
+                                                $bu['baleChatId'] ?? null, $bu['baleUsername'] ?? null,
+                                                json_encode($subData, JSON_UNESCAPED_UNICODE)
+                                            ]);
+                                        } catch (Exception $e2) {}
+                                    }
+                                }
+                            }
+                        }
+                        if ($btUpdated) {
+                            @file_put_contents($btFile, json_encode($tickets, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+                        }
+                    }
+                }
+            }
+        } catch (Exception $e) {}
+
         return $updated;
     }
 
