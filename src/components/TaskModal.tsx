@@ -74,6 +74,7 @@ export const TaskModal: React.FC = () => {
   const todayISO = getTodayISO();
 
   useEffect(() => {
+    if (!isTaskModalOpen) return;
     if (editingTask) {
       setTitle(editingTask.title);
       setDescription(editingTask.description || '');
@@ -97,7 +98,7 @@ export const TaskModal: React.FC = () => {
       setSubtasks([]);
       setAssignedUserId(currentUser?.id || '');
     }
-  }, [editingTask, isTaskModalOpen, selectedDate, selectedProjectId, categories, currentUser, todayISO]);
+  }, [isTaskModalOpen, editingTask?.id]);
 
   if (!isTaskModalOpen) return null;
 

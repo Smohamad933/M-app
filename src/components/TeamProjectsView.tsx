@@ -641,10 +641,14 @@ export const TeamProjectsView: React.FC = () => {
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
                             if (confirm(`آیا از حذف پروژه تیمی «${proj.name}» اطمینان دارید؟`)) {
-                              deleteTeamProject(proj.id);
+                              try {
+                                await deleteTeamProject(proj.id);
+                              } catch (err: any) {
+                                alert(err.message || 'خطا در حذف پروژه');
+                              }
                             }
                           }}
                           className="p-1.5 rounded-xl hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"

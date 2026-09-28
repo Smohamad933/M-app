@@ -1517,19 +1517,23 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sounds.playPop();
     }
 
+    const updatedSubtasks = (task.subtasks || []).map((st) => ({
+      ...st,
+      completed: newStatus,
+    }));
+
+    const updatedTask: Task = {
+      ...task,
+      completed: newStatus,
+      completedAt: newStatus ? new Date().toISOString() : undefined,
+      subtasks: updatedSubtasks,
+    };
+
     setTasks((prev) =>
-      prev.map((t) =>
-        t.id === id
-          ? {
-              ...t,
-              completed: newStatus,
-              completedAt: newStatus ? new Date().toISOString() : undefined,
-            }
-          : t
-      )
+      prev.map((t) => (t.id === id ? updatedTask : t))
     );
 
-    await api.toggleTask(id);
+    await api.updateTask(updatedTask);
     broadcastSync('TASK_UPDATED', { taskId: id, projectId: task.projectId });
     refreshUsers();
     refreshProjects();
@@ -1554,8 +1558,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updatedTask: Task = {
       ...task,
       subtasks: updatedSubtasks,
-      completed: allCompleted ? true : task.completed,
-      completedAt: allCompleted ? new Date().toISOString() : task.completedAt,
+      completed: allCompleted,
+      completedAt: allCompleted ? (task.completedAt || new Date().toISOString()) : undefined,
     };
 
     setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));

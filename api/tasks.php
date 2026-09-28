@@ -27,7 +27,7 @@ if ($method === 'GET') {
     jsonResponse(['tasks' => $tasks]);
 }
 
-// POST /api/tasks -> Create task or quick toggle/delete
+// POST /api/tasks -> Create task or quick toggle/delete/update
 if ($method === 'POST') {
     requireVerifiedUser();
     $input = getJsonInput();
@@ -46,6 +46,37 @@ if ($method === 'POST') {
         if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
         $db->deleteTask($id);
         jsonResponse(['message' => 'تسک با موفقیت حذف شد.']);
+    }
+
+    if ($action === 'update' || $action === 'edit' || ($input['_method'] ?? '') === 'PUT') {
+        $id = $input['id'] ?? '';
+        if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
+
+        $targetUserId = $currentUser['id'];
+        if ($currentUser['role'] === 'admin' && !empty($input['userId'])) {
+            $targetUserId = $input['userId'];
+        }
+
+        $updateData = [
+            'id' => $id,
+            'userId' => $targetUserId,
+            'title' => isset($input['title']) ? trim($input['title']) : null,
+            'description' => $input['description'] ?? null,
+            'date' => $input['date'] ?? null,
+            'time' => $input['time'] ?? null,
+            'durationMinutes' => isset($input['durationMinutes']) ? (int)$input['durationMinutes'] : null,
+            'priority' => $input['priority'] ?? null,
+            'categoryId' => $input['categoryId'] ?? null,
+            'projectId' => array_key_exists('projectId', $input) ? $input['projectId'] : null,
+            'isPinned' => isset($input['isPinned']) ? $input['isPinned'] : null,
+            'subtasks' => isset($input['subtasks']) ? $input['subtasks'] : null,
+            'completed' => isset($input['completed']) ? $input['completed'] : null,
+            'reasonUncompleted' => array_key_exists('reasonUncompleted', $input) ? $input['reasonUncompleted'] : ($input['reason_uncompleted'] ?? null),
+            'uncompletedCategory' => array_key_exists('uncompletedCategory', $input) ? $input['uncompletedCategory'] : ($input['uncompleted_category'] ?? null),
+        ];
+
+        $db->updateTask($updateData);
+        jsonResponse(['message' => 'تسک به‌روزرسانی شد.']);
     }
 
     $title = trim($input['title'] ?? '');
@@ -106,8 +137,8 @@ if ($method === 'PUT') {
         'isPinned' => isset($input['isPinned']) ? $input['isPinned'] : null,
         'subtasks' => isset($input['subtasks']) ? $input['subtasks'] : null,
         'completed' => isset($input['completed']) ? $input['completed'] : null,
-        'reasonUncompleted' => array_key_exists('reasonUncompleted', $input) ? $input['reasonUncompleted'] : null,
-        'uncompletedCategory' => array_key_exists('uncompletedCategory', $input) ? $input['uncompletedCategory'] : null,
+        'reasonUncompleted' => array_key_exists('reasonUncompleted', $input) ? $input['reasonUncompleted'] : ($input['reason_uncompleted'] ?? null),
+        'uncompletedCategory' => array_key_exists('uncompletedCategory', $input) ? $input['uncompletedCategory'] : ($input['uncompleted_category'] ?? null),
     ];
 
     $db->updateTask($updateData);

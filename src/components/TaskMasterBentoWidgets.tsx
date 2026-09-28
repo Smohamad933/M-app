@@ -225,11 +225,12 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
         {/* Task Cards or Clean Empty State */}
         {displayTasks.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {displayTasks.map((task, i) => {
+            {displayTasks.map((task) => {
               const isCompleted = task.completed;
               const subCount = task.subtasks?.length || 0;
               const subDone = task.subtasks?.filter((s) => s.completed).length || 0;
-              const progress = isCompleted ? 100 : subCount > 0 ? Math.round((subDone / subCount) * 100) : (i === 0 ? 65 : 80);
+              const progress = isCompleted ? 100 : subCount > 0 ? Math.round((subDone / subCount) * 100) : 0;
+              const statusText = isCompleted ? 'تکمیل شده' : subCount > 0 && subDone > 0 ? 'در حال انجام' : 'انجام نشده';
 
               return (
                 <div
@@ -286,7 +287,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
                     {/* Status & % */}
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-slate-400">
-                        {isCompleted ? 'تکمیل شده' : 'در حال انجام'}
+                        {statusText}
                       </span>
                       <span className="text-[11px] font-black text-slate-700 font-mono">
                         {toPersianDigits(progress)}٪

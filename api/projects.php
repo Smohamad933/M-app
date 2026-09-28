@@ -50,6 +50,39 @@ if ($method === 'GET') {
     jsonResponse(['projects' => $projects]);
 }
 
+// DELETE /api/projects.php?id=... (also handles POST with action=delete for IIS compatibility)
+$isDeleteAction = ($method === 'DELETE') ||
+    ($method === 'POST' && (
+        $action === 'delete' ||
+        ($input['action'] ?? '') === 'delete' ||
+        ($_GET['_method'] ?? '') === 'DELETE' ||
+        ($_POST['_method'] ?? '') === 'DELETE'
+    ));
+
+if ($isDeleteAction) {
+    $id = $_GET['id'] ?? $input['id'] ?? $_POST['id'] ?? '';
+    if (empty($id) && !empty($_SERVER['PATH_INFO'])) {
+        $id = trim($_SERVER['PATH_INFO'], '/');
+    }
+    if (empty($id)) {
+        jsonResponse(['error' => 'شناسه پروژه الزامی است.'], 400);
+    }
+
+    $existing = $db->getTeamProject($id);
+    if (!$existing) {
+        jsonResponse(['error' => 'پروژه یافت نشد.'], 404);
+    }
+
+    $isAdmin = ($currentUser['role'] === 'admin' || strtolower($currentUser['username'] ?? '') === 'mohusyn' || ($currentUser['id'] ?? '') === 'usr_admin_mohusyn');
+
+    if ($existing['creatorId'] !== $currentUser['id'] && !$isAdmin) {
+        jsonResponse(['error' => 'فقط ایجادکننده پروژه یا مدیر مجاز به حذف پروژه هستند.'], 403);
+    }
+
+    $db->deleteTeamProject($id);
+    jsonResponse(['message' => 'پروژه با موفقیت حذف شد.']);
+}
+
 // POST /api/projects.php -> Create team project
 if ($method === 'POST') {
     $input = getJsonInput();
@@ -96,39 +129,6 @@ if ($method === 'PUT') {
     } else {
         jsonResponse(['error' => 'خطا در ویرایش پروژه.'], 400);
     }
-}
-
-// DELETE /api/projects.php?id=... (also handles POST with action=delete for IIS compatibility)
-$isDeleteAction = ($method === 'DELETE') ||
-    ($method === 'POST' && (
-        $action === 'delete' ||
-        ($input['action'] ?? '') === 'delete' ||
-        ($_GET['_method'] ?? '') === 'DELETE' ||
-        ($_POST['_method'] ?? '') === 'DELETE'
-    ));
-
-if ($isDeleteAction) {
-    $id = $_GET['id'] ?? $input['id'] ?? $_POST['id'] ?? '';
-    if (empty($id) && !empty($_SERVER['PATH_INFO'])) {
-        $id = trim($_SERVER['PATH_INFO'], '/');
-    }
-    if (empty($id)) {
-        jsonResponse(['error' => 'شناسه پروژه الزامی است.'], 400);
-    }
-
-    $existing = $db->getTeamProject($id);
-    if (!$existing) {
-        jsonResponse(['error' => 'پروژه یافت نشد.'], 404);
-    }
-
-    $isAdmin = ($currentUser['role'] === 'admin' || strtolower($currentUser['username'] ?? '') === 'mohusyn' || ($currentUser['id'] ?? '') === 'usr_admin_mohusyn');
-
-    if ($existing['creatorId'] !== $currentUser['id'] && !$isAdmin) {
-        jsonResponse(['error' => 'فقط ایجادکننده پروژه یا مدیر مجاز به حذف پروژه هستند.'], 403);
-    }
-
-    $db->deleteTeamProject($id);
-    jsonResponse(['message' => 'پروژه با موفقیت حذف شد.']);
 }
 
 jsonResponse(['error' => 'درخواست نامعتبر است.'], 405);

@@ -92,6 +92,48 @@ class TaskRoozDB {
             if (!isset($columns['subscription_json'])) {
                 @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `subscription_json` text DEFAULT NULL");
             }
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS `tasks` (
+                  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `user_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `project_id` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `description` text COLLATE utf8mb4_unicode_ci,
+                  `date` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `time` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT '09:00',
+                  `duration_minutes` int(11) NOT NULL DEFAULT '30',
+                  `completed` tinyint(1) NOT NULL DEFAULT '0',
+                  `completed_at` datetime DEFAULT NULL,
+                  `priority` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'medium',
+                  `category_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'cat-work',
+                  `is_pinned` tinyint(1) NOT NULL DEFAULT '0',
+                  `focus_minutes_spent` int(11) NOT NULL DEFAULT '0',
+                  `reason_uncompleted` text COLLATE utf8mb4_unicode_ci,
+                  `uncompleted_category` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `subtasks_json` text COLLATE utf8mb4_unicode_ci,
+                  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_task_user` (`user_id`),
+                  KEY `idx_task_date` (`date`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+            $taskCols = [];
+            $tColStmt = $this->pdo->query("SHOW COLUMNS FROM `tasks`");
+            if ($tColStmt) {
+                while ($tc = $tColStmt->fetch(PDO::FETCH_ASSOC)) {
+                    $taskCols[strtolower($tc['Field'])] = true;
+                }
+                if (!isset($taskCols['reason_uncompleted'])) {
+                    @$this->pdo->exec("ALTER TABLE `tasks` ADD COLUMN `reason_uncompleted` text DEFAULT NULL");
+                }
+                if (!isset($taskCols['uncompleted_category'])) {
+                    @$this->pdo->exec("ALTER TABLE `tasks` ADD COLUMN `uncompleted_category` varchar(50) DEFAULT NULL");
+                }
+                if (!isset($taskCols['subtasks_json'])) {
+                    @$this->pdo->exec("ALTER TABLE `tasks` ADD COLUMN `subtasks_json` text DEFAULT NULL");
+                }
+            }
         } catch (Exception $e) {}
     }
 
@@ -1515,10 +1557,80 @@ class TaskRoozDB {
 
     public function updateTask($data) {
         $id = $data['id'] ?? '';
+        if (empty($id)) return false;
+
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
-                $stmt = $this->pdo->prepare("UPDATE tasks SET title = ?, description = ?, completed = ?, is_pinned = ? WHERE id = ?");
-                $stmt->execute([$data['title'] ?? '', $data['description'] ?? '', !empty($data['completed']) ? 1 : 0, !empty($data['isPinned']) ? 1 : 0, $id]);
+                $fields = [];
+                $params = [];
+
+                if (array_key_exists('title', $data)) {
+                    $fields[] = "`title` = ?";
+                    $params[] = trim((string)$data['title']);
+                }
+                if (array_key_exists('description', $data)) {
+                    $fields[] = "`description` = ?";
+                    $params[] = trim((string)$data['description']);
+                }
+                if (array_key_exists('completed', $data)) {
+                    $fields[] = "`completed` = ?";
+                    $params[] = !empty($data['completed']) ? 1 : 0;
+                }
+                if (array_key_exists('completedAt', $data) || array_key_exists('completed_at', $data)) {
+                    $fields[] = "`completed_at` = ?";
+                    $params[] = $data['completedAt'] ?? ($data['completed_at'] ?? null);
+                }
+                if (array_key_exists('isPinned', $data) || array_key_exists('is_pinned', $data)) {
+                    $fields[] = "`is_pinned` = ?";
+                    $params[] = !empty($data['isPinned'] ?? $data['is_pinned']) ? 1 : 0;
+                }
+                if (array_key_exists('priority', $data)) {
+                    $fields[] = "`priority` = ?";
+                    $params[] = $data['priority'];
+                }
+                if (array_key_exists('categoryId', $data) || array_key_exists('category_id', $data)) {
+                    $fields[] = "`category_id` = ?";
+                    $params[] = $data['categoryId'] ?? $data['category_id'];
+                }
+                if (array_key_exists('projectId', $data) || array_key_exists('project_id', $data)) {
+                    $fields[] = "`project_id` = ?";
+                    $params[] = $data['projectId'] ?? $data['project_id'];
+                }
+                if (array_key_exists('date', $data)) {
+                    $fields[] = "`date` = ?";
+                    $params[] = $data['date'];
+                }
+                if (array_key_exists('time', $data)) {
+                    $fields[] = "`time` = ?";
+                    $params[] = $data['time'];
+                }
+                if (array_key_exists('durationMinutes', $data) || array_key_exists('duration_minutes', $data)) {
+                    $fields[] = "`duration_minutes` = ?";
+                    $params[] = (int)($data['durationMinutes'] ?? $data['duration_minutes']);
+                }
+                if (array_key_exists('focusMinutesSpent', $data) || array_key_exists('focus_minutes_spent', $data)) {
+                    $fields[] = "`focus_minutes_spent` = ?";
+                    $params[] = (int)($data['focusMinutesSpent'] ?? $data['focus_minutes_spent']);
+                }
+                if (array_key_exists('reasonUncompleted', $data) || array_key_exists('reason_uncompleted', $data)) {
+                    $fields[] = "`reason_uncompleted` = ?";
+                    $params[] = $data['reasonUncompleted'] ?? $data['reason_uncompleted'];
+                }
+                if (array_key_exists('uncompletedCategory', $data) || array_key_exists('uncompleted_category', $data)) {
+                    $fields[] = "`uncompleted_category` = ?";
+                    $params[] = $data['uncompletedCategory'] ?? $data['uncompleted_category'];
+                }
+                if (array_key_exists('subtasks', $data)) {
+                    $fields[] = "`subtasks_json` = ?";
+                    $params[] = json_encode($data['subtasks'], JSON_UNESCAPED_UNICODE);
+                }
+
+                if (!empty($fields)) {
+                    $params[] = $id;
+                    $sql = "UPDATE tasks SET " . implode(', ', $fields) . " WHERE id = ?";
+                    $stmt = $this->pdo->prepare($sql);
+                    $stmt->execute($params);
+                }
             } catch (Exception $e) {}
         }
 
