@@ -360,29 +360,46 @@ function readDb(): AppData {
       if (!parsed.messages) parsed.messages = [];
       if (!parsed.project_messages) parsed.project_messages = [];
 
-      // Ensure every user has numericId, subscription & isProfileCompleted
-      let maxNum = 1000;
+      // Ensure every user has a unique sequential numericId starting from 1001 (Mohusyn is strictly 1000)
+      const usedNumericIds = new Set<number>([1000]);
+      let hasChanges = false;
       for (const u of parsed.users) {
-        if (u.numericId) maxNum = Math.max(maxNum, u.numericId);
-      }
-      for (const u of parsed.users) {
-        if (!u.numericId) {
-          if (u.username?.toLowerCase() === 'mohusyn') {
+        if (u.username?.toLowerCase() === 'mohusyn' || u.id === 'usr_admin_mohusyn') {
+          if (u.numericId !== 1000) {
             u.numericId = 1000;
-          } else {
-            maxNum++;
-            u.numericId = maxNum;
+            hasChanges = true;
+          }
+        }
+      }
+
+      let nextSequentialNum = 1001;
+      for (const u of parsed.users) {
+        if (u.username?.toLowerCase() === 'mohusyn' || u.id === 'usr_admin_mohusyn') continue;
+        if (!u.numericId || u.numericId <= 1000 || usedNumericIds.has(u.numericId)) {
+          while (usedNumericIds.has(nextSequentialNum)) {
+            nextSequentialNum++;
+          }
+          u.numericId = nextSequentialNum;
+          usedNumericIds.add(nextSequentialNum);
+          nextSequentialNum++;
+          hasChanges = true;
+        } else {
+          usedNumericIds.add(u.numericId);
+          if (u.numericId >= nextSequentialNum) {
+            nextSequentialNum = u.numericId + 1;
           }
         }
         if (!u.subscription) {
           u.subscription = { plan: u.role === 'admin' ? 'pro' : 'free' };
+          hasChanges = true;
         }
         if (u.isProfileCompleted === undefined) {
           u.isProfileCompleted = u.role === 'admin' || Boolean(u.birthDate && u.jobTitle && u.city);
+          hasChanges = true;
         }
       }
 
-      if (purgeExpiredDeletedRooms(parsed)) {
+      if (hasChanges || purgeExpiredDeletedRooms(parsed)) {
         writeDb(parsed);
       }
       return parsed;
@@ -1260,7 +1277,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return;
       }
       const isSelf = currentUser && (currentUser.id === id || (target && target.id === currentUser.id));
-      const isAdmin = currentUser && currentUser.role === 'admin';
+      const isAdmin = isUserAdmin(currentUser);
       if (!isAdmin && !isSelf) {
         sendJson(res, { error: 'دسترسی فقط برای مدیر سیستم یا صاحب حساب مجاز است.' }, 403);
         return;

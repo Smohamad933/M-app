@@ -799,10 +799,19 @@ export const api = {
       const map = new Map<string, User>();
       map.set('mohusyn', baseAdmin);
 
+      const rawDel = localStorage.getItem('taskrooz_deleted_user_keys');
+      const tombKeys = new Set<string>(rawDel ? JSON.parse(rawDel) : []);
+
       serverUsers.forEach((u) => {
+        const uId = String(u.id || '').trim().toLowerCase();
+        const uName = String(u.username || '').trim().toLowerCase();
+        if (uName !== 'mohusyn' && (tombKeys.has(uId) || tombKeys.has(uName))) return;
         if (u.username) map.set(u.username.toLowerCase(), u);
       });
       localList.forEach((u) => {
+        const uId = String(u.id || '').trim().toLowerCase();
+        const uName = String(u.username || '').trim().toLowerCase();
+        if (uName !== 'mohusyn' && (tombKeys.has(uId) || tombKeys.has(uName))) return;
         if (u.username && !map.has(u.username.toLowerCase())) {
           map.set(u.username.toLowerCase(), u);
         }
@@ -963,15 +972,25 @@ export const api = {
    * getUsers() merges the server list with localStorage.
    */
   removeLocalUserMirror(id: string, username?: string): void {
+    const cleanId = String(id || '').trim().toLowerCase();
+    const cleanUname = String(username || '').trim().toLowerCase();
     try {
       const raw = localStorage.getItem('taskrooz_registered_users');
       const list: User[] = raw ? JSON.parse(raw) : [];
-      const cleaned = list.filter(
-        (u) => u.id !== id && (username ? (u.username || '').toLowerCase() !== username.toLowerCase() : true)
-      );
-      if (cleaned.length !== list.length) {
-        localStorage.setItem('taskrooz_registered_users', JSON.stringify(cleaned));
-      }
+      const cleaned = list.filter((u) => {
+        const uId = String(u.id || '').trim().toLowerCase();
+        const uName = String(u.username || '').trim().toLowerCase();
+        if (cleanId && (uId === cleanId || uName === cleanId)) return false;
+        if (cleanUname && (uName === cleanUname || uId === cleanUname)) return false;
+        return true;
+      });
+      localStorage.setItem('taskrooz_registered_users', JSON.stringify(cleaned));
+
+      const rawDel = localStorage.getItem('taskrooz_deleted_user_keys');
+      const delKeys: string[] = rawDel ? JSON.parse(rawDel) : [];
+      if (cleanId && !delKeys.includes(cleanId)) delKeys.push(cleanId);
+      if (cleanUname && !delKeys.includes(cleanUname)) delKeys.push(cleanUname);
+      localStorage.setItem('taskrooz_deleted_user_keys', JSON.stringify(delKeys));
     } catch {
       // ignore
     }
@@ -983,35 +1002,44 @@ export const api = {
   },
 
   async deleteUser(id: string, username?: string): Promise<void> {
-    const idParam = `id=${encodeURIComponent(id)}`;
+    const cleanId = encodeURIComponent(id);
+    const cleanUname = username ? `&username=${encodeURIComponent(username)}` : '';
+    let success = false;
     let lastError: any = null;
 
     // 1. Standard DELETE verb
     try {
-      await request(`api/users.php?${idParam}`, { method: 'DELETE' });
+      await request(`api/users.php?id=${cleanId}${cleanUname}`, { method: 'DELETE' });
+      success = true;
     } catch (err: any) {
       lastError = err;
-      // 2. IIS 405 resilience: some servers block DELETE, retry via GET ?action=delete
+    }
+
+    // 2. Fallback: POST ?action=delete with JSON body (primary IIS-safe fallback)
+    if (!success) {
       try {
-        await request(`api/users.php?action=delete&${idParam}`);
+        await request(`api/users.php?action=delete&id=${cleanId}${cleanUname}`, {
+          method: 'POST',
+          body: JSON.stringify({ id, username, action: 'delete' }),
+        });
+        success = true;
       } catch (err2: any) {
         lastError = err2;
-        // 3. Fallback: POST ?action=delete
-        try {
-          await request(`api/users.php?action=delete&${idParam}`, {
-            method: 'POST',
-            body: JSON.stringify({ id, action: 'delete' }),
-          });
-        } catch (err3: any) {
-          lastError = err3;
-          // 4. Fallback: auth.php?action=delete_account
-          try {
-            await request('api/auth.php?action=delete_account', { method: 'POST' });
-          } catch {
-            throw lastError;
-          }
-        }
       }
+    }
+
+    // 3. Fallback: GET ?action=delete (secondary IIS-safe fallback)
+    if (!success) {
+      try {
+        await request(`api/users.php?action=delete&id=${cleanId}${cleanUname}`, { method: 'GET' });
+        success = true;
+      } catch (err3: any) {
+        lastError = err3;
+      }
+    }
+
+    if (!success && lastError) {
+      throw lastError;
     }
 
     // Deletion succeeded: purge local mirror so the user can never resurrect

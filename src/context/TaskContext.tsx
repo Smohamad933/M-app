@@ -1430,7 +1430,17 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteUser = async (id: string, username?: string) => {
     await api.deleteUser(id, username);
     // Immediate optimistic removal so the list updates instantly
-    setUsers((prev) => prev.filter((u) => u.id !== id));
+    const cleanId = String(id || '').trim().toLowerCase();
+    const cleanUname = String(username || '').trim().toLowerCase();
+    setUsers((prev) =>
+      prev.filter((u) => {
+        const uId = String(u.id || '').trim().toLowerCase();
+        const uName = String(u.username || '').trim().toLowerCase();
+        if (cleanId && (uId === cleanId || uName === cleanId)) return false;
+        if (cleanUname && (uName === cleanUname || uId === cleanUname)) return false;
+        return true;
+      })
+    );
     await refreshUsers();
     await refreshTasks();
     sounds.playComplete();

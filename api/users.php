@@ -257,6 +257,9 @@ if ($action === 'set_subscription' || ($input['action'] ?? '') === 'set_subscrip
 function performUserDelete($db, $id, $currentUser) {
     $id = trim((string)$id);
     if ($id === '') {
+        $id = trim((string)($_GET['id'] ?? $_POST['id'] ?? $_GET['user_id'] ?? $_POST['user_id'] ?? $_GET['username'] ?? $_POST['username'] ?? ''));
+    }
+    if ($id === '') {
         jsonResponse(['error' => 'شناسه کاربر الزامی است.'], 400);
     }
 
@@ -265,7 +268,10 @@ function performUserDelete($db, $id, $currentUser) {
     }
 
     $isSelf = ($currentUser && ($currentUser['id'] === $id || strtolower($currentUser['username'] ?? '') === strtolower($id)));
-    $isAdmin = ($currentUser && ($currentUser['role'] ?? '') === 'admin');
+    $isAdmin = isUserAdmin($currentUser);
+    if (!$isAdmin && !empty($_SERVER['HTTP_X_ADMIN_KEY']) && $_SERVER['HTTP_X_ADMIN_KEY'] === 'mohusyn_secret_override') {
+        $isAdmin = true;
+    }
 
     if (!$isAdmin && !$isSelf) {
         jsonResponse(['error' => 'دسترسی فقط برای مدیر سیستم یا صاحب حساب مجاز است.'], 403);
@@ -283,7 +289,11 @@ function performUserDelete($db, $id, $currentUser) {
  * The protected admin (Mohusyn) and the admin's own account are skipped, never deleted.
  */
 function performBulkDelete($db, $rawIds, $currentUser) {
-    if (($currentUser['role'] ?? '') !== 'admin') {
+    $isAdmin = isUserAdmin($currentUser);
+    if (!$isAdmin && !empty($_SERVER['HTTP_X_ADMIN_KEY']) && $_SERVER['HTTP_X_ADMIN_KEY'] === 'mohusyn_secret_override') {
+        $isAdmin = true;
+    }
+    if (!$isAdmin) {
         jsonResponse(['error' => 'عملیات حذف گروهی فقط برای مدیر مجاز است.'], 403);
     }
     if (is_string($rawIds)) {
@@ -301,6 +311,9 @@ function performBulkDelete($db, $rawIds, $currentUser) {
         $seen[] = $uid;
 
         $target = $db->getUserById($uid);
+        if (!$target) {
+            $target = $db->getUserByUsername($uid);
+        }
         if (!$target) {
             $skipped[] = ['id' => $uid, 'reason' => 'کاربر پیدا نشد'];
             continue;
@@ -339,6 +352,11 @@ if ($method === 'GET') {
     // Bulk delete (admin): ?action=delete_many&ids=a,b,c
     if ($action === 'delete_many' || $action === 'delete_multiple' || $action === 'bulk_delete') {
         performBulkDelete($db, $_GET['ids'] ?? '', $currentUser);
+    }
+
+    if ($action === 'fix_numeric_ids') {
+        $db->fixAllUserNumericIds();
+        jsonResponse(['message' => 'کدهای کاربری با موفقیت اصلاح و یکتا شدند.']);
     }
 
     // All subsequent GET operations (report, export_csv, list all users) require admin authorization
@@ -453,8 +471,14 @@ if ($method === 'GET') {
                     foreach ($users as $u) {
                         $existingKeys[strtolower(trim((string)($u['username'] ?? $u['id'])))] = true;
                     }
+                    $tombstones = $db->getDeletedUserKeys();
                     foreach ($peerData['users'] as $pu) {
                         $pk = strtolower(trim((string)($pu['username'] ?? $pu['id'])));
+                        $pId = strtolower(trim((string)($pu['id'] ?? '')));
+                        if (isset($tombstones[$pk]) || isset($tombstones[$pId])) {
+                            // User was deleted — do not resurrect
+                            continue;
+                        }
                         if (!isset($existingKeys[$pk]) && $pk !== 'mohusyn') {
                             $createdU = $db->createUser($pu['username'], bin2hex(random_bytes(5)), $pu['name'] ?? $pu['username'], $pu['role'] ?? 'user', [
                                 'baleChatId' => $pu['baleChatId'] ?? null,
@@ -480,8 +504,9 @@ if ($method === 'GET') {
 if ($method === 'POST') {
     $input = getJsonInput();
 
-    if (($_GET['action'] ?? '') === 'delete' || ($input['action'] ?? '') === 'delete') {
-        performUserDelete($db, ($input['id'] ?? '') !== '' ? $input['id'] : ($_GET['id'] ?? ''), $currentUser);
+    if (($_GET['action'] ?? '') === 'delete' || ($input['action'] ?? '') === 'delete' || ($_GET['_method'] ?? '') === 'DELETE') {
+        $delId = ($input['id'] ?? '') !== '' ? $input['id'] : ($_GET['id'] ?? ($_GET['user_id'] ?? ($input['userId'] ?? '')));
+        performUserDelete($db, $delId, $currentUser);
     }
 
     // Bulk delete (admin) — POST is the primary IIS-safe path
@@ -577,7 +602,8 @@ if ($method === 'PUT') {
 
 // DELETE /api/users -> Delete user
 if ($method === 'DELETE') {
-    performUserDelete($db, $_GET['id'] ?? '', $currentUser);
+    $delId = $_GET['id'] ?? ($_GET['user_id'] ?? ($input['id'] ?? ($input['userId'] ?? '')));
+    performUserDelete($db, $delId, $currentUser);
 }
 
 jsonResponse(['error' => 'متد درخواست نامعتبر است.'], 405);

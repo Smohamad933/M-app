@@ -179,6 +179,17 @@ class TaskRoozDB {
                     @$this->pdo->exec("ALTER TABLE `tasks` ADD COLUMN `subtasks_json` text DEFAULT NULL");
                 }
             }
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS `deleted_users` (
+                  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `username` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `deleted_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            $this->fixAllUserNumericIds();
         } catch (Exception $e) {}
     }
 
@@ -786,6 +797,7 @@ class TaskRoozDB {
     }
 
     public function getAllUsers() {
+        $this->fixAllUserNumericIds();
         $userMap = [];
 
         // 1. Try MySQL
@@ -1461,58 +1473,245 @@ class TaskRoozDB {
         return false;
     }
 
-    public function deleteUser($id) {
-        // Remove ALL data owned by this user so nothing is orphaned
-        // (UI promises "تمامی تسک‌های مربوطه نیز حذف خواهند شد")
-
-        // 1. MySQL cleanup
+    public function fixAllUserNumericIds() {
+        // Fix in MySQL
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
-                foreach (['tasks', 'career_goals', 'daily_notes', 'personality_results'] as $table) {
-                    $stmt = $this->pdo->prepare("DELETE FROM {$table} WHERE user_id = ?");
-                    $stmt->execute([$id]);
+                $stmt = $this->pdo->query("SELECT id, username, numeric_id, created_at FROM users ORDER BY created_at ASC, id ASC");
+                $users = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+                $usedIds = [1000 => true];
+                $needsUpdate = [];
+                $nextId = 1001;
+
+                // Ensure Mohusyn has 1000
+                foreach ($users as $u) {
+                    $uname = strtolower(trim((string)($u['username'] ?? '')));
+                    $uid = $u['id'];
+                    $currNum = isset($u['numeric_id']) ? (int)$u['numeric_id'] : 0;
+                    if ($uname === 'mohusyn' || $uid === 'usr_admin_mohusyn') {
+                        if ($currNum !== 1000) {
+                            $needsUpdate[$uid] = 1000;
+                        }
+                    }
                 }
-            } catch (Exception $e) {}
-            try {
-                $stmt = $this->pdo->prepare("DELETE FROM users WHERE id = ? AND LOWER(username) != 'mohusyn'");
-                $stmt->execute([$id]);
+
+                // Check other users
+                foreach ($users as $u) {
+                    $uname = strtolower(trim((string)($u['username'] ?? '')));
+                    $uid = $u['id'];
+                    if ($uname === 'mohusyn' || $uid === 'usr_admin_mohusyn') continue;
+
+                    $currNum = isset($u['numeric_id']) ? (int)$u['numeric_id'] : 0;
+                    if ($currNum <= 1000 || isset($usedIds[$currNum])) {
+                        while (isset($usedIds[$nextId])) {
+                            $nextId++;
+                        }
+                        $needsUpdate[$uid] = $nextId;
+                        $usedIds[$nextId] = true;
+                        $nextId++;
+                    } else {
+                        $usedIds[$currNum] = true;
+                        if ($currNum >= $nextId) {
+                            $nextId = $currNum + 1;
+                        }
+                    }
+                }
+
+                if (!empty($needsUpdate)) {
+                    $up = $this->pdo->prepare("UPDATE users SET numeric_id = ? WHERE id = ?");
+                    foreach ($needsUpdate as $uid => $newNum) {
+                        $up->execute([$newNum, $uid]);
+                    }
+                }
             } catch (Exception $e) {}
         }
 
-        // 2. JSON Storage cleanup
+        // Fix in JSON
         $this->loadJson();
-        $this->data['users'] = array_values(array_filter($this->data['users'], function($u) use ($id) {
-            if (strtolower($u['username'] ?? '') === 'mohusyn' || $u['id'] === 'usr_admin_mohusyn') {
+        if (!empty($this->data['users']) && is_array($this->data['users'])) {
+            $usedIds = [1000 => true];
+            $nextId = 1001;
+            foreach ($this->data['users'] as &$u) {
+                $uname = strtolower(trim((string)($u['username'] ?? '')));
+                $uid = $u['id'] ?? '';
+                if ($uname === 'mohusyn' || $uid === 'usr_admin_mohusyn') {
+                    $u['numericId'] = 1000;
+                }
+            }
+            unset($u);
+
+            foreach ($this->data['users'] as &$u) {
+                $uname = strtolower(trim((string)($u['username'] ?? '')));
+                $uid = $u['id'] ?? '';
+                if ($uname === 'mohusyn' || $uid === 'usr_admin_mohusyn') continue;
+
+                $currNum = isset($u['numericId']) ? (int)$u['numericId'] : (isset($u['numeric_id']) ? (int)$u['numeric_id'] : 0);
+                if ($currNum <= 1000 || isset($usedIds[$currNum])) {
+                    while (isset($usedIds[$nextId])) {
+                        $nextId++;
+                    }
+                    $u['numericId'] = $nextId;
+                    $usedIds[$nextId] = true;
+                    $nextId++;
+                } else {
+                    $usedIds[$currNum] = true;
+                    $u['numericId'] = $currNum;
+                    if ($currNum >= $nextId) {
+                        $nextId = $currNum + 1;
+                    }
+                }
+            }
+            unset($u);
+            $this->saveJson();
+        }
+    }
+
+    public function getDeletedUserKeys() {
+        $keys = [];
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->query("SELECT id, username FROM deleted_users");
+                if ($stmt) {
+                    while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        if (!empty($r['id'])) $keys[strtolower(trim($r['id']))] = true;
+                        if (!empty($r['username'])) $keys[strtolower(trim($r['username']))] = true;
+                    }
+                }
+            } catch (Exception $e) {}
+        }
+        $this->loadJson();
+        if (!empty($this->data['deleted_users']) && is_array($this->data['deleted_users'])) {
+            foreach ($this->data['deleted_users'] as $du) {
+                $keys[strtolower(trim((string)$du))] = true;
+            }
+        }
+        return $keys;
+    }
+
+    public function deleteUser($id) {
+        $id = trim((string)$id);
+        if ($id === '') return false;
+
+        // 1. Resolve user first by ID or username or numeric ID
+        $user = $this->getUserById($id);
+        if (!$user) {
+            $user = $this->getUserByUsername($id);
+        }
+        if (!$user) {
+            foreach ($this->getAllUsers() as $u) {
+                if ((string)($u['id'] ?? '') === $id ||
+                    (string)($u['username'] ?? '') === $id ||
+                    (string)($u['numericId'] ?? '') === $id ||
+                    (string)($u['numeric_id'] ?? '') === $id) {
+                    $user = $u;
+                    break;
+                }
+            }
+        }
+
+        $realId = $user ? ($user['id'] ?? $id) : $id;
+        $realUsername = $user ? ($user['username'] ?? '') : '';
+
+        // NEVER delete the super-admin!
+        if (strtolower($realUsername) === 'mohusyn' || $realId === 'usr_admin_mohusyn') {
+            return false;
+        }
+
+        $idList = array_values(array_unique(array_filter([$realId, $id, $realUsername])));
+
+        // 2. MySQL cleanup
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                foreach (['tasks', 'career_goals', 'daily_notes', 'personality_results'] as $table) {
+                    foreach ($idList as $tid) {
+                        $stmt = $this->pdo->prepare("DELETE FROM {$table} WHERE user_id = ?");
+                        $stmt->execute([$tid]);
+                    }
+                }
+                foreach (['messages', 'notifications'] as $tbl) {
+                    try {
+                        foreach ($idList as $tid) {
+                            $stmt = $this->pdo->prepare("DELETE FROM {$tbl} WHERE user_id = ? OR sender_id = ? OR receiver_id = ?");
+                            $stmt->execute([$tid, $tid, $tid]);
+                        }
+                    } catch (Exception $eT) {}
+                }
+                foreach ($idList as $tid) {
+                    $stmt = $this->pdo->prepare("DELETE FROM users WHERE (id = ? OR LOWER(username) = LOWER(?)) AND LOWER(username) != 'mohusyn'");
+                    $stmt->execute([$tid, $tid]);
+                }
+                // Record tombstone so peer sync NEVER recreates this user!
+                $stmtTomb = $this->pdo->prepare("INSERT INTO deleted_users (id, username, deleted_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE deleted_at = NOW()");
+                $stmtTomb->execute([$realId, $realUsername]);
+            } catch (Exception $e) {}
+        }
+
+        // 3. JSON Storage cleanup
+        $this->loadJson();
+        $this->data['users'] = array_values(array_filter($this->data['users'] ?? [], function($u) use ($idList) {
+            if (strtolower($u['username'] ?? '') === 'mohusyn' || ($u['id'] ?? '') === 'usr_admin_mohusyn') {
                 return true;
             }
-            return $u['id'] !== $id;
+            $uid = $u['id'] ?? '';
+            $uName = strtolower(trim((string)($u['username'] ?? '')));
+            foreach ($idList as $delId) {
+                if ($uid === $delId || $uName === strtolower($delId)) return false;
+            }
+            return true;
         }));
-        $this->data['tasks'] = array_values(array_filter($this->data['tasks'] ?? [], function($t) use ($id) {
+
+        if (!isset($this->data['deleted_users']) || !is_array($this->data['deleted_users'])) {
+            $this->data['deleted_users'] = [];
+        }
+        $this->data['deleted_users'][] = $realId;
+        if (!empty($realUsername)) {
+            $this->data['deleted_users'][] = strtolower($realUsername);
+        }
+        $this->data['deleted_users'] = array_values(array_unique($this->data['deleted_users']));
+
+        // Prune related records from JSON
+        $this->data['tasks'] = array_values(array_filter($this->data['tasks'] ?? [], function($t) use ($idList) {
             $tUserId = $t['userId'] ?? $t['user_id'] ?? '';
-            return $tUserId !== $id;
+            return !in_array($tUserId, $idList, true);
         }));
-        $this->data['goals'] = array_values(array_filter($this->data['goals'] ?? [], function($g) use ($id) {
-            return ($g['userId'] ?? '') !== $id;
+        $this->data['goals'] = array_values(array_filter($this->data['goals'] ?? [], function($g) use ($idList) {
+            return !in_array($g['userId'] ?? '', $idList, true);
         }));
-        $this->data['dailyNotes'] = array_values(array_filter($this->data['dailyNotes'] ?? [], function($n) use ($id) {
-            return ($n['userId'] ?? '') !== $id;
+        $this->data['dailyNotes'] = array_values(array_filter($this->data['dailyNotes'] ?? [], function($n) use ($idList) {
+            return !in_array($n['userId'] ?? '', $idList, true);
         }));
-        $this->data['personalityResults'] = array_values(array_filter($this->data['personalityResults'] ?? [], function($p) use ($id) {
-            return ($p['userId'] ?? '') !== $id;
+        $this->data['personalityResults'] = array_values(array_filter($this->data['personalityResults'] ?? [], function($p) use ($idList) {
+            return !in_array($p['userId'] ?? '', $idList, true);
         }));
-        $this->data['friendships'] = array_values(array_filter($this->data['friendships'] ?? [], function($f) use ($id) {
-            return ($f['user1Id'] ?? '') !== $id && ($f['user2Id'] ?? '') !== $id;
+        $this->data['friendships'] = array_values(array_filter($this->data['friendships'] ?? [], function($f) use ($idList) {
+            return !in_array($f['user1Id'] ?? '', $idList, true) && !in_array($f['user2Id'] ?? '', $idList, true);
         }));
-        $this->data['friend_requests'] = array_values(array_filter($this->data['friend_requests'] ?? [], function($r) use ($id) {
-            return ($r['fromUserId'] ?? '') !== $id && ($r['toUserId'] ?? '') !== $id;
+        $this->data['friend_requests'] = array_values(array_filter($this->data['friend_requests'] ?? [], function($r) use ($idList) {
+            return !in_array($r['fromUserId'] ?? '', $idList, true) && !in_array($r['toUserId'] ?? '', $idList, true);
         }));
-        $this->data['messages'] = array_values(array_filter($this->data['messages'] ?? [], function($m) use ($id) {
-            return ($m['senderId'] ?? '') !== $id && ($m['receiverId'] ?? '') !== $id;
+        $this->data['messages'] = array_values(array_filter($this->data['messages'] ?? [], function($m) use ($idList) {
+            return !in_array($m['senderId'] ?? '', $idList, true) && !in_array($m['receiverId'] ?? '', $idList, true);
         }));
-        $this->data['notifications'] = array_values(array_filter($this->data['notifications'] ?? [], function($n) use ($id) {
-            return ($n['userId'] ?? '') !== $id;
+        $this->data['notifications'] = array_values(array_filter($this->data['notifications'] ?? [], function($n) use ($idList) {
+            return !in_array($n['userId'] ?? '', $idList, true);
         }));
         $this->saveJson();
+
+        // 4. Notify peer server to also delete so it doesn't bounce back
+        if (empty($_GET['no_peer'])) {
+            try {
+                $peerHost = (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'task.mohusyn.ir') !== false)
+                    ? 'https://bagtime.negahm.ir'
+                    : 'https://task.mohusyn.ir';
+                $ctx = stream_context_create([
+                    'http' => ['timeout' => 1, 'ignore_errors' => true],
+                    'ssl' => ['verify_peer' => false, 'verify_peer_name' => false]
+                ]);
+                @file_get_contents("{$peerHost}/api/users.php?action=delete&id=" . urlencode($realId) . "&no_peer=1", false, $ctx);
+            } catch (Exception $ePeer) {}
+        }
+
         return true;
     }
 
