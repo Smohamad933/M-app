@@ -6,7 +6,7 @@ require_once __DIR__ . '/config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-if ($method === 'GET') {
+if ($method === 'GET' || $method === 'HEAD') {
     $settings = $db->getGlobalSettings();
     jsonResponse(['settings' => $settings]);
 }

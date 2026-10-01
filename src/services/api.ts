@@ -158,23 +158,11 @@ export function setPreferredServer(srv: string) {
 }
 
 function resolveApiUrl(endpoint: string): string {
-  const preferred = getPreferredServer();
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
-    if (preferred) {
-      for (const srv of BAGTIME_SERVERS) {
-        if (endpoint.startsWith(srv) && srv !== preferred) {
-          return endpoint.replace(srv, preferred);
-        }
-      }
-    }
     return endpoint;
   }
   const clean = endpoint.replace(/^\/+/, '');
   if (typeof window !== 'undefined' && window.location) {
-    const curOrigin = window.location.origin;
-    if (preferred && BAGTIME_SERVERS.includes(curOrigin) && curOrigin !== preferred) {
-      return `${preferred}/${clean}`;
-    }
     const pathname = window.location.pathname;
     // Get directory of current page (e.g. '/' or '/M-app/' or '/taskrooz/')
     const baseDir = pathname.substring(0, pathname.lastIndexOf('/') + 1) || '/';

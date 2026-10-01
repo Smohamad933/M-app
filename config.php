@@ -39,6 +39,7 @@ $GLOBALS['taskrooz_db_error'] = null;
 
 function getMySQLPDO($module = null) {
     static $connections = [];
+    static $failed = [];
 
     $dbName = DB_NAME;
     if ($module === 'users') $dbName = DB_NAME_USERS;
@@ -47,9 +48,17 @@ function getMySQLPDO($module = null) {
     elseif ($module === 'notifications') $dbName = DB_NAME_NOTIFICATIONS;
 
     if (isset($connections[$dbName])) return $connections[$dbName];
+    if (!empty($failed[$dbName])) return null;
 
     if (!extension_loaded('pdo_mysql') || !class_exists('PDO')) {
+        $failed[$dbName] = true;
         $GLOBALS['taskrooz_db_error'] = 'اکستنشن pdo_mysql در PHP سرور فعال نیست.';
+        return null;
+    }
+
+    $downMarker = sys_get_temp_dir() . DIRECTORY_SEPARATOR . '.taskrooz_mysql_down';
+    if (file_exists($downMarker) && (time() - filemtime($downMarker)) < 10) {
+        $failed[$dbName] = true;
         return null;
     }
 
@@ -58,13 +67,16 @@ function getMySQLPDO($module = null) {
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_TIMEOUT => 4,
+            PDO::ATTR_TIMEOUT => 2,
         ];
         $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
         $connections[$dbName] = $pdo;
+        if (file_exists($downMarker)) @unlink($downMarker);
         return $pdo;
     } catch (Exception $e) {
+        $failed[$dbName] = true;
+        @touch($downMarker);
         $GLOBALS['taskrooz_db_error'] = $e->getMessage();
         return null;
     }

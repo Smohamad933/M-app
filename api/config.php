@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $db = TaskRoozDB::getInstance();
-$pdo = getMySQLPDO();
+$pdo = $db->getPdo();
 
 // --- Database installation guard ---
 // If data/db.json was never shipped/installed, refuse to serve the app

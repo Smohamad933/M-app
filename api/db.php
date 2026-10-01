@@ -23,6 +23,7 @@ class TaskRoozDB {
             if ($this->pdo !== null) {
                 $this->mode = 'mysql';
                 $this->ensureMySQLSchema();
+                return;
             }
         }
         $this->loadJson();
@@ -30,6 +31,10 @@ class TaskRoozDB {
 
     private function ensureMySQLSchema() {
         if (!$this->pdo) return;
+        $marker = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.mysql_schema_ready';
+        if (file_exists($marker)) {
+            return;
+        }
         try {
             $this->pdo->exec("
                 CREATE TABLE IF NOT EXISTS `users` (
@@ -189,7 +194,7 @@ class TaskRoozDB {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
 
-            $this->fixAllUserNumericIds();
+            @touch($marker);
         } catch (Exception $e) {}
     }
 
@@ -848,6 +853,7 @@ class TaskRoozDB {
                         $key = strtolower(trim((string)($u['username'] ?? $u['id'])));
                         $userMap[$key] = $u;
                     }
+                    return array_values($userMap);
                 }
             } catch (Exception $e) {}
         }
@@ -1715,7 +1721,7 @@ class TaskRoozDB {
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->execute($params);
                 $rows = $stmt->fetchAll();
-                if ($rows) {
+                if ($rows !== false) {
                     return array_map(function($r) {
                         $r['userId'] = $r['user_id'];
                         $r['projectId'] = $r['project_id'];
