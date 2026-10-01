@@ -42,7 +42,7 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
     // Check phone and email uniqueness across all users
     $allUsers = $db->getAllUsers();
     foreach ($allUsers as $u) {
-        if (!empty($u['phone']) && $u['phone'] === $phone) {
+        if (!empty($phone) && !empty($u['phone']) && $u['phone'] === $phone) {
             jsonResponse(['error' => 'این شماره موبایل قبلاً در سامانه ثبت شده است.'], 400);
         }
         if (!empty($email) && !empty($u['email']) && strtolower($u['email']) === strtolower($email)) {
