@@ -174,29 +174,10 @@ function answerBaleCallback($token, $callbackQueryId, $text = null, $showAlert =
 }
 
 /**
- * Dual-server user broadcast helper
+ * Dual-server user broadcast helper (instant non-blocking)
  */
 function broadcastBaleUserToPeer($user) {
-    if (empty($user) || !is_array($user)) return;
-    try {
-        $currHost = $_SERVER['HTTP_HOST'] ?? '';
-        $peerHost = (strpos($currHost, 'task.mohusyn.ir') !== false) 
-            ? 'https://bagtime.negahm.ir' 
-            : 'https://task.mohusyn.ir';
-        $clean = $user;
-        unset($clean['password_hash']);
-        unset($clean['password']);
-        $postBody = json_encode(['user' => $clean]);
-        $chPeer = curl_init("{$peerHost}/api/bale.php?action=sync_user");
-        curl_setopt($chPeer, CURLOPT_POST, true);
-        curl_setopt($chPeer, CURLOPT_POSTFIELDS, $postBody);
-        curl_setopt($chPeer, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($chPeer, CURLOPT_TIMEOUT, 2);
-        curl_setopt($chPeer, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($chPeer, CURLOPT_SSL_VERIFYHOST, false);
-        @curl_exec($chPeer);
-        @curl_close($chPeer);
-    } catch (Exception $e) {}
+    return;
 }
 
 /**
@@ -523,7 +504,7 @@ if ($action === 'create_bale_login') {
 }
 
 // -----------------------------------------------------------------------------
-// 4. Check Automatic Bale Login Status
+// 4. Check Automatic Bale Login Status (Fast local check — never blocks)
 // -----------------------------------------------------------------------------
 if ($action === 'check_bale_login') {
     $ticket = trim($_GET['ticket'] ?? ($_POST['ticket'] ?? ''));
@@ -536,39 +517,6 @@ if ($action === 'check_bale_login') {
             if ($k === $ticket || strpos($ticket, $k) !== false || strpos($k, $ticket) !== false) {
                 $foundTicket = $v;
                 break;
-            }
-        }
-    }
-
-    // If still not approved, check the sibling Bag Time server (dual-server failover sync)
-    if (empty($_GET['no_peer']) && (!$foundTicket || ($foundTicket['status'] ?? '') !== 'approved')) {
-        $currHost = $_SERVER['HTTP_HOST'] ?? '';
-        $peerHost = (strpos($currHost, 'task.mohusyn.ir') !== false) 
-            ? 'https://bagtime.negahm.ir' 
-            : 'https://task.mohusyn.ir';
-        
-        $ch = curl_init("{$peerHost}/api/bale.php?action=check_bale_login&ticket=" . urlencode($ticket) . "&no_peer=1");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        $peerRaw = curl_exec($ch);
-        curl_close($ch);
-        if ($peerRaw) {
-            $peerData = json_decode($peerRaw, true);
-            if (!empty($peerData['status']) && $peerData['status'] === 'approved') {
-                $tickets[$ticket] = [
-                    'status' => 'approved',
-                    'token' => $peerData['token'] ?? '',
-                    'user' => $peerData['user'] ?? null,
-                    'approvedAt' => time(),
-                ];
-                saveBaleTicketsData($tickets);
-                $foundTicket = $tickets[$ticket];
-                if (!empty($peerData['user']) && is_array($peerData['user'])) {
-                    $uData = $peerData['user'];
-                    $dbObj->createUser($uData['username'], bin2hex(random_bytes(5)), $uData['name'] ?? $uData['username'], $uData['role'] ?? 'user', $uData);
-                }
             }
         }
     }
@@ -1671,23 +1619,6 @@ if ($isWebhook) {
         $sentRes = sendBaleMessage($botToken, $chatId, $confirmMsg, $loginKb);
         logBale('BALE_LOGIN_SENT', ['chatId' => $chatId, 'user' => $matchedUser['username'], 'res' => $sentRes]);
 
-        // Dual-server background synchronization (notify peer server so both know the ticket is approved)
-        try {
-            $currHost = $_SERVER['HTTP_HOST'] ?? '';
-            $peerHost = (strpos($currHost, 'task.mohusyn.ir') !== false) 
-                ? 'https://bagtime.negahm.ir' 
-                : 'https://task.mohusyn.ir';
-            $postBody = json_encode(['ticket' => $targetTicketKey, 'token' => $token, 'user' => $cleanUser]);
-            $chPeer = curl_init("{$peerHost}/api/bale.php?action=sync_ticket");
-            curl_setopt($chPeer, CURLOPT_POST, true);
-            curl_setopt($chPeer, CURLOPT_POSTFIELDS, $postBody);
-            curl_setopt($chPeer, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-            curl_setopt($chPeer, CURLOPT_TIMEOUT, 2);
-            curl_setopt($chPeer, CURLOPT_SSL_VERIFYPEER, false);
-            @curl_exec($chPeer);
-            @curl_close($chPeer);
-        } catch (Exception $e) {}
-
         echo json_encode(['ok' => true]);
         exit;
     }
@@ -1752,23 +1683,6 @@ if ($isWebhook) {
                 'approvedAt' => time(),
             ];
             saveBaleTicketsData($tickets);
-
-            // Dual-server ticket sync
-            try {
-                $currHost = $_SERVER['HTTP_HOST'] ?? '';
-                $peerHost = (strpos($currHost, 'task.mohusyn.ir') !== false) 
-                    ? 'https://bagtime.negahm.ir' 
-                    : 'https://task.mohusyn.ir';
-                $postBody = json_encode(['ticket' => $recentTicketKey, 'token' => $token, 'user' => $cleanUser]);
-                $chPeer = curl_init("{$peerHost}/api/bale.php?action=sync_ticket");
-                curl_setopt($chPeer, CURLOPT_POST, true);
-                curl_setopt($chPeer, CURLOPT_POSTFIELDS, $postBody);
-                curl_setopt($chPeer, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-                curl_setopt($chPeer, CURLOPT_TIMEOUT, 2);
-                curl_setopt($chPeer, CURLOPT_SSL_VERIFYPEER, false);
-                @curl_exec($chPeer);
-                @curl_close($chPeer);
-            } catch (Exception $e) {}
 
             $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
             $webAppUrl = 'https://' . $host . '/index.html';

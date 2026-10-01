@@ -440,11 +440,7 @@ export const UserManagementView: React.FC = () => {
   const handleCheckWebhookInfo = async () => {
     sounds.playPop();
     try {
-      const res = await fetch('/api/bale.php?action=get_webhook_info', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: baleForm.token }),
-      }).then(r => r.json());
+      const res = await api.getBaleWebhookInfo(baleForm.token);
 
       if (res.ok && res.result) {
         sounds.playComplete();
@@ -466,21 +462,17 @@ export const UserManagementView: React.FC = () => {
 
     sounds.playPop();
     try {
-      const res = await fetch('/api/bale.php?action=test_invoice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: baleForm.token,
-          providerToken: baleForm.providerToken,
-          chatId: chatId.trim(),
-        }),
-      }).then(r => r.json());
+      const res = await api.testBaleInvoice({
+        token: baleForm.token,
+        providerToken: baleForm.providerToken,
+        chatId: chatId.trim(),
+      });
 
       if (res.ok) {
         sounds.playComplete();
         alert('درخواست فاکتور با موفقیت ارسال شد! لطفاً صفحه چت با بازوی بله خود را بررسی کنید.');
       } else {
-        alert(res.message || 'خطا در ارسال فاکتور پرداخت بله.');
+        alert(res.error || 'خطا در ارسال فاکتور پرداخت بله.');
       }
     } catch (e: any) {
       alert('خطا: ' + e.message);
@@ -1797,10 +1789,7 @@ export const UserManagementView: React.FC = () => {
               type="button"
               onClick={async () => {
                 try {
-                  const token = localStorage.getItem('taskrooz_auth_token') || '';
-                  await fetch('/api/auth.php?action=admin_self_verify', {
-                    headers: { Authorization: `Bearer ${token}` },
-                  });
+                  await api.adminSelfVerify();
                   sounds.playComplete();
                   alert('حساب مدیر کل با موفقیت تایید و وضعیت آن فعال دائمی شد! ⚡');
                 } catch {

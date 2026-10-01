@@ -138,12 +138,43 @@ export function removeAuthToken() {
   }
 }
 
+export const BAGTIME_SERVERS = ['https://task.mohusyn.ir', 'https://bagtime.negahm.ir'];
+const ACTIVE_SERVER_KEY = 'bagtime_preferred_server';
+
+export function getPreferredServer(): string | null {
+  try {
+    const saved = localStorage.getItem(ACTIVE_SERVER_KEY);
+    if (saved && BAGTIME_SERVERS.includes(saved)) return saved;
+  } catch {}
+  return null;
+}
+
+export function setPreferredServer(srv: string) {
+  try {
+    if (BAGTIME_SERVERS.includes(srv)) {
+      localStorage.setItem(ACTIVE_SERVER_KEY, srv);
+    }
+  } catch {}
+}
+
 function resolveApiUrl(endpoint: string): string {
+  const preferred = getPreferredServer();
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    if (preferred) {
+      for (const srv of BAGTIME_SERVERS) {
+        if (endpoint.startsWith(srv) && srv !== preferred) {
+          return endpoint.replace(srv, preferred);
+        }
+      }
+    }
     return endpoint;
   }
   const clean = endpoint.replace(/^\/+/, '');
   if (typeof window !== 'undefined' && window.location) {
+    const curOrigin = window.location.origin;
+    if (preferred && BAGTIME_SERVERS.includes(curOrigin) && curOrigin !== preferred) {
+      return `${preferred}/${clean}`;
+    }
     const pathname = window.location.pathname;
     // Get directory of current page (e.g. '/' or '/M-app/' or '/taskrooz/')
     const baseDir = pathname.substring(0, pathname.lastIndexOf('/') + 1) || '/';
@@ -203,14 +234,55 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 
   const fetchPromise = (async () => {
-    let res: Response;
+    let res: Response | null = null;
+
     try {
       res = await fetch(url, {
         ...options,
-        credentials: 'same-origin',
         headers,
       });
-    } catch (err: any) {
+    } catch {
+      // Network error (e.g. DNS failure, connection refused, offline, SSL handshake stall)
+    }
+
+    // Dual-server automatic failover: if primary endpoint is unreachable or 502/503/504
+    if (!res || (res.status >= 502 && res.status <= 504)) {
+      let candidateAltServer: string | null = null;
+      let altUrl: string | null = null;
+
+      const activeMatch = BAGTIME_SERVERS.find((srv) => url.startsWith(srv));
+      if (activeMatch) {
+        candidateAltServer = BAGTIME_SERVERS.find((srv) => srv !== activeMatch) || null;
+        if (candidateAltServer) {
+          altUrl = url.replace(activeMatch, candidateAltServer);
+        }
+      } else if (typeof window !== 'undefined' && window.location) {
+        const curOrigin = window.location.origin;
+        const curMatch = BAGTIME_SERVERS.find((srv) => curOrigin === srv);
+        if (curMatch) {
+          candidateAltServer = BAGTIME_SERVERS.find((srv) => srv !== curMatch) || null;
+          if (candidateAltServer) {
+            altUrl = url.replace(curOrigin, candidateAltServer);
+          }
+        }
+      }
+
+      if (altUrl && candidateAltServer) {
+        try {
+          const altRes = await fetch(altUrl, {
+            ...options,
+            headers,
+          });
+          if (altRes.ok || altRes.status < 500) {
+            res = altRes;
+            setPreferredServer(candidateAltServer);
+            broadcastSync('server_failover', { server: candidateAltServer });
+          }
+        } catch {}
+      }
+    }
+
+    if (!res) {
       throw new Error('عدم برقراری ارتباط با سرور. لطفاً وضعیت سرور و شبکه را بررسی کنید.');
     }
 
@@ -558,6 +630,31 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(params || {}),
       }
+    );
+  },
+
+  async getBaleWebhookInfo(token?: string): Promise<{ ok: boolean; result?: any; description?: string }> {
+    return await request<{ ok: boolean; result?: any; description?: string }>(
+      'api/bale.php?action=get_webhook_info',
+      { method: 'POST', body: JSON.stringify({ token }) }
+    );
+  },
+
+  async testBaleInvoice(params: {
+    token?: string;
+    providerToken?: string;
+    chatId: string;
+  }): Promise<{ ok: boolean; result?: any; error?: string }> {
+    return await request<{ ok: boolean; result?: any; error?: string }>(
+      'api/bale.php?action=test_invoice',
+      { method: 'POST', body: JSON.stringify(params) }
+    );
+  },
+
+  async adminSelfVerify(): Promise<{ ok?: boolean; message?: string; verified?: boolean; error?: string }> {
+    return await request<{ ok?: boolean; message?: string; verified?: boolean; error?: string }>(
+      'api/auth.php?action=admin_self_verify',
+      { method: 'POST' }
     );
   },
 

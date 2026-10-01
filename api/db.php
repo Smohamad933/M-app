@@ -1696,24 +1696,6 @@ class TaskRoozDB {
             return !in_array($n['userId'] ?? '', $idList, true);
         }));
         $this->saveJson();
-
-        // 4. Notify peer server to also delete so it doesn't bounce back (ultra-fast non-blocking)
-        if (empty($_GET['no_peer'])) {
-            try {
-                $peerHost = (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'task.mohusyn.ir') !== false)
-                    ? 'https://bagtime.negahm.ir'
-                    : 'https://task.mohusyn.ir';
-                if (function_exists('curl_init')) {
-                    $chPeer = curl_init("{$peerHost}/api/users.php?action=delete&id=" . urlencode($realId) . "&no_peer=1");
-                    curl_setopt($chPeer, CURLOPT_TIMEOUT_MS, 300);
-                    curl_setopt($chPeer, CURLOPT_RETURNTRANSFER, true);
-                    curl_setopt($chPeer, CURLOPT_SSL_VERIFYPEER, false);
-                    @curl_exec($chPeer);
-                    @curl_close($chPeer);
-                }
-            } catch (Exception $ePeer) {}
-        }
-
         return true;
     }
 

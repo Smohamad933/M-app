@@ -156,13 +156,12 @@ if ($action === 'admin_self_verify') {
     if (!$currentUser || (($currentUser['role'] ?? '') !== 'admin' && strtolower($currentUser['username'] ?? '') !== 'mohusyn')) {
         jsonResponse(['error' => 'تنها مدیر سیستم مجاز به استفاده از این امکان است.'], 403);
     }
-    foreach ($db->data['users'] as &$u) {
+    $allUsers = $db->getAllUsers();
+    foreach ($allUsers as $u) {
         if (($u['role'] ?? '') === 'admin' || strtolower($u['username'] ?? '') === 'mohusyn' || $u['id'] === $currentUser['id']) {
-            $u['isVerified'] = true;
-            $u['status'] = 'active';
+            $db->updateUserProfile($u['id'], ['isVerified' => true, 'status' => 'active']);
         }
     }
-    $db->saveJson();
     jsonResponse(['message' => 'حساب مدیر سیستم با موفقیت تایید و وضعیت آن فعال شد.', 'verified' => true]);
 }
 
@@ -171,19 +170,22 @@ if ($action === 'manual_verify') {
     $admin = requireAdmin();
     $userId = $_GET['userId'] ?? $_POST['userId'] ?? '';
     $allUsers = $db->getAllUsers();
-    $found = false;
-    foreach ($db->data['users'] as &$u) {
+    $targetUser = null;
+    foreach ($allUsers as $u) {
         if ($u['id'] === $userId || strtolower($u['username']) === strtolower($userId)) {
+            $db->updateUserProfile($u['id'], ['isVerified' => true, 'status' => 'active']);
             $u['isVerified'] = true;
             $u['status'] = 'active';
-            $found = true;
-            $db->saveJson();
-            $_SESSION['user_id'] = $u['id'];
-            $token = base64_encode($u['id'] . ':' . time());
-            unset($u['password_hash']);
-            unset($u['password']);
-            jsonResponse(['verified' => true, 'user' => $u, 'token' => $token]);
+            $targetUser = $u;
+            break;
         }
+    }
+    if ($targetUser) {
+        $_SESSION['user_id'] = $targetUser['id'];
+        $token = base64_encode($targetUser['id'] . ':' . time());
+        unset($targetUser['password_hash']);
+        unset($targetUser['password']);
+        jsonResponse(['verified' => true, 'user' => $targetUser, 'token' => $token]);
     }
     jsonResponse(['error' => 'کاربر یافت نشد.'], 404);
 }
