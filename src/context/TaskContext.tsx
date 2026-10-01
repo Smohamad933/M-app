@@ -1361,7 +1361,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const filtered = prev.filter((u) => u.id !== newUser.id && u.username.toLowerCase() !== newUser.username.toLowerCase());
       return [...filtered, newUser];
     });
-    await refreshUsers();
+    // Non-blocking background sync so manual user addition is instantaneous
+    refreshUsers().catch(() => {});
     sounds.playComplete();
     return newUser;
   };

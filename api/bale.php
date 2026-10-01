@@ -271,13 +271,21 @@ function getBaleSubscriptionPlans() {
 function sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $userId = null) {
     global $dbObj;
     $plans = getBaleSubscriptionPlans();
-    if ($planKey === '1_month') $planKey = 'plus';
-    if ($planKey === '3_months') $planKey = 'pro';
-    if ($planKey === '6_months') $planKey = 'ultra';
+    if ($planKey === '1_month' || $planKey === '1_months') $planKey = 'plus';
+    if ($planKey === '3_month' || $planKey === '3_months') $planKey = 'pro';
+    if ($planKey === '6_month' || $planKey === '6_months') $planKey = 'ultra';
     $selectedPlan = $plans[$planKey] ?? $plans['pro'];
 
     $providerToken = trim($baleConfig['providerToken'] ?? '');
-    $uId = $userId ?: 'anon';
+
+    // Resolve userId if not passed or anon
+    if (empty($userId) || $userId === 'anon' || $userId === 'current') {
+        $matchedU = $dbObj->getUserByBaleChatId($chatId);
+        if ($matchedU) {
+            $userId = $matchedU['id'];
+        }
+    }
+    $uId = $userId ?: 'current';
     $payload = "sub:{$uId}:{$selectedPlan['key']}:" . time();
 
     // In Bale, title must be between 1 and 32 characters!
@@ -287,13 +295,14 @@ function sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $userId 
 
     $invoiceSent = false;
     if (!empty($providerToken)) {
-        // Official Bale Bot Payment: sendInvoice
+        // Official Bale Bot Payment: sendInvoice (docs.bale.ai/#پرداخت)
         $invoiceParams = [
             'chat_id' => $chatId,
             'title' => $cleanTitle,
             'description' => $cleanDesc,
             'payload' => $payload,
             'provider_token' => $providerToken,
+            'currency' => 'IRR',
             'prices' => [
                 [
                     'label' => $cleanTitle,
@@ -314,7 +323,7 @@ function sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $userId 
             "📦 طرح انتخابی: **{$selectedPlan['title']}**\n" .
             "⏱️ مدت زمان: **{$selectedPlan['days']} روز**\n" .
             "💰 مبلغ قابل پرداخت: **{$selectedPlan['amountTomans']}**\n\n" .
-            ($providerToken ? "⚠️ ارتباط مستقیم با درگاه برقرار نشد، می‌توانید از دکمه پرداخت زیر استفاده فرمایید:\n\n" : "🔹 پرداخت مستقیماً از طریق درگاه کیف پول بله و تمامی کارت‌های عضو شتاب انجام می‌شود.\n\n") .
+            "🔹 پرداخت مستقیماً از طریق درگاه کیف پول بله و تمامی کارت‌های عضو شتاب انجام می‌شود.\n\n" .
             "جهت تکمیل پرداخت، روی گزینه زیر ضربه بزنید:";
 
         $invoiceKb = [
@@ -467,6 +476,7 @@ if ($action === 'test_invoice') {
         'description' => 'تست عملکرد درگاه پرداخت و اتصال به کیف‌پول بله',
         'payload' => 'test_invoice_' . time(),
         'provider_token' => $provToken,
+        'currency' => 'IRR',
         'prices' => [
             ['label' => 'فاکتور تست', 'amount' => 10000],
         ],
@@ -747,8 +757,13 @@ if ($action === 'create_invoice' || $action === 'create_payment_invoice') {
 
     $deepLink = "https://ble.ir/{$cleanBot}?start=pay_{$plan}_{$user['id']}";
 
-    // Notice: Do NOT dispatch invoice directly here! The user opens $deepLink in Bale,
-    // which triggers the bot to send the invoice exactly ONCE when the user clicks/starts it.
+    $directSent = false;
+    if (!empty($user['baleChatId'])) {
+        try {
+            sendBalePlanInvoice($botToken, $baleConfig, $user['baleChatId'], $plan, $user['id']);
+            $directSent = true;
+        } catch (Exception $eDirect) {}
+    }
 
     jsonResponse([
         'ok' => true,
@@ -757,7 +772,7 @@ if ($action === 'create_invoice' || $action === 'create_payment_invoice') {
         'amountRials' => $planInfo['amountRials'],
         'amountTomans' => $planInfo['amountTomans'],
         'title' => $planInfo['title'],
-        'directSentToBale' => false,
+        'directSentToBale' => $directSent,
     ]);
 }
 
@@ -774,7 +789,7 @@ $isWebhook = ($action === 'webhook') ||
 
 if ($isWebhook) {
     // Reuse already parsed $input or fallback to php://input (IIS FastCGI resilience)
-    $update = (!empty($input) && is_array($input) && (!empty($input['update_id']) || !empty($input['message']) || !empty($input['callback_query'])))
+    $update = (!empty($input) && is_array($input) && (!empty($input['update_id']) || !empty($input['message']) || !empty($input['callback_query']) || !empty($input['pre_checkout_query'])))
         ? $input
         : @json_decode(@file_get_contents('php://input'), true);
 
@@ -1075,19 +1090,27 @@ if ($isWebhook) {
         }
 
         if (strpos($cbData, 'sim_pay_') === 0) {
-            $parts = explode('_', str_replace('sim_pay_', '', $cbData));
+            $rest = str_replace('sim_pay_', '', $cbData);
+            $parts = explode('_', $rest);
             $planKey = $parts[0] ?? 'pro';
-            $uid = $parts[1] ?? ($primaryUser['id'] ?? null);
-            if (!$uid || $uid === 'current') {
+            $uid = null;
+            if (count($parts) > 1) {
+                $uid = substr($rest, strlen($planKey) + 1);
+            }
+            if (!$uid || $uid === 'current' || $uid === 'anon') {
                 $uid = $primaryUser['id'] ?? null;
+            }
+            if (!$uid) {
+                $matchedU = $dbObj->getUserByBaleChatId($chatId);
+                if ($matchedU) $uid = $matchedU['id'];
             }
 
             if ($uid) {
-                $planType = $planKey === 'ultra' ? '6_months' : ($planKey === 'plus' ? '1_month' : '3_months');
-                $days = $planKey === 'ultra' ? 180 : ($planKey === 'plus' ? 30 : 90);
+                $planType = ($planKey === 'ultra' || $planKey === '6_months') ? '6_months' : (($planKey === 'plus' || $planKey === '1_month') ? '1_month' : '3_months');
+                $days = ($planKey === 'ultra' || $planKey === '6_months') ? 180 : (($planKey === 'plus' || $planKey === '1_month') ? 30 : 90);
                 $expiresAt = date('Y-m-d H:i:s', time() + ($days * 86400));
-                $planName = $planKey === 'ultra' ? 'اولترا (Ultra) 💎' : ($planKey === 'plus' ? 'پلاس (Plus) ➕' : 'پرو (Pro) ⭐');
-                $amountStr = $planKey === 'ultra' ? '۱,۱۹۰,۰۰۰ تومان' : ($planKey === 'plus' ? '۲۹۰,۰۰۰ تومان' : '۶۹۰,۰۰۰ تومان');
+                $planName = ($planKey === 'ultra' || $planKey === '6_months') ? 'اولترا (Ultra) 💎' : (($planKey === 'plus' || $planKey === '1_month') ? 'پلاس (Plus) ➕' : 'پرو (Pro) ⭐');
+                $amountStr = ($planKey === 'ultra' || $planKey === '6_months') ? '۱,۱۹۰,۰۰۰ تومان' : (($planKey === 'plus' || $planKey === '1_month') ? '۲۹۰,۰۰۰ تومان' : '۶۹۰,۰۰۰ تومان');
 
                 $dbObj->setUserSubscription($uid, $planKey, $planType, $expiresAt);
 
@@ -1128,6 +1151,11 @@ if ($isWebhook) {
                         [['text' => '📋 مشاهده کارهای من', 'callback_data' => 'my_tasks']],
                     ]
                 ];
+                sendBaleMessage($botToken, $chatId, $successMsg, $successKb);
+                echo json_encode(['ok' => true]);
+                exit;
+            }
+        }
                 sendBaleMessage($botToken, $chatId, $successMsg, $successKb);
                 echo json_encode(['ok' => true]);
                 exit;
@@ -1393,23 +1421,24 @@ if ($isWebhook) {
         $payload = $sp['invoice_payload'] ?? '';
         $chargeId = $sp['provider_payment_charge_id'] ?? ($sp['telegram_payment_charge_id'] ?? ('bale_' . time()));
 
-        $parts = explode('_', $payload);
+        $del = (strpos($payload, ':') !== false) ? ':' : '_';
+        $parts = explode($del, $payload);
         $targetUserId = null;
         $targetPlan = 'pro';
         if (count($parts) >= 3 && $parts[0] === 'sub') {
             $targetUserId = $parts[1];
             $targetPlan = $parts[2];
         }
-        if (!$targetUserId || $targetUserId === 'anon') {
+        if (!$targetUserId || $targetUserId === 'anon' || $targetUserId === 'current') {
             $matched = $dbObj->getUserByBaleChatId($chatId);
             if ($matched) $targetUserId = $matched['id'];
         }
 
         if ($targetUserId) {
-            $planType = $targetPlan === 'ultra' ? '6_months' : ($targetPlan === 'plus' ? '1_month' : '3_months');
-            $days = $targetPlan === 'ultra' ? 180 : ($targetPlan === 'plus' ? 30 : 90);
+            $planType = ($targetPlan === 'ultra' || $targetPlan === '6_months') ? '6_months' : (($targetPlan === 'plus' || $targetPlan === '1_month') ? '1_month' : '3_months');
+            $days = ($targetPlan === 'ultra' || $targetPlan === '6_months') ? 180 : (($targetPlan === 'plus' || $targetPlan === '1_month') ? 30 : 90);
             $expiresAt = date('Y-m-d H:i:s', time() + ($days * 86400));
-            $planName = $targetPlan === 'ultra' ? 'اولترا (Ultra) 💎' : ($targetPlan === 'plus' ? 'پلاس (Plus) ➕' : 'پرو (Pro) ⭐');
+            $planName = ($targetPlan === 'ultra' || $targetPlan === '6_months') ? 'اولترا (Ultra) 💎' : (($targetPlan === 'plus' || $targetPlan === '1_month') ? 'پلاس (Plus) ➕' : 'پرو (Pro) ⭐');
 
             $dbObj->setUserSubscription($targetUserId, $targetPlan, $planType, $expiresAt);
 
@@ -1458,38 +1487,34 @@ if ($isWebhook) {
     // -------------------------------------------------------------------------
     // BALE SUBSCRIPTION PAYMENT INVOICE (Deep-link: /start pay_PLAN_USERID)
     // -------------------------------------------------------------------------
-    if (preg_match('/(?:^|\s)\/start\s+pay_([a-zA-Z0-9]+)_(usr_[a-zA-Z0-9_]+)/i', $rawText, $pm)) {
-        $planKey = $pm[1];
-        $targetUserId = $pm[2];
-
-        // 30s de-duplication cache per chat
-        $invLockKey = 'inv_lock_' . preg_replace('/[^0-9]/', '', strval($chatId));
-        $lastInvTime = (int)($dbObj->data[$invLockKey] ?? 0);
-        if ((time() - $lastInvTime) > 30) {
-            $dbObj->data[$invLockKey] = time();
-            sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $targetUserId);
-        }
-        echo json_encode(['ok' => true]);
-        exit;
-    } elseif (preg_match('/(?:^|\s)\/start\s+pay_([a-zA-Z0-9_]+)/i', $rawText, $pm)) {
+    if (preg_match('/(?:^|\s)\/start\s+pay_([a-zA-Z0-9_\-]+)/i', $rawText, $pm)) {
         $payParam = $pm[1];
-        $parts = explode('_', $payParam);
-        $planKey = $parts[0] ?? 'pro';
+        $planKey = 'pro';
         $targetUserId = null;
-        if (count($parts) > 1) {
-            $targetUserId = substr($payParam, strlen($planKey) + 1);
+
+        if (strpos($payParam, 'ultra') === 0 || strpos($payParam, '6_months') === 0) {
+            $planKey = 'ultra';
+            $targetUserId = preg_replace('/^(?:ultra|6_months)_?/', '', $payParam);
+        } elseif (strpos($payParam, 'plus') === 0 || strpos($payParam, '1_month') === 0) {
+            $planKey = 'plus';
+            $targetUserId = preg_replace('/^(?:plus|1_month|1_months)_?/', '', $payParam);
+        } elseif (strpos($payParam, 'pro') === 0 || strpos($payParam, '3_months') === 0) {
+            $planKey = 'pro';
+            $targetUserId = preg_replace('/^(?:pro|3_months)_?/', '', $payParam);
+        } else {
+            $parts = explode('_', $payParam);
+            $planKey = $parts[0] ?? 'pro';
+            if (count($parts) > 1) {
+                $targetUserId = substr($payParam, strlen($planKey) + 1);
+            }
         }
-        if (!$targetUserId) {
+
+        if (!$targetUserId || $targetUserId === 'anon') {
             $u = $dbObj->getUserByBaleChatId($chatId);
             if ($u) $targetUserId = $u['id'];
         }
 
-        $invLockKey = 'inv_lock_' . preg_replace('/[^0-9]/', '', strval($chatId));
-        $lastInvTime = (int)($dbObj->data[$invLockKey] ?? 0);
-        if ((time() - $lastInvTime) > 30) {
-            $dbObj->data[$invLockKey] = time();
-            sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $targetUserId);
-        }
+        sendBalePlanInvoice($botToken, $baleConfig, $chatId, $planKey, $targetUserId);
         echo json_encode(['ok' => true]);
         exit;
     }

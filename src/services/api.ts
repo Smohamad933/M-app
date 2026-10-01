@@ -862,6 +862,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(user),
     });
+    try {
+      const raw = localStorage.getItem('taskrooz_registered_users');
+      const list: User[] = raw ? JSON.parse(raw) : [];
+      const cleanList = list.filter((u) => u.id !== data.user.id && u.username?.toLowerCase() !== data.user.username?.toLowerCase());
+      cleanList.push(data.user);
+      localStorage.setItem('taskrooz_registered_users', JSON.stringify(cleanList));
+    } catch {}
     broadcastSync('USER_REGISTERED', data.user);
     return data.user;
   },

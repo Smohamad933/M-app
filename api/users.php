@@ -439,8 +439,8 @@ if ($method === 'GET') {
 
     $users = $db->getAllUsers();
 
-    // Dual-server synchronization: query sibling domain so users created on either server appear seamlessly
-    if (empty($_GET['no_peer'])) {
+    // Dual-server synchronization: query sibling domain only when explicitly requested (keeps standard calls instant)
+    if (!empty($_GET['sync_peer']) || $action === 'sync_peers') {
         try {
             $currHost = $_SERVER['HTTP_HOST'] ?? '';
             $peerHost = (strpos($currHost, 'task.mohusyn.ir') !== false) 
@@ -566,9 +566,19 @@ if ($method === 'POST') {
         'message' => 'کاربر جدید با موفقیت ایجاد شد.',
         'user' => [
             'id' => $user['id'],
+            'numericId' => (int)($user['numericId'] ?? 1001),
             'username' => $user['username'],
             'name' => $user['name'],
             'role' => $user['role'],
+            'status' => $user['status'] ?? 'active',
+            'phone' => $user['phone'] ?? '',
+            'email' => $user['email'] ?? '',
+            'province' => $user['province'] ?? '',
+            'city' => $user['city'] ?? '',
+            'birthDate' => $user['birthDate'] ?? '',
+            'jobTitle' => $user['jobTitle'] ?? '',
+            'skills' => $user['skills'] ?? [],
+            'subscription' => $user['subscription'] ?? ['plan' => 'free'],
             'createdAt' => $user['createdAt'],
             'totalTasks' => 0,
             'completedTasks' => 0,

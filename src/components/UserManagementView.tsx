@@ -881,6 +881,13 @@ export const UserManagementView: React.FC = () => {
         city: city.trim() || undefined,
       });
       setIsAddModalOpen(false);
+      setName('');
+      setUsername('');
+      setPassword('');
+      setPhone('');
+      setEmail('');
+      setJobTitle('');
+      setCity('');
     } catch (err: any) {
       setFormError(err.message || 'خطا در ثبت کاربر جدید.');
     } finally {
