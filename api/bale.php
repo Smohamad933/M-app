@@ -1104,11 +1104,6 @@ if ($isWebhook) {
                 exit;
             }
         }
-                sendBaleMessage($botToken, $chatId, $successMsg, $successKb);
-                echo json_encode(['ok' => true]);
-                exit;
-            }
-        }
 
         echo json_encode(['ok' => true]);
         exit;
