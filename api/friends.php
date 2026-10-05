@@ -18,34 +18,17 @@ $dbObj = TaskRoozDB::getInstance();
 
 // 1. GET Requests: incoming and outgoing
 if ($method === 'GET' && ($action === 'requests' || isset($_GET['requests']))) {
-    $allRequests = $dbObj->data['friend_requests'] ?? [];
-    $incoming = [];
-    $outgoing = [];
-    foreach ($allRequests as $r) {
-        if (($r['toUserId'] ?? '') === $myId && ($r['status'] ?? '') === 'pending') {
-            $incoming[] = $r;
-        }
-        if (($r['fromUserId'] ?? '') === $myId) {
-            $outgoing[] = $r;
-        }
-    }
-    jsonResponse(['incoming' => $incoming, 'outgoing' => $outgoing]);
+    $reqs = $dbObj->getFriendRequests($myId);
+    jsonResponse(['incoming' => $reqs['incoming'], 'outgoing' => $reqs['outgoing']]);
 }
 
 // 2. GET Friends: list of accepted friends
 if ($method === 'GET') {
-    $friendships = $dbObj->data['friendships'] ?? [];
-    $friendIds = [];
-    foreach ($friendships as $f) {
-        if (($f['user1Id'] ?? '') === $myId) $friendIds[] = $f['user2Id'];
-        if (($f['user2Id'] ?? '') === $myId) $friendIds[] = $f['user1Id'];
-    }
-    $friendIds = array_unique($friendIds);
-
+    $friendIds = $dbObj->getFriendships($myId);
     $allUsers = $dbObj->getAllUsers();
     $friends = [];
     foreach ($allUsers as $u) {
-        if (in_array($u['id'], $friendIds)) {
+        if (in_array($u['id'], $friendIds) || (isset($u['username']) && in_array($u['username'], $friendIds))) {
             $friends[] = [
                 'id' => $u['id'],
                 'numericId' => $u['numericId'] ?? 1000,
@@ -69,41 +52,52 @@ if ($method === 'POST') {
 
     // Send Friend Request / Project Invite
     if ($postAction === 'request' || $postAction === 'send') {
-        $toUserId = $input['toUserId'] ?? '';
+        $toUserId = trim((string)($input['toUserId'] ?? ''));
         if (empty($toUserId) || $toUserId === $myId) {
             jsonResponse(['error' => 'کاربر مقصد نامعتبر است.'], 400);
         }
 
-        // Check if already friends
-        $friendships = $dbObj->data['friendships'] ?? [];
-        foreach ($friendships as $f) {
-            if (($f['user1Id'] === $myId && $f['user2Id'] === $toUserId) || ($f['user2Id'] === $myId && $f['user1Id'] === $toUserId)) {
-                jsonResponse(['message' => 'این کاربر هم‌اکنون در لیست همکاران شما قرار دارد.', 'isFriend' => true]);
+        // Canonical user lookup
+        $targetUser = $dbObj->getUserById($toUserId);
+        if (!$targetUser) {
+            $targetUser = $dbObj->getUserByUsername($toUserId);
+        }
+        if (!$targetUser) {
+            foreach ($dbObj->getAllUsers() as $u) {
+                if (isset($u['numericId']) && strval($u['numericId']) === strval($toUserId)) {
+                    $targetUser = $u;
+                    break;
+                }
             }
         }
+        if (!$targetUser) {
+            jsonResponse(['error' => 'کاربر مقصد در سامانه یافت نشد.'], 404);
+        }
+        $canonicalToId = $targetUser['id'];
 
-        if (!isset($dbObj->data['friend_requests'])) {
-            $dbObj->data['friend_requests'] = [];
+        if ($canonicalToId === $myId || strtolower($targetUser['username'] ?? '') === strtolower($currentUser['username'] ?? '')) {
+            jsonResponse(['error' => 'ارسال درخواست دوستی به خودتان امکان‌پذیر نیست.'], 400);
         }
 
-        $newReq = [
-            'id' => 'freq_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4),
+        // Check if already friends
+        $existingFriends = $dbObj->getFriendships($myId);
+        if (in_array($canonicalToId, $existingFriends) || in_array($targetUser['username'], $existingFriends)) {
+            jsonResponse(['message' => 'این کاربر هم‌اکنون در لیست همکاران شما قرار دارد.', 'isFriend' => true]);
+        }
+
+        $newReq = $dbObj->createFriendRequest([
             'fromUserId' => $myId,
             'fromUserName' => $currentUser['name'],
             'fromUserUsername' => $currentUser['username'],
             'fromUserAvatar' => $currentUser['avatar'] ?? null,
-            'toUserId' => $toUserId,
+            'toUserId' => $canonicalToId,
             'projectId' => $input['projectId'] ?? null,
             'projectName' => $input['projectName'] ?? null,
-            'status' => 'pending',
-            'createdAt' => date('Y-m-d H:i:s'),
-        ];
-
-        $dbObj->data['friend_requests'][] = $newReq;
+        ]);
 
         // Send in-app notification & dispatch to Bale
         $dbObj->addNotification(
-            $toUserId,
+            $canonicalToId,
             'درخواست دوستی و همکاری جدید 👥',
             "{$currentUser['name']} (@{$currentUser['username']}) برای شما درخواست همکاری ارسال کرد.",
             'friend',
@@ -114,48 +108,20 @@ if ($method === 'POST') {
             ]
         );
 
-        $dbObj->saveJson();
         jsonResponse(['message' => 'درخواست دوستی و همکاری ارسال شد.', 'request' => $newReq], 201);
     }
 
     // Accept
     if ($postAction === 'accept') {
         $reqId = $input['requestId'] ?? $input['id'] ?? '';
-        $found = null;
-        if (isset($dbObj->data['friend_requests'])) {
-            foreach ($dbObj->data['friend_requests'] as &$r) {
-                if ($r['id'] === $reqId && ($r['toUserId'] ?? '') === $myId) {
-                    $r['status'] = 'accepted';
-                    $found = $r;
-                    break;
-                }
-            }
-        }
+        $found = $dbObj->acceptFriendRequest($reqId, $myId);
         if (!$found) {
             jsonResponse(['error' => 'درخواست یافت نشد.'], 404);
         }
 
-        if (!isset($dbObj->data['friendships'])) {
-            $dbObj->data['friendships'] = [];
-        }
-        $dbObj->data['friendships'][] = [
-            'id' => 'fs_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4),
-            'user1Id' => $found['fromUserId'],
-            'user2Id' => $myId,
-            'createdAt' => date('Y-m-d H:i:s'),
-        ];
-
         // If project invite, add to project
-        if (!empty($found['projectId']) && isset($dbObj->data['projects'])) {
-            foreach ($dbObj->data['projects'] as &$p) {
-                if ($p['id'] === $found['projectId']) {
-                    if (!isset($p['memberIds'])) $p['memberIds'] = [];
-                    if (!in_array($myId, $p['memberIds'])) {
-                        $p['memberIds'][] = $myId;
-                    }
-                    break;
-                }
-            }
+        if (!empty($found['projectId'])) {
+            $dbObj->addProjectMember($found['projectId'], $myId);
         }
 
         $dbObj->addNotification(
@@ -165,22 +131,13 @@ if ($method === 'POST') {
             'friend'
         );
 
-        $dbObj->saveJson();
         jsonResponse(['message' => 'درخواست همکاری با موفقیت پذیرفته شد.']);
     }
 
     // Reject
     if ($postAction === 'reject') {
         $reqId = $input['requestId'] ?? $input['id'] ?? '';
-        if (isset($dbObj->data['friend_requests'])) {
-            foreach ($dbObj->data['friend_requests'] as &$r) {
-                if ($r['id'] === $reqId && ($r['toUserId'] ?? '') === $myId) {
-                    $r['status'] = 'rejected';
-                    break;
-                }
-            }
-            $dbObj->saveJson();
-        }
+        $dbObj->rejectFriendRequest($reqId, $myId);
         jsonResponse(['message' => 'درخواست رد شد.']);
     }
 }
@@ -198,19 +155,9 @@ $isFriendDelete = ($method === 'DELETE') ||
 
 if ($isFriendDelete) {
     $friendId = $_GET['id'] ?? $input['friendId'] ?? $input['id'] ?? $_POST['id'] ?? '';
-    if (!empty($friendId) && isset($dbObj->data['friendships'])) {
+    if (!empty($friendId)) {
         $isAdmin = ($currentUser['role'] === 'admin' || strtolower($currentUser['username'] ?? '') === 'mohusyn' || ($currentUser['id'] ?? '') === 'usr_admin_mohusyn');
-        $dbObj->data['friendships'] = array_values(array_filter($dbObj->data['friendships'], function($f) use ($myId, $friendId, $isAdmin) {
-            if ($isAdmin) {
-                return !(($f['user1Id'] === $myId && $f['user2Id'] === $friendId) ||
-                         ($f['user2Id'] === $myId && $f['user1Id'] === $friendId) ||
-                         ($f['user1Id'] === $friendId && $f['user2Id'] === $myId) ||
-                         ($f['user1Id'] === $friendId) ||
-                         ($f['user2Id'] === $friendId));
-            }
-            return !(($f['user1Id'] === $myId && $f['user2Id'] === $friendId) || ($f['user2Id'] === $myId && $f['user1Id'] === $friendId));
-        }));
-        $dbObj->saveJson();
+        $dbObj->deleteFriendship($myId, $friendId, $isAdmin);
     }
     jsonResponse(['message' => 'کاربر از لیست همکاران حذف شد.']);
 }

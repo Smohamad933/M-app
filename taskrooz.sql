@@ -156,6 +156,48 @@ CREATE TABLE IF NOT EXISTS `custom_fonts` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 11. جدول درخواست‌های دوستی و همکاری (friend_requests)
+CREATE TABLE IF NOT EXISTS `friend_requests` (
+  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `from_user_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `from_user_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `from_user_username` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `from_user_avatar` longtext COLLATE utf8mb4_unicode_ci,
+  `to_user_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `project_id` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `project_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_freq_to` (`to_user_id`),
+  KEY `idx_freq_from` (`from_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 12. جدول ارتباط و پیوند دوستی همکاران (friendships)
+CREATE TABLE IF NOT EXISTS `friendships` (
+  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user1_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user2_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_fs_u1` (`user1_id`),
+  KEY `idx_fs_u2` (`user2_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 13. جدول اعلان‌ها و نوتیفیکیشن‌های درون‌برنامه‌ای (notifications)
+CREATE TABLE IF NOT EXISTS `notifications` (
+  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `message` text COLLATE utf8mb4_unicode_ci,
+  `type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'info',
+  `extra_json` text COLLATE utf8mb4_unicode_ci,
+  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_notif_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ==============================================================================
 -- درج اطلاعات پایه و ادمین کل سیستم: Mohusyn / Smosh1387
 -- ==============================================================================

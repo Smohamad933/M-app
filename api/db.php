@@ -31,7 +31,7 @@ class TaskRoozDB {
 
     private function ensureMySQLSchema() {
         if (!$this->pdo) return;
-        $marker = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.mysql_schema_ready';
+        $marker = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.mysql_schema_ready_v3';
         if (file_exists($marker)) {
             return;
         }
@@ -191,6 +191,51 @@ class TaskRoozDB {
                   `username` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
                   `deleted_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
                   PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS `friend_requests` (
+                  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `from_user_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `from_user_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `from_user_username` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `from_user_avatar` longtext COLLATE utf8mb4_unicode_ci,
+                  `to_user_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `project_id` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `project_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `status` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+                  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_freq_to` (`to_user_id`),
+                  KEY `idx_freq_from` (`from_user_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS `friendships` (
+                  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `user1_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `user2_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_fs_u1` (`user1_id`),
+                  KEY `idx_fs_u2` (`user2_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS `notifications` (
+                  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `user_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `message` text COLLATE utf8mb4_unicode_ci,
+                  `type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'info',
+                  `extra_json` text COLLATE utf8mb4_unicode_ci,
+                  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+                  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_notif_user` (`user_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
 
@@ -409,7 +454,6 @@ class TaskRoozDB {
     }
 
     public function saveUsers() {
-        if ($this->mode === 'mysql' && $this->pdo !== null) return;
         $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
         if (!is_dir($dir)) @mkdir($dir, 0777, true);
         $payload = [
@@ -448,7 +492,6 @@ class TaskRoozDB {
     }
 
     public function saveNotifications() {
-        if ($this->mode === 'mysql' && $this->pdo !== null) return;
         $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
         if (!is_dir($dir)) @mkdir($dir, 0777, true);
         $payload = [
@@ -1128,22 +1171,35 @@ class TaskRoozDB {
     }
 
     public function addNotification($userId, $title, $message, $type = 'info', $extra = []) {
+        $notifId = 'notif_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4);
+        $now = date('Y-m-d H:i:s');
+        $extraJson = !empty($extra) ? json_encode($extra, JSON_UNESCAPED_UNICODE) : null;
+
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("
+                    INSERT INTO notifications (id, user_id, title, message, type, extra_json, is_read, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+                ");
+                $stmt->execute([$notifId, $userId, $title, $message, $type, $extraJson, $now]);
+            } catch (Exception $e) {}
+        }
+
         $this->loadJson();
         if (!isset($this->data['notifications'])) {
             $this->data['notifications'] = [];
         }
-        $notifId = 'notif_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4);
         $newNotif = array_merge([
             'id' => $notifId,
             'userId' => $userId,
             'title' => $title,
             'message' => $message,
             'type' => $type,
-            'timestamp' => date('Y-m-d H:i:s'),
+            'timestamp' => $now,
             'read' => false,
         ], $extra);
         $this->data['notifications'][] = $newNotif;
-        $this->saveJson();
+        $this->saveNotifications();
 
         // Automatically dispatch to Bale Messenger if user or admin has Bale enabled!
         $this->dispatchBaleNotification($userId, $title, $message);
@@ -2905,5 +2961,429 @@ class TaskRoozDB {
         $this->data['custom_fonts'][] = $font;
         $this->saveJson();
         return $font;
+    }
+
+    // --- Friend Requests & Network Operations ---
+    public function getFriendRequests($userId) {
+        $incoming = [];
+        $outgoing = [];
+
+        $userObj = $this->getUserById($userId);
+        $idList = [$userId];
+        if ($userObj) {
+            $idList[] = $userObj['id'];
+            if (!empty($userObj['username'])) $idList[] = $userObj['username'];
+            if (!empty($userObj['numericId'])) $idList[] = (string)$userObj['numericId'];
+        }
+        $idList = array_values(array_unique(array_filter($idList)));
+
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $placeholders = implode(',', array_fill(0, count($idList), '?'));
+                $stmt = $this->pdo->prepare("
+                    SELECT * FROM friend_requests 
+                    WHERE to_user_id IN ($placeholders) OR from_user_id IN ($placeholders)
+                    ORDER BY created_at DESC
+                ");
+                $params = array_merge($idList, $idList);
+                $stmt->execute($params);
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                if ($rows !== false) {
+                    foreach ($rows as $r) {
+                        $item = [
+                            'id' => $r['id'],
+                            'fromUserId' => $r['from_user_id'],
+                            'fromUserName' => $r['from_user_name'],
+                            'fromUserUsername' => $r['from_user_username'],
+                            'fromUserAvatar' => $r['from_user_avatar'],
+                            'toUserId' => $r['to_user_id'],
+                            'projectId' => $r['project_id'],
+                            'projectName' => $r['project_name'],
+                            'status' => $r['status'],
+                            'createdAt' => $r['created_at'],
+                        ];
+                        if (in_array($r['to_user_id'], $idList) && $r['status'] === 'pending') {
+                            $incoming[] = $item;
+                        }
+                        if (in_array($r['from_user_id'], $idList)) {
+                            $outgoing[] = $item;
+                        }
+                    }
+                    return ['incoming' => $incoming, 'outgoing' => $outgoing];
+                }
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        $all = $this->data['friend_requests'] ?? [];
+        foreach ($all as $r) {
+            $toU = $r['toUserId'] ?? '';
+            $fromU = $r['fromUserId'] ?? '';
+            if (in_array($toU, $idList) && ($r['status'] ?? '') === 'pending') {
+                $incoming[] = $r;
+            }
+            if (in_array($fromU, $idList)) {
+                $outgoing[] = $r;
+            }
+        }
+        return ['incoming' => $incoming, 'outgoing' => $outgoing];
+    }
+
+    public function createFriendRequest($data) {
+        $id = $data['id'] ?? ('freq_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4));
+        $now = date('Y-m-d H:i:s');
+        $item = [
+            'id' => $id,
+            'fromUserId' => $data['fromUserId'],
+            'fromUserName' => $data['fromUserName'] ?? '',
+            'fromUserUsername' => $data['fromUserUsername'] ?? '',
+            'fromUserAvatar' => $data['fromUserAvatar'] ?? null,
+            'toUserId' => $data['toUserId'],
+            'projectId' => $data['projectId'] ?? null,
+            'projectName' => $data['projectName'] ?? null,
+            'status' => 'pending',
+            'createdAt' => $now,
+        ];
+
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("
+                    INSERT INTO friend_requests 
+                    (id, from_user_id, from_user_name, from_user_username, from_user_avatar, to_user_id, project_id, project_name, status, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $item['id'],
+                    $item['fromUserId'],
+                    $item['fromUserName'],
+                    $item['fromUserUsername'],
+                    $item['fromUserAvatar'],
+                    $item['toUserId'],
+                    $item['projectId'],
+                    $item['projectName'],
+                    $item['status'],
+                    $item['createdAt']
+                ]);
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        if (!isset($this->data['friend_requests']) || !is_array($this->data['friend_requests'])) {
+            $this->data['friend_requests'] = [];
+        }
+        $this->data['friend_requests'][] = $item;
+        $this->saveUsers();
+
+        return $item;
+    }
+
+    public function acceptFriendRequest($reqId, $currentUserId) {
+        $found = null;
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("SELECT * FROM friend_requests WHERE id = ? LIMIT 1");
+                $stmt->execute([$reqId]);
+                $r = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($r) {
+                    $found = [
+                        'id' => $r['id'],
+                        'fromUserId' => $r['from_user_id'],
+                        'toUserId' => $r['to_user_id'],
+                        'projectId' => $r['project_id'],
+                        'projectName' => $r['project_name'],
+                    ];
+                    $up = $this->pdo->prepare("UPDATE friend_requests SET status = 'accepted' WHERE id = ?");
+                    $up->execute([$reqId]);
+
+                    $this->createFriendship($r['from_user_id'], $currentUserId);
+                }
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        if (isset($this->data['friend_requests'])) {
+            foreach ($this->data['friend_requests'] as &$fr) {
+                if ($fr['id'] === $reqId) {
+                    $fr['status'] = 'accepted';
+                    if (!$found) $found = $fr;
+                    break;
+                }
+            }
+            $this->saveUsers();
+        }
+
+        if ($found) {
+            $this->createFriendship($found['fromUserId'], $currentUserId);
+        }
+
+        return $found;
+    }
+
+    public function rejectFriendRequest($reqId, $currentUserId) {
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("UPDATE friend_requests SET status = 'rejected' WHERE id = ?");
+                $stmt->execute([$reqId]);
+            } catch (Exception $e) {}
+        }
+        $this->loadJson();
+        if (isset($this->data['friend_requests'])) {
+            foreach ($this->data['friend_requests'] as &$fr) {
+                if ($fr['id'] === $reqId) {
+                    $fr['status'] = 'rejected';
+                    break;
+                }
+            }
+            $this->saveUsers();
+        }
+        return true;
+    }
+
+    public function getFriendships($userId) {
+        $userObj = $this->getUserById($userId);
+        $idList = [$userId];
+        if ($userObj) {
+            $idList[] = $userObj['id'];
+            if (!empty($userObj['username'])) $idList[] = $userObj['username'];
+        }
+        $idList = array_values(array_unique(array_filter($idList)));
+
+        $friendIds = [];
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $placeholders = implode(',', array_fill(0, count($idList), '?'));
+                $stmt = $this->pdo->prepare("
+                    SELECT user1_id, user2_id FROM friendships
+                    WHERE user1_id IN ($placeholders) OR user2_id IN ($placeholders)
+                ");
+                $stmt->execute(array_merge($idList, $idList));
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                if ($rows !== false) {
+                    foreach ($rows as $r) {
+                        if (in_array($r['user1_id'], $idList)) $friendIds[] = $r['user2_id'];
+                        if (in_array($r['user2_id'], $idList)) $friendIds[] = $r['user1_id'];
+                    }
+                    return array_values(array_unique($friendIds));
+                }
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        $list = $this->data['friendships'] ?? [];
+        foreach ($list as $f) {
+            if (in_array($f['user1Id'] ?? '', $idList)) $friendIds[] = $f['user2Id'];
+            if (in_array($f['user2Id'] ?? '', $idList)) $friendIds[] = $f['user1Id'];
+        }
+        return array_values(array_unique($friendIds));
+    }
+
+    public function createFriendship($user1Id, $user2Id) {
+        $id = 'fs_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4);
+        $now = date('Y-m-d H:i:s');
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("
+                    SELECT id FROM friendships 
+                    WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
+                    LIMIT 1
+                ");
+                $stmt->execute([$user1Id, $user2Id, $user2Id, $user1Id]);
+                if (!$stmt->fetch()) {
+                    $ins = $this->pdo->prepare("INSERT INTO friendships (id, user1_id, user2_id, created_at) VALUES (?, ?, ?, ?)");
+                    $ins->execute([$id, $user1Id, $user2Id, $now]);
+                }
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        if (!isset($this->data['friendships']) || !is_array($this->data['friendships'])) {
+            $this->data['friendships'] = [];
+        }
+        $exists = false;
+        foreach ($this->data['friendships'] as $f) {
+            if (($f['user1Id'] === $user1Id && $f['user2Id'] === $user2Id) || ($f['user1Id'] === $user2Id && $f['user2Id'] === $user1Id)) {
+                $exists = true;
+                break;
+            }
+        }
+        if (!$exists) {
+            $this->data['friendships'][] = [
+                'id' => $id,
+                'user1Id' => $user1Id,
+                'user2Id' => $user2Id,
+                'createdAt' => $now,
+            ];
+            $this->saveUsers();
+        }
+    }
+
+    public function deleteFriendship($user1Id, $user2Id, $isAdmin = false) {
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                if ($isAdmin) {
+                    $stmt = $this->pdo->prepare("
+                        DELETE FROM friendships 
+                        WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
+                           OR user1_id = ? OR user2_id = ?
+                    ");
+                    $stmt->execute([$user1Id, $user2Id, $user2Id, $user1Id, $user2Id, $user2Id]);
+                } else {
+                    $stmt = $this->pdo->prepare("
+                        DELETE FROM friendships 
+                        WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
+                    ");
+                    $stmt->execute([$user1Id, $user2Id, $user2Id, $user1Id]);
+                }
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        if (isset($this->data['friendships']) && is_array($this->data['friendships'])) {
+            $this->data['friendships'] = array_values(array_filter($this->data['friendships'], function($f) use ($user1Id, $user2Id, $isAdmin) {
+                if ($isAdmin) {
+                    return !(($f['user1Id'] === $user1Id && $f['user2Id'] === $user2Id) ||
+                             ($f['user2Id'] === $user1Id && $f['user1Id'] === $user2Id) ||
+                             ($f['user1Id'] === $user2Id) ||
+                             ($f['user2Id'] === $user2Id));
+                }
+                return !(($f['user1Id'] === $user1Id && $f['user2Id'] === $user2Id) ||
+                         ($f['user2Id'] === $user1Id && $f['user1Id'] === $user2Id));
+            }));
+            $this->saveUsers();
+        }
+    }
+
+    public function addProjectMember($projectId, $memberId) {
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("SELECT member_ids_json FROM projects WHERE id = ? LIMIT 1");
+                $stmt->execute([$projectId]);
+                $r = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($r) {
+                    $mList = !empty($r['member_ids_json']) ? json_decode($r['member_ids_json'], true) : [];
+                    if (!is_array($mList)) $mList = [];
+                    if (!in_array($memberId, $mList)) {
+                        $mList[] = $memberId;
+                        $up = $this->pdo->prepare("UPDATE projects SET member_ids_json = ? WHERE id = ?");
+                        $up->execute([json_encode($mList, JSON_UNESCAPED_UNICODE), $projectId]);
+                    }
+                }
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        if (isset($this->data['projects'])) {
+            foreach ($this->data['projects'] as &$p) {
+                if ($p['id'] === $projectId) {
+                    if (!isset($p['memberIds'])) $p['memberIds'] = [];
+                    if (!in_array($memberId, $p['memberIds'])) {
+                        $p['memberIds'][] = $memberId;
+                    }
+                    $this->saveTasks();
+                    break;
+                }
+            }
+        }
+    }
+
+    public function getNotifications($userId) {
+        $userObj = $this->getUserById($userId);
+        $idList = [$userId];
+        if ($userObj) {
+            $idList[] = $userObj['id'];
+            if (!empty($userObj['username'])) $idList[] = $userObj['username'];
+        }
+        $idList = array_values(array_unique(array_filter($idList)));
+
+        $userNotifs = [];
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $placeholders = implode(',', array_fill(0, count($idList), '?'));
+                $stmt = $this->pdo->prepare("
+                    SELECT * FROM notifications 
+                    WHERE user_id IN ($placeholders)
+                    ORDER BY created_at DESC
+                ");
+                $stmt->execute($idList);
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                if ($rows !== false) {
+                    foreach ($rows as $r) {
+                        $item = [
+                            'id' => $r['id'],
+                            'userId' => $r['user_id'],
+                            'title' => $r['title'],
+                            'message' => $r['message'],
+                            'type' => $r['type'],
+                            'timestamp' => $r['created_at'],
+                            'read' => !empty($r['is_read']),
+                        ];
+                        if (!empty($r['extra_json'])) {
+                            $parsedExtra = json_decode($r['extra_json'], true);
+                            if (is_array($parsedExtra)) {
+                                $item = array_merge($item, $parsedExtra);
+                            }
+                        }
+                        $userNotifs[] = $item;
+                    }
+                    return $userNotifs;
+                }
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        $all = $this->data['notifications'] ?? [];
+        foreach ($all as $n) {
+            if (in_array($n['userId'] ?? '', $idList)) {
+                $userNotifs[] = $n;
+            }
+        }
+        return $userNotifs;
+    }
+
+    public function markNotificationRead($userId, $notifId = null) {
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                if (!empty($notifId)) {
+                    $stmt = $this->pdo->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND id = ?");
+                    $stmt->execute([$userId, $notifId]);
+                } else {
+                    $stmt = $this->pdo->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?");
+                    $stmt->execute([$userId]);
+                }
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        if (isset($this->data['notifications'])) {
+            $changed = false;
+            foreach ($this->data['notifications'] as &$n) {
+                if (($n['userId'] ?? '') === $userId) {
+                    if (empty($notifId) || $n['id'] === $notifId) {
+                        $n['read'] = true;
+                        $changed = true;
+                    }
+                }
+            }
+            if ($changed) {
+                $this->saveNotifications();
+            }
+        }
+    }
+
+    public function clearNotifications($userId) {
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("DELETE FROM notifications WHERE user_id = ?");
+                $stmt->execute([$userId]);
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        if (isset($this->data['notifications'])) {
+            $this->data['notifications'] = array_values(array_filter($this->data['notifications'], function($n) use ($userId) {
+                return ($n['userId'] ?? '') !== $userId;
+            }));
+            $this->saveNotifications();
+        }
     }
 }

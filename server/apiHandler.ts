@@ -2762,9 +2762,17 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
       // Send friend request or project invite
       if (postAction === 'request' || postAction === 'send' || postAction === 'send_request') {
-        const toUserId = body.toUserId || body.receiverId || body.userId;
-        if (!toUserId || toUserId === myId) {
+        const rawToUserId = body.toUserId || body.receiverId || body.userId;
+        if (!rawToUserId || rawToUserId === myId) {
           sendJson(res, { error: 'کاربر مقصد نامعتبر است.' }, 400);
+          return true;
+        }
+
+        const targetUser = (db.users || []).find((u) => u.id === rawToUserId || u.username === rawToUserId || String(u.numericId) === String(rawToUserId));
+        const toUserId = targetUser ? targetUser.id : rawToUserId;
+
+        if (toUserId === myId) {
+          sendJson(res, { error: 'ارسال درخواست دوستی به خودتان امکان‌پذیر نیست.' }, 400);
           return true;
         }
 

@@ -1161,3 +1161,54 @@ test('Strict Bale Verification: Registration Pending, Login Blocked (403), Bot C
   assert(loginAfter.status === 200, `Login should now succeed with 200, got ${loginAfter.status}`);
   assert(loginAfter.body.token, 'Token returned on login');
 });
+
+// 31. Friend Request Lifecycle: User A sends to User B, User B receives & accepts
+test('Friend Request Delivery & Acceptance: User A sends, User B receives incoming request & notification, accepts and becomes friends', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  // Create or login target user
+  const bobUname = 'bob_colleague_' + Date.now();
+  const regBob = await request('POST', '/api/auth/register', {
+    username: bobUname,
+    password: 'BobPass123!',
+    name: 'باب همکار',
+    skipVerificationForTest: true,
+  });
+  assert(regBob.status === 201, 'Bob registered');
+  const bobId = regBob.body.user.id;
+  const bobLogin = await request('POST', '/api/auth/login', { username: bobUname, password: 'BobPass123!' });
+  const bobHeader = { Authorization: `Bearer ${bobLogin.body.token}` };
+
+  // 1. Admin sends friend request to Bob
+  const sendRes = await request('POST', '/api/friends?action=request', {
+    toUserId: bobId,
+  }, adminHeader);
+  assert(sendRes.status === 201, `Friend request sent with 201, got ${sendRes.status}`);
+  assert(sendRes.body.request.id, 'Request id returned');
+  const reqId = sendRes.body.request.id;
+
+  // 2. Bob checks incoming requests
+  const bobReqs = await request('GET', '/api/friends?action=requests', null, bobHeader);
+  assert(bobReqs.status === 200, 'Bob fetched requests');
+  const foundReq = (bobReqs.body.incoming || []).find((r) => r.id === reqId || r.fromUserId === adminLogin.body.user.id);
+  assert(foundReq, 'Friend request received in Bob incoming requests list');
+
+  // 3. Bob checks notifications
+  const bobNotifs = await request('GET', '/api/notifications', null, bobHeader);
+  assert(bobNotifs.status === 200, 'Bob fetched notifications');
+  const foundNotif = (bobNotifs.body.notifications || []).find((n) => n.type === 'friend');
+  assert(foundNotif, 'Friend request notification present in Bob notifications');
+
+  // 4. Bob accepts the friend request
+  const acceptRes = await request('POST', '/api/friends?action=accept', {
+    requestId: reqId,
+  }, bobHeader);
+  assert(acceptRes.status === 200, 'Bob accepted friend request');
+
+  // 5. Both check their friends list
+  const bobFriends = await request('GET', '/api/friends', null, bobHeader);
+  const adminFriends = await request('GET', '/api/friends', null, adminHeader);
+  assert(bobFriends.body.friends.some((f) => f.username === 'Mohusyn'), 'Admin is in Bob friends list');
+  assert(adminFriends.body.friends.some((f) => f.username === bobUname), 'Bob is in Admin friends list');
+});
