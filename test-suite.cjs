@@ -1212,3 +1212,56 @@ test('Friend Request Delivery & Acceptance: User A sends, User B receives incomi
   assert(bobFriends.body.friends.some((f) => f.username === 'Mohusyn'), 'Admin is in Bob friends list');
   assert(adminFriends.body.friends.some((f) => f.username === bobUname), 'Bob is in Admin friends list');
 });
+
+// 32. Direct Messaging System: Send, Receive, Mark Read, Conversations
+test('Direct Messaging System: Exchange messages between users, unread updates and conversations summary', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  const sarahUname = 'sarah_chat_' + Date.now();
+  const regSarah = await request('POST', '/api/auth/register', {
+    username: sarahUname,
+    password: 'SarahPass123!',
+    name: 'سارا چت',
+    skipVerificationForTest: true,
+  });
+  const sarahId = regSarah.body.user.id;
+  const sarahLogin = await request('POST', '/api/auth/login', { username: sarahUname, password: 'SarahPass123!' });
+  const sarahHeader = { Authorization: `Bearer ${sarahLogin.body.token}` };
+
+  // 1. Admin sends message to Sarah
+  const sendMsgRes = await request('POST', '/api/messages', {
+    receiverId: sarahId,
+    text: 'سلام سارا، به تیم بگ تایم خوش آمدید!',
+  }, adminHeader);
+  assert(sendMsgRes.status === 201, `Send message returned 201, got ${sendMsgRes.status}`);
+  const msgText = sendMsgRes.body.text || sendMsgRes.body.data?.text;
+  assert(msgText === 'سلام سارا، به تیم بگ تایم خوش آمدید!', 'Message text matches');
+  const msgId = sendMsgRes.body.id || sendMsgRes.body.data?.id;
+
+  // 2. Sarah checks conversations
+  const sarahConvos = await request('GET', '/api/messages?action=conversations', null, sarahHeader);
+  assert(sarahConvos.status === 200, 'Fetched conversations');
+  const foundConvo = (sarahConvos.body.conversations || []).find((c) => c.partnerId === adminLogin.body.user.id || c.partnerUsername === 'Mohusyn');
+  assert(foundConvo, 'Conversation with admin appears in Sarah conversations list');
+  assert(foundConvo.unreadCount > 0, 'Unread count is greater than 0 before reading');
+
+  // 3. Sarah reads messages with Admin
+  const sarahMsgs = await request('GET', `/api/messages?with=${adminLogin.body.user.id}`, null, sarahHeader);
+  assert(sarahMsgs.status === 200, 'Fetched messages');
+  const foundMsg = (sarahMsgs.body.messages || []).find((m) => m.id === msgId);
+  assert(foundMsg, 'Message appears in Sarah chat history');
+  assert(foundMsg.text === 'سلام سارا، به تیم بگ تایم خوش آمدید!', 'Received message text matches');
+
+  // 4. Sarah replies to Admin
+  const replyRes = await request('POST', '/api/messages', {
+    receiverId: adminLogin.body.user.id,
+    text: 'خیلی ممنون از شما مهندس!',
+  }, sarahHeader);
+  assert(replyRes.status === 201, 'Sarah sent reply');
+
+  // 5. Admin fetches chat with Sarah and sees both messages
+  const adminChat = await request('GET', `/api/messages?with=${sarahId}`, null, adminHeader);
+  assert(adminChat.status === 200, 'Admin fetched chat');
+  assert(adminChat.body.messages.length >= 2, 'Chat contains both outgoing and incoming messages');
+});

@@ -21,76 +21,20 @@ if ($method === 'GET') {
     // Project chat
     $projectId = $_GET['project_id'] ?? '';
     if (!empty($projectId)) {
-        $projMsgs = $dbObj->data['project_messages'] ?? [];
-        $list = [];
-        foreach ($projMsgs as $m) {
-            if (($m['projectId'] ?? '') === $projectId) {
-                $list[] = $m;
-            }
-        }
+        $list = $dbObj->getProjectMessages($projectId);
         jsonResponse(['messages' => $list]);
     }
 
     // Direct chat with a user
     $withUserId = $_GET['with'] ?? '';
     if (!empty($withUserId)) {
-        $allMsgs = $dbObj->data['messages'] ?? [];
-        $list = [];
-        $changed = false;
-        if (isset($dbObj->data['messages'])) {
-            foreach ($dbObj->data['messages'] as &$m) {
-                $s = $m['senderId'] ?? '';
-                $r = $m['receiverId'] ?? '';
-                if (($s === $myId && $r === $withUserId) || ($s === $withUserId && $r === $myId)) {
-                    if ($r === $myId && empty($m['read'])) {
-                        $m['read'] = true;
-                        $changed = true;
-                    }
-                    $list[] = $m;
-                }
-            }
-            if ($changed) {
-                $dbObj->saveJson();
-            }
-        }
+        $list = $dbObj->getDirectMessages($myId, $withUserId);
         jsonResponse(['messages' => $list]);
     }
 
     // Conversations summary
     if ($action === 'conversations' || isset($_GET['conversations'])) {
-        $allMsgs = $dbObj->data['messages'] ?? [];
-        $partners = [];
-        foreach ($allMsgs as $m) {
-            $s = $m['senderId'] ?? '';
-            $r = $m['receiverId'] ?? '';
-            if ($s === $myId || $r === $myId) {
-                $pId = $s === $myId ? $r : $s;
-                if (!isset($partners[$pId])) {
-                    $partners[$pId] = ['lastMessage' => $m, 'unreadCount' => 0];
-                }
-                $partners[$pId]['lastMessage'] = $m;
-                if ($r === $myId && empty($m['read'])) {
-                    $partners[$pId]['unreadCount']++;
-                }
-            }
-        }
-        $allUsers = $dbObj->getAllUsers();
-        $userMap = [];
-        foreach ($allUsers as $u) {
-            $userMap[$u['id']] = $u;
-        }
-        $res = [];
-        foreach ($partners as $pId => $data) {
-            $partner = $userMap[$pId] ?? null;
-            $res[] = [
-                'partnerId' => $pId,
-                'partnerName' => $partner ? $partner['name'] : 'کاربر',
-                'partnerUsername' => $partner ? $partner['username'] : '',
-                'partnerAvatar' => $partner['avatar'] ?? null,
-                'lastMessage' => $data['lastMessage'],
-                'unreadCount' => $data['unreadCount'],
-            ];
-        }
+        $res = $dbObj->getConversations($myId);
         jsonResponse(['conversations' => $res]);
     }
 }
@@ -104,59 +48,18 @@ if ($method === 'POST') {
         if (empty($text)) {
             jsonResponse(['error' => 'متن پیام الزامی است.'], 400);
         }
-        if (!isset($dbObj->data['project_messages'])) {
-            $dbObj->data['project_messages'] = [];
-        }
-        $newMsg = [
-            'id' => 'pmsg_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4),
-            'projectId' => $projectId,
-            'senderId' => $myId,
-            'senderName' => $currentUser['name'],
-            'senderAvatar' => $currentUser['avatar'] ?? null,
-            'text' => $text,
-            'createdAt' => date('Y-m-d H:i:s'),
-        ];
-        $dbObj->data['project_messages'][] = $newMsg;
-        $dbObj->saveJson();
+        $newMsg = $dbObj->sendProjectMessage($projectId, $currentUser, $text);
         jsonResponse(['message' => 'پیام گروهی با موفقیت ارسال شد.', 'data' => $newMsg], 201);
     }
 
     // Direct message
-    $receiverId = $input['receiverId'] ?? '';
+    $receiverId = trim((string)($input['receiverId'] ?? ''));
     $text = trim((string)($input['text'] ?? ''));
     if (empty($receiverId) || empty($text)) {
         jsonResponse(['error' => 'گیرنده و متن پیام الزامی است.'], 400);
     }
 
-    if (!isset($dbObj->data['messages'])) {
-        $dbObj->data['messages'] = [];
-    }
-    $newMsg = [
-        'id' => 'msg_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4),
-        'senderId' => $myId,
-        'senderName' => $currentUser['name'],
-        'senderAvatar' => $currentUser['avatar'] ?? null,
-        'receiverId' => $receiverId,
-        'text' => $text,
-        'createdAt' => date('Y-m-d H:i:s'),
-        'read' => false,
-    ];
-    $dbObj->data['messages'][] = $newMsg;
-
-    // Send in-app notification & dispatch to Bale
-    $previewText = mb_substr($text, 0, 70) . (mb_strlen($text) > 70 ? '...' : '');
-    $dbObj->addNotification(
-        $receiverId,
-        "پیام جدید از {$currentUser['name']} 💬",
-        $previewText,
-        'info',
-        [
-            'senderId' => $myId,
-            'senderName' => $currentUser['name'],
-        ]
-    );
-
-    $dbObj->saveJson();
+    $newMsg = $dbObj->sendDirectMessage($currentUser, $receiverId, $text);
 
     jsonResponse([
         'ok' => true,

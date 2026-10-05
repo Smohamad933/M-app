@@ -2901,8 +2901,10 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     const myId = currentUser.id;
 
     if (method === 'GET') {
-      const withUserId = urlObj.searchParams.get('with') || urlObj.searchParams.get('chatWith') || urlObj.searchParams.get('userId');
-      if (withUserId) {
+      const rawWithUserId = urlObj.searchParams.get('with') || urlObj.searchParams.get('chatWith') || urlObj.searchParams.get('userId');
+      if (rawWithUserId) {
+        const partnerUser = (db.users || []).find((u) => u.id === rawWithUserId || u.username === rawWithUserId || String(u.numericId) === String(rawWithUserId));
+        const withUserId = partnerUser ? partnerUser.id : rawWithUserId;
         const conv = (db.messages || []).filter(
           (m) =>
             (m.senderId === myId && m.receiverId === withUserId) ||
@@ -2951,7 +2953,9 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
     if (method === 'POST') {
       const body = await parseJsonBody(req);
-      const receiverId = body.receiverId;
+      const rawReceiverId = body.receiverId;
+      const targetUser = (db.users || []).find((u) => u.id === rawReceiverId || u.username === rawReceiverId || String(u.numericId) === String(rawReceiverId));
+      const receiverId = targetUser ? targetUser.id : rawReceiverId;
       const text = body.text?.trim();
       if (!receiverId || !text) {
         sendJson(res, { error: 'گیرنده و متن پیام الزامی است.' }, 400);
@@ -2985,7 +2989,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       });
 
       writeDb(db);
-      sendJson(res, { message: 'پیام ارسال شد.', data: newMsg }, 201);
+      sendJson(res, { ok: true, message: 'پیام ارسال شد.', data: newMsg, ...newMsg }, 201);
       return true;
     }
   }

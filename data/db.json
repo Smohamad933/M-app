@@ -19,9 +19,456 @@
         "plan": "pro"
       },
       "isProfileCompleted": true
+    },
+    {
+      "id": "usr_1791227196584_nceu",
+      "numericId": 1001,
+      "username": "test_user_1791227196583",
+      "password": "TestPassword123",
+      "name": "تست کننده سیستم",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "446072",
+      "phone": "09121931174",
+      "email": "tester_1791227196583@taskrooz.local",
+      "province": "اصفهان",
+      "city": "اصفهان",
+      "birthDate": "1375/02/10",
+      "jobTitle": "مهندس ارشد نرم‌افزار",
+      "skills": [
+        "TypeScript",
+        "React",
+        "Docker"
+      ],
+      "dailyTimeline": {
+        "wakeUp": "06:00",
+        "workStart": "08:00",
+        "lunch": "13:00",
+        "gym": "17:30",
+        "sleep": "23:00"
+      },
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": true,
+      "createdAt": "2026-10-05T19:06:36.584Z"
+    },
+    {
+      "id": "usr_1791227196621_rkww",
+      "numericId": 1002,
+      "username": "regular_user_1791227196619",
+      "password": "Password123!",
+      "name": "کاربر معمولی بدون دسترسی",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "218450",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.621Z"
+    },
+    {
+      "id": "usr_1791227196666_dxuh",
+      "numericId": 1003,
+      "username": "user_target_1791227196665",
+      "password": "TargetPass123",
+      "name": "کاربر هدف انتصاب تسک",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "275184",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.666Z"
+    },
+    {
+      "id": "usr_1791227196689_nqyq",
+      "numericId": 1004,
+      "username": "live_member_1791227196688",
+      "password": "MemberPass123",
+      "name": "عضو تازه پیوسته به سامانه",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "637288",
+      "city": "شیراز",
+      "jobTitle": "کارشناس تضمین کیفیت (QA)",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.689Z"
+    },
+    {
+      "id": "usr_1791227196715_q6h0",
+      "numericId": 1005,
+      "username": "reza_test_1791227196714",
+      "password": "RezaPassword123",
+      "name": "رضا",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "822670",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.715Z"
+    },
+    {
+      "id": "usr_1791227196730_dapl",
+      "numericId": 1006,
+      "username": "student_1791227196729",
+      "password": "StudentPass123",
+      "name": "سارا احمدی",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "599565",
+      "phone": "09129489256",
+      "email": "student_1791227196729@taskrooz.local",
+      "birthDate": "1381/06/20",
+      "jobTitle": "کارشناس هوش مصنوعی",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.730Z"
+    },
+    {
+      "id": "usr_1791227196769_96as",
+      "numericId": 1007,
+      "username": "noadmin_1791227196768",
+      "password": "Pass123!",
+      "name": "کاربر بدون دسترسی",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "913030",
+      "phone": "09123261586",
+      "email": "noadmin_1791227196768@taskrooz.local",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.769Z"
+    },
+    {
+      "id": "usr_1791227196865_i6o6",
+      "numericId": 1008,
+      "username": "bale_strict_1791227196864",
+      "password": "StrictPass123!",
+      "name": "کاربر آزمون بله",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "185504",
+      "phone": "09123202793",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.865Z",
+      "baleChatId": 987654321
+    },
+    {
+      "id": "usr_1791227196878_non2",
+      "numericId": 1009,
+      "username": "bob_colleague_1791227196877",
+      "password": "BobPass123!",
+      "name": "باب همکار",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "417131",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.878Z"
+    },
+    {
+      "id": "usr_1791227196894_rtu6",
+      "numericId": 1010,
+      "username": "sarah_chat_1791227196893",
+      "password": "SarahPass123!",
+      "name": "سارا چت",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "763804",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.894Z"
+    },
+    {
+      "id": "usr_1791227212044_cscs",
+      "numericId": 1011,
+      "username": "test_user_1791227212043",
+      "password": "TestPassword123",
+      "name": "تست کننده سیستم",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "118834",
+      "phone": "09121623092",
+      "email": "tester_1791227212043@taskrooz.local",
+      "province": "اصفهان",
+      "city": "اصفهان",
+      "birthDate": "1375/02/10",
+      "jobTitle": "مهندس ارشد نرم‌افزار",
+      "skills": [
+        "TypeScript",
+        "React",
+        "Docker"
+      ],
+      "dailyTimeline": {
+        "wakeUp": "06:00",
+        "workStart": "08:00",
+        "lunch": "13:00",
+        "gym": "17:30",
+        "sleep": "23:00"
+      },
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": true,
+      "createdAt": "2026-10-05T19:06:52.044Z"
+    },
+    {
+      "id": "usr_1791227212096_7n7r",
+      "numericId": 1012,
+      "username": "regular_user_1791227212096",
+      "password": "Password123!",
+      "name": "کاربر معمولی بدون دسترسی",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "630589",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.096Z"
+    },
+    {
+      "id": "usr_1791227212144_cb49",
+      "numericId": 1013,
+      "username": "user_target_1791227212143",
+      "password": "TargetPass123",
+      "name": "کاربر هدف انتصاب تسک",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "803461",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.144Z"
+    },
+    {
+      "id": "usr_1791227212171_7sjx",
+      "numericId": 1014,
+      "username": "live_member_1791227212170",
+      "password": "MemberPass123",
+      "name": "عضو تازه پیوسته به سامانه",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "337840",
+      "city": "شیراز",
+      "jobTitle": "کارشناس تضمین کیفیت (QA)",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.171Z"
+    },
+    {
+      "id": "usr_1791227212198_2aym",
+      "numericId": 1015,
+      "username": "reza_test_1791227212195",
+      "password": "RezaPassword123",
+      "name": "رضا",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "428561",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.198Z"
+    },
+    {
+      "id": "usr_1791227212211_x20i",
+      "numericId": 1016,
+      "username": "student_1791227212210",
+      "password": "StudentPass123",
+      "name": "سارا احمدی",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "656266",
+      "phone": "09123543769",
+      "email": "student_1791227212210@taskrooz.local",
+      "birthDate": "1381/06/20",
+      "jobTitle": "کارشناس هوش مصنوعی",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.211Z"
+    },
+    {
+      "id": "usr_1791227212254_2u0t",
+      "numericId": 1017,
+      "username": "noadmin_1791227212253",
+      "password": "Pass123!",
+      "name": "کاربر بدون دسترسی",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "523587",
+      "phone": "09121565674",
+      "email": "noadmin_1791227212253@taskrooz.local",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.254Z"
+    },
+    {
+      "id": "usr_1791227212358_zsdo",
+      "numericId": 1018,
+      "username": "bale_strict_1791227212356",
+      "password": "StrictPass123!",
+      "name": "کاربر آزمون بله",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "364498",
+      "phone": "09127241950",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.358Z",
+      "baleChatId": 987654321
+    },
+    {
+      "id": "usr_1791227212375_2jva",
+      "numericId": 1019,
+      "username": "bob_colleague_1791227212373",
+      "password": "BobPass123!",
+      "name": "باب همکار",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "623101",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.375Z"
+    },
+    {
+      "id": "usr_1791227212392_2xgu",
+      "numericId": 1020,
+      "username": "sarah_chat_1791227212391",
+      "password": "SarahPass123!",
+      "name": "سارا چت",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "108768",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.392Z"
     }
   ],
-  "tasks": [],
+  "tasks": [
+    {
+      "id": "task_1791227212213_wd24p",
+      "userId": "usr_1791227212211_x20i",
+      "projectId": null,
+      "title": "تکمیل ماژول شبکه عصبی",
+      "date": "1405-01-01",
+      "time": "14:00",
+      "durationMinutes": 0,
+      "completed": false,
+      "priority": "high",
+      "categoryId": "cat-work",
+      "isPinned": false,
+      "focusMinutesSpent": 0,
+      "subtasks": [],
+      "createdAt": "2026-10-05T19:06:52.213Z"
+    },
+    {
+      "id": "task_1791227196733_9edfq",
+      "userId": "usr_1791227196730_dapl",
+      "projectId": null,
+      "title": "تکمیل ماژول شبکه عصبی",
+      "date": "1405-01-01",
+      "time": "14:00",
+      "durationMinutes": 0,
+      "completed": false,
+      "priority": "high",
+      "categoryId": "cat-work",
+      "isPinned": false,
+      "focusMinutesSpent": 0,
+      "subtasks": [],
+      "createdAt": "2026-10-05T19:06:36.733Z"
+    }
+  ],
   "categories": [
     {
       "id": "cat_work",
@@ -42,31 +489,545 @@
       "icon": "user"
     }
   ],
-  "focus_rooms": [],
+  "focus_rooms": [
+    {
+      "id": "room_a4ln2g",
+      "name": "اتاق آزمایشی حذف کلی",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1791227212251,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۱۹:۰۶",
+          "lastPing": 1791227212251
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1791227212251",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق آزمایشی حذف کلی» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_delall_1791227212_n6ec",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۰۶"
+        }
+      ],
+      "createdAt": "2026-10-05T19:06:52.251Z",
+      "isDeleted": true,
+      "deletedAt": 1791227212
+    },
+    {
+      "id": "room_52oqx6",
+      "name": "اتاق تمرکز و مطالعه مشترک",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1791227212202,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۱۹:۰۶",
+          "lastPing": 1791227212202
+        },
+        {
+          "userId": "usr_1791227212198_2aym",
+          "userName": "رضا",
+          "isHost": false,
+          "joinedAt": "۱۹:۰۶",
+          "lastPing": 1791227212205
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1791227212202",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق تمرکز و مطالعه مشترک» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_join_1791227212205",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "رضا به اتاق پیوست.",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_delall_1791227212_4lat",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۰۶"
+        }
+      ],
+      "createdAt": "2026-10-05T19:06:52.202Z",
+      "isDeleted": true,
+      "deletedAt": 1791227212
+    },
+    {
+      "id": "room_dynamic_1791227212190",
+      "name": "اتاق تمرکز مشترک",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1791227212191,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۱۹:۰۶",
+          "lastPing": 1791227212193
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1791227212191",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_join_1791227212193",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_delall_1791227212_lggj",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۰۶"
+        }
+      ],
+      "createdAt": "2026-10-05T19:06:52.192Z",
+      "isDeleted": true,
+      "deletedAt": 1791227212
+    },
+    {
+      "id": "room_deepwork",
+      "name": "اتاق تمرکز مشترک",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1791227212187,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۱۹:۰۶",
+          "lastPing": 1791227212188
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1791227212187",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_join_1791227212188",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_delall_1791227212_84sg",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۰۶"
+        }
+      ],
+      "createdAt": "2026-10-05T19:06:52.187Z",
+      "isDeleted": true,
+      "deletedAt": 1791227212
+    },
+    {
+      "id": "room_uqd8pd",
+      "name": "اتاق تمرکز برنامه‌نویسان ارشد",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1791227212110,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۱۹:۰۶",
+          "lastPing": 1791227212105
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1791227212105",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق تمرکز برنامه‌نویسان ارشد» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_1791227212107_q6qh",
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "text": "سلام به همگی، تمرکز ۲۵ دقیقه‌ای را آغاز می‌کنیم! 🎯",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_del_1791227212112",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط سید محمدحسین شیخ الاسلامی (Mohusyn) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه در سرور محفوظ مانده و سپس به طور کامل پاکسازی خواهند شد.",
+          "timestamp": "۱۹:۰۶"
+        }
+      ],
+      "createdAt": "2026-10-05T19:06:52.105Z",
+      "isDeleted": true,
+      "deletedAt": 1791227212
+    },
+    {
+      "id": "room_7lexsn",
+      "name": "اتاق آزمایشی حذف کلی",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1791227196767,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۱۹:۰۶",
+          "lastPing": 1791227196767
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1791227196767",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق آزمایشی حذف کلی» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_delall_1791227196_1rgn",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۰۶"
+        }
+      ],
+      "createdAt": "2026-10-05T19:06:36.767Z",
+      "isDeleted": true,
+      "deletedAt": 1791227196
+    },
+    {
+      "id": "room_sk0s1a",
+      "name": "اتاق تمرکز و مطالعه مشترک",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1791227196720,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۱۹:۰۶",
+          "lastPing": 1791227196720
+        },
+        {
+          "userId": "usr_1791227196715_q6h0",
+          "userName": "رضا",
+          "isHost": false,
+          "joinedAt": "۱۹:۰۶",
+          "lastPing": 1791227196723
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1791227196720",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق تمرکز و مطالعه مشترک» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_join_1791227196723",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "رضا به اتاق پیوست.",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_delall_1791227196_2blg",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۰۶"
+        }
+      ],
+      "createdAt": "2026-10-05T19:06:36.720Z",
+      "isDeleted": true,
+      "deletedAt": 1791227196
+    },
+    {
+      "id": "room_dynamic_1791227196710",
+      "name": "اتاق تمرکز مشترک",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1791227196712,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۱۹:۰۶",
+          "lastPing": 1791227196713
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1791227196712",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_join_1791227196713",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_delall_1791227196_3o2k",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۰۶"
+        }
+      ],
+      "createdAt": "2026-10-05T19:06:36.712Z",
+      "isDeleted": true,
+      "deletedAt": 1791227196
+    },
+    {
+      "id": "room_4sy9d4",
+      "name": "اتاق تمرکز برنامه‌نویسان ارشد",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1791227196634,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۱۹:۰۶",
+          "lastPing": 1791227196629
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_welcome_1791227196629",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق «اتاق تمرکز برنامه‌نویسان ارشد» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_1791227196631_lvr6",
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "text": "سلام به همگی، تمرکز ۲۵ دقیقه‌ای را آغاز می‌کنیم! 🎯",
+          "timestamp": "۱۹:۰۶"
+        },
+        {
+          "id": "msg_del_1791227196635",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط سید محمدحسین شیخ الاسلامی (Mohusyn) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه در سرور محفوظ مانده و سپس به طور کامل پاکسازی خواهند شد.",
+          "timestamp": "۱۹:۰۶"
+        }
+      ],
+      "createdAt": "2026-10-05T19:06:36.629Z",
+      "isDeleted": true,
+      "deletedAt": 1791227196
+    },
+    {
+      "id": "room_deepwork",
+      "name": "اتاق تمرکز عمیق (دیپ ورک)",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 1500,
+      "breakDuration": 300,
+      "timeLeft": 1500,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1791227160418,
+      "participants": [
+        {
+          "userId": "usr_admin_mohusyn",
+          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+          "isHost": true,
+          "joinedAt": "۰۸:۳۰",
+          "lastPing": 1791227196710
+        }
+      ],
+      "messages": [
+        {
+          "id": "msg_init_1",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق تمرکز عمیق آماده است. کار روی مهم‌ترین تسک روز را آغاز کنید! 🎯",
+          "timestamp": "۰۸:۳۰"
+        },
+        {
+          "id": "msg_delall_1791227196_1gap",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۰۶"
+        }
+      ],
+      "createdAt": "2026-10-05T19:06:00.418Z",
+      "isDeleted": true,
+      "deletedAt": 1791227196
+    },
+    {
+      "id": "room_dev",
+      "name": "اتاق توسعه محصول و برنامه‌نویسی",
+      "hostId": "usr_admin_mohusyn",
+      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "focusDuration": 3000,
+      "breakDuration": 600,
+      "timeLeft": 3000,
+      "isRunning": false,
+      "mode": "focus",
+      "lastUpdated": 1791227160418,
+      "participants": [],
+      "messages": [
+        {
+          "id": "msg_init_2",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "اتاق توسعه محصول آماده است. برنامه‌نویسی با بازه‌های ۵۰ دقیقه‌ای! 💻",
+          "timestamp": "۰۹:۰۰"
+        },
+        {
+          "id": "msg_delall_1791227196_okbn",
+          "userId": "system",
+          "userName": "سیستم",
+          "text": "این اتاق توسط مدیر سیستم (سید محمدحسین شیخ الاسلامی (Mohusyn)) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه نگه‌داری می‌شوند.",
+          "timestamp": "۱۹:۰۶"
+        }
+      ],
+      "createdAt": "2026-10-05T19:06:00.418Z",
+      "isDeleted": true,
+      "deletedAt": 1791227196
+    }
+  ],
   "focusRooms": [],
   "projects": [],
   "goals": [],
-  "dailyNotes": [],
-  "personalityResults": [],
+  "dailyNotes": [
+    {
+      "id": "note_1791227196613_qm1y",
+      "userId": "usr_admin_mohusyn",
+      "date": "2026-09-21",
+      "content": "امروز جلسات تیمی فشرده بود اما کارهای اصلی با دقت انجام شد.",
+      "habitsCompleted": [
+        "water",
+        "workout"
+      ],
+      "updatedAt": "2026-10-05T19:06:52.085Z"
+    }
+  ],
+  "personalityResults": [
+    {
+      "id": "pers_1791227196677_t4dc",
+      "userId": "usr_admin_mohusyn",
+      "primaryType": "استراتژیست تحلیلی (Architect)",
+      "scores": {
+        "focus": 88,
+        "planning": 92,
+        "execution": 85,
+        "adaptability": 78
+      },
+      "recommendations": [
+        "اختصاص بلوک‌های تمرکز عمیق ۹۰ دقیقه‌ای در ساعات آغازین صبح",
+        "حذف اعلان‌های پیام‌رسان‌ها در زمان کار با کد و طراحی معماری"
+      ],
+      "completedAt": "2026-10-05T19:06:52.157Z"
+    }
+  ],
   "globalSettings": {
     "appName": "بگ تایم",
     "jobCategories": [
-      "برنامه‌نویسی و مهندسی نرم‌افزار",
-      "طراحی رابط و تجربه کاربری (UI/UX)",
-      "مدیریت پروژه و اسکرام‌مستر",
-      "دیجیتال مارکتینگ و سئو",
-      "تولید محتوا و رسانه‌های دیجیتال",
       "مهندس هوش مصنوعی و یادگیری عمیق",
       "مشاور حقوقی و مالکیت فکری",
-      "متخصص DevOps و کلود",
-      "حسابداری و امور مالی",
-      "پزشکی، سلامت و روانشناسی",
-      "آموزش، تدریس و پژوهش دانشگاهی",
-      "معماری و مهندسی عمران",
-      "وکالت و امور حقوقی",
-      "سایر / فریلنسر آزاد"
+      "متخصص DevOps و کلود"
     ],
-    "updatedAt": "2026-09-24T20:00:00.000Z",
+    "updatedAt": "2026-10-05T19:06:52.305Z",
     "baleBot": {
       "enabled": true,
       "token": "1002345678:ABCdefGHIjklMNOpqrSTUvwxYZ_12345678",
@@ -76,10 +1037,10 @@
       "allowTaskCreation": true
     },
     "broadcastNotice": {
-      "enabled": false,
-      "title": "",
-      "message": "",
-      "type": "info"
+      "enabled": true,
+      "title": "جلسه اضطراری توسعه فنی",
+      "message": "تمامی اعضا راس ساعت ۱۷ در اتاق تمرکز حضور به هم رسانند.",
+      "type": "urgent"
     },
     "enforcedFont": "cairo",
     "defaultDailyFocusMinutes": 120,
@@ -91,18 +1052,185 @@
       "allowUserRoomCreation": true,
       "allowPublicChat": true
     },
-    "dailyMantra": "تمرکز پیوسته بر کارهای مهم، رمز موفقیت و آرامش ذهن است.",
+    "dailyMantra": "تمرکز تیمی حداکثری و تحقق اهداف فصلی",
     "texts": {
-      "appName": "بگ تایم"
+      "appName": ""
     }
   },
-  "custom_fonts": [],
-  "friendships": [],
-  "friend_requests": [],
-  "messages": [],
+  "custom_fonts": [
+    {
+      "id": "font_1791227196704_awxt",
+      "name": "ساحل بولد سفارشی",
+      "family": "SahelBoldCustom",
+      "fontUrl": "/fonts/Sahel-Bold.woff2",
+      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
+      "description": "فونت آپلود شده در تست یکپارچه",
+      "isCustom": true,
+      "createdAt": "2026-10-05T19:06:36.704Z"
+    },
+    {
+      "id": "font_1791227212180_5f6w",
+      "name": "ساحل بولد سفارشی",
+      "family": "SahelBoldCustom",
+      "fontUrl": "/fonts/Sahel-Bold.woff2",
+      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
+      "description": "فونت آپلود شده در تست یکپارچه",
+      "isCustom": true,
+      "createdAt": "2026-10-05T19:06:52.180Z"
+    }
+  ],
+  "friendships": [
+    {
+      "id": "fs_1791227196887_nbuk",
+      "user1Id": "usr_admin_mohusyn",
+      "user2Id": "usr_1791227196878_non2",
+      "createdAt": "2026-10-05T19:06:36.887Z"
+    },
+    {
+      "id": "fs_1791227212384_7oxn",
+      "user1Id": "usr_admin_mohusyn",
+      "user2Id": "usr_1791227212375_2jva",
+      "createdAt": "2026-10-05T19:06:52.384Z"
+    }
+  ],
+  "friend_requests": [
+    {
+      "id": "freq_1791227196882_4azg",
+      "fromUserId": "usr_admin_mohusyn",
+      "fromUserName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "fromUserUsername": "Mohusyn",
+      "fromUserAvatar": null,
+      "toUserId": "usr_1791227196878_non2",
+      "status": "accepted",
+      "createdAt": "2026-10-05T19:06:36.882Z"
+    },
+    {
+      "id": "freq_1791227212379_33ok",
+      "fromUserId": "usr_admin_mohusyn",
+      "fromUserName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "fromUserUsername": "Mohusyn",
+      "fromUserAvatar": null,
+      "toUserId": "usr_1791227212375_2jva",
+      "status": "accepted",
+      "createdAt": "2026-10-05T19:06:52.379Z"
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg_1791227196898_4e85",
+      "senderId": "usr_admin_mohusyn",
+      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "senderAvatar": null,
+      "receiverId": "usr_1791227196894_rtu6",
+      "text": "سلام سارا، به تیم بگ تایم خوش آمدید!",
+      "createdAt": "2026-10-05T19:06:36.898Z",
+      "read": false
+    },
+    {
+      "id": "msg_1791227212398_2h0p",
+      "senderId": "usr_admin_mohusyn",
+      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "senderAvatar": null,
+      "receiverId": "usr_1791227212392_2xgu",
+      "text": "سلام سارا، به تیم بگ تایم خوش آمدید!",
+      "createdAt": "2026-10-05T19:06:52.398Z",
+      "read": false
+    },
+    {
+      "id": "msg_1791227217553_3pll",
+      "senderId": "usr_admin_mohusyn",
+      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "senderAvatar": null,
+      "receiverId": "usr_admin_mohusyn",
+      "text": "سلام تست",
+      "createdAt": "2026-10-05T19:06:57.553Z",
+      "read": false
+    }
+  ],
   "project_messages": [],
-  "notifications": [],
+  "notifications": [
+    {
+      "id": "notif_msg_1791227217553_5y1w",
+      "userId": "usr_admin_mohusyn",
+      "title": "پیام جدید از سید محمدحسین شیخ الاسلامی (Mohusyn) 💬",
+      "message": "سلام تست",
+      "type": "info",
+      "timestamp": "2026-10-05T19:06:57.553Z",
+      "read": false,
+      "senderId": "usr_admin_mohusyn",
+      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)"
+    },
+    {
+      "id": "notif_msg_1791227212398_7rrx",
+      "userId": "usr_1791227212392_2xgu",
+      "title": "پیام جدید از سید محمدحسین شیخ الاسلامی (Mohusyn) 💬",
+      "message": "سلام سارا، به تیم بگ تایم خوش آمدید!",
+      "type": "info",
+      "timestamp": "2026-10-05T19:06:52.398Z",
+      "read": false,
+      "senderId": "usr_admin_mohusyn",
+      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)"
+    },
+    {
+      "id": "notif_freq_freq_1791227212379_33ok",
+      "userId": "usr_1791227212375_2jva",
+      "title": "درخواست دوستی و همکاری جدید 👥",
+      "message": "سید محمدحسین شیخ الاسلامی (Mohusyn) برای شما درخواست همکاری ارسال کرد.",
+      "type": "friend",
+      "timestamp": "2026-10-05T19:06:52.379Z",
+      "read": false,
+      "senderId": "usr_admin_mohusyn",
+      "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)"
+    },
+    {
+      "id": "notif_msg_1791227196898_lanh",
+      "userId": "usr_1791227196894_rtu6",
+      "title": "پیام جدید از سید محمدحسین شیخ الاسلامی (Mohusyn) 💬",
+      "message": "سلام سارا، به تیم بگ تایم خوش آمدید!",
+      "type": "info",
+      "timestamp": "2026-10-05T19:06:36.898Z",
+      "read": false,
+      "senderId": "usr_admin_mohusyn",
+      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)"
+    },
+    {
+      "id": "notif_freq_freq_1791227196882_4azg",
+      "userId": "usr_1791227196878_non2",
+      "title": "درخواست دوستی و همکاری جدید 👥",
+      "message": "سید محمدحسین شیخ الاسلامی (Mohusyn) برای شما درخواست همکاری ارسال کرد.",
+      "type": "friend",
+      "timestamp": "2026-10-05T19:06:36.882Z",
+      "read": false,
+      "senderId": "usr_admin_mohusyn",
+      "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)"
+    }
+  ],
   "payments": [],
-  "sessions": [],
+  "sessions": [
+    {
+      "id": "sess_7573725f6164",
+      "userId": "usr_admin_mohusyn",
+      "token": "dXNyX2FkbWluX21vaHVzeW46MTc5MTIyNzE5NjU3NA==",
+      "device": "رایانه شخصی (PC)",
+      "browser": "مرورگر وب",
+      "isMobile": false,
+      "ip": "127.0.0.1",
+      "location": "تهران",
+      "createdAt": "2026-10-05T19:06:36.575Z",
+      "lastActive": "2026-10-05T19:06:57.546Z"
+    },
+    {
+      "id": "sess_7573725f3137",
+      "userId": "usr_1791227196776_104a",
+      "token": "dXNyXzE3OTEyMjcxOTY3NzZfMTA0YToxNzkxMjI3MTk2Nzg3",
+      "device": "رایانه شخصی (PC)",
+      "browser": "مرورگر وب",
+      "isMobile": false,
+      "ip": "127.0.0.1",
+      "location": "اصفهان",
+      "createdAt": "2026-10-05T19:06:36.787Z",
+      "lastActive": "2026-10-05T19:06:52.395Z"
+    }
+  ],
   "revoked_tokens": []
 }

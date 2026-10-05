@@ -31,7 +31,7 @@ class TaskRoozDB {
 
     private function ensureMySQLSchema() {
         if (!$this->pdo) return;
-        $marker = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.mysql_schema_ready_v3';
+        $marker = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.mysql_schema_ready_v4';
         if (file_exists($marker)) {
             return;
         }
@@ -236,6 +236,38 @@ class TaskRoozDB {
                   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
                   PRIMARY KEY (`id`),
                   KEY `idx_notif_user` (`user_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS `messages` (
+                  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `sender_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `sender_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `sender_avatar` longtext COLLATE utf8mb4_unicode_ci,
+                  `receiver_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `text` text COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+                  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_msg_sender` (`sender_id`),
+                  KEY `idx_msg_receiver` (`receiver_id`),
+                  KEY `idx_msg_created` (`created_at`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS `project_messages` (
+                  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `project_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `sender_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `sender_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                  `sender_avatar` longtext COLLATE utf8mb4_unicode_ci,
+                  `text` text COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_pmsg_proj` (`project_id`),
+                  KEY `idx_pmsg_created` (`created_at`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
 
@@ -480,7 +512,6 @@ class TaskRoozDB {
     }
 
     public function saveMessages() {
-        if ($this->mode === 'mysql' && $this->pdo !== null) return;
         $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
         if (!is_dir($dir)) @mkdir($dir, 0777, true);
         $payload = [
@@ -3385,5 +3416,305 @@ class TaskRoozDB {
             }));
             $this->saveNotifications();
         }
+    }
+
+    // --- Messaging & Chat Operations (Direct & Project) ---
+    public function getDirectMessages($user1Id, $user2Id) {
+        $u1 = $this->getUserById($user1Id);
+        $u2 = $this->getUserById($user2Id);
+        $u1List = [$user1Id];
+        $u2List = [$user2Id];
+        if ($u1) {
+            $u1List[] = $u1['id'];
+            if (!empty($u1['username'])) $u1List[] = $u1['username'];
+        }
+        if ($u2) {
+            $u2List[] = $u2['id'];
+            if (!empty($u2['username'])) $u2List[] = $u2['username'];
+        }
+        $u1List = array_values(array_unique(array_filter($u1List)));
+        $u2List = array_values(array_unique(array_filter($u2List)));
+
+        $list = [];
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $p1 = implode(',', array_fill(0, count($u1List), '?'));
+                $p2 = implode(',', array_fill(0, count($u2List), '?'));
+                $sql = "
+                    SELECT * FROM messages 
+                    WHERE (sender_id IN ($p1) AND receiver_id IN ($p2))
+                       OR (sender_id IN ($p2) AND receiver_id IN ($p1))
+                    ORDER BY created_at ASC
+                ";
+                $params = array_merge($u1List, $u2List, $u2List, $u1List);
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute($params);
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                if ($rows !== false) {
+                    foreach ($rows as $r) {
+                        $list[] = [
+                            'id' => $r['id'],
+                            'senderId' => $r['sender_id'],
+                            'senderName' => $r['sender_name'],
+                            'senderAvatar' => $r['sender_avatar'],
+                            'receiverId' => $r['receiver_id'],
+                            'text' => $r['text'],
+                            'read' => !empty($r['is_read']),
+                            'createdAt' => $r['created_at'],
+                        ];
+                    }
+                    // Mark unread incoming messages as read
+                    try {
+                        $upSql = "UPDATE messages SET is_read = 1 WHERE receiver_id IN ($p1) AND sender_id IN ($p2) AND is_read = 0";
+                        $upStmt = $this->pdo->prepare($upSql);
+                        $upStmt->execute(array_merge($u1List, $u2List));
+                    } catch (Exception $eUp) {}
+
+                    return $list;
+                }
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        $all = $this->data['messages'] ?? [];
+        $changed = false;
+        foreach ($all as &$m) {
+            $s = $m['senderId'] ?? '';
+            $r = $m['receiverId'] ?? '';
+            if ((in_array($s, $u1List) && in_array($r, $u2List)) || (in_array($s, $u2List) && in_array($r, $u1List))) {
+                if (in_array($r, $u1List) && empty($m['read'])) {
+                    $m['read'] = true;
+                    $changed = true;
+                }
+                $list[] = $m;
+            }
+        }
+        if ($changed) {
+            $this->saveMessages();
+        }
+        return $list;
+    }
+
+    public function sendDirectMessage($senderUser, $receiverId, $text) {
+        $cleanText = trim((string)$text);
+        $canonicalReceiver = $this->getUserById($receiverId);
+        if (!$canonicalReceiver) {
+            $canonicalReceiver = $this->getUserByUsername($receiverId);
+        }
+        $realReceiverId = $canonicalReceiver ? $canonicalReceiver['id'] : $receiverId;
+
+        $msgId = 'msg_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4);
+        $now = date('Y-m-d H:i:s');
+        $newMsg = [
+            'id' => $msgId,
+            'senderId' => $senderUser['id'],
+            'senderName' => $senderUser['name'],
+            'senderAvatar' => $senderUser['avatar'] ?? null,
+            'receiverId' => $realReceiverId,
+            'text' => $cleanText,
+            'read' => false,
+            'createdAt' => $now,
+        ];
+
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("
+                    INSERT INTO messages (id, sender_id, sender_name, sender_avatar, receiver_id, text, is_read, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+                ");
+                $stmt->execute([
+                    $newMsg['id'],
+                    $newMsg['senderId'],
+                    $newMsg['senderName'],
+                    $newMsg['senderAvatar'],
+                    $newMsg['receiverId'],
+                    $newMsg['text'],
+                    $newMsg['createdAt']
+                ]);
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        if (!isset($this->data['messages']) || !is_array($this->data['messages'])) {
+            $this->data['messages'] = [];
+        }
+        $this->data['messages'][] = $newMsg;
+        $this->saveMessages();
+
+        // In-app notification & Bale alert
+        $preview = mb_substr($cleanText, 0, 70) . (mb_strlen($cleanText) > 70 ? '...' : '');
+        $this->addNotification(
+            $realReceiverId,
+            "پیام جدید از {$senderUser['name']} 💬",
+            $preview,
+            'info',
+            [
+                'senderId' => $senderUser['id'],
+                'senderName' => $senderUser['name'],
+            ]
+        );
+
+        return $newMsg;
+    }
+
+    public function getConversations($userId) {
+        $u = $this->getUserById($userId);
+        $idList = [$userId];
+        if ($u) {
+            $idList[] = $u['id'];
+            if (!empty($u['username'])) $idList[] = $u['username'];
+        }
+        $idList = array_values(array_unique(array_filter($idList)));
+
+        $partners = [];
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $p = implode(',', array_fill(0, count($idList), '?'));
+                $stmt = $this->pdo->prepare("
+                    SELECT * FROM messages 
+                    WHERE sender_id IN ($p) OR receiver_id IN ($p)
+                    ORDER BY created_at ASC
+                ");
+                $stmt->execute(array_merge($idList, $idList));
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                if ($rows !== false) {
+                    foreach ($rows as $r) {
+                        $s = $r['sender_id'];
+                        $rec = $r['receiver_id'];
+                        $pId = in_array($s, $idList) ? $rec : $s;
+                        $mItem = [
+                            'id' => $r['id'],
+                            'senderId' => $s,
+                            'senderName' => $r['sender_name'],
+                            'senderAvatar' => $r['sender_avatar'],
+                            'receiverId' => $rec,
+                            'text' => $r['text'],
+                            'read' => !empty($r['is_read']),
+                            'createdAt' => $r['created_at'],
+                        ];
+                        if (!isset($partners[$pId])) {
+                            $partners[$pId] = ['lastMessage' => $mItem, 'unreadCount' => 0];
+                        }
+                        $partners[$pId]['lastMessage'] = $mItem;
+                        if (in_array($rec, $idList) && empty($r['is_read'])) {
+                            $partners[$pId]['unreadCount']++;
+                        }
+                    }
+                }
+            } catch (Exception $e) {}
+        } else {
+            $this->loadJson();
+            $all = $this->data['messages'] ?? [];
+            foreach ($all as $m) {
+                $s = $m['senderId'] ?? '';
+                $rec = $m['receiverId'] ?? '';
+                if (in_array($s, $idList) || in_array($rec, $idList)) {
+                    $pId = in_array($s, $idList) ? $rec : $s;
+                    if (!isset($partners[$pId])) {
+                        $partners[$pId] = ['lastMessage' => $m, 'unreadCount' => 0];
+                    }
+                    $partners[$pId]['lastMessage'] = $m;
+                    if (in_array($rec, $idList) && empty($m['read'])) {
+                        $partners[$pId]['unreadCount']++;
+                    }
+                }
+            }
+        }
+
+        $allUsers = $this->getAllUsers();
+        $userMap = [];
+        foreach ($allUsers as $usr) {
+            $userMap[$usr['id']] = $usr;
+            if (!empty($usr['username'])) $userMap[$usr['username']] = $usr;
+        }
+
+        $res = [];
+        foreach ($partners as $pId => $data) {
+            $partner = $userMap[$pId] ?? null;
+            $res[] = [
+                'partnerId' => $partner ? $partner['id'] : $pId,
+                'partnerName' => $partner ? $partner['name'] : 'کاربر',
+                'partnerUsername' => $partner ? $partner['username'] : '',
+                'partnerAvatar' => $partner ? ($partner['avatar'] ?? null) : null,
+                'lastMessage' => $data['lastMessage'],
+                'unreadCount' => $data['unreadCount'],
+            ];
+        }
+        return $res;
+    }
+
+    public function getProjectMessages($projectId) {
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("SELECT * FROM project_messages WHERE project_id = ? ORDER BY created_at ASC");
+                $stmt->execute([$projectId]);
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                if ($rows !== false) {
+                    return array_map(function($r) {
+                        return [
+                            'id' => $r['id'],
+                            'projectId' => $r['project_id'],
+                            'senderId' => $r['sender_id'],
+                            'senderName' => $r['sender_name'],
+                            'senderAvatar' => $r['sender_avatar'],
+                            'text' => $r['text'],
+                            'createdAt' => $r['created_at'],
+                        ];
+                    }, $rows);
+                }
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        $all = $this->data['project_messages'] ?? [];
+        $list = [];
+        foreach ($all as $m) {
+            if (($m['projectId'] ?? '') === $projectId) {
+                $list[] = $m;
+            }
+        }
+        return $list;
+    }
+
+    public function sendProjectMessage($projectId, $senderUser, $text) {
+        $msgId = 'pmsg_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4);
+        $now = date('Y-m-d H:i:s');
+        $cleanText = trim((string)$text);
+        $newMsg = [
+            'id' => $msgId,
+            'projectId' => $projectId,
+            'senderId' => $senderUser['id'],
+            'senderName' => $senderUser['name'],
+            'senderAvatar' => $senderUser['avatar'] ?? null,
+            'text' => $cleanText,
+            'createdAt' => $now,
+        ];
+
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("
+                    INSERT INTO project_messages (id, project_id, sender_id, sender_name, sender_avatar, text, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $newMsg['id'],
+                    $newMsg['projectId'],
+                    $newMsg['senderId'],
+                    $newMsg['senderName'],
+                    $newMsg['senderAvatar'],
+                    $newMsg['text'],
+                    $newMsg['createdAt']
+                ]);
+            } catch (Exception $e) {}
+        }
+
+        $this->loadJson();
+        if (!isset($this->data['project_messages']) || !is_array($this->data['project_messages'])) {
+            $this->data['project_messages'] = [];
+        }
+        $this->data['project_messages'][] = $newMsg;
+        $this->saveMessages();
+
+        return $newMsg;
     }
 }

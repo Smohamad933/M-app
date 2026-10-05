@@ -13,11 +13,7 @@ $input = in_array($method, ['POST', 'PUT']) ? getJsonInput() : [];
 if ($method === 'GET' && ($action === 'messages' || isset($_GET['messages']))) {
     $projectId = $_GET['project_id'] ?? $_GET['id'] ?? '';
     $dbObj = TaskRoozDB::getInstance();
-    $all = $dbObj->data['project_messages'] ?? [];
-    $list = [];
-    foreach ($all as $m) {
-        if (($m['projectId'] ?? '') === $projectId) $list[] = $m;
-    }
+    $list = $dbObj->getProjectMessages($projectId);
     jsonResponse(['messages' => $list]);
 }
 
@@ -29,18 +25,7 @@ if ($method === 'POST' && ($action === 'messages' || ($input['action'] ?? '') ==
         jsonResponse(['error' => 'شناسه پروژه و متن پیام الزامی است.'], 400);
     }
     $dbObj = TaskRoozDB::getInstance();
-    if (!isset($dbObj->data['project_messages'])) $dbObj->data['project_messages'] = [];
-    $newMsg = [
-        'id' => 'pmsg_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4),
-        'projectId' => $projectId,
-        'senderId' => $currentUser['id'],
-        'senderName' => $currentUser['name'],
-        'senderAvatar' => $currentUser['avatar'] ?? null,
-        'text' => $text,
-        'createdAt' => date('Y-m-d H:i:s'),
-    ];
-    $dbObj->data['project_messages'][] = $newMsg;
-    $dbObj->saveJson();
+    $newMsg = $dbObj->sendProjectMessage($projectId, $currentUser, $text);
     jsonResponse(['message' => 'پیام با موفقیت ارسال شد.', 'data' => $newMsg], 201);
 }
 

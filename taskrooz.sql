@@ -198,6 +198,36 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   KEY `idx_notif_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 14. جدول پیام‌های چت مستقیم بین کاربران (messages)
+CREATE TABLE IF NOT EXISTS `messages` (
+  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sender_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sender_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sender_avatar` longtext COLLATE utf8mb4_unicode_ci,
+  `receiver_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `text` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_msg_sender` (`sender_id`),
+  KEY `idx_msg_receiver` (`receiver_id`),
+  KEY `idx_msg_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 15. جدول پیام‌های چت گروهی پروژه‌ها (project_messages)
+CREATE TABLE IF NOT EXISTS `project_messages` (
+  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `project_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sender_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sender_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sender_avatar` longtext COLLATE utf8mb4_unicode_ci,
+  `text` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pmsg_proj` (`project_id`),
+  KEY `idx_pmsg_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ==============================================================================
 -- درج اطلاعات پایه و ادمین کل سیستم: Mohusyn / Smosh1387
 -- ==============================================================================
