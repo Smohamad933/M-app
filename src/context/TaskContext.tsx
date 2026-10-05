@@ -281,8 +281,17 @@ export const AVAILABLE_FONTS: SystemFontOption[] = [
 function injectFontLink(font: SystemFontOption) {
   try {
     if (!font) return;
-    const fontSource = font.dataUrl || font.fontUrl;
+    let fontSource = font.dataUrl || font.fontUrl;
     if (!fontSource) return;
+
+    if (!fontSource.startsWith('data:') && !fontSource.startsWith('http://') && !fontSource.startsWith('https://')) {
+      if (typeof window !== 'undefined' && window.location) {
+        fontSource = fontSource.startsWith('/') 
+          ? `${window.location.origin}${fontSource}` 
+          : `${window.location.origin}/${fontSource}`;
+      }
+    }
+
     const elementId = `custom-font-style-${font.id || 'default'}`;
     const existing = document.getElementById(elementId);
     if (existing) existing.remove();
@@ -300,7 +309,7 @@ function injectFontLink(font: SystemFontOption) {
       style.textContent = `
         @font-face {
           font-family: '${cleanFamily}';
-          src: url('${fontSource}') format('woff2'), url('${fontSource}') format('truetype'), url('${fontSource}') format('opentype');
+          src: url('${fontSource}') format('woff2'), url('${fontSource}') format('woff'), url('${fontSource}') format('truetype'), url('${fontSource}') format('opentype');
           font-display: swap;
         }
       `;
@@ -385,6 +394,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = customFonts.filter((f) => f.id !== fontId);
     setCustomFonts(updated);
     api.saveCustomFonts(updated);
+    api.deleteCustomFont(fontId);
     if (systemFont === fontId) {
       setSystemFontState('vazirmatn');
     }
@@ -416,7 +426,15 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         injectFontLink(found);
       }
       if (found.family) {
-        document.documentElement.style.setProperty('--font-sans', found.family);
+        if (found.isCustom) {
+          const cleanFam = found.family.replace(/['"]/g, '').split(',')[0].trim();
+          document.documentElement.style.setProperty(
+            '--font-sans',
+            `'${cleanFam}', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
+          );
+        } else {
+          document.documentElement.style.setProperty('--font-sans', found.family);
+        }
       }
       try {
         localStorage.setItem('taskrooz_system_font', found.id);

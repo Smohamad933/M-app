@@ -191,8 +191,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   const isGet = method === 'GET';
 
   const token = getAuthToken();
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string>),
   };
 
@@ -1206,17 +1207,59 @@ export const api = {
     }
   },
 
+  async deleteCustomFont(fontId: string): Promise<void> {
+    try {
+      await request(`api/fonts.php?action=delete&id=${encodeURIComponent(fontId)}`, {
+        method: 'POST',
+        body: JSON.stringify({ id: fontId, action: 'delete' }),
+      });
+    } catch {}
+  },
+
   async uploadCustomFont(file: File, name: string, family?: string, description?: string): Promise<SystemFontOption> {
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
     const cleanName = name.trim() || file.name.replace(/\.[^/.]+$/, '');
-    const cleanFamily = (family?.trim() || cleanName).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const asciiSlug = (family?.trim() || cleanName).replace(/[^a-zA-Z0-9_-]/g, '');
+    const cleanFamily = asciiSlug.length >= 2 ? asciiSlug : ('CustomFont_' + Math.random().toString(36).substring(2, 6));
 
+    let dataUrl = '';
+    try {
+      dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    } catch {}
+
+    // 1. Try uploading with FormData first (supports large font files, streaming directly to server)
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('name', cleanName);
+      formData.append('family', cleanFamily);
+      formData.append('filename', file.name);
+      formData.append('description', description?.trim() || 'فونت سفارشی آپلود شده از سیستم');
+      if (dataUrl && dataUrl.length < 500000) {
+        formData.append('dataUrl', dataUrl);
+      }
+
+      const res = await request<{ message: string; font: SystemFontOption }>('api/fonts.php?action=upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res && res.font) {
+        if (!res.font.dataUrl && dataUrl) {
+          res.font.dataUrl = dataUrl;
+        }
+        broadcastSync('FONT_UPLOADED', res.font);
+        return res.font;
+      }
+    } catch (formErr) {
+      console.warn('FormData font upload failed, falling back to JSON payload:', formErr);
+    }
+
+    // 2. Fallback to JSON payload if FormData was blocked
     const res = await request<{ message: string; font: SystemFontOption }>('api/fonts.php?action=upload', {
       method: 'POST',
       body: JSON.stringify({
@@ -1228,6 +1271,9 @@ export const api = {
       }),
     });
 
+    if (!res.font.dataUrl && dataUrl) {
+      res.font.dataUrl = dataUrl;
+    }
     broadcastSync('FONT_UPLOADED', res.font);
     return res.font;
   },

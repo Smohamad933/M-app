@@ -84,7 +84,10 @@ export const FontSelectorModal: React.FC<FontSelectorModalProps> = ({ isOpen, on
 
     setSelectedFile(file);
     const baseName = file.name.replace(/\.[^/.]+$/, '');
-    const cleanFamily = baseName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const asciiOnly = baseName.replace(/[^a-zA-Z0-9]/g, '');
+    const cleanFamily = asciiOnly.length >= 2 
+      ? asciiOnly 
+      : 'CustomFont_' + Math.random().toString(36).substring(2, 6);
     setUploadFontName(baseName);
     setUploadFontFamily(cleanFamily);
     setUploadFontDesc(`فونت بارگذاری شده (${(file.size / 1024).toFixed(0)} کیلوبایت)`);
@@ -100,7 +103,7 @@ export const FontSelectorModal: React.FC<FontSelectorModalProps> = ({ isOpen, on
       tempStyle.textContent = `
         @font-face {
           font-family: 'TempPreviewFont_${cleanFamily}';
-          src: url('${result}') format('woff2');
+          src: url('${result}') format('woff2'), url('${result}') format('woff'), url('${result}') format('truetype'), url('${result}') format('opentype');
         }
       `;
       const prev = document.getElementById('temp-preview-font-style');

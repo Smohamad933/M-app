@@ -31,7 +31,7 @@ class TaskRoozDB {
 
     private function ensureMySQLSchema() {
         if (!$this->pdo) return;
-        $marker = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.mysql_schema_ready_v4';
+        $marker = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.mysql_schema_ready_v5';
         if (file_exists($marker)) {
             return;
         }
@@ -268,6 +268,19 @@ class TaskRoozDB {
                   PRIMARY KEY (`id`),
                   KEY `idx_pmsg_proj` (`project_id`),
                   KEY `idx_pmsg_created` (`created_at`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS `custom_fonts` (
+                  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `family` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `font_url` text COLLATE utf8mb4_unicode_ci,
+                  `data_url` longtext COLLATE utf8mb4_unicode_ci,
+                  `description` text COLLATE utf8mb4_unicode_ci,
+                  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
 
@@ -2951,7 +2964,7 @@ class TaskRoozDB {
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
                 $stmt = $this->pdo->query("SELECT id, name, family, font_url as fontUrl, data_url as dataUrl, description, created_at as createdAt FROM custom_fonts ORDER BY created_at DESC");
-                $rows = $stmt->fetchAll();
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 if ($rows) {
                     return array_map(function($f) {
                         $f['isCustom'] = true;
@@ -2966,7 +2979,7 @@ class TaskRoozDB {
     }
 
     public function addCustomFont($fontData) {
-        $id = 'font_' . time() . '_' . substr(bin2hex(random_bytes(2)), 0, 4);
+        $id = !empty($fontData['id']) ? $fontData['id'] : ('font_' . time() . '_' . substr(bin2hex(random_bytes(2)), 0, 4));
         $font = [
             'id' => $id,
             'name' => trim($fontData['name'] ?? 'فونت جدید'),
@@ -2983,15 +2996,66 @@ class TaskRoozDB {
                 $stmt = $this->pdo->prepare("
                     INSERT INTO custom_fonts (id, name, family, font_url, data_url, description, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, NOW())
+                    ON DUPLICATE KEY UPDATE
+                        name = VALUES(name),
+                        family = VALUES(family),
+                        font_url = VALUES(font_url),
+                        data_url = VALUES(data_url),
+                        description = VALUES(description)
                 ");
                 $stmt->execute([$id, $font['name'], $font['family'], $font['fontUrl'], $font['dataUrl'], $font['description']]);
-            } catch (Exception $e) {}
+            } catch (Exception $e) {
+                // If data_url was too large for MySQL packet, insert with NULL data_url
+                try {
+                    $stmt = $this->pdo->prepare("
+                        INSERT INTO custom_fonts (id, name, family, font_url, data_url, description, created_at)
+                        VALUES (?, ?, ?, ?, NULL, ?, NOW())
+                        ON DUPLICATE KEY UPDATE
+                            name = VALUES(name),
+                            family = VALUES(family),
+                            font_url = VALUES(font_url),
+                            description = VALUES(description)
+                    ");
+                    $stmt->execute([$id, $font['name'], $font['family'], $font['fontUrl'], $font['description']]);
+                } catch (Exception $e2) {}
+            }
         }
 
         $this->loadJson();
-        $this->data['custom_fonts'][] = $font;
+        if (!isset($this->data['custom_fonts']) || !is_array($this->data['custom_fonts'])) {
+            $this->data['custom_fonts'] = [];
+        }
+        $existingIdx = -1;
+        foreach ($this->data['custom_fonts'] as $idx => $cf) {
+            if (($cf['id'] ?? '') === $id) {
+                $existingIdx = $idx;
+                break;
+            }
+        }
+        if ($existingIdx >= 0) {
+            $this->data['custom_fonts'][$existingIdx] = $font;
+        } else {
+            $this->data['custom_fonts'][] = $font;
+        }
         $this->saveJson();
         return $font;
+    }
+
+    public function deleteCustomFont($id) {
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("DELETE FROM custom_fonts WHERE id = ?");
+                $stmt->execute([$id]);
+            } catch (Exception $e) {}
+        }
+        $this->loadJson();
+        if (isset($this->data['custom_fonts']) && is_array($this->data['custom_fonts'])) {
+            $this->data['custom_fonts'] = array_values(array_filter($this->data['custom_fonts'], function($f) use ($id) {
+                return ($f['id'] ?? '') !== $id;
+            }));
+            $this->saveJson();
+        }
+        return true;
     }
 
     // --- Friend Requests & Network Operations ---

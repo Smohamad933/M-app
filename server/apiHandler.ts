@@ -2565,6 +2565,33 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
   if (pathname.startsWith('/api/fonts')) {
     const action = urlObj.searchParams.get('action');
 
+    // Direct font file streaming (GET ?file=...)
+    const fileParam = urlObj.searchParams.get('file');
+    if (method === 'GET' && fileParam) {
+      const clean = path.basename(fileParam);
+      const filePath = path.resolve(process.cwd(), 'fonts', clean);
+      const publicPath = path.resolve(process.cwd(), 'public/fonts', clean);
+      const actualPath = fs.existsSync(filePath) ? filePath : (fs.existsSync(publicPath) ? publicPath : null);
+      if (actualPath) {
+        const ext = path.extname(actualPath).toLowerCase();
+        const mimes: Record<string, string> = {
+          '.woff2': 'font/woff2',
+          '.woff': 'font/woff',
+          '.ttf': 'font/ttf',
+          '.otf': 'font/otf',
+        };
+        res.writeHead(200, {
+          'Content-Type': mimes[ext] || 'application/octet-stream',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        });
+        res.end(fs.readFileSync(actualPath));
+        return true;
+      }
+      sendJson(res, { error: 'فایل فونت یافت نشد.' }, 404);
+      return true;
+    }
+
     // Get all custom fonts
     if (method === 'GET') {
       sendJson(res, { fonts: db.custom_fonts || [] });

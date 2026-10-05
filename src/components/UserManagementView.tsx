@@ -6,6 +6,7 @@ import { sounds } from '../utils/sound';
 import { APP_TEXTS, APP_TEXT_SECTIONS } from '../utils/appTexts';
 import { UserAvatar } from './UserAvatar';
 import { SubscriptionBadge } from './SubscriptionBadge';
+import { FontSelectorModal } from './FontSelectorModal';
 import type { User, GlobalSystemSettings, AppDeveloper } from '../types';
 import {
   Users,
@@ -180,6 +181,7 @@ export const UserManagementView: React.FC = () => {
   // Active view tab inside Admin Panel
   const [adminTab, setAdminTab] = useState<'users' | 'payments' | 'settings' | 'texts' | 'developers' | 'extension' | 'bale'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isFontModalOpen, setIsFontModalOpen] = useState(false);
   const pendingUsers = users.filter((u) => u.status === 'pending_approval');
   const [planFilter, setPlanFilter] = useState<'all' | 'pro' | 'free'>('all');
 
@@ -1900,17 +1902,30 @@ export const UserManagementView: React.FC = () => {
               <p className="text-[11px] text-zinc-400">
                 فونت انتخابی شما به عنوان فونت استاندارد برای تمام دستگاه‌ها و کاربران تنظیم می‌شود.
               </p>
-              <select
-                value={formSettings.enforcedFont}
-                onChange={(e) => setFormSettings({ ...formSettings, enforcedFont: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-purple-500"
-              >
-                {allAvailableFonts.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name} {f.isCustom ? '(سفارشی)' : ''}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  value={formSettings.enforcedFont}
+                  onChange={(e) => setFormSettings({ ...formSettings, enforcedFont: e.target.value })}
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-purple-500"
+                >
+                  {allAvailableFonts.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name} {f.isCustom ? '(سفارشی)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setIsFontModalOpen(true);
+                  }}
+                  className="px-3.5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-xs active:scale-95"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>آپلود فونت جدید</span>
+                </button>
+              </div>
             </div>
 
             <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-5 space-y-3.5 backdrop-blur-md">
@@ -4185,6 +4200,9 @@ export const UserManagementView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Font Selector & Custom Font Upload Modal */}
+      <FontSelectorModal isOpen={isFontModalOpen} onClose={() => setIsFontModalOpen(false)} />
     </div>
   );
 };
