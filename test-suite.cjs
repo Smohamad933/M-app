@@ -1389,3 +1389,69 @@ test('Anti-Duplication: Multi-server retry or rapid submits return single task w
   // Clean up
   await request('POST', '/api/tasks', { action: 'delete', id: createdId }, adminHeader);
 });
+
+// 36. Task Incomplete Reason: Updates via PUT and POST fallback (IIS-compatible)
+test('Task Incomplete Reason: reasonUncompleted and uncompletedCategory persist reliably', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  // Create a task
+  const createRes = await request('POST', '/api/tasks', {
+    title: 'تسک تستی برای دلیل عدم انجام',
+    date: '2026-10-06',
+  }, adminHeader);
+  assert(createRes.status === 201, 'Task created');
+  const taskId = createRes.body.task.id;
+
+  // 1. Update reason via PUT
+  const putRes = await request('PUT', '/api/tasks', {
+    id: taskId,
+    completed: false,
+    uncompletedCategory: 'procrastination',
+    reasonUncompleted: 'اهمال‌کاری و تاخیر در شروع',
+  }, adminHeader);
+  assert(putRes.status === 200, 'PUT updated task incomplete reason');
+
+  // Verify
+  const list1 = await request('GET', '/api/tasks?date=2026-10-06', null, adminHeader);
+  const task1 = list1.body.tasks.find((t) => t.id === taskId);
+  assert(task1.uncompletedCategory === 'procrastination', 'Category saved via PUT');
+  assert(task1.reasonUncompleted === 'اهمال‌کاری و تاخیر در شروع', 'Reason saved via PUT');
+
+  // 2. Update reason via POST fallback (IIS 405 Method Not Allowed safe)
+  const postRes = await request('POST', '/api/tasks', {
+    action: 'update',
+    id: taskId,
+    completed: false,
+    uncompletedCategory: 'distraction',
+    reasonUncompleted: 'حواس‌پرتی با گوشی همراه',
+  }, adminHeader);
+  assert(postRes.status === 200, 'POST fallback updated task incomplete reason');
+
+  // Verify
+  const list2 = await request('GET', '/api/tasks?date=2026-10-06', null, adminHeader);
+  const task2 = list2.body.tasks.find((t) => t.id === taskId);
+  assert(task2.uncompletedCategory === 'distraction', 'Category updated via POST fallback');
+  assert(task2.reasonUncompleted === 'حواس‌پرتی با گوشی همراه', 'Reason updated via POST fallback');
+
+  // Clean up
+  await request('POST', '/api/tasks', { action: 'delete', id: taskId }, adminHeader);
+});
+
+// 37. Non-Admin User Blocked From Users Monitoring
+test('Security: Non-admin users strictly blocked from users monitoring API (403)', async () => {
+  const regUname = 'reg_designer_' + Date.now();
+  await request('POST', '/api/auth/register', {
+    username: regUname,
+    password: 'DesignerPass123!',
+    name: 'طراح رابط کاربری',
+    skipVerificationForTest: true,
+  });
+
+  const userLogin = await request('POST', '/api/auth/login', { username: regUname, password: 'DesignerPass123!' });
+  const userHeader = { Authorization: `Bearer ${userLogin.body.token}` };
+
+  // Regular user attempts to access /api/users
+  const userAccess = await request('GET', '/api/users', null, userHeader);
+  assert(userAccess.status === 403, 'Regular user rejected with 403 Forbidden on /api/users');
+});

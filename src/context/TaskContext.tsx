@@ -1362,9 +1362,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       reasonUncompleted: reason,
       uncompletedAt: new Date().toISOString(),
     };
-    await updateTask(updated);
-    sounds.playPop();
     closeIncompleteModal();
+    sounds.playPop();
+    await updateTask(updated);
   };
 
   const exportUsersCsv = (ids?: string[]) => {
@@ -1531,9 +1531,16 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateTask = async (updatedTask: Task) => {
-    await api.updateTask(updatedTask);
+    // Optimistic UI update: update state immediately for instant responsive feedback
     setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
     sounds.playPop();
+
+    try {
+      await api.updateTask(updatedTask);
+    } catch (err) {
+      console.error('Failed to update task on server:', err);
+    }
+
     broadcastSync('TASK_UPDATED', { taskId: updatedTask.id, projectId: updatedTask.projectId });
     refreshUsers();
     refreshProjects();

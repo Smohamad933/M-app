@@ -274,7 +274,7 @@ export const MainLayout: React.FC = () => {
     { id: 'career', label: 'اهداف و رشد شغلی', icon: Compass },
     { id: 'categories', label: 'دسته‌بندی‌ها', icon: LayoutGrid },
     { id: 'stats', label: 'گزارش عملکرد', icon: BarChart3 },
-    { id: 'users', label: 'مانیتورینگ کاربران', icon: ShieldCheck, adminOnly: true, badge: users.length > 0 ? users.length : undefined },
+    ...(isAdmin ? [{ id: 'users' as TabType, label: 'مانیتورینگ کاربران', icon: ShieldCheck, adminOnly: true, badge: users.length > 0 ? users.length : undefined }] : []),
   ];
 
   // Simple vs Advanced Interface Mode grouping
@@ -283,6 +283,12 @@ export const MainLayout: React.FC = () => {
 
   const isCurrentTabSecondary = !simplePrimaryTabs.includes(activeTab);
   const [isMoreToolsOpen, setIsMoreToolsOpen] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'users' && !isAdmin) {
+      setActiveTab('dashboard');
+    }
+  }, [activeTab, isAdmin, setActiveTab]);
 
   useEffect(() => {
     if (isCurrentTabSecondary) {
@@ -500,28 +506,63 @@ export const MainLayout: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <div className="w-full pt-2 mt-1 border-t border-slate-100 flex flex-col items-center space-y-1">
-                  {secondaryNavItems.map((item) => {
-                    const isActive = activeTab === item.id;
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          sounds.playPop();
-                          setActiveTab(item.id);
-                        }}
-                        title={item.label}
-                        className={`w-10 h-9 rounded-xl flex items-center justify-center relative transition-all cursor-pointer ${
-                          isActive
-                            ? 'bg-indigo-50 text-indigo-800 border border-indigo-200'
-                            : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-                        }`}
-                      >
-                        <Icon className="w-4 h-4" />
-                      </button>
-                    );
-                  })}
+                <div className="w-full pt-2 mt-2 border-t border-slate-100 flex flex-col items-center relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      setIsMoreToolsOpen(!isMoreToolsOpen);
+                    }}
+                    title="سایر امکانات و ابزارها"
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center relative transition-all cursor-pointer ${
+                      isCurrentTabSecondary || isMoreToolsOpen
+                        ? 'bg-indigo-50 text-indigo-800 border border-indigo-200 shadow-xs'
+                        : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'
+                    }`}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                    {isCurrentTabSecondary && (
+                      <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-500" />
+                    )}
+                  </button>
+
+                  {/* Clean Flyout Menu for Collapsed Rail */}
+                  {isMoreToolsOpen && (
+                    <div className="absolute right-14 top-0 w-48 bg-white border border-slate-200/90 rounded-2xl shadow-xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-left-2">
+                      <div className="text-[10px] font-black text-slate-400 px-2 py-1 border-b border-slate-100 mb-1">
+                        سایر امکانات و ابزارها
+                      </div>
+                      {secondaryNavItems.map((item) => {
+                        const isActive = activeTab === item.id;
+                        const Icon = item.icon;
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              sounds.playPop();
+                              setActiveTab(item.id);
+                              setIsMoreToolsOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              isActive
+                                ? 'bg-indigo-50 text-indigo-900 border border-indigo-200'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                              <span>{item.label}</span>
+                            </div>
+                            {item.badge !== undefined && item.badge > 0 && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                                {toPersianDigits(item.badge)}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )
             )}

@@ -108,8 +108,8 @@ export const ExtensionDownloadModal: React.FC<ExtensionDownloadModalProps> = ({ 
               <div className="w-7 h-7 mx-auto rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
                 <FileText className="w-4 h-4" />
               </div>
-              <div className="text-xs font-black text-slate-800">یادداشت‌های سریع</div>
-              <div className="text-[10px] text-slate-500">ذخیره خودکار در مرورگر</div>
+              <div className="text-xs font-black text-slate-800">ورود یکپارچه (SSO)</div>
+              <div className="text-[10px] text-slate-500">اتصال خودکار به حساب وب</div>
             </div>
           </div>
 
@@ -282,7 +282,7 @@ export const ExtensionDownloadModal: React.FC<ExtensionDownloadModalProps> = ({ 
         {/* Footer */}
         <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
           <span className="text-[11px] text-slate-500 font-medium">
-            نسخه افزونه: ۱.۰.۰ • کاملاً مستقل و آفلاین
+            نسخه افزونه: ۱.۰.۱ • مجهز به SSO ورود یکپارچه با سامانه
           </span>
           <button
             type="button"

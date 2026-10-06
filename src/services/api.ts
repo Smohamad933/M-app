@@ -665,6 +665,14 @@ export const api = {
     try {
       if (user) {
         localStorage.setItem('taskrooz_current_user', JSON.stringify(user));
+        if (typeof window !== 'undefined') {
+          window.postMessage({
+            type: 'BAGTIME_SSO_LOGIN',
+            token: getAuthToken(),
+            user,
+            server: window.location.origin,
+          }, '*');
+        }
       } else {
         localStorage.removeItem('taskrooz_current_user');
       }
@@ -759,6 +767,9 @@ export const api = {
     }
     removeAuthToken();
     this.setCachedUser(null);
+    if (typeof window !== 'undefined') {
+      window.postMessage({ type: 'BAGTIME_SSO_LOGOUT' }, '*');
+    }
   },
 
   // Active Sessions & Device Management ("نشست‌های فعال و انداختن بیرون دستگاه")
@@ -1299,10 +1310,21 @@ export const api = {
   },
 
   async updateTask(task: Task): Promise<void> {
-    await request('api/tasks.php', {
-      method: 'PUT',
-      body: JSON.stringify(task),
-    });
+    try {
+      await request('api/tasks.php', {
+        method: 'PUT',
+        body: JSON.stringify(task),
+      });
+    } catch {
+      // Automatic fallback for IIS FastCGI where HTTP PUT is blocked (405 Method Not Allowed)
+      await request('api/tasks.php', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'update',
+          ...task,
+        }),
+      });
+    }
   },
 
   async deleteTask(id: string): Promise<void> {

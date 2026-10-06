@@ -2219,6 +2219,32 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
 
+      if (action === 'update' || action === 'edit' || body._method === 'PUT') {
+        const id = body.id || urlObj.searchParams.get('id');
+        const taskIndex = db.tasks.findIndex((t) => t.id === id);
+        if (taskIndex === -1) {
+          sendJson(res, { error: 'تسک پیدا نشد.' }, 404);
+          return true;
+        }
+
+        const existing = db.tasks[taskIndex];
+        if (currentUser.role !== 'admin' && existing.userId !== currentUser.id) {
+          sendJson(res, { error: 'عدم دسترسی.' }, 403);
+          return true;
+        }
+
+        db.tasks[taskIndex] = {
+          ...existing,
+          ...body,
+          projectId: body.projectId !== undefined ? body.projectId : existing.projectId,
+          userId: currentUser.role === 'admin' && body.userId ? body.userId : existing.userId,
+        };
+
+        writeDb(db);
+        sendJson(res, { message: 'تسک به‌روزرسانی شد.', task: db.tasks[taskIndex] });
+        return true;
+      }
+
       const title = body.title?.trim();
       if (!title) {
         sendJson(res, { error: 'عنوان تسک الزامی است.' }, 400);

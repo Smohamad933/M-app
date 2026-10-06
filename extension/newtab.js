@@ -1450,6 +1450,27 @@ async function init() {
       extLoginSubmitBtn.textContent = 'ورود و دریافت کارهای من ⚡';
     });
   }
+
+  // Listen for real-time SSO login events from web app content bridge
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener(async (changes, area) => {
+      if (area === 'local' && changes.account) {
+        const newAcc = changes.account.newValue;
+        if (newAcc && newAcc.token && newAcc.user) {
+          currentAccount = newAcc;
+          if (newAcc.serverUrl) activeServerUrl = newAcc.serverUrl;
+          if (loginModal) loginModal.style.display = 'none';
+          document.body.classList.remove('locked-app');
+          await renderAccountUI();
+          await syncWithServer();
+          await inheritFontsFromServer();
+        } else if (!newAcc) {
+          currentAccount = null;
+          await renderAccountUI();
+        }
+      }
+    });
+  }
 }
 
 // Start on DOM ready

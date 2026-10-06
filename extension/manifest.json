@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "بگ تایم | دستیار شخصی و برنامه‌ریزی روزانه",
   "short_name": "بگ تایم",
-  "version": "1.0.0",
-  "description": "دستیار هوشمند روزانه، تایم‌لاین ساعتی، تایمر تمرکز و مدیریت تسک‌ها در نیوتَب (صفحه شروع) مرورگر",
+  "version": "1.0.1",
+  "description": "دستیار هوشمند روزانه، تایم‌لاین ساعتی، تایمر تمرکز و مدیریت تسک‌ها در نیوتَب (صفحه شروع) مرورگر با ورود یکپارچه SSO",
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
@@ -27,6 +27,16 @@
   "host_permissions": [
     "http://*/*",
     "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": ["content-bridge.js"],
+      "run_at": "document_idle"
+    }
   ],
   "browser_specific_settings": {
     "gecko": {
