@@ -1306,9 +1306,17 @@ export const api = {
   },
 
   async deleteTask(id: string): Promise<void> {
-    await request(`api/tasks.php?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
+    try {
+      await request(`api/tasks.php?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    } catch {
+      // Automatic fallback for IIS FastCGI where HTTP DELETE is blocked (405 Method Not Allowed)
+      await request('api/tasks.php', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete', id }),
+      });
+    }
   },
 
   async toggleTask(id: string): Promise<{ completed: boolean; completedAt?: string }> {

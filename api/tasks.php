@@ -41,7 +41,7 @@ if ($method === 'POST') {
         jsonResponse(['error' => 'تسک پیدا نشد.'], 404);
     }
 
-    if ($action === 'delete') {
+    if ($action === 'delete' || $action === 'remove' || ($input['_method'] ?? '') === 'DELETE' || ($_GET['_method'] ?? '') === 'DELETE') {
         $id = $input['id'] ?? $_GET['id'] ?? '';
         if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
         $db->deleteTask($id);
@@ -92,6 +92,7 @@ if ($method === 'POST') {
     }
 
     $taskData = [
+        'id' => !empty($input['id']) ? trim($input['id']) : null,
         'userId' => $targetUserId,
         'title' => $title,
         'description' => $input['description'] ?? '',
@@ -173,7 +174,8 @@ if ($method === 'PATCH') {
 
 // DELETE /api/tasks
 if ($method === 'DELETE') {
-    $id = $_GET['id'] ?? '';
+    $input = getJsonInput();
+    $id = $_GET['id'] ?? $input['id'] ?? '';
     if (empty($id)) {
         jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
     }

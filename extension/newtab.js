@@ -220,7 +220,7 @@ async function smartServerFetch(path, options = {}) {
   for (const srv of candidates) {
     const cleanUrl = srv.replace(/\/+$/, '') + (path.startsWith('/') ? path : '/' + path);
     const controller = new AbortController();
-    const timeout = options.timeout || 5500;
+    const timeout = options.timeout || 10000;
     const timer = setTimeout(() => controller.abort(), timeout);
 
     try {
@@ -640,10 +640,20 @@ function renderTasks() {
   });
 }
 
+let isAddingTask = false;
+
 async function addTask(title, time = '', priority = 'medium') {
+  if (isAddingTask) return;
+  isAddingTask = true;
+  if (submitTaskBtn) {
+    submitTaskBtn.disabled = true;
+    submitTaskBtn.style.opacity = '0.6';
+  }
+
   const taskDate = selectedCalDate || getTodayDateKey();
+  const clientTaskId = 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
   const newTask = {
-    id: 't_' + Date.now(),
+    id: clientTaskId,
     title,
     time,
     priority,
@@ -657,35 +667,46 @@ async function addTask(title, time = '', priority = 'medium') {
   renderCalendar();
   AudioFeedback.playCheck();
 
-  // Push to server with failover and immediately assign server ID
-  if (currentAccount && currentAccount.token) {
-    smartServerFetch('/api/tasks.php', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${currentAccount.token}`,
-      },
-      body: JSON.stringify({
-        title,
-        time,
-        priority,
-        date: newTask.date,
-      }),
-    })
-      .then((res) => res.json())
-      .then(async (data) => {
+  // Push to server with failover and clientTaskId to prevent server duplication
+  try {
+    if (currentAccount && currentAccount.token) {
+      const res = await smartServerFetch('/api/tasks.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentAccount.token}`,
+        },
+        body: JSON.stringify({
+          id: clientTaskId,
+          title,
+          time,
+          priority,
+          date: newTask.date,
+        }),
+      });
+
+      if (res && res.ok) {
+        const data = await res.json();
         if (data && data.task && data.task.id) {
           const srvId = String(data.task.id);
-          const tItem = tasks.find((item) => item.id === newTask.id);
-          if (tItem) {
+          const tItem = tasks.find((item) => item.id === clientTaskId);
+          if (tItem && srvId !== clientTaskId) {
             tItem.id = srvId;
             await Storage.set('tasks', tasks);
             renderTasks();
             renderCalendar();
           }
         }
-      })
-      .catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.warn('Task sync deferred or completed offline:', err);
+  } finally {
+    isAddingTask = false;
+    if (submitTaskBtn) {
+      submitTaskBtn.disabled = false;
+      submitTaskBtn.style.opacity = '1';
+    }
   }
 }
 
@@ -1234,13 +1255,14 @@ async function init() {
   if (addTaskForm) {
     addTaskForm.addEventListener('submit', (e) => {
       e.preventDefault();
+      if (isAddingTask) return;
       const val = taskInput.value.trim();
       if (!val) return;
       const timeVal = taskTimeInput?.value.trim() || '';
       const prioVal = prioritySelect?.value || 'medium';
-      addTask(val, timeVal, prioVal);
       taskInput.value = '';
       if (taskTimeInput) taskTimeInput.value = '';
+      addTask(val, timeVal, prioVal);
     });
   }
 

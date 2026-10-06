@@ -1870,15 +1870,85 @@ class TaskRoozDB {
         return array_values($res);
     }
 
+    public function formatTaskRow($r) {
+        if (!$r) return null;
+        return [
+            'id' => $r['id'],
+            'userId' => $r['user_id'] ?? $r['userId'] ?? '',
+            'projectId' => $r['project_id'] ?? $r['projectId'] ?? null,
+            'title' => $r['title'],
+            'description' => $r['description'] ?? '',
+            'date' => $r['date'],
+            'time' => $r['time'],
+            'durationMinutes' => (int)($r['duration_minutes'] ?? $r['durationMinutes'] ?? 0),
+            'completed' => !empty($r['completed']),
+            'completedAt' => $r['completed_at'] ?? $r['completedAt'] ?? null,
+            'priority' => $r['priority'] ?? 'medium',
+            'categoryId' => $r['category_id'] ?? $r['categoryId'] ?? 'cat-work',
+            'isPinned' => !empty($r['is_pinned'] ?? $r['isPinned']),
+            'focusMinutesSpent' => (int)($r['focus_minutes_spent'] ?? $r['focusMinutesSpent'] ?? 0),
+            'reasonUncompleted' => $r['reason_uncompleted'] ?? $r['reasonUncompleted'] ?? null,
+            'uncompletedCategory' => $r['uncompleted_category'] ?? $r['uncompletedCategory'] ?? null,
+            'subtasks' => !empty($r['subtasks_json']) ? (is_array($r['subtasks_json']) ? $r['subtasks_json'] : json_decode($r['subtasks_json'], true)) : ($r['subtasks'] ?? []),
+            'createdAt' => $r['created_at'] ?? $r['createdAt'] ?? date('Y-m-d H:i:s'),
+        ];
+    }
+
     public function createTask($data) {
-        $id = 'task_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4);
+        $userId = $data['userId'] ?? $data['user_id'] ?? 'usr_admin_mohusyn';
+        $title = trim($data['title']);
+        $date = $data['date'] ?? date('Y-m-d');
+        $id = !empty($data['id']) ? trim($data['id']) : ('task_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4));
+
+        // 1. MySQL Idempotency and Anti-duplication check:
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                // If task with this ID already exists, return existing
+                $checkStmt = $this->pdo->prepare("SELECT * FROM tasks WHERE id = ? LIMIT 1");
+                $checkStmt->execute([$id]);
+                $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
+                if ($existing) {
+                    return $this->formatTaskRow($existing);
+                }
+
+                // If identical task for this user with same title & date was created in the last 15 seconds (e.g. multi-server failover retry)
+                $dupStmt = $this->pdo->prepare("
+                    SELECT * FROM tasks 
+                    WHERE user_id = ? AND title = ? AND date = ? 
+                      AND created_at >= (NOW() - INTERVAL 15 SECOND)
+                    ORDER BY created_at DESC LIMIT 1
+                ");
+                $dupStmt->execute([$userId, $title, $date]);
+                $dup = $dupStmt->fetch(PDO::FETCH_ASSOC);
+                if ($dup) {
+                    return $this->formatTaskRow($dup);
+                }
+            } catch (Exception $e) {}
+        }
+
+        // 2. JSON check for idempotency & duplicates:
+        $this->loadJson();
+        if (isset($this->data['tasks']) && is_array($this->data['tasks'])) {
+            foreach ($this->data['tasks'] as $t) {
+                if (($t['id'] ?? '') === $id) {
+                    return $t;
+                }
+                if (($t['userId'] ?? '') === $userId && ($t['title'] ?? '') === $title && ($t['date'] ?? '') === $date) {
+                    $ts = strtotime($t['createdAt'] ?? '');
+                    if ($ts && (time() - $ts) < 15) {
+                        return $t;
+                    }
+                }
+            }
+        }
+
         $task = [
             'id' => $id,
-            'userId' => $data['userId'] ?? $data['user_id'] ?? 'usr_admin_mohusyn',
+            'userId' => $userId,
             'projectId' => $data['projectId'] ?? $data['project_id'] ?? null,
-            'title' => trim($data['title']),
+            'title' => $title,
             'description' => trim($data['description'] ?? ''),
-            'date' => $data['date'] ?? date('Y-m-d'),
+            'date' => $date,
             'time' => $data['time'] ?? '09:00',
             'durationMinutes' => (int)($data['durationMinutes'] ?? $data['duration_minutes'] ?? 30),
             'completed' => !empty($data['completed']),

@@ -1306,3 +1306,86 @@ test('Phone Privacy: Regular users cannot see other users phone numbers in publi
   assert(foundByAdmin, 'Found by admin');
   assert(foundByAdmin.phone === '09123456789', 'Admin can see user phone in panel');
 });
+
+// 34. Task Deletion: DELETE method and POST { action: 'delete' } fallback (IIS-compatible)
+test('Task Deletion: DELETE method and POST fallback reliably delete task', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  // Create Task 1
+  const t1 = await request('POST', '/api/tasks', {
+    title: 'تسک تستی برای متد DELETE',
+    date: '2026-10-06',
+  }, adminHeader);
+  assert(t1.status === 201, 'Task 1 created');
+  const t1Id = t1.body.task.id;
+
+  // Delete Task 1 via DELETE
+  const del1 = await request('DELETE', `/api/tasks?id=${t1Id}`, null, adminHeader);
+  assert(del1.status === 200, 'Task 1 deleted via DELETE method');
+
+  // Verify Task 1 is gone
+  const list1 = await request('GET', '/api/tasks?date=2026-10-06', null, adminHeader);
+  assert(!list1.body.tasks.some((t) => t.id === t1Id), 'Task 1 no longer in list');
+
+  // Create Task 2
+  const t2 = await request('POST', '/api/tasks', {
+    title: 'تسک تستی برای فال‌بک POST حذف در IIS',
+    date: '2026-10-06',
+  }, adminHeader);
+  assert(t2.status === 201, 'Task 2 created');
+  const t2Id = t2.body.task.id;
+
+  // Delete Task 2 via POST fallback { action: 'delete', id: ... }
+  const del2 = await request('POST', '/api/tasks', {
+    action: 'delete',
+    id: t2Id,
+  }, adminHeader);
+  assert(del2.status === 200, 'Task 2 deleted via POST fallback');
+
+  // Verify Task 2 is gone
+  const list2 = await request('GET', '/api/tasks?date=2026-10-06', null, adminHeader);
+  assert(!list2.body.tasks.some((t) => t.id === t2Id), 'Task 2 no longer in list');
+});
+
+// 35. Anti-Duplication: Idempotency & Rapid Retry Protection (Eliminates 1-to-4 duplicate tasks)
+test('Anti-Duplication: Multi-server retry or rapid submits return single task without duplicates', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  const clientTaskId = 'task_idem_' + Date.now();
+  const taskPayload = {
+    id: clientTaskId,
+    title: 'تسک ضد تکثیر افزونه',
+    date: '2026-10-06',
+    time: '14:30',
+    priority: 'high',
+  };
+
+  // 1st request (initial submission)
+  const req1 = await request('POST', '/api/tasks', taskPayload, adminHeader);
+  assert(req1.status === 201 || req1.status === 200, '1st task creation ok');
+  const createdId = req1.body.task.id;
+
+  // 2nd request (simulating Server 2 failover retry or double click with exact same ID)
+  const req2 = await request('POST', '/api/tasks', taskPayload, adminHeader);
+  assert(req2.status === 200 || req2.status === 201, '2nd task creation caught idempotently');
+  assert(req2.body.task.id === createdId, '2nd call returns identical task ID');
+
+  // 3rd request (simulating multi-server POST without ID but within 15s window)
+  const req3 = await request('POST', '/api/tasks', {
+    title: 'تسک ضد تکثیر افزونه',
+    date: '2026-10-06',
+    time: '14:30',
+  }, adminHeader);
+  assert(req3.status === 200 || req3.status === 201, '3rd call deduplicated');
+  assert(req3.body.task.id === createdId, '3rd call returned same task instance instead of duplicating');
+
+  // Fetch tasks and ensure only 1 task exists with this title
+  const list = await request('GET', '/api/tasks?date=2026-10-06', null, adminHeader);
+  const matchingTasks = list.body.tasks.filter((t) => t.title === 'تسک ضد تکثیر افزونه');
+  assert(matchingTasks.length === 1, `Expected exactly 1 task, but found ${matchingTasks.length}`);
+
+  // Clean up
+  await request('POST', '/api/tasks', { action: 'delete', id: createdId }, adminHeader);
+});

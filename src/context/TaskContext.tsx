@@ -1541,12 +1541,19 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteTask = async (id: string) => {
     const target = tasks.find((t) => t.id === id);
-    await api.deleteTask(id);
+    // Optimistic delete: remove instantly from UI for 0ms lag
     setTasks((prev) => prev.filter((t) => t.id !== id));
     if (activeFocusTaskId === id) {
       setActiveFocusTaskId(null);
     }
     sounds.playPop();
+
+    try {
+      await api.deleteTask(id);
+    } catch (err) {
+      console.error('Failed to delete task on server:', err);
+    }
+
     broadcastSync('TASK_DELETED', { taskId: id, projectId: target?.projectId });
     refreshUsers();
     refreshProjects();

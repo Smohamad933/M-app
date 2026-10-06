@@ -2186,6 +2186,39 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
     if (method === 'POST') {
       const body = await parseJsonBody(req);
+      const action = body.action || urlObj.searchParams.get('action');
+
+      if (action === 'delete' || action === 'remove' || body._method === 'DELETE') {
+        const id = body.id || urlObj.searchParams.get('id');
+        if (!id) {
+          sendJson(res, { error: 'شناسه تسک الزامی است.' }, 400);
+          return true;
+        }
+        const task = db.tasks.find((t) => t.id === id);
+        if (task && currentUser.role !== 'admin' && task.userId !== currentUser.id) {
+          sendJson(res, { error: 'عدم دسترسی.' }, 403);
+          return true;
+        }
+        db.tasks = db.tasks.filter((t) => t.id !== id);
+        writeDb(db);
+        sendJson(res, { message: 'تسک با موفقیت حذف شد.' });
+        return true;
+      }
+
+      if (action === 'toggle') {
+        const id = body.id || urlObj.searchParams.get('id');
+        const task = db.tasks.find((t) => t.id === id);
+        if (!task) {
+          sendJson(res, { error: 'تسک پیدا نشد.' }, 404);
+          return true;
+        }
+        task.completed = !task.completed;
+        task.completedAt = task.completed ? new Date().toISOString() : undefined;
+        writeDb(db);
+        sendJson(res, { completed: task.completed, completedAt: task.completedAt, task });
+        return true;
+      }
+
       const title = body.title?.trim();
       if (!title) {
         sendJson(res, { error: 'عنوان تسک الزامی است.' }, 400);
@@ -2197,16 +2230,43 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         targetUserId = body.userId;
       }
 
+      const targetDate = body.date || new Date().toISOString().slice(0, 10);
+      const reqId = body.id?.trim();
+
+      // Anti-duplication check:
+      const existingTask = db.tasks.find((t) => {
+        if (reqId && t.id === reqId) return true;
+        if (t.userId === targetUserId && t.title === title && t.date === targetDate) {
+          const diffMs = Date.now() - new Date(t.createdAt).getTime();
+          if (diffMs < 15000) return true;
+        }
+        return false;
+      });
+
+      if (existingTask) {
+        const u = db.users.find((user) => user.id === targetUserId);
+        const p = existingTask.projectId ? db.projects.find((proj) => proj.id === existingTask.projectId) : null;
+        sendJson(res, {
+          message: 'تسک قبلاً ثبت شده است.',
+          task: {
+            ...existingTask,
+            userName: u?.name || 'کاربر',
+            projectName: p?.name || '',
+          },
+        }, 200);
+        return true;
+      }
+
       const projectId = body.projectId || null;
       const project = projectId ? db.projects.find((p) => p.id === projectId) : null;
 
       const newTask: DBTask = {
-        id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        id: reqId || ('task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)),
         userId: targetUserId,
         projectId,
         title,
         description: body.description?.trim(),
-        date: body.date || new Date().toISOString().slice(0, 10),
+        date: targetDate,
         time: body.time,
         durationMinutes: body.durationMinutes || 0,
         completed: false,
