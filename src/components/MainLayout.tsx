@@ -871,25 +871,27 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   <span className="hidden sm:inline">افزونه دستیار</span>
                 </button>
 
-                {/* Instagram Carousel Studio Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playPop();
-                    if (onOpenInstagramStudio) {
-                      onOpenInstagramStudio();
-                    } else {
-                      const url = new URL(window.location.href);
-                      url.searchParams.set('page', 'instagram');
-                      window.location.href = url.toString();
-                    }
-                  }}
-                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-pink-200 bg-pink-50/80 hover:bg-pink-100 flex items-center gap-1.5 text-pink-700 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0"
-                  title="استودیو ساخت اسلایدهای گرافیکی اینستاگرام"
-                >
-                  <span className="text-xs">📸</span>
-                  <span className="hidden md:inline">اسلایدهای اینستاگرام</span>
-                </button>
+                {/* Instagram Carousel Studio Button - ONLY FOR SUPER ADMIN */}
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      if (onOpenInstagramStudio) {
+                        onOpenInstagramStudio();
+                      } else {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('page', 'instagram');
+                        window.location.href = url.toString();
+                      }
+                    }}
+                    className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-pink-200 bg-pink-50/80 hover:bg-pink-100 flex items-center gap-1.5 text-pink-700 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0"
+                    title="استودیو ساخت اسلایدهای گرافیکی اینستاگرام (مخصوص مدیر کل)"
+                  >
+                    <span className="text-xs">📸</span>
+                    <span className="hidden md:inline">اسلایدهای اینستاگرام</span>
+                  </button>
+                )}
 
                 {/* Notification Bell with interactive Modal */}
                 <button

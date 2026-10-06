@@ -181,8 +181,23 @@ function AppContent() {
     };
   }, []);
 
-  // Standalone Instagram Slides Studio Page
+  // Standalone Instagram Slides Studio Page (Strictly Super Admin Only)
   if (currentPage === 'instagram') {
+    if (isLoading) {
+      return (
+        <div className="min-h-screen bg-[#edf0f4] flex items-center justify-center text-slate-800">
+          <div className="flex flex-col items-center gap-3">
+            <TaskMasterHexagon size={48} className="animate-pulse" />
+            <span className="text-xs text-slate-500 font-bold tracking-wider">در حال بررسی سطح دسترسی مدیریت...</span>
+          </div>
+        </div>
+      );
+    }
+
+    if (!currentUser || currentUser.role !== 'admin') {
+      return <LoginScreen />;
+    }
+
     return (
       <InstagramSlidesStudio
         onBack={() => {
