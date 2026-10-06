@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
+    "html2canvas": "^1.4.1",
+    "jszip": "^3.10.2",
     "lucide-react": "^1.47.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
@@ -19,6 +21,8 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@types/canvas-confetti": "^1.9.0",
+    "@types/html2canvas": "^0.5.35",
+    "@types/jszip": "^3.4.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",

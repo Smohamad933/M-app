@@ -5,6 +5,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { AlertTriangle, RefreshCw, Database, DatabaseZap, Loader2 } from 'lucide-react';
 import { api } from './services/api';
 import { TaskMasterHexagon } from './components/TaskMasterLogo';
+import { InstagramSlidesStudio } from './components/InstagramSlidesStudio';
 
 /**
  * Full-screen guard: if the database file (data/db.json) is missing on the
@@ -144,6 +145,55 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
 function AppContent() {
   const { currentUser, isLoading } = useTask();
+  const [currentPage, setCurrentPage] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'app';
+    const params = new URLSearchParams(window.location.search);
+    if (
+      params.get('page') === 'instagram' ||
+      params.get('page') === 'slides' ||
+      window.location.hash === '#instagram' ||
+      window.location.pathname === '/instagram'
+    ) {
+      return 'instagram';
+    }
+    return 'app';
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (
+        params.get('page') === 'instagram' ||
+        params.get('page') === 'slides' ||
+        window.location.hash === '#instagram' ||
+        window.location.pathname === '/instagram'
+      ) {
+        setCurrentPage('instagram');
+      } else {
+        setCurrentPage('app');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
+  }, []);
+
+  // Standalone Instagram Slides Studio Page
+  if (currentPage === 'instagram') {
+    return (
+      <InstagramSlidesStudio
+        onBack={() => {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('page');
+          window.history.pushState({}, '', url.pathname);
+          setCurrentPage('app');
+        }}
+      />
+    );
+  }
 
   if (isLoading) {
     return (
@@ -160,7 +210,16 @@ function AppContent() {
     return <LoginScreen />;
   }
 
-  return <MainLayout />;
+  return (
+    <MainLayout
+      onOpenInstagramStudio={() => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('page', 'instagram');
+        window.history.pushState({}, '', url.toString());
+        setCurrentPage('instagram');
+      }}
+    />
+  );
 }
 
 export function App() {
