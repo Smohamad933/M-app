@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import JSZip from 'jszip';
 import {
   ArrowRight,
@@ -37,6 +37,8 @@ export interface SlideData {
   subtitle?: string;
   bodyText?: string;
   highlightBox?: string;
+  topHandle?: string;
+  footerRightText?: string;
   footerNote?: string;
   content?: React.ReactNode;
 }
@@ -449,6 +451,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('portrait');
   const [slideTheme, setSlideTheme] = useState<SlideTheme>('light');
   const [selectedFont, setSelectedFont] = useState<string>(systemFont || 'vazirmatn');
+  const [showFooter, setShowFooter] = useState<boolean>(true);
   const [showFooterBranding, setShowFooterBranding] = useState<boolean>(true);
   const [showHandles, setShowHandles] = useState<boolean>(true);
   const [zoomScale, setZoomScale] = useState<number>(0.85);
@@ -888,9 +891,9 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
           </div>
 
           <div className="flex items-center gap-2">
-            {showHandles && customHandle && (
-              <span className={`${isNativeExport ? 'text-sm' : 'text-[10px]'} font-bold text-slate-400`}>
-                {customHandle}
+            {showHandles && (s.topHandle !== undefined ? s.topHandle : customHandle) && (
+              <span className={`${isNativeExport ? 'text-sm' : 'text-[10px]'} font-bold text-slate-400 font-mono`} dir="ltr">
+                {s.topHandle !== undefined ? s.topHandle : customHandle}
               </span>
             )}
             <span className={`${isNativeExport ? 'text-sm px-3 py-1' : 'text-[10px] px-2 py-0.5'} font-black rounded-full bg-slate-500/10 border border-slate-500/20`}>
@@ -943,23 +946,23 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
         </div>
 
         {/* Bottom Footer of Slide */}
-        <div className={`pt-3 border-t border-slate-500/10 flex items-center justify-between ${isNativeExport ? 'text-sm pt-5' : 'text-[10px]'} text-slate-400 z-10 flex-shrink-0`}>
-          {showFooterBranding ? (
-            <span>
-              {footerPrefix} <strong>{footerCompany}</strong>
-            </span>
-          ) : (
-            <span>{customHandle || '@bagtime_app'}</span>
-          )}
+        {showFooter && (
+          <div className={`pt-3 border-t border-slate-500/10 flex items-center justify-between ${isNativeExport ? 'text-sm pt-5' : 'text-[10px]'} text-slate-400 z-10 flex-shrink-0`}>
+            <div>
+              {s.footerRightText !== undefined
+                ? s.footerRightText
+                : showFooterBranding
+                ? `${footerPrefix} ${footerCompany}`
+                : ''}
+            </div>
 
-          <div className="flex items-center gap-1.5 font-bold">
-            {s.footerNote ? (
-              <span className="text-emerald-500">{s.footerNote}</span>
-            ) : (
-              <span>{customHandle || '@bagtime_app'}</span>
-            )}
+            <div className="flex items-center gap-1.5 font-bold">
+              {s.footerNote ? (
+                <span className="text-emerald-500">{s.footerNote}</span>
+              ) : null}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
@@ -1368,14 +1371,48 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
                   />
                 </div>
 
-                {/* Footer Note */}
+                {/* Top Handle for this slide */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-300">پاورقی اختصاصی این اسلاید (Footer Note):</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-300">آیدی بالای اسلاید (Top Handle):</label>
+                    <span className="text-[9px] text-slate-500">خالی بگذارید تا پنهان شود</span>
+                  </div>
                   <input
                     type="text"
-                    value={activeSlide.footerNote || ''}
+                    value={activeSlide.topHandle !== undefined ? activeSlide.topHandle : customHandle}
+                    onChange={(e) => handleUpdateActiveSlide('topHandle', e.target.value)}
+                    placeholder="مثال: @bagtime_app یا خالی"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-emerald-400 font-mono outline-none focus:border-emerald-500"
+                    dir="ltr"
+                  />
+                </div>
+
+                {/* Footer Right Text */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-300">متن سمت راست پاورقی (Footer Right):</label>
+                    <span className="text-[9px] text-slate-500">متن برند یا نام دلخواه یا خالی</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={activeSlide.footerRightText !== undefined ? activeSlide.footerRightText : (showFooterBranding ? `${footerPrefix} ${footerCompany}` : '')}
+                    onChange={(e) => handleUpdateActiveSlide('footerRightText', e.target.value)}
+                    placeholder="مثال: بَگ‌تایم، از خانوادهٔ کیان فناوران نگاه یا خالی"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-300 outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                {/* Footer Left Note */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-300">متن سمت چپ پاورقی (Footer Left Note):</label>
+                    <span className="text-[9px] text-slate-500">نکته یا آیدی یا خالی</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={activeSlide.footerNote !== undefined ? activeSlide.footerNote : ''}
                     onChange={(e) => handleUpdateActiveSlide('footerNote', e.target.value)}
-                    placeholder="مثال: ورق بزنید ‹ یا نام پیج"
+                    placeholder="مثال: ورق بزنید ‹ یا آیدی دلخواه یا خالی"
                     className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-400 outline-none focus:border-emerald-500"
                   />
                 </div>
@@ -1537,12 +1574,24 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
                 {/* Handles & Footer Toggles */}
                 <div className="p-4 rounded-3xl bg-[#0d1322] border border-slate-800 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-300">نمایش آیدی پیج ({customHandle})</span>
+                    <span className="text-xs font-bold text-slate-300">نمایش آیدی پیج در بالا ({customHandle})</span>
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={showHandles}
                         onChange={(e) => setShowHandles(e.target.checked)}
+                        className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-800/80">
+                    <span className="text-xs font-bold text-slate-300">نمایش نوار پاورقی اسلایدها</span>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showFooter}
+                        onChange={(e) => setShowFooter(e.target.checked)}
                         className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700"
                       />
                     </label>
