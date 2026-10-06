@@ -670,34 +670,36 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
     });
   };
 
-  // ── Robust Native Pixel HTML2Canvas Single Slide PNG Export ──
+  // ── Robust Native Pixel HTML2Canvas Single Slide PNG Export (Identical to Preview) ──
   const handleExportSingleSlide = async () => {
     if (!exportContainerRef.current || isExporting) return;
     setIsExporting(true);
-    setExportProgress('در حال تولید تصویر اسلاید با کیفیت اصلی...');
+    setExportProgress('در حال تولید تصویر اسلاید با کیفیت اصلی (عیناً مشابه پیش‌نمایش)...');
     sounds.playPop();
 
     try {
       const isPortrait = aspectRatio === 'portrait';
-      const targetWidth = 1080;
-      const targetHeight = isPortrait ? 1350 : 1080;
+      const baseWidth = 380;
+      const baseHeight = isPortrait ? 475 : 380;
       const targetElement = exportContainerRef.current.querySelector<HTMLElement>(`#clean-slide-${activeSlideIndex}`);
       if (!targetElement) throw new Error('المان اسلاید یافت نشد.');
 
       await new Promise((r) => setTimeout(r, 60));
 
+      const scaleFactor = 1080 / baseWidth; // 2.842105263157895 -> exactly 1080x1350 or 1080x1080
+
       const canvas = await html2canvas(targetElement, {
-        scale: 1,
+        scale: scaleFactor,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: slideTheme === 'light' ? '#ffffff' : '#0f172a',
+        backgroundColor: null,
         logging: false,
         scrollX: 0,
         scrollY: 0,
-        width: targetWidth,
-        height: targetHeight,
-        windowWidth: targetWidth,
-        windowHeight: targetHeight,
+        width: baseWidth,
+        height: baseHeight,
+        windowWidth: baseWidth,
+        windowHeight: baseHeight,
       });
 
       const blob = await getCanvasBlob(canvas);
@@ -720,7 +722,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
     }
   };
 
-  // ── Robust 4-Slide ZIP Export ──
+  // ── Robust 4-Slide ZIP Export (Identical to Preview) ──
   const handleExportAllSlidesZip = async () => {
     if (!exportContainerRef.current || isExporting) return;
     setIsExporting(true);
@@ -730,8 +732,9 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
 
     try {
       const isPortrait = aspectRatio === 'portrait';
-      const targetWidth = 1080;
-      const targetHeight = isPortrait ? 1350 : 1080;
+      const baseWidth = 380;
+      const baseHeight = isPortrait ? 475 : 380;
+      const scaleFactor = 1080 / baseWidth; // 2.842105263157895 -> exactly 1080x1350 or 1080x1080
 
       for (let i = 0; i < 4; i++) {
         setExportProgress(`در حال پردازش و رندر اسلاید ${i + 1} از ۴...`);
@@ -741,17 +744,17 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
         await new Promise((r) => setTimeout(r, 60));
 
         const canvas = await html2canvas(targetElement, {
-          scale: 1,
+          scale: scaleFactor,
           useCORS: true,
           allowTaint: true,
-          backgroundColor: slideTheme === 'light' ? '#ffffff' : '#0f172a',
+          backgroundColor: null,
           logging: false,
           scrollX: 0,
           scrollY: 0,
-          width: targetWidth,
-          height: targetHeight,
-          windowWidth: targetWidth,
-          windowHeight: targetHeight,
+          width: baseWidth,
+          height: baseHeight,
+          windowWidth: baseWidth,
+          windowHeight: baseHeight,
         });
 
         const blob = await getCanvasBlob(canvas);
@@ -789,18 +792,22 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
     try {
       await new Promise((r) => setTimeout(r, 60));
 
+      const baseWidth = 360;
+      const baseHeight = 640;
+      const scaleFactor = 1080 / baseWidth; // exactly 3.0
+
       const canvas = await html2canvas(storyExportRef.current, {
-        scale: 1,
+        scale: scaleFactor,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#0f172a',
         logging: false,
         scrollX: 0,
         scrollY: 0,
-        width: 1080,
-        height: 1920,
-        windowWidth: 1080,
-        windowHeight: 1920,
+        width: baseWidth,
+        height: baseHeight,
+        windowWidth: baseWidth,
+        windowHeight: baseHeight,
       });
 
       const blob = await getCanvasBlob(canvas);
@@ -864,16 +871,17 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
 
   const themeStyles = getThemeClasses(slideTheme);
 
-  // Render Slide Content (Preview & Export)
-  const renderSlideContent = (slideIndex: number, isNativeExport: boolean = false) => {
+  // Render Slide Content (Identical for Preview & Export)
+  const renderSlideContent = (slideIndex: number) => {
     const s = currentPost.slides[slideIndex] || currentPost.slides[0];
 
     return (
       <div
-        className={`w-full h-full flex flex-col justify-between ${
-          isNativeExport ? 'p-16' : 'p-6 sm:p-8'
-        } select-none relative overflow-hidden ${themeStyles.container}`}
-        style={{ fontFamily: selectedFont || 'inherit' }}
+        className={`w-full h-full flex flex-col justify-between p-6 sm:p-7 select-none relative overflow-hidden ${themeStyles.container}`}
+        style={{
+          fontFamily: selectedFont || 'inherit',
+          fontFeatureSettings: '"liga" 1, "calt" 1',
+        }}
         dir="rtl"
       >
         {/* Glow Decors */}
@@ -883,8 +891,8 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
         {/* Top Header of Slide */}
         <div className="flex items-center justify-between z-10 flex-shrink-0">
           <div className="flex items-center gap-2">
-            <TaskMasterHexagon size={isNativeExport ? 42 : 26} />
-            <span className={`font-black ${isNativeExport ? 'text-xl' : 'text-xs sm:text-sm'} tracking-tight flex items-center gap-1`}>
+            <TaskMasterHexagon size={26} />
+            <span className="font-black text-xs sm:text-sm flex items-center gap-1">
               <span>بَگ‌تایم</span>
               <span className={themeStyles.accentText}>.</span>
             </span>
@@ -892,37 +900,37 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
 
           <div className="flex items-center gap-2">
             {showHandles && (s.topHandle !== undefined ? s.topHandle : customHandle) && (
-              <span className={`${isNativeExport ? 'text-sm' : 'text-[10px]'} font-bold text-slate-400 font-mono`} dir="ltr">
+              <span className="text-[10px] font-bold text-slate-400 font-mono" dir="ltr">
                 {s.topHandle !== undefined ? s.topHandle : customHandle}
               </span>
             )}
-            <span className={`${isNativeExport ? 'text-sm px-3 py-1' : 'text-[10px] px-2 py-0.5'} font-black rounded-full bg-slate-500/10 border border-slate-500/20`}>
+            <span className="text-[10px] px-2 py-0.5 font-black rounded-full bg-slate-500/10 border border-slate-500/20">
               {slideIndex + 1} / ۴
             </span>
           </div>
         </div>
 
         {/* Middle Body */}
-        <div className={`my-auto ${isNativeExport ? 'space-y-6 py-6' : 'space-y-3 py-2'} z-10 text-right`}>
+        <div className="my-auto space-y-3 py-2 z-10 text-right">
           {s.badge && (
-            <div className={`inline-flex items-center gap-1.5 ${isNativeExport ? 'px-4 py-1.5 text-base' : 'px-2.5 py-1 text-[11px]'} font-black rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20`}>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-black rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
               <span>{s.badge}</span>
             </div>
           )}
 
-          <h2 className={`${isNativeExport ? 'text-3xl' : 'text-lg sm:text-xl'} font-black leading-snug`}>
+          <h2 className="text-lg sm:text-xl font-black leading-snug">
             {s.title}
           </h2>
 
           {s.subtitle && (
-            <p className={`${isNativeExport ? 'text-lg' : 'text-xs sm:text-[13px]'} font-bold leading-relaxed ${themeStyles.subtext}`}>
+            <p className={`text-xs sm:text-[13px] font-bold leading-relaxed ${themeStyles.subtext}`}>
               {s.subtitle}
             </p>
           )}
 
           {/* Body Content / Points */}
           {s.bodyText ? (
-            <div className={`space-y-2 ${isNativeExport ? 'space-y-3.5 text-lg' : 'text-xs'} font-bold leading-relaxed`}>
+            <div className="space-y-2 text-xs font-bold leading-relaxed">
               {s.bodyText.split('\n').filter(Boolean).map((line, idx) => (
                 <div
                   key={idx}
@@ -933,13 +941,13 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
                 </div>
               ))}
               {s.highlightBox && (
-                <div className={`p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-black text-center ${isNativeExport ? 'p-5 text-xl mt-4' : 'text-xs mt-2'}`}>
+                <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-black text-center text-xs mt-2">
                   {s.highlightBox}
                 </div>
               )}
             </div>
           ) : s.content ? (
-            <div className={`${isNativeExport ? 'text-base pt-3' : 'pt-1'}`}>
+            <div className="pt-1">
               {s.content}
             </div>
           ) : null}
@@ -947,7 +955,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
 
         {/* Bottom Footer of Slide */}
         {showFooter && (
-          <div className={`pt-3 border-t border-slate-500/10 flex items-center justify-between ${isNativeExport ? 'text-sm pt-5' : 'text-[10px]'} text-slate-400 z-10 flex-shrink-0`}>
+          <div className="pt-3 border-t border-slate-500/10 flex items-center justify-between text-[10px] text-slate-400 z-10 flex-shrink-0">
             <div>
               {s.footerRightText !== undefined
                 ? s.footerRightText
@@ -2047,15 +2055,15 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
         </div>
       )}
 
-      {/* ── NATIVE UNTRANSFORMED OFF-SCREEN RENDER CONTAINERS (0% ERROR) ── */}
-      {/* 1. Feed Slides Off-screen Container (1080x1350 / 1080x1080) */}
+      {/* ── NATIVE UNTRANSFORMED OFF-SCREEN RENDER CONTAINERS (0% ERROR - IDENTICAL TO PREVIEW) ── */}
+      {/* 1. Feed Slides Off-screen Container (380x475 / 380x380, scaled to 1080x1350 / 1080x1080 during capture) */}
       <div
         ref={exportContainerRef}
         style={{
           position: 'fixed',
           left: 0,
           top: 0,
-          width: '1080px',
+          width: '380px',
           zIndex: -99999,
           opacity: 0.01,
           pointerEvents: 'none',
@@ -2066,69 +2074,71 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
             key={idx}
             id={`clean-slide-${idx}`}
             style={{
-              width: '1080px',
-              height: aspectRatio === 'portrait' ? '1350px' : '1080px',
+              width: '380px',
+              height: aspectRatio === 'portrait' ? '475px' : '380px',
+              overflow: 'hidden',
             }}
           >
-            {renderSlideContent(idx, true)}
+            {renderSlideContent(idx)}
           </div>
         ))}
       </div>
 
-      {/* 2. Story 9:16 (1080x1920) Off-screen Render Container */}
+      {/* 2. Story 9:16 (360x640, scaled to 1080x1920 during capture) Off-screen Render Container */}
       <div
         ref={storyExportRef}
         style={{
           position: 'fixed',
           left: 0,
           top: 0,
-          width: '1080px',
-          height: '1920px',
+          width: '360px',
+          height: '640px',
           zIndex: -99999,
           opacity: 0.01,
           pointerEvents: 'none',
           fontFamily: selectedFont || 'inherit',
+          fontFeatureSettings: '"liga" 1, "calt" 1',
         }}
-        className="bg-[#0f172a] text-white p-20 flex flex-col justify-between"
+        className="bg-[#0f172a] text-white p-6 flex flex-col justify-between"
         dir="rtl"
       >
         {/* Glow */}
-        <div className="absolute top-20 left-10 w-96 h-96 rounded-full bg-purple-500/15 blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-emerald-500/15 blur-3xl" />
+        <div className="absolute top-10 left-5 w-48 h-48 rounded-full bg-purple-500/15 blur-2xl" />
+        <div className="absolute bottom-10 right-5 w-48 h-48 rounded-full bg-emerald-500/15 blur-2xl" />
 
         {/* Top Header */}
-        <div className="flex items-center justify-between z-10 border-b border-slate-800 pb-8">
-          <div className="flex items-center gap-3">
-            <TaskMasterHexagon size={48} />
-            <span className="font-black text-2xl tracking-tight">بَگ‌تایم</span>
+        <div className="flex items-center justify-between z-10 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <TaskMasterHexagon size={26} />
+            <span className="font-black text-sm">بَگ‌تایم</span>
           </div>
           <div className="text-right">
-            <div className="text-emerald-400 font-black text-lg">روز {selectedStoryDay} از ۶۰</div>
-            <div className="text-slate-400 text-sm">{customHandle}</div>
+            <div className="text-emerald-400 font-black text-xs">روز {selectedStoryDay} از ۶۰</div>
+            <div className="text-slate-400 text-[10px] font-mono" dir="ltr">{customHandle}</div>
           </div>
         </div>
 
         {/* Center Content */}
-        <div className="my-auto space-y-10 z-10 text-right py-10">
-          <div className="inline-block px-5 py-2 rounded-2xl bg-purple-500/20 text-purple-300 font-black text-lg border border-purple-500/30">
+        <div className="my-auto space-y-3 z-10 text-right py-4">
+          <div className="inline-block px-2.5 py-1 rounded-xl bg-purple-500/20 text-purple-300 font-black text-xs border border-purple-500/30">
             {activeStorySlot === 1 && currentStoryDayData.story1.time}
             {activeStorySlot === 2 && currentStoryDayData.story2.time}
             {activeStorySlot === 3 && currentStoryDayData.story3.time}
           </div>
 
-          <h2 className="text-4xl font-black leading-tight text-white">
+          <h2 className="text-base font-black leading-snug text-white">
             {activeStorySlot === 1 && currentStoryDayData.story1.hook}
             {activeStorySlot === 2 && currentStoryDayData.story2.title}
             {activeStorySlot === 3 && currentStoryDayData.story3.conclusion}
           </h2>
 
-          <div className="p-8 rounded-3xl bg-slate-900/90 border border-slate-800 text-xl font-bold text-slate-200 leading-loose whitespace-pre-wrap">
+          <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs font-bold text-slate-200 leading-relaxed whitespace-pre-wrap">
             {activeStorySlot === 1 && currentStoryDayData.story1.body}
             {activeStorySlot === 2 && currentStoryDayData.story2.body}
             {activeStorySlot === 3 && currentStoryDayData.story3.ctaText}
           </div>
 
-          <div className="p-6 rounded-2xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-lg font-bold">
+          <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs font-bold">
             {activeStorySlot === 1 && `🎯 ${currentStoryDayData.story1.sticker}`}
             {activeStorySlot === 2 && `💡 ${currentStoryDayData.story2.demoNote || currentStoryDayData.story2.sticker}`}
             {activeStorySlot === 3 && `📩 دایرکت به پیج: ${currentStoryDayData.story3.handles || customHandle}`}
@@ -2136,9 +2146,9 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
         </div>
 
         {/* Footer */}
-        <div className="pt-8 border-t border-slate-800 flex items-center justify-between text-base text-slate-400 z-10">
+        <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 z-10">
           <span>{footerPrefix} <strong>{footerCompany}</strong></span>
-          <span>{customHandle}</span>
+          <span className="font-mono" dir="ltr">{customHandle}</span>
         </div>
       </div>
 
