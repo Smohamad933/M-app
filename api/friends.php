@@ -29,6 +29,7 @@ if ($method === 'GET') {
     $friends = [];
     foreach ($allUsers as $u) {
         if (in_array($u['id'], $friendIds) || (isset($u['username']) && in_array($u['username'], $friendIds))) {
+            $canSeePhone = ($currentUser && $currentUser['role'] === 'admin') || ($currentUser && $currentUser['id'] === $u['id']);
             $friends[] = [
                 'id' => $u['id'],
                 'numericId' => $u['numericId'] ?? 1000,
@@ -36,7 +37,7 @@ if ($method === 'GET') {
                 'username' => $u['username'],
                 'avatar' => $u['avatar'] ?? null,
                 'jobTitle' => $u['jobTitle'] ?? null,
-                'phone' => $u['phone'] ?? null,
+                'phone' => $canSeePhone ? ($u['phone'] ?? null) : null,
                 'role' => $u['role'] ?? 'user',
                 'subscription' => $u['subscription'] ?? ['plan' => 'free'],
                 'online' => true,

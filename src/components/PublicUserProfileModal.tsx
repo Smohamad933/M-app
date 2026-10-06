@@ -52,6 +52,7 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
 
   const isMe = currentUser?.id === user.id;
   const isFriend = friends.some((f) => f.id === user.id);
+  const canViewPhone = currentUser?.role === 'admin' || isMe;
   const numericIdStr = user.numericId ? `#${user.numericId}` : `#${toPersianDigits(1001)}`;
 
   const handleCopyId = () => {
@@ -183,8 +184,8 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
               <MessageSquare className="w-4 h-4 text-emerald-400" />
             </button>
 
-            {/* Phone Call / Copy */}
-            {user.phone ? (
+            {/* Phone Call / Copy (Strictly Private: only visible to Admin or Self) */}
+            {canViewPhone && user.phone && (
               <a
                 href={`tel:${user.phone}`}
                 className="w-11 h-11 rounded-2xl bg-zinc-800/90 hover:bg-zinc-700 text-white flex items-center justify-center border border-white/10 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
@@ -192,14 +193,6 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
               >
                 <Phone className="w-4 h-4 text-sky-400" />
               </a>
-            ) : (
-              <button
-                type="button"
-                disabled
-                className="w-11 h-11 rounded-2xl bg-zinc-800/40 text-zinc-600 flex items-center justify-center border border-white/5 cursor-not-allowed"
-              >
-                <Phone className="w-4 h-4" />
-              </button>
             )}
 
             {/* Email */}
@@ -284,8 +277,8 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
 
           {/* Details Box (Phone, Bio, Username) */}
           <div className="p-4 rounded-3xl bg-zinc-900/90 border border-white/10 space-y-3 shadow-sm">
-            {/* Phone */}
-            {user.phone && (
+            {/* Phone (Strictly Private: only visible to Admin or Self) */}
+            {canViewPhone && user.phone && (
               <div className="flex items-center justify-between text-xs pb-2.5 border-b border-zinc-800/80">
                 <div className="flex items-center gap-2 text-zinc-400">
                   <Phone className="w-4 h-4 text-zinc-500" />

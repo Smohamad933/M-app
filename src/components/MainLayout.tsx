@@ -115,6 +115,8 @@ export const MainLayout: React.FC = () => {
     remainingHoursUntilSync,
     isSyncModalOpen,
     setIsSyncModalOpen,
+    interfaceMode,
+    setInterfaceMode,
   } = useTask();
 
   const todayISO = getTodayISO();
@@ -275,6 +277,26 @@ export const MainLayout: React.FC = () => {
     { id: 'users', label: 'مانیتورینگ کاربران', icon: ShieldCheck, adminOnly: true, badge: users.length > 0 ? users.length : undefined },
   ];
 
+  // Simple vs Advanced Interface Mode grouping
+  const simplePrimaryTabs: TabType[] = ['tasks', 'planner', 'focus', 'messages'];
+  if (isAdmin) simplePrimaryTabs.push('users');
+
+  const isCurrentTabSecondary = !simplePrimaryTabs.includes(activeTab);
+  const [isMoreToolsOpen, setIsMoreToolsOpen] = useState(false);
+
+  useEffect(() => {
+    if (isCurrentTabSecondary) {
+      setIsMoreToolsOpen(true);
+    }
+  }, [activeTab, isCurrentTabSecondary]);
+
+  const primaryNavItems = interfaceMode === 'simple'
+    ? navItems.filter((item) => simplePrimaryTabs.includes(item.id))
+    : navItems;
+  const secondaryNavItems = interfaceMode === 'simple'
+    ? navItems.filter((item) => !simplePrimaryTabs.includes(item.id))
+    : [];
+
   const handleMobileTabSelect = (tab: TabType) => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
@@ -351,7 +373,7 @@ export const MainLayout: React.FC = () => {
 
           {/* Navigation Links */}
           <nav className={`space-y-1 flex-1 min-h-0 overflow-y-auto no-scrollbar py-2 ${isSidebarExpanded ? '-mx-1 px-1' : 'w-full flex flex-col items-center'}`}>
-            {navItems.map((item) => {
+            {primaryNavItems.map((item) => {
               if (item.adminOnly && !isAdmin) return null;
               const isActive = activeTab === item.id;
               const Icon = item.icon;
@@ -417,6 +439,92 @@ export const MainLayout: React.FC = () => {
                 </button>
               );
             })}
+
+            {/* Expandable Secondary Tools Section in Simple Mode */}
+            {interfaceMode === 'simple' && secondaryNavItems.length > 0 && (
+              isSidebarExpanded ? (
+                <div className="pt-2 mt-1 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      setIsMoreToolsOpen(!isMoreToolsOpen);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      isCurrentTabSecondary || isMoreToolsOpen
+                        ? 'bg-slate-100/80 text-slate-900'
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid className="w-4 h-4 text-indigo-500" />
+                      <span>سایر امکانات و ابزارها</span>
+                      {isCurrentTabSecondary && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                      )}
+                    </div>
+                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isMoreToolsOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isMoreToolsOpen && (
+                    <div className="mt-1 space-y-0.5 pr-2 border-r-2 border-indigo-200/80 mr-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                      {secondaryNavItems.map((item) => {
+                        const isActive = activeTab === item.id;
+                        const Icon = item.icon;
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              sounds.playPop();
+                              setActiveTab(item.id);
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
+                              isActive
+                                ? 'bg-indigo-50 text-indigo-900 font-black border border-indigo-200/70'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                              <span className="truncate">{item.label}</span>
+                            </div>
+                            {item.badge !== undefined && item.badge > 0 && (
+                              <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700">
+                                {toPersianDigits(item.badge)}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full pt-2 mt-1 border-t border-slate-100 flex flex-col items-center space-y-1">
+                  {secondaryNavItems.map((item) => {
+                    const isActive = activeTab === item.id;
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          sounds.playPop();
+                          setActiveTab(item.id);
+                        }}
+                        title={item.label}
+                        className={`w-10 h-9 rounded-xl flex items-center justify-center relative transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-indigo-50 text-indigo-800 border border-indigo-200'
+                            : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </button>
+                    );
+                  })}
+                </div>
+              )
+            )}
           </nav>
 
           {/* Real Colleagues / Friends Section */}
@@ -535,6 +643,48 @@ export const MainLayout: React.FC = () => {
 
         {/* Sidebar Footer */}
         <div className={`space-y-1.5 pt-3 border-t border-slate-100 text-xs flex-shrink-0 ${isSidebarExpanded ? 'w-full' : 'w-full flex flex-col items-center'}`}>
+          {/* UI Mode Switcher (Simple vs Pro) */}
+          <div className={`p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 text-[11px] font-bold ${
+            isSidebarExpanded ? 'w-full flex items-center gap-1' : 'w-10 flex flex-col items-center gap-1 p-1'
+          }`}>
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setInterfaceMode('simple');
+              }}
+              className={`rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                isSidebarExpanded ? 'flex-1 py-1 px-2' : 'w-8 h-7'
+              } ${
+                interfaceMode === 'simple'
+                  ? 'bg-white text-emerald-800 font-black shadow-xs ring-1 ring-emerald-500/20'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+              title="رابط ساده و روان (آسون)"
+            >
+              <span>🌿</span>
+              {isSidebarExpanded && <span>ساده</span>}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setInterfaceMode('advanced');
+              }}
+              className={`rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                isSidebarExpanded ? 'flex-1 py-1 px-2' : 'w-8 h-7'
+              } ${
+                interfaceMode === 'advanced'
+                  ? 'bg-white text-indigo-800 font-black shadow-xs ring-1 ring-indigo-500/20'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+              title="رابط حرفه‌ای و جامع (Pro)"
+            >
+              <span>⚡</span>
+              {isSidebarExpanded && <span>حرفه‌ای</span>}
+            </button>
+          </div>
+
           {isAdmin && (
             <button
               type="button"
@@ -726,6 +876,25 @@ export const MainLayout: React.FC = () => {
                   title="تنظیمات"
                 >
                   <Settings className="w-4 h-4" />
+                </button>
+
+                {/* Interface Mode Quick Switcher Pill (Simple vs Advanced) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setInterfaceMode(interfaceMode === 'simple' ? 'advanced' : 'simple');
+                  }}
+                  className={`h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border flex items-center gap-1.5 font-bold text-xs transition-all shadow-2xs cursor-pointer flex-shrink-0 ${
+                    interfaceMode === 'simple'
+                      ? 'border-emerald-300/80 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                      : 'border-indigo-300/80 bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
+                  }`}
+                  title={interfaceMode === 'simple' ? 'حالت آسان فعال است — کلیک کنید تا حالت پیشرفته و حرفه‌ای فعال شود' : 'حالت حرفه‌ای فعال است — کلیک کنید تا حالت آسان فعال شود'}
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="hidden sm:inline">{interfaceMode === 'simple' ? 'رابط آسان 🌿' : 'رابط حرفه‌ای ⚡'}</span>
+                  <span className="sm:hidden">{interfaceMode === 'simple' ? 'آسان' : 'Pro'}</span>
                 </button>
 
                 {/* User Profile Pill */}
@@ -1330,7 +1499,7 @@ export const MainLayout: React.FC = () => {
 
               {/* Nav Items in Drawer */}
               <div className="space-y-1 flex-1 min-h-0 overflow-y-auto no-scrollbar -mx-1 px-1 my-1">
-                {navItems.map((item) => {
+                {primaryNavItems.map((item) => {
                   if (item.adminOnly && !isAdmin) return null;
                   const isActive = activeTab === item.id;
                   const Icon = item.icon;
@@ -1365,11 +1534,92 @@ export const MainLayout: React.FC = () => {
                     </button>
                   );
                 })}
+
+                {/* Secondary Items in Drawer when Simple Mode */}
+                {interfaceMode === 'simple' && secondaryNavItems.length > 0 && (
+                  <div className="pt-2 mt-1 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setIsMoreToolsOpen(!isMoreToolsOpen)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        isCurrentTabSecondary || isMoreToolsOpen
+                          ? 'bg-slate-100 text-slate-900'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <LayoutGrid className="w-4 h-4 text-indigo-500" />
+                        <span>سایر امکانات و ابزارها</span>
+                        {isCurrentTabSecondary && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
+                      </div>
+                      <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isMoreToolsOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isMoreToolsOpen && (
+                      <div className="mt-1 space-y-0.5 pr-2 border-r-2 border-indigo-200 mr-2 animate-in fade-in duration-150">
+                        {secondaryNavItems.map((item) => {
+                          const isActive = activeTab === item.id;
+                          const Icon = item.icon;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => handleMobileTabSelect(item.id)}
+                              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                                isActive
+                                  ? 'bg-indigo-50 text-indigo-900 font-bold border border-indigo-200/80'
+                                  : 'text-slate-600 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                <span>{item.label}</span>
+                              </div>
+                              {isActive && <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Drawer Footer */}
-            <div className="pt-3 mt-2 border-t border-slate-100 space-y-1.5 text-xs flex-shrink-0">
+            <div className="pt-3 mt-2 border-t border-slate-100 space-y-2 text-xs flex-shrink-0">
+              {/* Interface Mode Toggle in Mobile Drawer */}
+              <div className="p-1 bg-slate-100 rounded-xl border border-slate-200/80 flex items-center gap-1 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setInterfaceMode('simple');
+                  }}
+                  className={`flex-1 py-1 px-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    interfaceMode === 'simple'
+                      ? 'bg-white text-emerald-800 font-black shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span>🌿 ساده</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setInterfaceMode('advanced');
+                  }}
+                  className={`flex-1 py-1 px-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    interfaceMode === 'advanced'
+                      ? 'bg-white text-indigo-800 font-black shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span>⚡ حرفه‌ای</span>
+                </button>
+              </div>
+
               <button
                 type="button"
                 onClick={() => {

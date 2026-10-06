@@ -206,6 +206,7 @@ export interface AppSettings {
   hapticEnabled: boolean;
   theme: 'dark' | 'light' | 'system';
   systemFont?: string;
+  interfaceMode?: 'simple' | 'advanced';
 }
 
 export interface RoomParticipant {

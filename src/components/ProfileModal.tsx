@@ -34,6 +34,7 @@ import {
   LogOut,
   RefreshCw,
   Radio,
+  Sliders,
 } from 'lucide-react';
 
 interface ProfileModalProps {
@@ -102,7 +103,7 @@ const BIRTH_YEARS = Array.from({ length: 66 }, (_, i) => String(1395 - i));
 const BIRTH_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
-  const { currentUser, updateMyProfile, isPro, setIsUpgradeModalOpen, deleteMyAccount, globalSettings } = useTask();
+  const { currentUser, updateMyProfile, isPro, setIsUpgradeModalOpen, deleteMyAccount, globalSettings, interfaceMode, setInterfaceMode } = useTask();
   const baleBotUser = (globalSettings?.baleBot?.botUsername || 'BagTime_Bot').replace('@', '').trim() || 'BagTime_Bot';
 
   const [name, setName] = useState(currentUser?.name || '');
@@ -472,6 +473,69 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Interface Mode Switcher (Simple vs Advanced) */}
+        <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200/90 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-emerald-600" />
+              <h4 className="text-xs font-black text-slate-900">تنظیم سبک رابط کاربری (ساده یا حرفه‌ای)</h4>
+            </div>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+              interfaceMode === 'simple'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+            }`}>
+              {interfaceMode === 'simple' ? '🌿 حالت آسان و روان' : '⚡ حالت حرفه‌ای (Pro)'}
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            می‌توانید منوهای سامانه را خلوت و بر کارهای روزمره متمرکز کنید، یا در حالت حرفه‌ای تمامی ماژول‌ها را در یک نگاه در سایدبار داشته باشید. هیچ ویژگی‌ای حذف نمی‌شود!
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={() => setInterfaceMode('simple')}
+              className={`p-3.5 rounded-2xl border text-right transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                interfaceMode === 'simple'
+                  ? 'bg-emerald-500/10 border-emerald-500/60 shadow-xs ring-2 ring-emerald-500/20'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                  <span>🌿 رابط آسان و روان</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-600 text-white font-bold">پیشنهادی</span>
+                </span>
+                {interfaceMode === 'simple' && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+              </div>
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                منوی خلوت، تمرکز روی کارهای امروز، تقویم و چت؛ با دسترسی آسان به سایر ابزارها بدون شلوغی و سردرگمی.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setInterfaceMode('advanced')}
+              className={`p-3.5 rounded-2xl border text-right transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                interfaceMode === 'advanced'
+                  ? 'bg-indigo-500/10 border-indigo-500/60 shadow-xs ring-2 ring-indigo-500/20'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                  <span>⚡ رابط حرفه‌ای و پیشرفته</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-600 text-white font-bold">Pro</span>
+                </span>
+                {interfaceMode === 'advanced' && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
+              </div>
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                دسترسی مستقیم به تمامی ۱۳ ماژول همزمان در سایدبار (پلنر ساعتی، اتاق تمرکز، تحلیل عادات، رشد شغلی و آمار).
+              </p>
+            </button>
           </div>
         </div>
 

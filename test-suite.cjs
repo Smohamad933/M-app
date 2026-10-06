@@ -1265,3 +1265,44 @@ test('Direct Messaging System: Exchange messages between users, unread updates a
   assert(adminChat.status === 200, 'Admin fetched chat');
   assert(adminChat.body.messages.length >= 2, 'Chat contains both outgoing and incoming messages');
 });
+
+// 33. Strict Privacy: Phone Numbers Are Never Leaked to Other Users
+test('Phone Privacy: Regular users cannot see other users phone numbers in public search or friends', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  const privUserUname = 'priv_user_' + Date.now();
+  const regUser = await request('POST', '/api/auth/register', {
+    username: privUserUname,
+    password: 'PrivPass123!',
+    name: 'کاربر شماره خصوصی',
+    phone: '09123456789',
+    skipVerificationForTest: true,
+  });
+  assert(regUser.status === 201, 'User with phone registered');
+
+  // Another regular user logs in
+  const viewerUname = 'viewer_' + Date.now();
+  await request('POST', '/api/auth/register', {
+    username: viewerUname,
+    password: 'ViewerPass123!',
+    name: 'بیننده عادی',
+    skipVerificationForTest: true,
+  });
+  const viewerLogin = await request('POST', '/api/auth/login', { username: viewerUname, password: 'ViewerPass123!' });
+  const viewerHeader = { Authorization: `Bearer ${viewerLogin.body.token}` };
+
+  // 1. Regular user searches public users: phone MUST be null
+  const publicSearch = await request('GET', `/api/users?action=public&q=${privUserUname}`, null, viewerHeader);
+  assert(publicSearch.status === 200, 'Public search succeeded');
+  const foundInPublic = publicSearch.body.users.find((u) => u.username === privUserUname);
+  assert(foundInPublic, 'Target user found in public search');
+  assert(!foundInPublic.phone, 'Phone number is NOT visible to other users (is null or undefined)');
+
+  // 2. Admin searches users: phone IS visible to admin
+  const adminUsersList = await request('GET', '/api/users', null, adminHeader);
+  assert(adminUsersList.status === 200, 'Admin fetched users');
+  const foundByAdmin = adminUsersList.body.users.find((u) => u.username === privUserUname);
+  assert(foundByAdmin, 'Found by admin');
+  assert(foundByAdmin.phone === '09123456789', 'Admin can see user phone in panel');
+});

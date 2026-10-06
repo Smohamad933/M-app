@@ -152,6 +152,7 @@ if ($action === 'public' || $action === 'search') {
     $rawQ = isset($_GET['q']) ? (string)$_GET['q'] : '';
     $q = normalizePersianSearch($rawQ);
     $myId = $currentUser ? $currentUser['id'] : '';
+    $isAdmin = $currentUser && ($currentUser['role'] === 'admin');
     $dbObj = TaskRoozDB::getInstance();
     $friendships = $dbObj->data['friendships'] ?? [];
 
@@ -168,7 +169,7 @@ if ($action === 'public' || $action === 'search') {
                 mb_strpos($nameNorm, $q, 0, 'UTF-8') !== false ||
                 mb_strpos($userNorm, $q, 0, 'UTF-8') !== false ||
                 mb_strpos($jobNorm, $q, 0, 'UTF-8') !== false ||
-                mb_strpos($phoneNorm, $q, 0, 'UTF-8') !== false ||
+                ($isAdmin && mb_strpos($phoneNorm, $q, 0, 'UTF-8') !== false) ||
                 $numStr === $q
             );
             if (!$match) continue;
@@ -182,6 +183,8 @@ if ($action === 'public' || $action === 'search') {
             }
         }
 
+        $canSeePhone = $isAdmin || ($currentUser && $currentUser['id'] === $u['id']);
+
         $safe[] = [
             'id' => $u['id'],
             'numericId' => $u['numericId'] ?? 1000,
@@ -190,7 +193,7 @@ if ($action === 'public' || $action === 'search') {
             'avatar' => $u['avatar'] ?? null,
             'jobTitle' => $u['jobTitle'] ?? null,
             'role' => $u['role'] ?? 'user',
-            'phone' => $u['phone'] ?? null,
+            'phone' => $canSeePhone ? ($u['phone'] ?? null) : null,
             'province' => $u['province'] ?? null,
             'city' => $u['city'] ?? null,
             'skills' => $u['skills'] ?? [],

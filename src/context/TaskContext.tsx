@@ -218,6 +218,8 @@ interface TaskContextType {
 
   // Settings
   updateSettings: (partial: Partial<AppSettings>) => void;
+  interfaceMode: 'simple' | 'advanced';
+  setInterfaceMode: (mode: 'simple' | 'advanced') => void;
   getDailySummaryText: () => string;
 
   // Global System Settings & Custom Fonts
@@ -464,6 +466,22 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     bestStreak: 1,
     lastActiveDate: getTodayISO(),
   }));
+
+  const [interfaceMode, setInterfaceModeState] = useState<'simple' | 'advanced'>(() => {
+    try {
+      const saved = localStorage.getItem('taskrooz_ui_mode');
+      if (saved === 'simple' || saved === 'advanced') return saved;
+    } catch {}
+    return 'simple';
+  });
+
+  const setInterfaceMode = (mode: 'simple' | 'advanced') => {
+    setInterfaceModeState(mode);
+    try {
+      localStorage.setItem('taskrooz_ui_mode', mode);
+    } catch {}
+    sounds.playComplete();
+  };
   
   const [selectedDate, setSelectedDate] = useState<string>(getTodayISO);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -1747,6 +1765,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       closeTaskModal,
       addCategory,
       updateSettings,
+      interfaceMode,
+      setInterfaceMode,
       systemFont,
       setSystemFont,
       getDailySummaryText,

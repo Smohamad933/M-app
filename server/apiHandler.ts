@@ -1223,6 +1223,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         });
       }
       const myId = currentUser?.id;
+      const isAdmin = currentUser && currentUser.role === 'admin';
       const safeUsers = list.map((u) => {
         const isFriend = db.friendships?.some(
           (f) => (f.user1Id === myId && f.user2Id === u.id) || (f.user2Id === myId && f.user1Id === u.id)
@@ -1235,7 +1236,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           avatar: u.avatar || null,
           jobTitle: u.jobTitle || null,
           role: u.role || 'user',
-          phone: u.phone || null,
+          phone: (isAdmin || u.id === myId) ? (u.phone || null) : null,
           province: u.province || null,
           city: u.city || null,
           skills: u.skills || [],
@@ -2773,7 +2774,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           username: u.username,
           avatar: u.avatar || null,
           jobTitle: u.jobTitle || null,
-          phone: u.phone || null,
+          phone: (currentUser && (currentUser.role === 'admin' || currentUser.id === u.id)) ? (u.phone || null) : null,
           role: u.role || 'user',
           subscription: u.subscription || { plan: 'free' },
           online: true,
