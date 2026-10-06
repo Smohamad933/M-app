@@ -364,4 +364,12 @@ export interface GlobalSystemSettings {
     icon?: string;
     badge?: string;
   };
+  /** Footer Branding: "بَگ‌تایم، از خانوادهٔ کیان فناوران نگاه" with optional URL link */
+  footerBranding?: {
+    enabled?: boolean;
+    prefixText?: string;
+    companyName?: string;
+    companyUrl?: string;
+    isLinkEnabled?: boolean;
+  };
 }

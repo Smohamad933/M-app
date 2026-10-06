@@ -2030,6 +2030,170 @@ export const UserManagementView: React.FC = () => {
                 maxSide={512}
               />
             </div>
+
+            {/* Footer Branding & Link Settings */}
+            <div className="pt-4 border-t border-zinc-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-black text-white flex items-center gap-2">
+                    <span>پاورقی و نام شرکت مادر (فوتر صفحات)</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 font-mono">
+                      بَگ‌تایم، از خانوادهٔ کیان فناوران نگاه
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    متن بسیار ریز در زیر تمام صفحات سامانه و افزونه، با قابلیت لینک دادن یا ندادن به عبارت «کیان فناوران نگاه».
+                  </p>
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={formSettings.footerBranding?.enabled !== false}
+                    onChange={(e) =>
+                      setFormSettings({
+                        ...formSettings,
+                        footerBranding: {
+                          ...(formSettings.footerBranding || {
+                            prefixText: 'بَگ‌تایم، از خانوادهٔ',
+                            companyName: 'کیان فناوران نگاه',
+                            companyUrl: '',
+                            isLinkEnabled: false,
+                          }),
+                          enabled: e.target.checked,
+                        },
+                      })
+                    }
+                    className="w-4 h-4 rounded text-indigo-600 bg-zinc-950 border-zinc-800"
+                  />
+                  <span>نمایش در زیر صفحات</span>
+                </label>
+              </div>
+
+              {formSettings.footerBranding?.enabled !== false && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-zinc-950/80 rounded-2xl border border-zinc-800/80">
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-zinc-300">متن پیشوند</label>
+                    <input
+                      type="text"
+                      value={formSettings.footerBranding?.prefixText || 'بَگ‌تایم، از خانوادهٔ'}
+                      onChange={(e) =>
+                        setFormSettings({
+                          ...formSettings,
+                          footerBranding: {
+                            ...(formSettings.footerBranding || {
+                              companyName: 'کیان فناوران نگاه',
+                              companyUrl: '',
+                              isLinkEnabled: false,
+                            }),
+                            enabled: true,
+                            prefixText: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="بَگ‌تایم، از خانوادهٔ"
+                      className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700/60 text-white text-xs outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-zinc-300">نام شرکت / مجموعه</label>
+                    <input
+                      type="text"
+                      value={formSettings.footerBranding?.companyName || 'کیان فناوران نگاه'}
+                      onChange={(e) =>
+                        setFormSettings({
+                          ...formSettings,
+                          footerBranding: {
+                            ...(formSettings.footerBranding || {
+                              prefixText: 'بَگ‌تایم، از خانوادهٔ',
+                              companyUrl: '',
+                              isLinkEnabled: false,
+                            }),
+                            enabled: true,
+                            companyName: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="کیان فناوران نگاه"
+                      className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700/60 text-white text-xs outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[11px] font-bold text-zinc-300">لینک اینترنتی (URL)</label>
+                      <label className="flex items-center gap-1.5 cursor-pointer text-[10px] text-indigo-400">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formSettings.footerBranding?.isLinkEnabled)}
+                          onChange={(e) =>
+                            setFormSettings({
+                              ...formSettings,
+                              footerBranding: {
+                                ...(formSettings.footerBranding || {
+                                  prefixText: 'بَگ‌تایم، از خانوادهٔ',
+                                  companyName: 'کیان فناوران نگاه',
+                                  companyUrl: '',
+                                }),
+                                enabled: true,
+                                isLinkEnabled: e.target.checked,
+                              },
+                            })
+                          }
+                          className="w-3.5 h-3.5 rounded text-indigo-600 bg-zinc-950 border-zinc-700"
+                        />
+                        <span>لینک‌دار شود؟</span>
+                      </label>
+                    </div>
+                    <input
+                      type="url"
+                      disabled={!formSettings.footerBranding?.isLinkEnabled}
+                      value={formSettings.footerBranding?.companyUrl || ''}
+                      onChange={(e) =>
+                        setFormSettings({
+                          ...formSettings,
+                          footerBranding: {
+                            ...(formSettings.footerBranding || {
+                              prefixText: 'بَگ‌تایم، از خانوادهٔ',
+                              companyName: 'کیان فناوران نگاه',
+                            }),
+                            enabled: true,
+                            isLinkEnabled: true,
+                            companyUrl: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="https://..."
+                      dir="ltr"
+                      className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700/60 text-white text-xs outline-none focus:border-indigo-500 disabled:opacity-40"
+                    />
+                  </div>
+
+                  {/* Live preview */}
+                  <div className="sm:col-span-3 pt-2 border-t border-zinc-800/80 flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-500">پیش‌نمایش فوتر:</span>
+                    <div className="text-zinc-400">
+                      <span>{formSettings.footerBranding?.prefixText || 'بَگ‌تایم، از خانوادهٔ'}{' '}</span>
+                      {formSettings.footerBranding?.isLinkEnabled && formSettings.footerBranding?.companyUrl ? (
+                        <a
+                          href={formSettings.footerBranding.companyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-black text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
+                        >
+                          {formSettings.footerBranding?.companyName || 'کیان فناوران نگاه'}
+                        </a>
+                      ) : (
+                        <strong className="font-black text-zinc-200">
+                          {formSettings.footerBranding?.companyName || 'کیان فناوران نگاه'}
+                        </strong>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 3. Focus Room Permissions & Daily Mantra */}

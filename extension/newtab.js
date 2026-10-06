@@ -439,6 +439,24 @@ async function inheritFontsFromServer() {
       await Storage.set('sponsored_site', sponsoredSite);
       renderShortcuts();
     }
+
+    // 3. Inherit Footer Branding
+    if (settings.footerBranding) {
+      const fb = settings.footerBranding;
+      const prefixEl = document.getElementById('extFooterPrefix');
+      const companyWrapper = document.getElementById('extFooterCompanyWrapper');
+      if (prefixEl && fb.prefixText) {
+        prefixEl.textContent = fb.prefixText;
+      }
+      if (companyWrapper) {
+        const companyName = fb.companyName || 'کیان فناوران نگاه';
+        if (fb.isLinkEnabled && fb.companyUrl) {
+          companyWrapper.innerHTML = `<a href="${fb.companyUrl}" target="_blank" rel="noopener noreferrer">${companyName}</a>`;
+        } else {
+          companyWrapper.innerHTML = `<strong class="ext-footer-company">${companyName}</strong>`;
+        }
+      }
+    }
   } catch {}
 }
 

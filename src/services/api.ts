@@ -88,6 +88,13 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
     sendNotifications: true,
     allowTaskCreation: true,
   },
+  footerBranding: {
+    enabled: true,
+    prefixText: 'بَگ‌تایم، از خانوادهٔ',
+    companyName: 'کیان فناوران نگاه',
+    companyUrl: '',
+    isLinkEnabled: false,
+  },
 };
 
 // Real-time synchronization channel for cross-tab and cross-window coordination

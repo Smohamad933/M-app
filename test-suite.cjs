@@ -1455,3 +1455,30 @@ test('Security: Non-admin users strictly blocked from users monitoring API (403)
   const userAccess = await request('GET', '/api/users', null, userHeader);
   assert(userAccess.status === 403, 'Regular user rejected with 403 Forbidden on /api/users');
 });
+
+// 38. Footer Branding: "بَگ‌تایم، از خانوادهٔ کیان فناوران نگاه" with optional URL link
+test('Footer Branding: Persists in global settings with configurable company URL link', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  // 1. Admin saves footer branding with active link
+  const updateRes = await request('POST', '/api/settings?action=global', {
+    footerBranding: {
+      enabled: true,
+      prefixText: 'بَگ‌تایم، از خانوادهٔ',
+      companyName: 'کیان فناوران نگاه',
+      companyUrl: 'https://negahm.ir',
+      isLinkEnabled: true,
+    },
+  }, adminHeader);
+  assert(updateRes.status === 200, 'Global settings updated with footer branding');
+
+  // 2. Fetch settings and verify footer branding
+  const getRes = await request('GET', '/api/settings?action=global', null, adminHeader);
+  assert(getRes.status === 200, 'Fetched settings');
+  const fb = getRes.body.settings?.footerBranding;
+  assert(fb, 'footerBranding exists in settings');
+  assert(fb.companyName === 'کیان فناوران نگاه', 'Company name is کیان فناوران نگاه');
+  assert(fb.companyUrl === 'https://negahm.ir', 'Company URL is https://negahm.ir');
+  assert(fb.isLinkEnabled === true, 'Link is enabled');
+});

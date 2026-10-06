@@ -1467,6 +1467,27 @@ export const MainLayout: React.FC = () => {
               </div>
             )}
           </main>
+
+          {/* Micro Footer Under Pages: "بَگ‌تایم، از خانوادهٔ کیان فناوران نگاه" */}
+          {globalSettings?.footerBranding?.enabled !== false && (
+            <footer className="py-2 px-4 text-center select-none text-[10.5px] text-slate-400 border-t border-slate-200/40 mt-auto bg-transparent">
+              <span>{globalSettings?.footerBranding?.prefixText || 'بَگ‌تایم، از خانوادهٔ'}{' '}</span>
+              {globalSettings?.footerBranding?.isLinkEnabled && globalSettings?.footerBranding?.companyUrl ? (
+                <a
+                  href={globalSettings.footerBranding.companyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-black text-slate-600 hover:text-indigo-600 transition-colors underline decoration-slate-300 underline-offset-2 hover:decoration-indigo-500"
+                >
+                  {globalSettings?.footerBranding?.companyName || 'کیان فناوران نگاه'}
+                </a>
+              ) : (
+                <strong className="font-black text-slate-600">
+                  {globalSettings?.footerBranding?.companyName || 'کیان فناوران نگاه'}
+                </strong>
+              )}
+            </footer>
+          )}
         </div>
 
       {/* Mobile Bottom Navigation (screens < 1024px) */}

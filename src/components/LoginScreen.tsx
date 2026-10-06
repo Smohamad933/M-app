@@ -652,6 +652,27 @@ export const LoginScreen: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* Micro Footer: "بَگ‌تایم، از خانوادهٔ کیان فناوران نگاه" */}
+        {globalSettings?.footerBranding?.enabled !== false && (
+          <div className="pt-3 border-t border-slate-100/70 text-center text-[10px] text-slate-400 select-none">
+            <span>{globalSettings?.footerBranding?.prefixText || 'بَگ‌تایم، از خانوادهٔ'}{' '}</span>
+            {globalSettings?.footerBranding?.isLinkEnabled && globalSettings?.footerBranding?.companyUrl ? (
+              <a
+                href={globalSettings.footerBranding.companyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-black text-slate-600 hover:text-indigo-600 transition-colors underline decoration-slate-300 underline-offset-2"
+              >
+                {globalSettings?.footerBranding?.companyName || 'کیان فناوران نگاه'}
+              </a>
+            ) : (
+              <strong className="font-black text-slate-600">
+                {globalSettings?.footerBranding?.companyName || 'کیان فناوران نگاه'}
+              </strong>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Developer Profile Modal */}
