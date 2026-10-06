@@ -461,6 +461,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
   const [isFontModalOpen, setIsFontModalOpen] = useState<boolean>(false);
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'content' | 'launch' | 'demo'>('all');
   const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('edit');
+  const [exportQuality, setExportQuality] = useState<'4k' | 'hd'>('4k');
 
   // 60-Day Story Strategy State
   const [selectedStoryDay, setSelectedStoryDay] = useState<number>(1);
@@ -670,11 +671,11 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
     });
   };
 
-  // ── Robust Native Pixel HTML2Canvas Single Slide PNG Export (Identical to Preview) ──
+  // ── Robust Native Pixel HTML2Canvas Single Slide PNG Export (Identical to Preview, 4K Supported) ──
   const handleExportSingleSlide = async () => {
     if (!exportContainerRef.current || isExporting) return;
     setIsExporting(true);
-    setExportProgress('در حال تولید تصویر اسلاید با کیفیت اصلی (عیناً مشابه پیش‌نمایش)...');
+    setExportProgress(`در حال تولید تصویر اسلاید با کیفیت ${exportQuality === '4k' ? '4K Ultra HD (۲۱۶۰p)' : '۱۰۸۰p رتینا'}...`);
     sounds.playPop();
 
     try {
@@ -686,13 +687,14 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
 
       await new Promise((r) => setTimeout(r, 60));
 
-      const scaleFactor = 1080 / baseWidth; // 2.842105263157895 -> exactly 1080x1350 or 1080x1080
+      const targetWidth = exportQuality === '4k' ? 2160 : 1080;
+      const scaleFactor = targetWidth / baseWidth; // 5.6842 for 4K (2160x2700 / 2160x2160), 2.8421 for HD (1080x1350 / 1080x1080)
 
       const canvas = await html2canvas(targetElement, {
         scale: scaleFactor,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: null,
+        backgroundColor: slideTheme === 'light' ? '#ffffff' : '#0b0f19',
         logging: false,
         scrollX: 0,
         scrollY: 0,
@@ -700,13 +702,21 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
         height: baseHeight,
         windowWidth: baseWidth,
         windowHeight: baseHeight,
+        onclone: (clonedDoc) => {
+          const el = clonedDoc.querySelector(`#clean-slide-${activeSlideIndex}`) as HTMLElement;
+          if (el) {
+            el.style.position = 'static';
+            el.style.opacity = '1';
+            el.style.visibility = 'visible';
+          }
+        },
       });
 
       const blob = await getCanvasBlob(canvas);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${currentPost.id}-slide-${activeSlideIndex + 1}.png`;
+      link.download = `${currentPost.id}-slide-${activeSlideIndex + 1}-${exportQuality.toUpperCase()}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -722,7 +732,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
     }
   };
 
-  // ── Robust 4-Slide ZIP Export (Identical to Preview) ──
+  // ── Robust 4-Slide ZIP Export (Identical to Preview, 4K Supported) ──
   const handleExportAllSlidesZip = async () => {
     if (!exportContainerRef.current || isExporting) return;
     setIsExporting(true);
@@ -734,10 +744,11 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
       const isPortrait = aspectRatio === 'portrait';
       const baseWidth = 380;
       const baseHeight = isPortrait ? 475 : 380;
-      const scaleFactor = 1080 / baseWidth; // 2.842105263157895 -> exactly 1080x1350 or 1080x1080
+      const targetWidth = exportQuality === '4k' ? 2160 : 1080;
+      const scaleFactor = targetWidth / baseWidth;
 
       for (let i = 0; i < 4; i++) {
-        setExportProgress(`در حال پردازش و رندر اسلاید ${i + 1} از ۴...`);
+        setExportProgress(`در حال پردازش و رندر اسلاید ${i + 1} از ۴ (${exportQuality === '4k' ? 'کیفیت 4K' : 'کیفیت ۱۰۸۰p'})...`);
         const targetElement = exportContainerRef.current.querySelector<HTMLElement>(`#clean-slide-${i}`);
         if (!targetElement) continue;
 
@@ -747,7 +758,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
           scale: scaleFactor,
           useCORS: true,
           allowTaint: true,
-          backgroundColor: null,
+          backgroundColor: slideTheme === 'light' ? '#ffffff' : '#0b0f19',
           logging: false,
           scrollX: 0,
           scrollY: 0,
@@ -755,10 +766,18 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
           height: baseHeight,
           windowWidth: baseWidth,
           windowHeight: baseHeight,
+          onclone: (clonedDoc) => {
+            const el = clonedDoc.querySelector(`#clean-slide-${i}`) as HTMLElement;
+            if (el) {
+              el.style.position = 'static';
+              el.style.opacity = '1';
+              el.style.visibility = 'visible';
+            }
+          },
         });
 
         const blob = await getCanvasBlob(canvas);
-        zip.file(`slide-${i + 1}.png`, blob);
+        zip.file(`slide-${i + 1}-${exportQuality.toUpperCase()}.png`, blob);
       }
 
       setExportProgress('در حال ایجاد فایل فشرده ZIP...');
@@ -766,7 +785,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
       const url = URL.createObjectURL(zipBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${currentPost.id}-carousel-4slides.zip`;
+      link.download = `${currentPost.id}-carousel-4slides-${exportQuality.toUpperCase()}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -782,11 +801,12 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
     }
   };
 
-  // ── Robust 9:16 Instagram Story PNG Export (1080x1920) ──
+  // ── Robust 9:16 Instagram Story PNG Export (Full 4K Ultra HD 2160x3840) ──
   const handleExportStoryImage = async () => {
     if (!storyExportRef.current || isExporting) return;
     setIsExporting(true);
-    setExportProgress('در حال رندر استوری عمودی ۱۰۸۰×۱۹۲۰...');
+    const is4K = exportQuality === '4k';
+    setExportProgress(`در حال رندر استوری عمودی با کیفیت ${is4K ? '4K Ultra HD (۲۱۶۰×۳۸۴۰)' : '۱۰۸۰×۱۹۲۰'}...`);
     sounds.playPop();
 
     try {
@@ -794,13 +814,14 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
 
       const baseWidth = 360;
       const baseHeight = 640;
-      const scaleFactor = 1080 / baseWidth; // exactly 3.0
+      const targetWidth = is4K ? 2160 : 1080;
+      const scaleFactor = targetWidth / baseWidth; // exactly 6.0 for 4K (2160x3840), 3.0 for HD (1080x1920)
 
       const canvas = await html2canvas(storyExportRef.current, {
         scale: scaleFactor,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#0f172a',
+        backgroundColor: '#0b0f19',
         logging: false,
         scrollX: 0,
         scrollY: 0,
@@ -808,13 +829,21 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
         height: baseHeight,
         windowWidth: baseWidth,
         windowHeight: baseHeight,
+        onclone: (clonedDoc) => {
+          const el = clonedDoc.querySelector('[data-story-export="true"]') as HTMLElement;
+          if (el) {
+            el.style.position = 'static';
+            el.style.opacity = '1';
+            el.style.visibility = 'visible';
+          }
+        },
       });
 
       const blob = await getCanvasBlob(canvas);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `bagtime-story-day-${selectedStoryDay}-slot-${activeStorySlot}.png`;
+      link.download = `bagtime-story-day-${selectedStoryDay}-slot-${activeStorySlot}-${exportQuality.toUpperCase()}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1211,8 +1240,39 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
               ))}
             </div>
 
+            {/* Quality Selector */}
+            <div className="flex items-center justify-between w-full px-3 py-2 bg-[#0d1322] rounded-2xl border border-slate-800 text-xs">
+              <span className="text-slate-300 font-bold text-xs flex items-center gap-1.5">
+                <span>کیفیت رندر و دانلود:</span>
+              </span>
+              <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setExportQuality('4k')}
+                  className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    exportQuality === '4k'
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  💎 4K اولترا HD (۲۱۶۰p)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExportQuality('hd')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    exportQuality === 'hd'
+                      ? 'bg-slate-700 text-white font-black shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  ۱۰۸۰p رتینا
+                </button>
+              </div>
+            </div>
+
             {/* Export Buttons */}
-            <div className="flex items-center gap-3 w-full pt-2">
+            <div className="flex items-center gap-3 w-full pt-1">
               <button
                 type="button"
                 onClick={handleExportSingleSlide}
@@ -1220,7 +1280,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
                 className="flex-1 py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
               >
                 <Download className="w-4 h-4 text-emerald-400" />
-                <span>دانلود اسلاید فعلی (PNG)</span>
+                <span>دانلود اسلاید ({exportQuality === '4k' ? '4K PNG' : 'PNG'})</span>
               </button>
 
               <button
@@ -1230,7 +1290,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
                 className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
               >
                 <FolderArchive className="w-4 h-4" />
-                <span>دانلود زیپ ۴ اسلاید (ZIP)</span>
+                <span>دانلود زیپ ۴ اسلاید ({exportQuality === '4k' ? '4K' : 'ZIP'})</span>
               </button>
             </div>
           </div>
@@ -2020,14 +2080,40 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
             <div className="space-y-2 max-w-xl text-right">
               <div className="flex items-center gap-2 text-emerald-400 font-black text-sm">
                 <Sparkles className="w-4 h-4" />
-                <span>رندر استوری گرافیکی ۹:۱۶ اینستاگرام (1080 × 1920)</span>
+                <span>رندر استوری گرافیکی ۹:۱۶ اینستاگرام (کیفیت 4K Ultra HD)</span>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">
-                می‌توانید استوری شماره {activeStorySlot} امروز (روز {selectedStoryDay}) را با کیفیت اصلی رتینا مستقیماً به صورت تصویر PNG دانلود کرده و در پیج استوری بگذارید. تمام متن‌های ویرایش‌شده شما در تصویر نهایی اعمال می‌شوند.
+                می‌توانید استوری شماره {activeStorySlot} امروز (روز {selectedStoryDay}) را با کیفیت شفاف 4K (۲۱۶۰ × ۳۸۴۰ پیکسل) مستقیماً به صورت تصویر PNG دانلود کرده و در پیج استوری بگذارید. تمام متن‌های ویرایش‌شده شما در تصویر نهایی اعمال می‌شوند.
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Quality Switcher */}
+              <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setExportQuality('4k')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    exportQuality === '4k'
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  💎 4K اولترا HD
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExportQuality('hd')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    exportQuality === 'hd'
+                      ? 'bg-slate-700 text-white font-black shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  ۱۰۸۰p رتینا
+                </button>
+              </div>
+
               <button
                 type="button"
                 onClick={() => toggleDayPublished(selectedStoryDay)}
@@ -2048,7 +2134,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
                 className="px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs transition-all flex items-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
               >
                 <Download className="w-4 h-4" />
-                <span>دانلود تصویر استوری شماره {activeStorySlot} (PNG)</span>
+                <span>دانلود استوری {exportQuality === '4k' ? 'با کیفیت 4K' : '۱۰۸۰p'} (PNG)</span>
               </button>
             </div>
           </div>
@@ -2056,16 +2142,14 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
       )}
 
       {/* ── NATIVE UNTRANSFORMED OFF-SCREEN RENDER CONTAINERS (0% ERROR - IDENTICAL TO PREVIEW) ── */}
-      {/* 1. Feed Slides Off-screen Container (380x475 / 380x380, scaled to 1080x1350 / 1080x1080 during capture) */}
+      {/* 1. Feed Slides Off-screen Container */}
       <div
         ref={exportContainerRef}
         style={{
           position: 'fixed',
-          left: 0,
-          top: 0,
+          left: '-9999px',
+          top: '0',
           width: '380px',
-          zIndex: -99999,
-          opacity: 0.01,
           pointerEvents: 'none',
         }}
       >
@@ -2084,22 +2168,21 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
         ))}
       </div>
 
-      {/* 2. Story 9:16 (360x640, scaled to 1080x1920 during capture) Off-screen Render Container */}
+      {/* 2. Story 9:16 (360x640, scaled to 2160x3840 4K UHD during capture) Off-screen Render Container */}
       <div
         ref={storyExportRef}
+        data-story-export="true"
         style={{
           position: 'fixed',
-          left: 0,
-          top: 0,
+          left: '-9999px',
+          top: '0',
           width: '360px',
           height: '640px',
-          zIndex: -99999,
-          opacity: 0.01,
           pointerEvents: 'none',
           fontFamily: selectedFont || 'inherit',
           fontFeatureSettings: '"liga" 1, "calt" 1',
         }}
-        className="bg-[#0f172a] text-white p-6 flex flex-col justify-between"
+        className="bg-[#0b0f19] text-white p-6 flex flex-col justify-between"
         dir="rtl"
       >
         {/* Glow */}
