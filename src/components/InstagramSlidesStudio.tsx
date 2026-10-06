@@ -20,6 +20,8 @@ import {
   Edit3,
   RotateCcw,
   AtSign,
+  Camera,
+  Trash2,
 } from 'lucide-react';
 import { useTask } from '../context/TaskContext';
 import { sounds } from '../utils/sound';
@@ -28,6 +30,7 @@ import { FontSelectorModal } from './FontSelectorModal';
 
 type StudioTab = 'feed_posts' | 'stories_strategy';
 type SlideTheme = 'light' | 'dark' | 'indigo' | 'emerald';
+type StoryTheme = 'dark' | 'light' | 'indigo' | 'emerald' | 'sunset';
 type AspectRatio = 'portrait' | 'square'; // portrait: 1080x1350 (4:5), square: 1080x1080 (1:1)
 type RightPanelTab = 'edit' | 'settings' | 'caption';
 
@@ -467,6 +470,26 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
   const [selectedStoryDay, setSelectedStoryDay] = useState<number>(1);
   const [activeStorySlot, setActiveStorySlot] = useState<1 | 2 | 3>(1);
   const [editingStorySlot, setEditingStorySlot] = useState<1 | 2 | 3 | null>(null);
+  const [storyTheme, setStoryTheme] = useState<StoryTheme>('dark');
+  const [showStoryFooter, setShowStoryFooter] = useState<boolean>(false);
+  const [storyFooterRight, setStoryFooterRight] = useState<string>('');
+  const [storyFooterLeft, setStoryFooterLeft] = useState<string>('');
+  const [showStoryMockup, setShowStoryMockup] = useState<boolean>(true);
+  const [customStoryScreenshot, setCustomStoryScreenshot] = useState<string | null>(null);
+  const storyFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleStoryScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (typeof event.target?.result === 'string') {
+        setCustomStoryScreenshot(event.target.result);
+        sounds.playComplete();
+      }
+    };
+    reader.readAsDataURL(file);
+  };
   const [publishedDays, setPublishedDays] = useState<number[]>(() => {
     try {
       const saved = localStorage.getItem('bagtime_stories_published');
@@ -821,7 +844,16 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
         scale: scaleFactor,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#0b0f19',
+        backgroundColor:
+          storyTheme === 'light'
+            ? '#ffffff'
+            : storyTheme === 'indigo'
+            ? '#0b0e1a'
+            : storyTheme === 'emerald'
+            ? '#021f18'
+            : storyTheme === 'sunset'
+            ? '#1c1917'
+            : '#0b0f19',
         logging: false,
         scrollX: 0,
         scrollY: 0,
@@ -899,6 +931,298 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
   };
 
   const themeStyles = getThemeClasses(slideTheme);
+
+  // Story Theme Styles
+  const getStoryThemeClasses = (t: StoryTheme) => {
+    switch (t) {
+      case 'light':
+        return {
+          container: 'bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#f1f5f9] text-slate-900 border border-slate-200 shadow-2xl',
+          card: 'bg-white/95 border-slate-200 text-slate-800 shadow-md',
+          subtext: 'text-slate-600',
+          accentText: 'text-emerald-600',
+          badge: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+          glow1: 'bg-emerald-500/10',
+          glow2: 'bg-indigo-500/10',
+          headerBorder: 'border-slate-200',
+          footerBorder: 'border-slate-200',
+          footerText: 'text-slate-500',
+        };
+      case 'indigo':
+        return {
+          container: 'bg-gradient-to-b from-[#0b0e1a] via-[#1e1b4b] to-[#0f172a] text-white border border-indigo-800/40 shadow-2xl',
+          card: 'bg-indigo-950/70 border-indigo-700/60 text-indigo-100 shadow-md',
+          subtext: 'text-indigo-200',
+          accentText: 'text-amber-300',
+          badge: 'bg-amber-400/20 text-amber-200 border-amber-400/30',
+          glow1: 'bg-indigo-500/25',
+          glow2: 'bg-amber-500/20',
+          headerBorder: 'border-indigo-800/60',
+          footerBorder: 'border-indigo-800/60',
+          footerText: 'text-indigo-300',
+        };
+      case 'emerald':
+        return {
+          container: 'bg-gradient-to-b from-[#021f18] via-[#064e3b] to-[#022c22] text-white border border-emerald-800/40 shadow-2xl',
+          card: 'bg-emerald-950/70 border-emerald-700/60 text-emerald-100 shadow-md',
+          subtext: 'text-emerald-200',
+          accentText: 'text-emerald-300',
+          badge: 'bg-emerald-400/20 text-emerald-200 border-emerald-400/30',
+          glow1: 'bg-emerald-500/25',
+          glow2: 'bg-teal-500/20',
+          headerBorder: 'border-emerald-800/60',
+          footerBorder: 'border-emerald-800/60',
+          footerText: 'text-emerald-300',
+        };
+      case 'sunset':
+        return {
+          container: 'bg-gradient-to-b from-[#1c1917] via-[#4c0519] to-[#1e1b4b] text-white border border-rose-800/40 shadow-2xl',
+          card: 'bg-black/60 border-rose-800/60 text-rose-100 shadow-md',
+          subtext: 'text-rose-200',
+          accentText: 'text-amber-300',
+          badge: 'bg-rose-500/25 text-rose-200 border-rose-500/30',
+          glow1: 'bg-rose-500/25',
+          glow2: 'bg-amber-500/20',
+          headerBorder: 'border-rose-800/60',
+          footerBorder: 'border-rose-800/60',
+          footerText: 'text-rose-300',
+        };
+      case 'dark':
+      default:
+        return {
+          container: 'bg-gradient-to-b from-[#0b0f19] via-[#0f172a] to-[#0b0f19] text-white border border-slate-800 shadow-2xl',
+          card: 'bg-slate-900/95 border-slate-800 text-slate-100 shadow-md',
+          subtext: 'text-slate-400',
+          accentText: 'text-emerald-400',
+          badge: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+          glow1: 'bg-purple-500/20',
+          glow2: 'bg-emerald-500/20',
+          headerBorder: 'border-slate-800',
+          footerBorder: 'border-slate-800',
+          footerText: 'text-slate-400',
+        };
+    }
+  };
+
+  // Feature Screenshot Mockup Card
+  const renderFeatureMockupCard = (cycleIdx: number, isLight: boolean) => {
+    const bg = isLight ? 'bg-slate-100/90 text-slate-800 border-slate-200' : 'bg-slate-900/90 text-slate-100 border-slate-800';
+
+    switch (cycleIdx) {
+      case 0: // Time Blocking
+        return (
+          <div className={`p-3 rounded-2xl border ${bg} text-right text-[11px] space-y-1.5 shadow-md`}>
+            <div className="flex items-center justify-between text-[10px] font-black text-emerald-500 border-b border-slate-700/40 pb-1">
+              <span>⏰ دیلی پلنر ساعتی بَگ‌تایم</span>
+              <span>Time Blocking</span>
+            </div>
+            <div className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 font-bold flex justify-between">
+              <span>۰۹:۰۰ - ۱۰:۳۰ کار عمیق روی تسک‌های اصلی</span>
+              <span>✅ انجام شد</span>
+            </div>
+            <div className="py-0.5 px-2 rounded-full bg-rose-500/20 text-rose-500 text-[9px] font-black flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+              <span>۱۰:۴۵ | خط نشانگر زنده زمان فعلی</span>
+            </div>
+            <div className="p-1.5 rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 font-bold flex justify-between">
+              <span>۱۱:۰۰ - ۱۲:۳۰ جلسه هماهنگی پروژه</span>
+              <span>⏳ در جریان</span>
+            </div>
+          </div>
+        );
+      case 1: // AI Habits
+        return (
+          <div className={`p-3 rounded-2xl border ${bg} text-right text-[11px] space-y-1.5 shadow-md`}>
+            <div className="flex items-center justify-between text-[10px] font-black text-purple-400 border-b border-slate-700/40 pb-1">
+              <span>🧠 تحلیلگر عادت‌ها (AI Habits)</span>
+              <span>گزارش علل تعویق</span>
+            </div>
+            <div className="flex items-center justify-between font-black text-xs text-emerald-500">
+              <span>نرخ بهره‌وری امروز:</span>
+              <span>۸۲٪ عالی</span>
+            </div>
+            <div className="text-[10px] space-y-1">
+              <div className="flex justify-between text-slate-400">
+                <span>📱 عامل اول: حواس‌پرتی گوشی و شبکه‌های اجتماعی</span>
+                <span className="text-amber-400 font-bold">۴۱٪</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>😴 عامل دوم: افت انرژی و خستگی عصرگاهی</span>
+                <span className="text-rose-400 font-bold">۲۷٪</span>
+              </div>
+            </div>
+          </div>
+        );
+      case 2: // New Tab SSO
+        return (
+          <div className={`p-3 rounded-2xl border ${bg} text-right text-[11px] space-y-2 shadow-md`}>
+            <div className="flex items-center justify-between text-[10px] font-black text-indigo-400 border-b border-slate-700/40 pb-1">
+              <span>🌐 افزونه تب جدید مرورگر BagTime</span>
+              <span>ورود یکپارچه SSO</span>
+            </div>
+            <div className="p-1.5 rounded-xl bg-slate-800 text-slate-300 text-[10px] text-center border border-slate-700">
+              🔍 جستجو در گوگل یا وارد کردن آدرس وب...
+            </div>
+            <div className="flex items-center justify-around text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-400">بَگ‌تایم</span>
+              <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-400">پیام‌رسان بله</span>
+              <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-400">سایت نگاه</span>
+            </div>
+          </div>
+        );
+      case 3: // Focus Rooms
+        return (
+          <div className={`p-3 rounded-2xl border ${bg} text-right text-[11px] space-y-1.5 shadow-md`}>
+            <div className="flex items-center justify-between text-[10px] font-black text-amber-400 border-b border-slate-700/40 pb-1">
+              <span>🎧 اتاق تمرکز مشترک بَگ‌تایم</span>
+              <span>۴ همکار آنلاین</span>
+            </div>
+            <div className="text-center font-mono font-black text-xl text-emerald-400 py-1">
+              ۲۴:۵۲ 🍅
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-slate-400">
+              <span>🎵 موزیک لوفای باران</span>
+              <span className="text-emerald-400 font-bold">🟢 تمرکز عمیق فعال</span>
+            </div>
+          </div>
+        );
+      case 4: // Bale Bot
+        return (
+          <div className={`p-3 rounded-2xl border ${bg} text-right text-[11px] space-y-1.5 shadow-md`}>
+            <div className="flex items-center justify-between text-[10px] font-black text-sky-400 border-b border-slate-700/40 pb-1">
+              <span>🤖 ربات بله سامانه بَگ‌تایم</span>
+              <span>ورود بدون پسورد</span>
+            </div>
+            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-300 text-[10px] space-y-1">
+              <div>✓ تایید آنی شماره تماس از بله</div>
+              <div>✓ دسترسی مستقیم فعال شد، ورود با یک کلیک!</div>
+            </div>
+          </div>
+        );
+      default:
+        return (
+          <div className={`p-3 rounded-2xl border ${bg} text-right text-[11px] space-y-1.5 shadow-md`}>
+            <div className="flex items-center justify-between text-[10px] font-black text-emerald-400 border-b border-slate-700/40 pb-1">
+              <span>⭐ سامانه مدیریت زمان بَگ‌تایم</span>
+              <span>نسخه Pro</span>
+            </div>
+            <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 text-[10px] font-bold text-center">
+              پلنر ساعتی • اتاق‌های تمرکز • ریشه‌یابی عادت‌ها
+            </div>
+          </div>
+        );
+    }
+  };
+
+  // Render Story Content (Identical for Preview & 4K Export)
+  const renderStoryContent = (slotNum: 1 | 2 | 3) => {
+    const isLight = storyTheme === 'light';
+    const theme = getStoryThemeClasses(storyTheme);
+    const cycleIdx = Math.floor((selectedStoryDay - 1) / 6);
+
+    const slotData =
+      slotNum === 1
+        ? currentStoryDayData.story1
+        : slotNum === 2
+        ? currentStoryDayData.story2
+        : currentStoryDayData.story3;
+
+    const hookOrTitle =
+      slotNum === 1
+        ? currentStoryDayData.story1.hook
+        : slotNum === 2
+        ? currentStoryDayData.story2.title
+        : currentStoryDayData.story3.conclusion;
+
+    const bodyText =
+      slotNum === 1
+        ? currentStoryDayData.story1.body
+        : slotNum === 2
+        ? currentStoryDayData.story2.body
+        : currentStoryDayData.story3.ctaText;
+
+    const stickerOrNote =
+      slotNum === 1
+        ? `🎯 ${currentStoryDayData.story1.sticker}`
+        : slotNum === 2
+        ? `💡 ${currentStoryDayData.story2.demoNote || currentStoryDayData.story2.sticker}`
+        : `📩 دایرکت: ${currentStoryDayData.story3.handles || customHandle}`;
+
+    return (
+      <div
+        className={`w-full h-full ${theme.container} p-6 flex flex-col justify-between overflow-hidden relative select-none`}
+        style={{
+          fontFamily: selectedFont || 'inherit',
+          fontFeatureSettings: '"liga" 1, "calt" 1',
+        }}
+        dir="rtl"
+      >
+        {/* Glow Decors */}
+        <div className={`absolute top-10 left-5 w-48 h-48 rounded-full ${theme.glow1} blur-2xl pointer-events-none`} />
+        <div className={`absolute bottom-10 right-5 w-48 h-48 rounded-full ${theme.glow2} blur-2xl pointer-events-none`} />
+
+        {/* Top Header */}
+        <div className={`flex items-center justify-between z-10 border-b ${theme.headerBorder} pb-3 flex-shrink-0`}>
+          <div className="flex items-center gap-2">
+            <TaskMasterHexagon size={26} />
+            <span className="font-black text-sm">بَگ‌تایم</span>
+          </div>
+          <div className="text-right">
+            <div className={`${theme.accentText} font-black text-xs`}>روز {selectedStoryDay} از ۶۰</div>
+            <div className={`${theme.subtext} text-[10px] font-mono`} dir="ltr">{customHandle}</div>
+          </div>
+        </div>
+
+        {/* Center Body */}
+        <div className="my-auto space-y-2.5 z-10 text-right py-2 flex-1 flex flex-col justify-center">
+          <div className={`inline-block px-2.5 py-1 rounded-xl font-black text-xs self-start ${theme.badge}`}>
+            {slotData.time}
+          </div>
+
+          <h2 className="text-base font-black leading-snug">
+            {hookOrTitle}
+          </h2>
+
+          {/* Feature Screenshot Mockup or Custom Uploaded Image */}
+          {showStoryMockup && (
+            <div className="w-full rounded-2xl overflow-hidden shadow-lg relative my-1">
+              {customStoryScreenshot ? (
+                <div className="w-full h-36 bg-slate-950 flex items-center justify-center overflow-hidden rounded-2xl border border-slate-700">
+                  <img
+                    src={customStoryScreenshot}
+                    alt="اسکرین‌شات سامانه"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                renderFeatureMockupCard(cycleIdx, isLight)
+              )}
+            </div>
+          )}
+
+          <div className={`p-3 rounded-2xl border text-xs font-bold leading-relaxed whitespace-pre-wrap ${theme.card}`}>
+            {bodyText}
+          </div>
+
+          <div className="p-2.5 rounded-xl border bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-xs font-bold">
+            {stickerOrNote}
+          </div>
+        </div>
+
+        {/* Optional Footer (Hidden by default, user can toggle and edit) */}
+        {showStoryFooter && (
+          <div className={`pt-3 border-t ${theme.footerBorder} flex items-center justify-between text-xs ${theme.footerText} z-10 flex-shrink-0`}>
+            <span>
+              {storyFooterRight || `${footerPrefix} ${footerCompany}`}
+            </span>
+            <span className="font-mono text-emerald-500" dir="ltr">
+              {storyFooterLeft || customHandle}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Render Slide Content (Identical for Preview & Export)
   const renderSlideContent = (slideIndex: number) => {
@@ -2075,6 +2399,249 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
             </div>
           </div>
 
+          {/* Story Visual Studio Controls & Live 9:16 Scaled Preview */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column: Visual Customizer (Theme, Mockup, Footer) */}
+            <div className="lg:col-span-6 space-y-4">
+              {/* Story Theme Selector */}
+              <div className="p-5 rounded-3xl bg-[#0d1322] border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-white flex items-center gap-1.5">
+                    <Palette className="w-4 h-4 text-purple-400" />
+                    <span>تم رنگ‌بندی استوری</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400">تغییر زنده رنگ پس‌زمینه و کارت‌ها</span>
+                </div>
+
+                <div className="grid grid-cols-5 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { sounds.playPop(); setStoryTheme('dark'); }}
+                    className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                      storyTheme === 'dark'
+                        ? 'bg-slate-800 text-purple-400 border-purple-500 shadow-md ring-2 ring-purple-500/40'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    🌙 دارک
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { sounds.playPop(); setStoryTheme('light'); }}
+                    className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                      storyTheme === 'light'
+                        ? 'bg-white text-slate-900 border-emerald-500 shadow-md ring-2 ring-emerald-500/40'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    ☀️ لایت
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { sounds.playPop(); setStoryTheme('indigo'); }}
+                    className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                      storyTheme === 'indigo'
+                        ? 'bg-indigo-900 text-amber-300 border-indigo-400 shadow-md ring-2 ring-indigo-400/40'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    🔮 نیلی
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { sounds.playPop(); setStoryTheme('emerald'); }}
+                    className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                      storyTheme === 'emerald'
+                        ? 'bg-emerald-900 text-emerald-300 border-emerald-400 shadow-md ring-2 ring-emerald-400/40'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    🍃 زمردی
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { sounds.playPop(); setStoryTheme('sunset'); }}
+                    className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                      storyTheme === 'sunset'
+                        ? 'bg-rose-950 text-rose-300 border-rose-500 shadow-md ring-2 ring-rose-500/40'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    🌅 سان‌ست
+                  </button>
+                </div>
+              </div>
+
+              {/* Automated & Custom System Feature Screenshot Mockup */}
+              <div className="p-5 rounded-3xl bg-[#0d1322] border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-white flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-emerald-400" />
+                    <span>اسکرین‌شات و موکاپ سامانه در استوری</span>
+                  </span>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <span className="text-[10px] text-slate-400">نمایش موکاپ:</span>
+                    <input
+                      type="checkbox"
+                      checked={showStoryMockup}
+                      onChange={(e) => setShowStoryMockup(e.target.checked)}
+                      className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 cursor-pointer"
+                    />
+                  </label>
+                </div>
+
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  سامانه بر اساس چرخه آموزشی روز ({currentStoryDayData.cycleName})، به صورت خودکار موکاپ زنده و گرافیکی بخش مربوطه (پلنر ساعتی، تحلیلگر عادت‌ها، افزونه تب، اتاق تمرکز، بات بله) را درون استوری قرار می‌دهد؛ همچنین می‌توانید در صورت تمایل اسکرین‌شات اختصاصی خود را بارگذاری کنید.
+                </p>
+
+                {/* Custom Upload or Reset */}
+                <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between flex-wrap gap-2">
+                  <input
+                    type="file"
+                    ref={storyFileInputRef}
+                    accept="image/*"
+                    onChange={handleStoryScreenshotUpload}
+                    className="hidden"
+                  />
+
+                  {customStoryScreenshot ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>اسکرین‌شات اختصاصی فعال است</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomStoryScreenshot(null);
+                          if (storyFileInputRef.current) storyFileInputRef.current.value = '';
+                          sounds.playPop();
+                        }}
+                        className="px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-[10px] font-bold flex items-center gap-1 cursor-pointer border border-rose-500/20"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>حذف و بازگشت به موکاپ خودکار</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => storyFileInputRef.current?.click()}
+                      className="px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-black flex items-center gap-1.5 cursor-pointer transition-all"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>📸 بارگذاری اسکرین‌شات اختصاصی سامانه</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Story Footer Customizer & Toggle */}
+              <div className="p-5 rounded-3xl bg-[#0d1322] border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-white flex items-center gap-1.5">
+                    <Sliders className="w-4 h-4 text-purple-400" />
+                    <span>نوار پاورقی استوری (Footer)</span>
+                  </span>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <span className="text-[10px] text-slate-400">{showStoryFooter ? 'نمایش داده می‌شود' : 'مخفی (حذف شده)'}</span>
+                    <input
+                      type="checkbox"
+                      checked={showStoryFooter}
+                      onChange={(e) => setShowStoryFooter(e.target.checked)}
+                      className="w-4 h-4 rounded text-purple-500 bg-slate-900 border-slate-700 cursor-pointer"
+                    />
+                  </label>
+                </div>
+
+                {!showStoryFooter ? (
+                  <p className="text-[11px] text-slate-400 leading-relaxed bg-slate-900/60 p-2.5 rounded-2xl border border-slate-800">
+                    💡 پاورقی زیر استوری هم‌اکنون غیرفعال است و هیچ متن اضافه‌ای در پایین استوری چاپ نمی‌شود (دقیقاً مطابق درخواست شما). در صورت تمایل می‌توانید تیک بالا را بزنید تا فعال گردد.
+                  </p>
+                ) : (
+                  <div className="space-y-2.5 pt-1">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400">متن سمت راست پاورقی استوری:</label>
+                      <input
+                        type="text"
+                        value={storyFooterRight}
+                        onChange={(e) => setStoryFooterRight(e.target.value)}
+                        placeholder={`${footerPrefix} ${footerCompany}`}
+                        className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-purple-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400">آیدی سمت چپ پاورقی استوری:</label>
+                      <input
+                        type="text"
+                        value={storyFooterLeft}
+                        onChange={(e) => setStoryFooterLeft(e.target.value)}
+                        placeholder={customHandle}
+                        className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-purple-300 font-mono outline-none focus:border-purple-500"
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column: Live Scaled 9:16 Story Preview & Quick Slot Switcher */}
+            <div className="lg:col-span-6 flex flex-col items-center space-y-4">
+              {/* Slot Switcher Tabs */}
+              <div className="flex items-center justify-center gap-1.5 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 w-full max-w-sm">
+                <button
+                  type="button"
+                  onClick={() => { sounds.playPop(); setActiveStorySlot(1); }}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    activeStorySlot === 1
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  استوری ۱ (۱۰:۰۰)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { sounds.playPop(); setActiveStorySlot(2); }}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    activeStorySlot === 2
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  استوری ۲ (۱۴:۰۰)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { sounds.playPop(); setActiveStorySlot(3); }}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    activeStorySlot === 3
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  استوری ۳ (۱۹:۰۰)
+                </button>
+              </div>
+
+              {/* Realistic 9:16 Phone Mock Frame for 1:1 Live Preview */}
+              <div className="w-[320px] h-[568px] rounded-[32px] overflow-hidden border-4 border-slate-700/80 shadow-2xl relative bg-black flex flex-col">
+                <div className="flex-1 w-full h-full overflow-hidden">
+                  {renderStoryContent(activeStorySlot)}
+                </div>
+              </div>
+
+              <div className="text-[11px] text-slate-400 font-bold text-center">
+                پیش‌نمایش زنده و واقعی استوری شماره {activeStorySlot} با تم {storyTheme === 'light' ? 'لایت سفید' : storyTheme === 'indigo' ? 'نیلی متالیک' : storyTheme === 'emerald' ? 'سبز زمردی' : storyTheme === 'sunset' ? 'سان‌ست رز' : 'دارک آبزیدین'}
+              </div>
+            </div>
+          </div>
+
           {/* Story Visual Graphic Generator & Downloader (9:16 Aspect) */}
           <div className="p-6 rounded-3xl bg-[#0d1322] border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="space-y-2 max-w-xl text-right">
@@ -2168,7 +2735,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
         ))}
       </div>
 
-      {/* 2. Story 9:16 (360x640, scaled to 2160x3840 4K UHD during capture) Off-screen Render Container */}
+      {/* 2. Story 9:16 Off-screen Render Container (360x640, scaled to 2160x3840 4K UHD during capture) */}
       <div
         ref={storyExportRef}
         data-story-export="true"
@@ -2179,60 +2746,9 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
           width: '360px',
           height: '640px',
           pointerEvents: 'none',
-          fontFamily: selectedFont || 'inherit',
-          fontFeatureSettings: '"liga" 1, "calt" 1',
         }}
-        className="bg-[#0b0f19] text-white p-6 flex flex-col justify-between"
-        dir="rtl"
       >
-        {/* Glow */}
-        <div className="absolute top-10 left-5 w-48 h-48 rounded-full bg-purple-500/15 blur-2xl" />
-        <div className="absolute bottom-10 right-5 w-48 h-48 rounded-full bg-emerald-500/15 blur-2xl" />
-
-        {/* Top Header */}
-        <div className="flex items-center justify-between z-10 border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <TaskMasterHexagon size={26} />
-            <span className="font-black text-sm">بَگ‌تایم</span>
-          </div>
-          <div className="text-right">
-            <div className="text-emerald-400 font-black text-xs">روز {selectedStoryDay} از ۶۰</div>
-            <div className="text-slate-400 text-[10px] font-mono" dir="ltr">{customHandle}</div>
-          </div>
-        </div>
-
-        {/* Center Content */}
-        <div className="my-auto space-y-3 z-10 text-right py-4">
-          <div className="inline-block px-2.5 py-1 rounded-xl bg-purple-500/20 text-purple-300 font-black text-xs border border-purple-500/30">
-            {activeStorySlot === 1 && currentStoryDayData.story1.time}
-            {activeStorySlot === 2 && currentStoryDayData.story2.time}
-            {activeStorySlot === 3 && currentStoryDayData.story3.time}
-          </div>
-
-          <h2 className="text-base font-black leading-snug text-white">
-            {activeStorySlot === 1 && currentStoryDayData.story1.hook}
-            {activeStorySlot === 2 && currentStoryDayData.story2.title}
-            {activeStorySlot === 3 && currentStoryDayData.story3.conclusion}
-          </h2>
-
-          <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs font-bold text-slate-200 leading-relaxed whitespace-pre-wrap">
-            {activeStorySlot === 1 && currentStoryDayData.story1.body}
-            {activeStorySlot === 2 && currentStoryDayData.story2.body}
-            {activeStorySlot === 3 && currentStoryDayData.story3.ctaText}
-          </div>
-
-          <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs font-bold">
-            {activeStorySlot === 1 && `🎯 ${currentStoryDayData.story1.sticker}`}
-            {activeStorySlot === 2 && `💡 ${currentStoryDayData.story2.demoNote || currentStoryDayData.story2.sticker}`}
-            {activeStorySlot === 3 && `📩 دایرکت به پیج: ${currentStoryDayData.story3.handles || customHandle}`}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 z-10">
-          <span>{footerPrefix} <strong>{footerCompany}</strong></span>
-          <span className="font-mono" dir="ltr">{customHandle}</span>
-        </div>
+        {renderStoryContent(activeStorySlot)}
       </div>
 
       {/* Font Upload Modal */}
