@@ -216,10 +216,17 @@ interface TaskContextType {
   deleteMyAccount: () => Promise<void>;
   approveUserRegistration: (userId: string) => Promise<void>;
 
-  // Settings
+  // Settings & Theme & Calendar
   updateSettings: (partial: Partial<AppSettings>) => void;
+  themeMode: 'light' | 'dark';
+  setThemeMode: (mode: 'light' | 'dark') => void;
+  toggleThemeMode: () => void;
+  calendarType: 'jalali' | 'gregorian';
+  setCalendarType: (type: 'jalali' | 'gregorian') => void;
+  toggleCalendarType: () => void;
   interfaceMode: 'simple' | 'advanced';
   setInterfaceMode: (mode: 'simple' | 'advanced') => void;
+  toggleInterfaceMode: () => void;
   getDailySummaryText: () => string;
 
   // Global System Settings & Custom Fonts
@@ -477,10 +484,72 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setInterfaceMode = (mode: 'simple' | 'advanced') => {
     setInterfaceModeState(mode);
+    setSettings((prev) => ({ ...prev, interfaceMode: mode }));
     try {
       localStorage.setItem('taskrooz_ui_mode', mode);
     } catch {}
     sounds.playComplete();
+  };
+
+  const toggleInterfaceMode = () => {
+    const next = interfaceMode === 'simple' ? 'advanced' : 'simple';
+    setInterfaceMode(next);
+  };
+
+  const [themeMode, setThemeModeState] = useState<'light' | 'dark'>(() => {
+    try {
+      const saved = localStorage.getItem('taskrooz_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      const s = localStorage.getItem('taskrooz_settings');
+      if (s) {
+        const p = JSON.parse(s);
+        if (p.theme === 'dark' || p.theme === 'light') return p.theme;
+      }
+    } catch {}
+    return 'light';
+  });
+
+  const setThemeMode = (mode: 'light' | 'dark') => {
+    setThemeModeState(mode);
+    setSettings((prev) => ({ ...prev, theme: mode }));
+    try {
+      localStorage.setItem('taskrooz_theme', mode);
+      localStorage.setItem('taskrooz_settings', JSON.stringify({ ...settings, theme: mode }));
+    } catch {}
+    sounds.playPop();
+  };
+
+  const toggleThemeMode = () => {
+    const next = themeMode === 'light' ? 'dark' : 'light';
+    setThemeMode(next);
+  };
+
+  const [calendarType, setCalendarTypeState] = useState<'jalali' | 'gregorian'>(() => {
+    try {
+      const saved = localStorage.getItem('taskrooz_calendar_type');
+      if (saved === 'jalali' || saved === 'gregorian') return saved;
+      const s = localStorage.getItem('taskrooz_settings');
+      if (s) {
+        const p = JSON.parse(s);
+        if (p.calendarType === 'jalali' || p.calendarType === 'gregorian') return p.calendarType;
+      }
+    } catch {}
+    return 'jalali';
+  });
+
+  const setCalendarType = (type: 'jalali' | 'gregorian') => {
+    setCalendarTypeState(type);
+    setSettings((prev) => ({ ...prev, calendarType: type }));
+    try {
+      localStorage.setItem('taskrooz_calendar_type', type);
+      localStorage.setItem('taskrooz_settings', JSON.stringify({ ...settings, calendarType: type }));
+    } catch {}
+    sounds.playPop();
+  };
+
+  const toggleCalendarType = () => {
+    const next = calendarType === 'jalali' ? 'gregorian' : 'jalali';
+    setCalendarType(next);
   };
   
   const [selectedDate, setSelectedDate] = useState<string>(getTodayISO);
@@ -553,16 +622,22 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await refreshUsers();
   };
 
-  // Sync settings with audio and light theme
+  // Sync settings with audio, theme and calendar
   useEffect(() => {
     sounds.enabled = settings.soundEnabled;
     sounds.hapticEnabled = settings.hapticEnabled;
     
-    document.documentElement.classList.remove('dark');
-    document.documentElement.classList.add('light');
+    const isDark = settings.theme === 'dark';
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    }
 
     try {
-      localStorage.setItem('taskrooz_settings', JSON.stringify({ ...settings, theme: 'light' }));
+      localStorage.setItem('taskrooz_settings', JSON.stringify(settings));
     } catch {}
   }, [settings]);
 
@@ -1779,8 +1854,15 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       closeTaskModal,
       addCategory,
       updateSettings,
+      themeMode,
+      setThemeMode,
+      toggleThemeMode,
+      calendarType,
+      setCalendarType,
+      toggleCalendarType,
       interfaceMode,
       setInterfaceMode,
+      toggleInterfaceMode,
       systemFont,
       setSystemFont,
       getDailySummaryText,

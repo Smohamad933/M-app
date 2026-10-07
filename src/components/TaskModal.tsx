@@ -3,7 +3,7 @@ import { useTask } from '../context/TaskContext';
 import type { Priority, SubTask } from '../types';
 import {
   getTodayISO,
-  formatPersianDate,
+  formatAppDate,
   PERSIAN_MONTHS,
   isoToJalali,
   jalaliToISO,
@@ -53,6 +53,7 @@ export const TaskModal: React.FC = () => {
     currentUser,
     users,
     setIsUpgradeModalOpen,
+    calendarType,
   } = useTask();
 
   const [title, setTitle] = useState('');
@@ -63,6 +64,7 @@ export const TaskModal: React.FC = () => {
   const [categoryId, setCategoryId] = useState(categories[0]?.id || 'cat-work');
   const [projectId, setProjectId] = useState<string | null>(selectedProjectId);
   const [isPinned, setIsPinned] = useState(false);
+  const [reasonUncompleted, setReasonUncompleted] = useState<string | undefined>(undefined);
   const [subtasks, setSubtasks] = useState<SubTask[]>([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +88,7 @@ export const TaskModal: React.FC = () => {
       setIsPinned(editingTask.isPinned || false);
       setSubtasks(editingTask.subtasks || []);
       setAssignedUserId(editingTask.userId || currentUser?.id || '');
+      setReasonUncompleted(editingTask.reasonUncompleted);
     } else {
       setTitle('');
       setDescription('');
@@ -97,6 +100,7 @@ export const TaskModal: React.FC = () => {
       setIsPinned(false);
       setSubtasks([]);
       setAssignedUserId(currentUser?.id || '');
+      setReasonUncompleted(undefined);
     }
   }, [isTaskModalOpen, editingTask?.id]);
 
@@ -139,6 +143,8 @@ export const TaskModal: React.FC = () => {
           projectId: projectId || undefined,
           isPinned,
           subtasks,
+          reasonUncompleted: reasonUncompleted || undefined,
+          uncompletedCategory: reasonUncompleted ? editingTask.uncompletedCategory : undefined,
           ...(currentUser?.role === 'admin' ? { userId: assignedUserId } : {}),
         });
       } else {
@@ -194,6 +200,24 @@ export const TaskModal: React.FC = () => {
 
         {/* Modal Scrollable Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+          {editingTask && editingTask.reasonUncompleted && (
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between text-xs">
+              <div className="space-y-0.5 text-right">
+                <div className="text-[11px] font-bold text-rose-700 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                  <span>ثبت شده با تیک قرمز (عدم انجام)</span>
+                </div>
+                <div className="font-extrabold text-rose-950">دلیل: {editingTask.reasonUncompleted}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReasonUncompleted(undefined)}
+                className="px-2.5 py-1.5 rounded-xl bg-white text-rose-600 border border-rose-200 text-[10px] font-black hover:bg-rose-100 cursor-pointer shadow-xs"
+              >
+                پاک کردن تیک قرمز
+              </button>
+            </div>
+          )}
           {error && (
             <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold space-y-2 animate-in fade-in">
               <div className="flex items-center gap-2">
@@ -275,12 +299,23 @@ export const TaskModal: React.FC = () => {
                   <span>تاریخ شمسی تسک</span>
                 </label>
                 <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200">
-                  {formatPersianDate(date || todayISO, 'full')}
+                  {formatAppDate(date || todayISO, calendarType, 'full')}
                 </span>
               </div>
 
-              {/* Day, Month, Year selects */}
-              <div className="grid grid-cols-3 gap-2">
+              {calendarType === 'gregorian' ? (
+                <div className="space-y-1">
+                  <span className="text-[10px] text-slate-500 font-bold block">تاریخ میلادی</span>
+                  <input
+                    type="date"
+                    value={date || todayISO}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs font-mono font-bold outline-none cursor-pointer focus:border-indigo-500"
+                  />
+                </div>
+              ) : (
+                /* Day, Month, Year selects */
+                <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
                   <span className="text-[10px] text-slate-500 font-bold block">روز</span>
                   <select
@@ -326,6 +361,7 @@ export const TaskModal: React.FC = () => {
                   </select>
                 </div>
               </div>
+              )}
             </div>
 
             {/* 24-Hour Time Picker */}

@@ -268,21 +268,26 @@ export const LoginScreen: React.FC = () => {
           throw loginErr;
         }
       } else {
-        // Fast, frictionless registration
+        // Strict registration with mandatory mobile phone
         if (!name.trim() || !username.trim() || !password.trim()) {
           setError("لطفاً نام، نام کاربری و کلمه عبور را تکمیل کنید.");
           setLoading(false);
           return;
         }
-        let cleanPhone = '';
-        if (phone.trim()) {
-          cleanPhone = phone.trim().replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString());
-          if (!/^09\d{9}$/.test(cleanPhone)) {
-            setError("شماره موبایل وارد شده باید ۱۱ رقم بوده و با ۰۹ شروع شود (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).");
-            setLoading(false);
-            return;
-          }
+
+        if (!phone.trim()) {
+          setError("شماره موبایل اجباری است. لطفاً شماره موبایل خود را وارد کنید.");
+          setLoading(false);
+          return;
         }
+
+        const cleanPhone = phone.trim().replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString());
+        if (!/^09\d{9}$/.test(cleanPhone)) {
+          setError("شماره موبایل وارد شده باید ۱۱ رقم بوده و با ۰۹ شروع شود (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).");
+          setLoading(false);
+          return;
+        }
+
         if (username.trim().length < 3) {
           setError("نام کاربری باید حداقل ۳ کاراکتر باشد.");
           setLoading(false);
@@ -557,17 +562,19 @@ export const LoginScreen: React.FC = () => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-extrabold text-slate-700 flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-slate-400" />
-                  <span>
-                    شماره تماس (اختیاری)
+                <label className="font-extrabold text-slate-700 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                    <span>شماره موبایل (اجباری)</span>
                   </span>
+                  <span className="text-[10px] text-rose-500 font-bold">* الزامی</span>
                 </label>
                 <input
                   type="tel"
+                  required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="مثال: ۰۹۱۲۳۴۵۶۷۸۹ (اختیاری)"
+                  placeholder="مثال: ۰۹۱۲۳۴۵۶۷۸۹ (الزامی)"
                   className="w-full px-4 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 font-mono text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
                 />
               </div>

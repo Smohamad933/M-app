@@ -31,8 +31,11 @@ import {
   Sliders,
   Check,
   Upload,
+  QrCode,
+  X,
 } from 'lucide-react';
 import { focusAudio, DEFAULT_FOCUS_TRACKS, type FocusTrack } from '../utils/focusAudio';
+import { generateQRCodeSVG } from '../utils/qrCode';
 
 export const GroupFocusRoom: React.FC = () => {
   const {
@@ -63,6 +66,7 @@ export const GroupFocusRoom: React.FC = () => {
 
   // Admin: delete ALL rooms state
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   // In-room states
@@ -810,13 +814,24 @@ export const GroupFocusRoom: React.FC = () => {
         {/* Room Action Buttons */}
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
           {!activeRoom.isDeleted && (
-            <button
-              onClick={() => setIsInviteModalOpen(true)}
-              className="px-3.5 py-2 rounded-2xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-bold border border-zinc-200 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>دعوت</span>
-            </button>
+            <>
+              <button
+                onClick={() => setIsQrModalOpen(true)}
+                className="px-3.5 py-2 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer"
+                title="نمایش کد QR جهت ورود مستقیم اعضا و همکاران"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>کد QR ورود</span>
+              </button>
+
+              <button
+                onClick={() => setIsInviteModalOpen(true)}
+                className="px-3.5 py-2 rounded-2xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-bold border border-zinc-200 transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>دعوت</span>
+              </button>
+            </>
           )}
 
           {isHost && !activeRoom.isDeleted && (
@@ -1388,6 +1403,53 @@ export const GroupFocusRoom: React.FC = () => {
                 {isDeleting ? 'در حال حذف...' : 'تأیید و بستن اتاق'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Room QR Code Modal */}
+      {isQrModalOpen && activeRoom && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in" dir="rtl">
+          <div className="w-full max-w-sm bg-white rounded-[32px] p-6 space-y-4 shadow-2xl border border-slate-200 text-center animate-in zoom-in-95">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="text-sm font-black text-slate-950 flex items-center gap-1.5">
+                <QrCode className="w-4 h-4 text-indigo-600" />
+                <span>کد QR ورود به اتاق تمرکز</span>
+              </h3>
+              <button
+                onClick={() => setIsQrModalOpen(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-3xl border border-slate-200 inline-block shadow-inner">
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: generateQRCodeSVG(getInviteUrl(), 220, '#0f172a', '#ffffff'),
+                }}
+              />
+            </div>
+
+            <div className="space-y-1 text-xs">
+              <div className="font-extrabold text-slate-900">{activeRoom.name}</div>
+              <div className="text-[11px] text-slate-500 font-mono" dir="ltr">
+                کد کوتاه اتاق: <strong className="text-indigo-600">{activeRoom.id}</strong>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              با دوربین تلفن همراه یا هر برنامه اسکن بارکد، این کد را اسکن کنید تا مستقیماً به این اتاق ملحق شوید.
+            </p>
+
+            <button
+              onClick={handleCopyInviteLink}
+              className="w-full py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              {copiedLink ? <Check className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+              <span>{copiedLink ? 'لینک کپی شد!' : 'کپی لینک مستقیم اتاق'}</span>
+            </button>
           </div>
         </div>
       )}

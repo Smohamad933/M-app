@@ -78,6 +78,9 @@ import {
   Wifi,
   Bot,
   ShieldAlert,
+  Sun,
+  Moon,
+  Calendar,
 } from 'lucide-react';
 import { MandatorySyncModal } from './MandatorySyncModal';
 import { BaleVerificationModal } from './BaleVerificationModal';
@@ -121,6 +124,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
     setIsSyncModalOpen,
     interfaceMode,
     setInterfaceMode,
+    themeMode,
+    toggleThemeMode,
+    calendarType,
+    toggleCalendarType,
   } = useTask();
 
   const todayISO = getTodayISO();
@@ -928,6 +935,32 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   </button>
                 )}
 
+                {/* Dark / Light Mode Switcher */}
+                <button
+                  type="button"
+                  onClick={toggleThemeMode}
+                  className={`w-8 sm:w-9 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all shadow-2xs cursor-pointer flex-shrink-0 ${
+                    themeMode === 'dark'
+                      ? 'border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
+                      : 'border-slate-200/80 bg-white text-slate-600 hover:bg-slate-100'
+                  }`}
+                  title={themeMode === 'dark' ? 'تغییر به تم روشن (Light)' : 'تغییر به تم تاریک (Dark Mode)'}
+                >
+                  {themeMode === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+                </button>
+
+                {/* Calendar Type Switcher (Jalali vs Gregorian) */}
+                <button
+                  type="button"
+                  onClick={toggleCalendarType}
+                  className="h-8 sm:h-9 px-2.5 rounded-full border border-slate-200/80 bg-white hover:bg-slate-100 text-slate-700 flex items-center gap-1 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0"
+                  title={calendarType === 'jalali' ? 'تقویم خورشیدی (شمسی) فعال است — کلیک برای تغییر به میلادی' : 'تقویم میلادی فعال است — کلیک برای تغییر به شمسی'}
+                >
+                  <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                  <span className="hidden sm:inline">{calendarType === 'jalali' ? 'تقویم شمسی' : 'تقویم میلادی'}</span>
+                  <span className="sm:hidden">{calendarType === 'jalali' ? 'شمسی' : 'میلادی'}</span>
+                </button>
+
                 {/* Settings Cogwheel (hidden on small screens, in menu) */}
                 <button
                   type="button"
@@ -1167,6 +1200,38 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
             {/* TAB 1: DASHBOARD */}
             {activeTab === 'dashboard' && (
               <div className="space-y-6 animate-in fade-in w-full min-w-0">
+                {/* Simple Mode Friendly Quick Actions Card */}
+                {interfaceMode === 'simple' && (
+                  <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 border border-emerald-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in">
+                    <div className="space-y-1 text-right">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold text-[11px]">🌿 کاربری آسان</span>
+                        <h2 className="text-sm font-black text-slate-900">امروز می‌خواهید چه کاری انجام دهید؟</h2>
+                      </div>
+                      <p className="text-xs text-slate-600">
+                        سامانه در حالت آسان و بدون پیچیدگی است. تسک جدید بنویسید یا زمان‌سنج تمرکز را استارت بزنید:
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => openCreateModal(selectedDate)}
+                        className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>ثبت سریع تسک</span>
+                      </button>
+
+                      <button
+                        onClick={() => setActiveTab('focus')}
+                        className="px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-black text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Timer className="w-4 h-4 text-emerald-400" />
+                        <span>شروع تمرکز</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {/* 4 Dribbble Signature Widgets */}
                 <TaskMasterBentoWidgets
                   onSeeAllTasks={() => setActiveTab('tasks')}

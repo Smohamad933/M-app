@@ -1,11 +1,14 @@
 import React from 'react';
 import { useTask } from '../context/TaskContext';
-import { getGreeting, formatPersianDate, toPersianDigits, getTodayISO } from '../utils/persianDate';
+import { getGreeting, formatAppDate, toPersianDigits, getTodayISO } from '../utils/persianDate';
 import {
   Flame,
   Share2,
   CheckCircle2,
   Search,
+  Sun,
+  Moon,
+  Calendar,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -14,7 +17,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }) => {
-  const { tasks, streak, selectedDate, setIsShareModalOpen } = useTask();
+  const { tasks, streak, selectedDate, setIsShareModalOpen, calendarType, toggleCalendarType, themeMode, toggleThemeMode } = useTask();
 
   const greeting = getGreeting();
   const todayTasks = tasks.filter((t) => t.date === selectedDate);
@@ -24,7 +27,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }
   const isViewingToday = selectedDate === getTodayISO();
 
   return (
-    <header className="px-5 pt-4 pb-3 bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-20">
+    <header className="px-5 pt-4 pb-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 sticky top-0 z-20">
       {/* Top row: Status, streak, and quick tool actions */}
       <div className="flex items-center justify-between mb-3">
         {/* Streak badge */}
@@ -39,6 +42,27 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }
 
         {/* Quick action buttons */}
         <div className="flex items-center gap-1.5">
+          {/* Dark / Light Toggle */}
+          <button
+            type="button"
+            onClick={toggleThemeMode}
+            className="p-2 rounded-xl text-slate-600 dark:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            title={themeMode === 'dark' ? 'تغییر به تم روشن' : 'تغییر به تم دارک'}
+          >
+            {themeMode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          {/* Calendar Type Toggle */}
+          <button
+            type="button"
+            onClick={toggleCalendarType}
+            className="px-2.5 py-1 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer flex items-center gap-1 border border-slate-200 dark:border-slate-700"
+            title={calendarType === 'jalali' ? 'تغییر به تقویم میلادی' : 'تغییر به تقویم شمسی'}
+          >
+            <Calendar className="w-3 h-3 text-indigo-500" />
+            <span>{calendarType === 'jalali' ? 'شمسی' : 'میلادی'}</span>
+          </button>
+
           <button
             onClick={onToggleSearch}
             aria-label="جستجو"
@@ -70,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }
             {greeting.text}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {formatPersianDate(selectedDate, 'full')}
+            {formatAppDate(selectedDate, calendarType, 'full')}
             {!isViewingToday && (
               <span className="mr-1.5 inline-block text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-medium">
                 مشاهده روز دیگر

@@ -51,6 +51,8 @@ import {
   Upload,
   Bot,
   Database,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 /**
@@ -172,6 +174,12 @@ export const UserManagementView: React.FC = () => {
     globalSettings,
     updateGlobalSettings,
     deleteUsersBulk,
+    themeMode,
+    setThemeMode,
+    calendarType,
+    setCalendarType,
+    interfaceMode,
+    setInterfaceMode,
     setUserSubscription,
     appOperatingMode,
     setAppOperatingMode,
@@ -1767,6 +1775,114 @@ export const UserManagementView: React.FC = () => {
               <span>تنظیمات سراسری سازمان با موفقیت بر کل کاربران سیستم اعمال گردید.</span>
             </div>
           )}
+
+          {/* Theme, Calendar & Interface Switcher Card */}
+          <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-5 space-y-4 backdrop-blur-md">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-zinc-800">
+              <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                <Sun className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">تنظیمات تم، تقویم و ظاهر سامانه</h3>
+                <p className="text-[11px] text-zinc-400">تغییر فوری بین تم دارک و لایت، تقویم شمسی و میلادی، و حالت ساده و پرو.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* 1. Theme Mode Switcher */}
+              <div className="space-y-1.5 p-3 rounded-2xl bg-zinc-950 border border-zinc-800">
+                <label className="block text-xs font-bold text-zinc-300">تم و پوسته سامانه:</label>
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setThemeMode('light')}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      themeMode === 'light'
+                        ? 'bg-white text-black font-black shadow-md ring-2 ring-slate-300'
+                        : 'bg-zinc-900 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <Sun className="w-3.5 h-3.5 text-amber-500" />
+                    <span>☀️ تم روشن</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setThemeMode('dark')}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      themeMode === 'dark'
+                        ? 'bg-zinc-800 text-white font-black shadow-md ring-2 ring-emerald-500/40'
+                        : 'bg-zinc-900 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <Moon className="w-3.5 h-3.5 text-amber-400" />
+                    <span>🌙 تم دارک</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Calendar Type Switcher */}
+              <div className="space-y-1.5 p-3 rounded-2xl bg-zinc-950 border border-zinc-800">
+                <label className="block text-xs font-bold text-zinc-300">سیستم تقویم و تاریخ:</label>
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setCalendarType('jalali')}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      calendarType === 'jalali'
+                        ? 'bg-indigo-600 text-white font-black shadow-md ring-2 ring-indigo-400/40'
+                        : 'bg-zinc-900 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>📅 تقویم شمسی</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCalendarType('gregorian')}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      calendarType === 'gregorian'
+                        ? 'bg-indigo-600 text-white font-black shadow-md ring-2 ring-indigo-400/40'
+                        : 'bg-zinc-900 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <span>🌐 تقویم میلادی</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. Interface Mode */}
+              <div className="space-y-1.5 p-3 rounded-2xl bg-zinc-950 border border-zinc-800">
+                <label className="block text-xs font-bold text-zinc-300">حالت کاربری پیش‌فرض:</label>
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setInterfaceMode('simple')}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      interfaceMode === 'simple'
+                        ? 'bg-emerald-600 text-white font-black shadow-md ring-2 ring-emerald-400/40'
+                        : 'bg-zinc-900 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <span>🌿 آسان و ساده</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setInterfaceMode('advanced')}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      interfaceMode === 'advanced'
+                        ? 'bg-emerald-600 text-white font-black shadow-md ring-2 ring-emerald-400/40'
+                        : 'bg-zinc-900 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <span>⚡ پیشرفته (Pro)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Super Admin Status & Verification Card */}
           <div className="bg-gradient-to-r from-emerald-950/40 via-zinc-900/60 to-zinc-900/60 rounded-3xl border border-emerald-800/60 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 backdrop-blur-md">

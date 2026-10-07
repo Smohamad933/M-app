@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Task } from '../types';
 import { useTask } from '../context/TaskContext';
-import { toPersianDigits, formatPersianDate } from '../utils/persianDate';
+import { toPersianDigits, formatAppDate } from '../utils/persianDate';
 import {
   Check,
   Calendar,
@@ -52,6 +52,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     setActiveTab,
     currentUser,
     openIncompleteModal,
+    calendarType,
+    updateTask,
   } = useTask();
 
   const [expanded, setExpanded] = useState(false);
@@ -107,23 +109,36 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     >
       {/* Top row: Checkbox, Title, Pin, Actions Menu */}
       <div className="flex items-start gap-3">
-        {/* Checkbox */}
+        {/* Checkbox - Shows Green Check when completed, Red Check when marked uncompleted with reason */}
         <button
           onClick={() => toggleTaskComplete(task.id)}
-          aria-label={task.completed ? 'علامت‌گذاری به عنوان انجام نشده' : 'علامت‌گذاری به عنوان انجام شده'}
+          aria-label={
+            task.completed
+              ? 'علامت‌گذاری به عنوان انجام نشده'
+              : task.reasonUncompleted
+              ? ('ثبت شده به عنوان انجام‌نشده: ' + task.reasonUncompleted)
+              : 'علامت‌گذاری به عنوان انجام شده'
+          }
           className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer ${
             task.completed
               ? 'bg-[#00b884] text-white shadow-xs'
+              : task.reasonUncompleted
+              ? 'bg-rose-500 border-2 border-rose-600 text-white shadow-xs ring-2 ring-rose-200'
               : 'border-2 border-slate-300 hover:border-[#00b884] bg-white'
           }`}
+          title={task.reasonUncompleted ? ('تیک قرمز: عدم انجام به دلیل «' + task.reasonUncompleted + '»') : undefined}
         >
           {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+          {!task.completed && task.reasonUncompleted && (
+            <Check className="w-3.5 h-3.5 stroke-[3] text-white" />
+          )}
         </button>
 
-        {/* Task Title & Description */}
+        {/* Task Title & Description - Clicking opens Edit Modal */}
         <div
           className="flex-1 min-w-0 cursor-pointer"
-          onClick={() => setExpanded(!expanded)}
+          onClick={() => openEditModal(task)}
+          title="کلیک برای ویرایش مشخصات تسک"
         >
           <div className="flex items-center gap-2">
             <h3
@@ -149,6 +164,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
             </p>
           )}
         </div>
+
+        {/* Direct Edit Button */}
+        <button
+          onClick={() => openEditModal(task)}
+          className="p-1 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 transition-colors cursor-pointer"
+          title="ویرایش مشخصات تسک"
+        >
+          <Edit3 className="w-3.5 h-3.5" />
+        </button>
 
         {/* Pin button */}
         <button
@@ -344,7 +368,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
           {task.date && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200/80" title="تاریخ انجام تسک">
               <Calendar className="w-3 h-3 text-slate-400" />
-              {formatPersianDate(task.date, 'dayMonth')}
+              {formatAppDate(task.date, calendarType, 'dayMonth')}
             </span>
           )}
 
@@ -356,15 +380,30 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
             </span>
           )}
 
-          {/* Reason uncompleted badge */}
+          {/* Reason uncompleted badge with RED check indicator */}
           {task.reasonUncompleted && (
-            <span
-              className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200"
-              title={`دلیل عدم انجام: ${task.reasonUncompleted}`}
+            <div
+              className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-300 shadow-2xs"
+              title={'دلیل عدم انجام: ' + task.reasonUncompleted}
             >
-              <AlertTriangle className="w-3 h-3 text-amber-500" />
-              عدم انجام: {task.reasonUncompleted}
-            </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+              <span>عدم انجام: {task.reasonUncompleted}</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateTask({
+                    ...task,
+                    reasonUncompleted: undefined,
+                    uncompletedCategory: undefined,
+                  });
+                }}
+                className="hover:text-rose-950 font-black px-1"
+                title="پاک کردن دلیل عدم انجام"
+              >
+                ✕
+              </button>
+            </div>
           )}
         </div>
 

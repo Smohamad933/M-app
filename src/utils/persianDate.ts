@@ -214,3 +214,60 @@ export function getGreeting(): { text: string; subtext: string; icon: string } {
     return { text: 'شب بخیر! 🌙', subtext: 'خسته نباشی! آماده برنامه‌ریزی فردا شو', icon: 'Moon' };
   }
 }
+
+export const GREGORIAN_MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+export const GREGORIAN_MONTHS_FA = [
+  'ژانویه', 'فوریه', 'مارس', 'آوریل', 'مه', 'ژوئن',
+  'ژوئیه', 'اوت', 'سپتامبر', 'اکتبر', 'نوامبر', 'دسامبر'
+];
+
+export const GREGORIAN_WEEKDAYS = [
+  'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+];
+
+export const GREGORIAN_WEEKDAYS_SHORT = [
+  'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'
+];
+
+export function formatGregorianDate(
+  dateInput: Date | string,
+  style: 'full' | 'short' | 'dayMonth' | 'weekday' | 'monthYear' = 'full'
+): string {
+  const date = typeof dateInput === 'string' ? parseISODate(dateInput) : dateInput;
+  if (isNaN(date.getTime())) return '';
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const d = date.getDate();
+  const weekdayName = GREGORIAN_WEEKDAYS[date.getDay()];
+  const monthName = GREGORIAN_MONTHS[m];
+
+  switch (style) {
+    case 'weekday':
+      return weekdayName;
+    case 'dayMonth':
+      return `${d} ${monthName}`;
+    case 'monthYear':
+      return `${monthName} ${y}`;
+    case 'short':
+      return `${y}/${String(m + 1).padStart(2, '0')}/${String(d).padStart(2, '0')}`;
+    case 'full':
+    default:
+      return `${weekdayName}, ${d} ${monthName} ${y}`;
+  }
+}
+
+export function formatAppDate(
+  dateInput: Date | string,
+  calendarType: 'jalali' | 'gregorian' = 'jalali',
+  style: 'full' | 'short' | 'dayMonth' | 'weekday' | 'monthYear' = 'full'
+): string {
+  if (calendarType === 'gregorian') {
+    return formatGregorianDate(dateInput, style);
+  }
+  return formatPersianDate(dateInput, style);
+}
+

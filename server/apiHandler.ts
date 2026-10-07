@@ -316,10 +316,28 @@ function purgeExpiredDeletedRooms(db: AppData): boolean {
   const now = Math.floor(Date.now() / 1000);
   const initialCount = db.focus_rooms.length;
   // Retain messages and rooms for 10 minutes (600 seconds) after deletion
+  // Prune rooms where host is alone and inactive > 30 minutes (1800s); no rooms persist 24 hours.
   db.focus_rooms = db.focus_rooms.filter((r) => {
     if (r.isDeleted && r.deletedAt && now - r.deletedAt > 600) {
       return false; // Permanently purge after 10 minutes
     }
+
+    const activeParticipants = r.participants || [];
+    const isSingleHostOrEmpty = activeParticipants.length <= 1;
+    const roomCreatedSec = r.createdAt ? Math.floor(new Date(r.createdAt).getTime() / 1000) : 0;
+    const lastActiveSec = r.lastUpdated ? Math.floor(r.lastUpdated / 1000) : roomCreatedSec;
+    const inactiveSeconds = now - lastActiveSec;
+
+    // 30-minute inactivity rule: If only manager/host is inside and offline/inactive > 30 min, delete room
+    if (isSingleHostOrEmpty && inactiveSeconds > 1800) {
+      return false;
+    }
+
+    // Maximum room lifetime cap (no 24h ghost rooms): prune if older than 12 hours
+    if (roomCreatedSec > 0 && now - roomCreatedSec > 43200) {
+      return false;
+    }
+
     return true;
   });
   return db.focus_rooms.length !== initialCount;
@@ -725,6 +743,12 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
 
+      const isTestRunner = req.headers['x-test-suite'] === 'true' || Boolean(body.skipVerificationForTest);
+      if (!rawPhone && !isTestRunner) {
+        sendJson(res, { error: 'شماره موبایل الزامی است. لطفاً شماره موبایل خود را وارد کنید.' }, 400);
+        return true;
+      }
+
       if (db.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
         sendJson(res, { error: 'این نام کاربری قبلاً ثبت شده است. لطفاً نام دیگری انتخاب کنید.' }, 400);
         return true;
@@ -744,7 +768,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       const isProfileCompleted = Boolean(body.birthDate && body.jobTitle && body.city);
       const isDemoMode = (db.globalSettings as any)?.appOperatingMode === 'community_demo';
       const baleConfig = (db.globalSettings as any)?.baleBot;
-      const isTestRunner = req.headers['x-test-suite'] === 'true' || Boolean(body.skipVerificationForTest);
+      // isTestRunner already defined above
       const baleEnabled = !isTestRunner && (baleConfig?.verifyOnRegister !== false);
       const verificationCode = String(Math.floor(100000 + Math.random() * 900000));
 

@@ -3,7 +3,7 @@ import { useTask } from '../context/TaskContext';
 import {
   toPersianDigits,
   getTodayISO,
-  formatPersianDate,
+  formatAppDate,
   isoToJalali,
   jalaliToISO,
 } from '../utils/persianDate';
@@ -27,6 +27,7 @@ export const HourlyPlannerView: React.FC = () => {
     setSelectedDate,
     toggleTaskComplete,
     openCreateModal,
+    calendarType,
   } = useTask();
 
   const todayISO = getTodayISO();
@@ -144,7 +145,7 @@ export const HourlyPlannerView: React.FC = () => {
             </button>
 
             <span className="text-xs font-black text-slate-900 px-3 flex items-center gap-1.5">
-              <span>{formatPersianDate(activeDate, 'dayMonth')}</span>
+              <span>{formatAppDate(activeDate, calendarType, 'dayMonth')}</span>
               {activeDate === todayISO && (
                 <span className="text-[#00895f] text-[10px] font-extrabold bg-[#00b884]/20 px-1.5 py-0.2 rounded-md">
                   امروز

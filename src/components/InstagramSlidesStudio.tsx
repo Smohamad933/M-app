@@ -834,6 +834,11 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
 
     try {
       await new Promise((r) => setTimeout(r, 60));
+      if (typeof document !== 'undefined' && (document as any).fonts) {
+        try {
+          await (document as any).fonts.ready;
+        } catch {}
+      }
 
       const baseWidth = 360;
       const baseHeight = 640;
@@ -1004,116 +1009,183 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
     }
   };
 
-  // Feature Screenshot Mockup Card
-  const renderFeatureMockupCard = (cycleIdx: number, isLight: boolean) => {
-    const bg = isLight ? 'bg-slate-100/90 text-slate-800 border-slate-200' : 'bg-slate-900/90 text-slate-100 border-slate-800';
+  // Feature Screenshot Mockup Card (Photorealistic Bag Time UI)
+  const renderFeatureMockupCard = (cycleIdx: number, _isLight: boolean) => {
+    const windowHeader = (title: string, url: string) => (
+      <div className="px-3 py-1.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-[9px]">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-rose-500" />
+          <span className="w-2 h-2 rounded-full bg-amber-500" />
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+        </div>
+        <div className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono text-[8px] flex items-center gap-1" dir="ltr">
+          <span className="text-emerald-400">🔒</span>
+          <span>{url}</span>
+        </div>
+        <span className="text-slate-300 font-bold text-[8.5px]">{title}</span>
+      </div>
+    );
 
-    switch (cycleIdx) {
-      case 0: // Time Blocking
-        return (
-          <div className={`p-3 rounded-2xl border ${bg} text-right text-[11px] space-y-1.5 shadow-md`}>
-            <div className="flex items-center justify-between text-[10px] font-black text-emerald-500 border-b border-slate-700/40 pb-1">
-              <span>⏰ دیلی پلنر ساعتی بَگ‌تایم</span>
-              <span>Time Blocking</span>
-            </div>
-            <div className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 font-bold flex justify-between">
-              <span>۰۹:۰۰ - ۱۰:۳۰ کار عمیق روی تسک‌های اصلی</span>
-              <span>✅ انجام شد</span>
-            </div>
-            <div className="py-0.5 px-2 rounded-full bg-rose-500/20 text-rose-500 text-[9px] font-black flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-              <span>۱۰:۴۵ | خط نشانگر زنده زمان فعلی</span>
-            </div>
-            <div className="p-1.5 rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 font-bold flex justify-between">
-              <span>۱۱:۰۰ - ۱۲:۳۰ جلسه هماهنگی پروژه</span>
-              <span>⏳ در جریان</span>
-            </div>
+    let innerContent = null;
+    if (cycleIdx === 0) {
+      // 1. Photorealistic Hourly Planner
+      innerContent = (
+        <div className="p-2.5 bg-[#0b0f19] text-white space-y-1.5 text-right font-sans">
+          <div className="flex items-center justify-between text-[9px] pb-1 border-b border-slate-800">
+            <span className="font-black text-emerald-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>دیلی پلنر ساعتی بگ‌تایم</span>
+            </span>
+            <span className="text-slate-400 text-[8px]">چهارشنبه • امروز</span>
           </div>
-        );
-      case 1: // AI Habits
-        return (
-          <div className={`p-3 rounded-2xl border ${bg} text-right text-[11px] space-y-1.5 shadow-md`}>
-            <div className="flex items-center justify-between text-[10px] font-black text-purple-400 border-b border-slate-700/40 pb-1">
-              <span>🧠 تحلیلگر عادت‌ها (AI Habits)</span>
-              <span>گزارش علل تعویق</span>
-            </div>
-            <div className="flex items-center justify-between font-black text-xs text-emerald-500">
-              <span>نرخ بهره‌وری امروز:</span>
-              <span>۸۲٪ عالی</span>
-            </div>
-            <div className="text-[10px] space-y-1">
-              <div className="flex justify-between text-slate-400">
-                <span>📱 عامل اول: حواس‌پرتی گوشی و شبکه‌های اجتماعی</span>
-                <span className="text-amber-400 font-bold">۴۱٪</span>
+
+          <div className="space-y-1 text-[9px]">
+            <div className="p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3.5 rounded-md bg-emerald-500 text-white flex items-center justify-center text-[8px] font-black">✓</span>
+                <span className="line-through text-slate-400 font-bold">جلسه اول صبح و بررسی تسک‌ها</span>
               </div>
-              <div className="flex justify-between text-slate-400">
-                <span>😴 عامل دوم: افت انرژی و خستگی عصرگاهی</span>
-                <span className="text-rose-400 font-bold">۲۷٪</span>
+              <span className="text-[8px] text-slate-500 font-mono">۰۹:۰۰</span>
+            </div>
+
+            <div className="relative p-2 rounded-xl bg-gradient-to-r from-emerald-950/80 to-slate-900 border-r-4 border-emerald-500 border border-emerald-800/60 shadow-lg">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="font-black text-white text-[9.5px]">کار عمیق روی توسعه فیچر اصلی</span>
+                <span className="px-1.5 py-0.2 rounded bg-rose-500 text-white text-[7.5px] font-black animate-pulse">هم‌اکنون</span>
+              </div>
+              <div className="flex items-center justify-between text-[8px] text-emerald-300">
+                <span>⏱️ ۲۵ دقیقه تمرکز پیوسته</span>
+                <span className="font-mono">۱۰:۰۰ - ۱۱:۳۰</span>
               </div>
             </div>
-          </div>
-        );
-      case 2: // New Tab SSO
-        return (
-          <div className={`p-3 rounded-2xl border ${bg} text-right text-[11px] space-y-2 shadow-md`}>
-            <div className="flex items-center justify-between text-[10px] font-black text-indigo-400 border-b border-slate-700/40 pb-1">
-              <span>🌐 افزونه تب جدید مرورگر BagTime</span>
-              <span>ورود یکپارچه SSO</span>
-            </div>
-            <div className="p-1.5 rounded-xl bg-slate-800 text-slate-300 text-[10px] text-center border border-slate-700">
-              🔍 جستجو در گوگل یا وارد کردن آدرس وب...
-            </div>
-            <div className="flex items-center justify-around text-[10px] font-bold">
-              <span className="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-400">بَگ‌تایم</span>
-              <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-400">پیام‌رسان بله</span>
-              <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-400">سایت نگاه</span>
+
+            <div className="p-1.5 rounded-xl bg-slate-900/70 border border-slate-800/80 flex items-center justify-between opacity-80">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3.5 rounded-md border border-slate-700 bg-slate-800" />
+                <span className="text-slate-300 font-bold">بررسی پیام‌ها و هماهنگی تیمی</span>
+              </div>
+              <span className="text-[8px] text-slate-500 font-mono">۱۱:۳۰</span>
             </div>
           </div>
-        );
-      case 3: // Focus Rooms
-        return (
-          <div className={`p-3 rounded-2xl border ${bg} text-right text-[11px] space-y-1.5 shadow-md`}>
-            <div className="flex items-center justify-between text-[10px] font-black text-amber-400 border-b border-slate-700/40 pb-1">
-              <span>🎧 اتاق تمرکز مشترک بَگ‌تایم</span>
-              <span>۴ همکار آنلاین</span>
+        </div>
+      );
+    } else if (cycleIdx === 1) {
+      // 2. Photorealistic AI Habits Analyzer
+      innerContent = (
+        <div className="p-2.5 bg-[#0b0f19] text-white space-y-1.5 text-right font-sans">
+          <div className="flex items-center justify-between text-[9px] pb-1 border-b border-slate-800">
+            <span className="font-black text-purple-400">تحلیلگر هوشمند عادات (AI Habits)</span>
+            <span className="text-slate-400 text-[8px]">آمار هفتگی</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1.5 text-center">
+            <div className="p-1.5 rounded-xl bg-purple-500/10 border border-purple-500/30">
+              <div className="text-base font-black text-purple-300 font-mono">۸۸٪</div>
+              <div className="text-[8px] text-slate-400">بهره‌وری هفتگی</div>
             </div>
-            <div className="text-center font-mono font-black text-xl text-emerald-400 py-1">
-              ۲۴:۵۲ 🍅
-            </div>
-            <div className="flex items-center justify-between text-[10px] text-slate-400">
-              <span>🎵 موزیک لوفای باران</span>
-              <span className="text-emerald-400 font-bold">🟢 تمرکز عمیق فعال</span>
+            <div className="p-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+              <div className="text-base font-black text-emerald-300 font-mono">۴.۲ ساعت</div>
+              <div className="text-[8px] text-slate-400">تمرکز عمیق روزانه</div>
             </div>
           </div>
-        );
-      case 4: // Bale Bot
-        return (
-          <div className={`p-3 rounded-2xl border ${bg} text-right text-[11px] space-y-1.5 shadow-md`}>
-            <div className="flex items-center justify-between text-[10px] font-black text-sky-400 border-b border-slate-700/40 pb-1">
-              <span>🤖 ربات بله سامانه بَگ‌تایم</span>
-              <span>ورود بدون پسورد</span>
+
+          <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[8px] space-y-0.5">
+            <div className="text-slate-300 font-bold">⚠️ موانع اصلی شناسایی‌شده:</div>
+            <div className="flex justify-between text-slate-400">
+              <span>۱. حواس‌پرتی با گوشی هوشمند</span>
+              <span className="text-rose-400 font-bold">۳۴٪</span>
             </div>
-            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-300 text-[10px] space-y-1">
-              <div>✓ تایید آنی شماره تماس از بله</div>
-              <div>✓ دسترسی مستقیم فعال شد، ورود با یک کلیک!</div>
-            </div>
-          </div>
-        );
-      default:
-        return (
-          <div className={`p-3 rounded-2xl border ${bg} text-right text-[11px] space-y-1.5 shadow-md`}>
-            <div className="flex items-center justify-between text-[10px] font-black text-emerald-400 border-b border-slate-700/40 pb-1">
-              <span>⭐ سامانه مدیریت زمان بَگ‌تایم</span>
-              <span>نسخه Pro</span>
-            </div>
-            <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 text-[10px] font-bold text-center">
-              پلنر ساعتی • اتاق‌های تمرکز • ریشه‌یابی عادت‌ها
+            <div className="flex justify-between text-slate-400">
+              <span>۲. افت انرژی بعد از ناهار</span>
+              <span className="text-amber-400 font-bold">۲۲٪</span>
             </div>
           </div>
-        );
+        </div>
+      );
+    } else if (cycleIdx === 2) {
+      // 3. Photorealistic New Tab Extension
+      innerContent = (
+        <div className="p-2.5 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 text-white space-y-1.5 text-center font-sans">
+          <div className="text-lg font-black font-mono text-slate-100 tracking-wider">
+            ۱۰:۴۵
+          </div>
+          <div className="text-[8px] text-emerald-400 font-bold">
+            «موفقیت تکرار مداوم عادت‌های کوچک است»
+          </div>
+
+          <div className="p-1.5 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-between text-[8px] text-slate-400 px-2">
+            <span>جستجو در گوگل یا وارد کردن آدرس وب...</span>
+            <span>🔍</span>
+          </div>
+
+          <div className="grid grid-cols-4 gap-1 text-[8px] font-bold">
+            <div className="p-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200">📊 تسک‌ها</div>
+            <div className="p-1 rounded-lg bg-slate-800 border border-slate-700 text-emerald-400">🎧 پومودورو</div>
+            <div className="p-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200">💬 بله</div>
+            <div className="p-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200">🌐 نگاه</div>
+          </div>
+        </div>
+      );
+    } else if (cycleIdx === 3) {
+      // 4. Photorealistic Focus Room
+      innerContent = (
+        <div className="p-2.5 bg-[#0b0f19] text-white space-y-1.5 text-right font-sans">
+          <div className="flex items-center justify-between text-[9px] pb-1 border-b border-slate-800">
+            <span className="font-black text-amber-400">اتاق تمرکز زنده (دیپ ورک تیمی)</span>
+            <span className="text-emerald-400 font-bold text-[8px] flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>۵ نفر آنلاین</span>
+            </span>
+          </div>
+
+          <div className="p-2 rounded-2xl bg-slate-900 border border-amber-500/30 flex items-center justify-between">
+            <div>
+              <div className="text-xl font-black font-mono text-white tracking-wider">۲۴:۵۲</div>
+              <div className="text-[8px] text-amber-300 font-bold">هدف: تکمیل کدها و تست سامانه</div>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-xl">🎧</span>
+              <span className="text-[7px] text-slate-400">موزیک لوفای</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[8px] text-slate-400">
+            <span>همکاران حاضر در اتاق:</span>
+            <span className="text-slate-200 font-bold">محمد (میزبان)، سارا، علی و ۲ نفر دیگر</span>
+          </div>
+        </div>
+      );
+    } else {
+      // 5. Photorealistic Bale Login / Dashboard
+      innerContent = (
+        <div className="p-2.5 bg-[#0b0f19] text-white space-y-1.5 text-right font-sans">
+          <div className="flex items-center justify-between text-[9px] pb-1 border-b border-slate-800">
+            <span className="font-black text-emerald-400">ربات هوشمند بَگ‌تایم در بله</span>
+            <span className="text-slate-400 text-[8px]">ورود امن بدون رمز</span>
+          </div>
+
+          <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[8px] text-slate-300 leading-relaxed">
+            سلام! جهت ورود سریع به پنل، دکمه زیر را لمس کنید:
+          </div>
+
+          <div className="p-1.5 rounded-xl bg-emerald-600 text-white font-black text-center text-[9px] shadow-md">
+            📲 اشتراک‌گذاری شماره و ورود مستقیم
+          </div>
+
+          <div className="text-center text-[7.5px] text-emerald-400 font-bold">
+            ✓ تأیید آنی شماره تماس با پروتکل امن بله
+          </div>
+        </div>
+      );
     }
-  };
 
+    return (
+      <div className="rounded-2xl border border-slate-700/80 overflow-hidden shadow-2xl bg-slate-950 my-1">
+        {windowHeader('بَگ‌تایم • BagTime', 'task.mohusyn.ir')}
+        {innerContent}
+      </div>
+    );
+  };
   // Render Story Content (Identical for Preview & 4K Export)
   const renderStoryContent = (slotNum: 1 | 2 | 3) => {
     const isLight = storyTheme === 'light';

@@ -1,10 +1,10 @@
 import React, { useRef, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
-import { getDaysAround, getTodayISO, toPersianDigits, formatPersianDate } from '../utils/persianDate';
+import { getDaysAround, getTodayISO, toPersianDigits, formatAppDate } from '../utils/persianDate';
 import { Calendar as CalendarIcon } from 'lucide-react';
 
 export const WeeklyStrip: React.FC = () => {
-  const { selectedDate, setSelectedDate, tasks } = useTask();
+  const { selectedDate, setSelectedDate, tasks, calendarType } = useTask();
   const scrollRef = useRef<HTMLDivElement>(null);
   const todayISO = getTodayISO();
 
@@ -25,9 +25,9 @@ export const WeeklyStrip: React.FC = () => {
       <div className="flex items-center justify-between mb-2 px-1">
         <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
           <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
-          <span>{formatPersianDate(selectedDate, 'monthYear')}</span>
+          <span>{formatAppDate(selectedDate, calendarType, 'monthYear')}</span>
           <span className="text-[11px] font-normal text-slate-400 mr-1">
-            ({formatPersianDate(selectedDate, 'weekday')})
+            ({formatAppDate(selectedDate, calendarType, 'weekday')})
           </span>
         </span>
         {selectedDate !== todayISO && (
@@ -73,7 +73,7 @@ export const WeeklyStrip: React.FC = () => {
                     : 'text-slate-400'
                 }`}
               >
-                {day.weekdayShort}
+                {calendarType === 'gregorian' ? day.date.toLocaleDateString('en-US', { weekday: 'short' }) : day.weekdayShort}
               </span>
 
               <span
@@ -85,7 +85,7 @@ export const WeeklyStrip: React.FC = () => {
                     : 'text-slate-700'
                 }`}
               >
-                {toPersianDigits(day.jalaliDay)}
+                {calendarType === 'gregorian' ? day.date.getDate() : toPersianDigits(day.jalaliDay)}
               </span>
 
               <div className="flex items-center justify-center h-2">

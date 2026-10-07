@@ -3,7 +3,7 @@ import { useTask } from '../context/TaskContext';
 import {
   gregorianToJalali,
   jalaliToGregorian,
-  formatPersianDate,
+  formatAppDate,
   toPersianDigits,
   PERSIAN_MONTHS,
   getTodayISO,
@@ -12,7 +12,7 @@ import { TaskCard } from './TaskCard';
 import { ChevronRight, ChevronLeft, Plus, Calendar as CalendarIcon } from 'lucide-react';
 
 export const CalendarView: React.FC = () => {
-  const { tasks, selectedDate, setSelectedDate, openCreateModal } = useTask();
+  const { tasks, selectedDate, setSelectedDate, openCreateModal, calendarType } = useTask();
 
   const today = new Date();
   const [currentJy, currentJm] = gregorianToJalali(today.getFullYear(), today.getMonth() + 1, today.getDate());
@@ -165,7 +165,7 @@ export const CalendarView: React.FC = () => {
         <div className="flex items-center justify-between">
           <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-2">
             <CalendarIcon className="w-4 h-4 text-slate-500" />
-            <span>تسک‌های {formatPersianDate(selectedDate, 'full')}</span>
+            <span>تسک‌های {formatAppDate(selectedDate, calendarType, 'full')}</span>
           </h3>
 
           <button

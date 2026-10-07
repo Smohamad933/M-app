@@ -2230,6 +2230,26 @@ class TaskRoozDB {
                 $modified = true;
                 return false;
             }
+
+            // 30-minute inactivity rule: If host is alone/empty and offline > 30 minutes (1800s), auto-delete
+            $parts = $r['participants'] ?? [];
+            $isSingleHostOrEmpty = count($parts) <= 1;
+            $createdSec = !empty($r['createdAt']) ? strtotime($r['createdAt']) : 0;
+            $lastUpdatedMs = isset($r['lastUpdated']) ? (float)$r['lastUpdated'] : (isset($r['last_updated']) ? (float)$r['last_updated'] : 0);
+            $lastActiveSec = $lastUpdatedMs > 0 ? (int)floor($lastUpdatedMs / 1000) : $createdSec;
+            $inactiveSec = $now - $lastActiveSec;
+
+            if ($isSingleHostOrEmpty && $inactiveSec > 1800) {
+                $modified = true;
+                return false;
+            }
+
+            // Cap maximum room age (no 24h rooms allowed)
+            if ($createdSec > 0 && ($now - $createdSec > 43200)) {
+                $modified = true;
+                return false;
+            }
+
             return true;
         }));
         if ($modified) {

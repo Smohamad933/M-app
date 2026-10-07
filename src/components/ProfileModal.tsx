@@ -35,6 +35,8 @@ import {
   RefreshCw,
   Radio,
   Sliders,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 interface ProfileModalProps {
@@ -103,7 +105,7 @@ const BIRTH_YEARS = Array.from({ length: 66 }, (_, i) => String(1395 - i));
 const BIRTH_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
-  const { currentUser, updateMyProfile, isPro, setIsUpgradeModalOpen, deleteMyAccount, globalSettings, interfaceMode, setInterfaceMode } = useTask();
+  const { currentUser, updateMyProfile, isPro, setIsUpgradeModalOpen, deleteMyAccount, globalSettings, interfaceMode, setInterfaceMode, themeMode, setThemeMode, calendarType, setCalendarType } = useTask();
   const baleBotUser = (globalSettings?.baleBot?.botUsername || 'BagTime_Bot').replace('@', '').trim() || 'BagTime_Bot';
 
   const [name, setName] = useState(currentUser?.name || '');
@@ -414,6 +416,108 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
               <span>ارتقاء به Pro ⭐</span>
             </button>
           )}
+        </div>
+
+        {/* User Visual Preferences (Dark Mode, Calendar, Interface Mode) */}
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+              <Sliders className="w-4 h-4 text-emerald-600" />
+              <span>تنظیمات ظاهر و کاربری سامانه</span>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* 1. Theme */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-600">تم و رنگ‌بندی:</label>
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setThemeMode('light')}
+                  className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    themeMode === 'light'
+                      ? 'bg-white text-slate-900 border border-slate-300 shadow-xs font-black'
+                      : 'bg-slate-200/70 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Sun className="w-3.5 h-3.5 text-amber-500" />
+                  <span>روشن</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setThemeMode('dark')}
+                  className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    themeMode === 'dark'
+                      ? 'bg-slate-900 text-white shadow-xs font-black'
+                      : 'bg-slate-200/70 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Moon className="w-3.5 h-3.5 text-amber-400" />
+                  <span>دارک</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Calendar Type */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-600">سیستم تاریخ:</label>
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setCalendarType('jalali')}
+                  className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    calendarType === 'jalali'
+                      ? 'bg-indigo-600 text-white shadow-xs font-black'
+                      : 'bg-slate-200/70 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>شمسی</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalendarType('gregorian')}
+                  className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    calendarType === 'gregorian'
+                      ? 'bg-indigo-600 text-white shadow-xs font-black'
+                      : 'bg-slate-200/70 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>میلادی</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 3. Interface Mode */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-600">سبک رابط کاربری:</label>
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setInterfaceMode('simple')}
+                  className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    interfaceMode === 'simple'
+                      ? 'bg-emerald-600 text-white shadow-xs font-black'
+                      : 'bg-slate-200/70 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>ساده</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInterfaceMode('advanced')}
+                  className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    interfaceMode === 'advanced'
+                      ? 'bg-emerald-600 text-white shadow-xs font-black'
+                      : 'bg-slate-200/70 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>حرفه‌ای</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {error && (

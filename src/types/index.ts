@@ -207,6 +207,7 @@ export interface AppSettings {
   theme: 'dark' | 'light' | 'system';
   systemFont?: string;
   interfaceMode?: 'simple' | 'advanced';
+  calendarType?: 'jalali' | 'gregorian';
 }
 
 export interface RoomParticipant {
