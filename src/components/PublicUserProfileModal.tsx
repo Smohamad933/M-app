@@ -151,7 +151,7 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
           {/* User Name & Role Status */}
           <div className="text-center space-y-1.5">
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <h3 className="text-lg sm:text-xl font-black text-white tracking-tight">
+              <h3 className="text-lg sm:text-xl font-black text-white ">
                 {user.name}
               </h3>
               {user.role === 'admin' ? (

@@ -30,7 +30,7 @@ export const BottomNav: React.FC = () => {
 
   return (
     <nav className="fixed bottom-3 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[410px] z-40 lg:hidden pointer-events-none select-none">
-      <div className="pointer-events-auto relative bg-white/95 backdrop-blur-2xl border border-slate-200/90 rounded-full shadow-[0_12px_36px_rgba(15,23,42,0.12)] px-2 py-1.5 flex items-center justify-between">
+      <div className="pointer-events-auto relative bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200/90 dark:border-slate-800 rounded-full shadow-[0_12px_36px_rgba(15,23,42,0.12)] px-2 py-1.5 flex items-center justify-between">
         {/* Right 2 Tabs in RTL (داشبورد، کارهای من) */}
         <div className="flex-1 flex items-center justify-around">
           {rightSideTabs.map((tab) => {
@@ -44,8 +44,8 @@ export const BottomNav: React.FC = () => {
                 onClick={() => handleTabClick(tab.id)}
                 className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-full transition-all duration-200 cursor-pointer min-w-[62px] ${
                   isActive
-                    ? 'text-emerald-800 font-black'
-                    : 'text-slate-500 hover:text-slate-800 font-semibold'
+                    ? 'text-emerald-800 dark:text-emerald-400 font-black'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-semibold'
                 }`}
               >
                 {isActive && (
@@ -56,8 +56,8 @@ export const BottomNav: React.FC = () => {
                   <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5] text-[#00b884]' : 'stroke-[1.8]'}`} />
                 </div>
 
-                <span className={`text-[11px] mt-0.5 tracking-tight leading-none transition-colors ${
-                  isActive ? 'font-black text-emerald-800' : 'font-medium'
+                <span className={`text-[11px] mt-0.5 leading-none transition-colors ${
+                  isActive ? 'font-black text-emerald-800 dark:text-emerald-400' : 'font-medium'
                 }`}>
                   {tab.label}
                 </span>
@@ -74,7 +74,7 @@ export const BottomNav: React.FC = () => {
               sounds.playPop();
               openCreateModal();
             }}
-            className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#00b884] via-emerald-500 to-teal-400 hover:from-emerald-600 hover:to-teal-500 text-white shadow-[0_6px_20px_rgba(0,184,132,0.4)] hover:shadow-[0_8px_24px_rgba(0,184,132,0.55)] border-[3px] border-white flex items-center justify-center transition-all duration-200 hover:scale-108 active:scale-95 cursor-pointer group"
+            className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#00b884] via-emerald-500 to-teal-400 hover:from-emerald-600 hover:to-teal-500 text-white shadow-[0_6px_20px_rgba(0,184,132,0.4)] hover:shadow-[0_8px_24px_rgba(0,184,132,0.55)] border-[3px] border-white dark:border-slate-800 flex items-center justify-center transition-all duration-200 hover:scale-108 active:scale-95 cursor-pointer group"
             title="افزودن تسک جدید"
             aria-label="افزودن تسک جدید"
           >
@@ -95,8 +95,8 @@ export const BottomNav: React.FC = () => {
                 onClick={() => handleTabClick(tab.id)}
                 className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-full transition-all duration-200 cursor-pointer min-w-[62px] ${
                   isActive
-                    ? 'text-emerald-800 font-black'
-                    : 'text-slate-500 hover:text-slate-800 font-semibold'
+                    ? 'text-emerald-800 dark:text-emerald-400 font-black'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-semibold'
                 }`}
               >
                 {isActive && (
@@ -107,8 +107,8 @@ export const BottomNav: React.FC = () => {
                   <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5] text-[#00b884]' : 'stroke-[1.8]'}`} />
                 </div>
 
-                <span className={`text-[11px] mt-0.5 tracking-tight leading-none transition-colors ${
-                  isActive ? 'font-black text-emerald-800' : 'font-medium'
+                <span className={`text-[11px] mt-0.5 leading-none transition-colors ${
+                  isActive ? 'font-black text-emerald-800 dark:text-emerald-400' : 'font-medium'
                 }`}>
                   {tab.label}
                 </span>

@@ -80,7 +80,7 @@ export const StatsView: React.FC = () => {
         </div>
 
         <div className="flex items-baseline gap-2 pt-2">
-          <span className="text-5xl font-black text-white tracking-tight">
+          <span className="text-5xl font-black text-white ">
             {toPersianDigits(streak.currentStreak)}
           </span>
           <span className="text-base font-bold text-slate-300">روز متوالی</span>

@@ -346,7 +346,7 @@ export const LoginScreen: React.FC = () => {
             )}
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-1">
+            <h1 className="text-2xl font-black text-slate-900 flex items-center justify-center gap-1">
               <span>{appName}</span>
               <span className="text-[#00b884]">.</span>
             </h1>

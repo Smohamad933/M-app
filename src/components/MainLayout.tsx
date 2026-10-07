@@ -289,7 +289,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
   ];
 
   // Simple vs Advanced Interface Mode grouping
-  const simplePrimaryTabs: TabType[] = ['tasks', 'planner', 'focus', 'messages'];
+  const simplePrimaryTabs: TabType[] = ['dashboard', 'tasks', 'planner', 'focus', 'messages'];
   if (isAdmin) simplePrimaryTabs.push('users');
 
   const isCurrentTabSecondary = !simplePrimaryTabs.includes(activeTab);
@@ -344,7 +344,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                 <TaskMasterHexagon size={36} />
               )}
               {isSidebarExpanded && (
-                <h1 className="font-black text-lg text-slate-900 tracking-tight flex items-center gap-1">
+                <h1 className="font-black text-lg text-slate-900 flex items-center gap-1">
                   <span>{appName}</span>
                   <span className="text-[#00b884]">.</span>
                 </h1>

@@ -119,7 +119,7 @@ export const HourlyPlannerView: React.FC = () => {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+              <h2 className="text-base sm:text-lg font-black text-slate-900">
                 تایم‌لاین زمانی و دیلی پلنر (Task Timeline Planner)
               </h2>
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#f95738]/10 text-[#f95738] border border-[#f95738]/20">

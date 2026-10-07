@@ -191,7 +191,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
               <CheckSquare className="w-4 h-4 stroke-[2.5]" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-black text-sm sm:text-base text-slate-900 tracking-tight truncate">
+              <h3 className="font-black text-sm sm:text-base text-slate-900  truncate">
                 کارهای امروز
               </h3>
               <span className="text-[10px] text-slate-400 font-bold block truncate">
@@ -350,7 +350,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
               <CalendarIcon className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-black text-sm sm:text-base text-slate-900 tracking-tight truncate">
+              <h3 className="font-black text-sm sm:text-base text-slate-900  truncate">
                 تقویم کارهای ماهانه
               </h3>
               <span className="text-[10px] text-slate-400 font-bold hidden sm:block truncate">
@@ -460,7 +460,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
               <BarChart3 className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-black text-sm text-slate-900 tracking-tight">
+              <h3 className="font-black text-sm text-slate-900 ">
                 پیشرفت واقعی تسک‌ها
               </h3>
               <span className="text-[10px] text-slate-400 font-medium">
@@ -524,7 +524,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
               <Clock className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-black text-base text-slate-900 tracking-tight">
+              <h3 className="font-black text-base text-slate-900 ">
                 زمان‌بندی واقعی تسک‌ها (Task Timeline)
               </h3>
               <span className="text-[10px] text-slate-400 font-bold">
@@ -613,7 +613,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
               <FileText className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-black text-base text-slate-900 tracking-tight">
+              <h3 className="font-black text-base text-slate-900 ">
                 یادداشت‌های روزانه و ایده‌ها (Daily Notes)
               </h3>
               <span className="text-[10px] text-slate-400 font-bold">

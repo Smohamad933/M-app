@@ -90,7 +90,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }
       {/* Greeting and selected date */}
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
+          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
             {greeting.text}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
