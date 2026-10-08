@@ -46,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }
           <button
             type="button"
             onClick={toggleThemeMode}
-            className="p-2 rounded-xl text-slate-600 dark:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            className="p-2 rounded-xl text-slate-600 dark:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer hidden md:flex items-center justify-center"
             title={themeMode === 'dark' ? 'تغییر به تم روشن' : 'تغییر به تم دارک'}
           >
             {themeMode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -56,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }
           <button
             type="button"
             onClick={toggleCalendarType}
-            className="px-2.5 py-1 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer flex items-center gap-1 border border-slate-200 dark:border-slate-700"
+            className="px-2.5 py-1 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer items-center gap-1 border border-slate-200 dark:border-slate-700 hidden md:flex"
             title={calendarType === 'jalali' ? 'تغییر به تقویم میلادی' : 'تغییر به تقویم شمسی'}
           >
             <Calendar className="w-3 h-3 text-indigo-500" />

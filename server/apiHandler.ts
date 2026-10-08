@@ -3119,7 +3119,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         userId: receiverId,
         title: `پیام جدید از ${currentUser.name} 💬`,
         message: text.slice(0, 70) + (text.length > 70 ? '...' : ''),
-        type: 'info',
+        type: 'message',
         timestamp: new Date().toISOString(),
         read: false,
         senderId: myId,

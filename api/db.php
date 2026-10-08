@@ -3701,7 +3701,7 @@ class TaskRoozDB {
             $realReceiverId,
             "پیام جدید از {$senderUser['name']} 💬",
             $preview,
-            'info',
+            'message',
             [
                 'senderId' => $senderUser['id'],
                 'senderName' => $senderUser['name'],

@@ -787,9 +787,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
       </aside>
 
       {/* 2. MAIN CONTENT AREA - STAYS SOLID & INDEPENDENT */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto bg-[#f4f7fa]">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto overflow-x-hidden bg-[#f4f7fa]">
         {/* Top Header Bar - 100% FIXED AT TOP */}
-        <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 py-2.5 sm:py-3.5 sticky top-0 z-20 flex-shrink-0 flex flex-col gap-2">
+        <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 py-2 sm:py-3 sticky top-0 z-20 flex-shrink-0 flex flex-col gap-2 max-w-full overflow-hidden">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
               {/* Left/Start Actions on Mobile & Desktop Search Bar */}
               <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -871,14 +871,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                     sounds.playPop();
                     setIsExtensionModalOpen(true);
                   }}
-                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100 flex items-center gap-1.5 text-indigo-700 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0"
+                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100 items-center gap-1.5 text-indigo-700 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 hidden lg:flex"
                   title="افزونه دستیار نیوتَب مرورگر (کروم، اج، فایرفاکس)"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
-                  <span className="hidden sm:inline">افزونه دستیار</span>
+                  <span>افزونه دستیار</span>
                 </button>
 
-                {/* Instagram Carousel Studio Button - ONLY FOR SUPER ADMIN */}
+                {/* Instagram Carousel Studio Button - ONLY FOR SUPER ADMIN (hidden on mobile) */}
                 {isAdmin && (
                   <button
                     type="button"
@@ -892,11 +892,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                         window.location.href = url.toString();
                       }
                     }}
-                    className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-pink-200 bg-pink-50/80 hover:bg-pink-100 flex items-center gap-1.5 text-pink-700 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0"
+                    className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-pink-200 bg-pink-50/80 hover:bg-pink-100 items-center gap-1.5 text-pink-700 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 hidden lg:flex"
                     title="استودیو ساخت اسلایدهای گرافیکی اینستاگرام (مخصوص مدیر کل)"
                   >
                     <span className="text-xs">📸</span>
-                    <span className="hidden md:inline">اسلایدهای اینستاگرام</span>
+                    <span>اسلایدهای اینستاگرام</span>
                   </button>
                 )}
 
@@ -917,29 +917,31 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   )}
                 </button>
 
-                {/* Subscription Pro Badge or Upgrade Button */}
-                {isPro ? (
-                  <SubscriptionBadge user={currentUser} size="sm" />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      sounds.playPop();
-                      setIsUpgradeModalOpen(true);
-                    }}
-                    className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-[10px] sm:text-[11px] shadow-sm transition-all active:scale-95 cursor-pointer flex-shrink-0"
-                    title="ارتقاء به اشتراک ویژه نامحدود"
-                  >
-                    <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    <span>ارتقاء Pro</span>
-                  </button>
-                )}
+                {/* Subscription Pro Badge or Upgrade Button (hidden on mobile) */}
+                <div className="hidden sm:flex items-center flex-shrink-0">
+                  {isPro ? (
+                    <SubscriptionBadge user={currentUser} size="sm" />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        sounds.playPop();
+                        setIsUpgradeModalOpen(true);
+                      }}
+                      className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-[10px] sm:text-[11px] shadow-sm transition-all active:scale-95 cursor-pointer"
+                      title="ارتقاء به اشتراک ویژه نامحدود"
+                    >
+                      <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <span>ارتقاء Pro</span>
+                    </button>
+                  )}
+                </div>
 
-                {/* Dark / Light Mode Switcher */}
+                {/* Dark / Light Mode Switcher (hidden on mobile, set via profile/settings) */}
                 <button
                   type="button"
                   onClick={toggleThemeMode}
-                  className={`w-8 sm:w-9 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all shadow-2xs cursor-pointer flex-shrink-0 ${
+                  className={`w-8 sm:w-9 h-8 sm:h-9 rounded-full border items-center justify-center transition-all shadow-2xs cursor-pointer flex-shrink-0 hidden md:flex ${
                     themeMode === 'dark'
                       ? 'border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
                       : 'border-slate-200/80 bg-white text-slate-600 hover:bg-slate-100'
@@ -949,16 +951,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   {themeMode === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
                 </button>
 
-                {/* Calendar Type Switcher (Jalali vs Gregorian) */}
+                {/* Calendar Type Switcher (hidden on mobile, set via profile/settings) */}
                 <button
                   type="button"
                   onClick={toggleCalendarType}
-                  className="h-8 sm:h-9 px-2.5 rounded-full border border-slate-200/80 bg-white hover:bg-slate-100 text-slate-700 flex items-center gap-1 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0"
+                  className="h-8 sm:h-9 px-2.5 rounded-full border border-slate-200/80 bg-white hover:bg-slate-100 text-slate-700 items-center gap-1 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 hidden md:flex"
                   title={calendarType === 'jalali' ? 'تقویم خورشیدی (شمسی) فعال است — کلیک برای تغییر به میلادی' : 'تقویم میلادی فعال است — کلیک برای تغییر به شمسی'}
                 >
                   <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                  <span className="hidden sm:inline">{calendarType === 'jalali' ? 'تقویم شمسی' : 'تقویم میلادی'}</span>
-                  <span className="sm:hidden">{calendarType === 'jalali' ? 'شمسی' : 'میلادی'}</span>
+                  <span>{calendarType === 'jalali' ? 'شمسی' : 'میلادی'}</span>
                 </button>
 
                 {/* Settings Cogwheel (hidden on small screens, in menu) */}
@@ -978,24 +979,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   <Settings className="w-4 h-4" />
                 </button>
 
-                {/* Interface Mode Quick Switcher Pill (Simple vs Advanced) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playPop();
-                    setInterfaceMode(interfaceMode === 'simple' ? 'advanced' : 'simple');
-                  }}
-                  className={`h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border flex items-center gap-1.5 font-bold text-xs transition-all shadow-2xs cursor-pointer flex-shrink-0 ${
-                    interfaceMode === 'simple'
-                      ? 'border-emerald-300/80 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                      : 'border-indigo-300/80 bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
-                  }`}
-                  title={interfaceMode === 'simple' ? 'حالت آسان فعال است — کلیک کنید تا حالت پیشرفته و حرفه‌ای فعال شود' : 'حالت حرفه‌ای فعال است — کلیک کنید تا حالت آسان فعال شود'}
-                >
-                  <SlidersHorizontal className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="hidden sm:inline">{interfaceMode === 'simple' ? 'رابط آسان 🌿' : 'رابط حرفه‌ای ⚡'}</span>
-                  <span className="sm:hidden">{interfaceMode === 'simple' ? 'آسان' : 'Pro'}</span>
-                </button>
+
 
                 {/* User Profile Pill */}
                 {currentUser && (
@@ -1116,7 +1100,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
           </header>
 
           {/* Main Body */}
-          <main className="flex-1 p-4 sm:p-7 space-y-6 max-w-7xl w-full mx-auto pb-24 lg:pb-10 min-w-0">
+          <main className="flex-1 p-3 sm:p-7 space-y-5 sm:space-y-6 max-w-7xl w-full mx-auto pb-24 lg:pb-10 min-w-0 overflow-x-hidden">
             {/* Unverified User Restriction Banner */}
             {currentUser && currentUser.role !== 'admin' && currentUser.username?.toLowerCase() !== 'mohusyn' && (!currentUser.isVerified || currentUser.status === 'pending_verification') && (
               <div className="p-4 rounded-3xl border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 shadow-sm animate-in slide-in-from-top-2">
@@ -1200,38 +1184,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
             {/* TAB 1: DASHBOARD */}
             {activeTab === 'dashboard' && (
               <div className="space-y-6 animate-in fade-in w-full min-w-0">
-                {/* Simple Mode Friendly Quick Actions Card */}
-                {interfaceMode === 'simple' && (
-                  <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 border border-emerald-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in">
-                    <div className="space-y-1 text-right">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold text-[11px]">🌿 کاربری آسان</span>
-                        <h2 className="text-sm font-black text-slate-900">امروز می‌خواهید چه کاری انجام دهید؟</h2>
-                      </div>
-                      <p className="text-xs text-slate-600">
-                        سامانه در حالت آسان و بدون پیچیدگی است. تسک جدید بنویسید یا زمان‌سنج تمرکز را استارت بزنید:
-                      </p>
-                    </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        onClick={() => openCreateModal(selectedDate)}
-                        className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>ثبت سریع تسک</span>
-                      </button>
-
-                      <button
-                        onClick={() => setActiveTab('focus')}
-                        className="px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-black text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Timer className="w-4 h-4 text-emerald-400" />
-                        <span>شروع تمرکز</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
                 {/* 4 Dribbble Signature Widgets */}
                 <TaskMasterBentoWidgets
                   onSeeAllTasks={() => setActiveTab('tasks')}
@@ -1741,6 +1694,49 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
 
             {/* Drawer Footer */}
             <div className="pt-3 mt-2 border-t border-slate-100 space-y-2 text-xs flex-shrink-0">
+              {/* Instagram Studio for Admin in Mobile Drawer */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    sounds.playPop();
+                    if (onOpenInstagramStudio) {
+                      onOpenInstagramStudio();
+                    } else {
+                      const url = new URL(window.location.href);
+                      url.searchParams.set('page', 'instagram');
+                      window.location.href = url.toString();
+                    }
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-pink-700 bg-pink-50 border border-pink-200 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  <span className="text-xs">📸</span>
+                  <span>استودیو اسلایدهای اینستاگرام</span>
+                </button>
+              )}
+
+              {/* Theme & Calendar Quick Switcher in Mobile Drawer */}
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={toggleThemeMode}
+                  className="py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200/80 cursor-pointer"
+                >
+                  {themeMode === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-slate-700" />}
+                  <span>{themeMode === 'dark' ? 'تم روشن' : 'تم دارک'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleCalendarType}
+                  className="py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200/80 cursor-pointer"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>{calendarType === 'jalali' ? 'شمسی' : 'میلادی'}</span>
+                </button>
+              </div>
+
               {/* Interface Mode Toggle in Mobile Drawer */}
               <div className="p-1 bg-slate-100 rounded-xl border border-slate-200/80 flex items-center gap-1 text-[11px] font-bold">
                 <button
@@ -1829,9 +1825,80 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
         onClearAll={handleClearAllNotifs}
         onOpenTask={(_taskId) => {
           setActiveTab('tasks');
+          setIsNotificationCenterOpen(false);
         }}
         onOpenChat={(userId, userName) => {
-          setDirectChatUser({ id: userId, name: userName, status: 'online' });
+          const matchedUser = users.find((u) => u.id === userId || (u.username && u.username.toLowerCase() === userId.toLowerCase())) ||
+                              friendsList.find((f: any) => f.id === userId || (f.username && f.username.toLowerCase() === userId.toLowerCase()));
+          setDirectChatUser({
+            id: userId,
+            name: matchedUser?.name || userName || 'همکار',
+            username: matchedUser?.username,
+            avatar: matchedUser?.avatar,
+            role: matchedUser?.role,
+            status: 'online',
+          });
+          setIsNotificationCenterOpen(false);
+        }}
+        onNotificationClick={(n) => {
+          api.markNotificationsRead(n.id).catch(() => {});
+
+          const isChatOrFriend =
+            n.type === 'message' ||
+            n.type === 'friend' ||
+            n.id.startsWith('notif_msg_') ||
+            n.id.startsWith('notif_freq_') ||
+            n.id.startsWith('notif_f_acc_') ||
+            n.title.includes('پیام') ||
+            n.title.includes('دوستی') ||
+            n.title.includes('همکاری') ||
+            Boolean(n.senderId) ||
+            Boolean(n.fromUserId);
+
+          if (isChatOrFriend) {
+            let targetUserId = n.senderId || n.fromUserId;
+            let targetUserName = n.senderName || n.fromUserName || n.userName;
+
+            if (!targetUserId && n.title.includes('از ')) {
+              const parts = n.title.split('از ')[1]?.split(' ');
+              const rawName = parts ? parts[0]?.trim() : '';
+              if (rawName) {
+                const found = users.find((u) => (u.username && u.username.toLowerCase().includes(rawName.toLowerCase())) || (u.name && u.name.includes(rawName))) ||
+                              friendsList.find((f: any) => (f.username && f.username.toLowerCase().includes(rawName.toLowerCase())) || (f.name && f.name.includes(rawName)));
+                if (found) {
+                  targetUserId = found.id;
+                  targetUserName = found.name;
+                }
+              }
+            }
+
+            if (!targetUserId && n.userId && n.userId !== currentUser?.id) {
+              targetUserId = n.userId;
+            }
+
+            if (targetUserId) {
+              const matchedUser = users.find((u) => u.id === targetUserId || (u.username && u.username.toLowerCase() === targetUserId.toLowerCase())) ||
+                                  friendsList.find((f: any) => f.id === targetUserId || (f.username && f.username.toLowerCase() === targetUserId.toLowerCase()));
+              setDirectChatUser({
+                id: targetUserId,
+                name: matchedUser?.name || targetUserName || 'همکار',
+                username: matchedUser?.username,
+                avatar: matchedUser?.avatar,
+                role: matchedUser?.role,
+                status: 'online',
+              });
+              setIsNotificationCenterOpen(false);
+              return;
+            }
+          }
+
+          if (n.type === 'task') {
+            setActiveTab('tasks');
+            setIsNotificationCenterOpen(false);
+            return;
+          }
+
+          setIsNotificationCenterOpen(false);
         }}
       />
 

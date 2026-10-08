@@ -6,6 +6,7 @@ import {
   CheckSquare,
   Users,
   Megaphone,
+  MessageSquare,
   X,
 } from 'lucide-react';
 
@@ -13,12 +14,17 @@ export interface AppNotification {
   id: string;
   title: string;
   message: string;
-  type: 'task' | 'friend' | 'broadcast' | 'info';
+  type: 'task' | 'friend' | 'broadcast' | 'info' | 'message';
   timestamp: string;
   read: boolean;
   taskId?: string;
   userId?: string;
   userName?: string;
+  senderId?: string;
+  senderName?: string;
+  fromUserId?: string;
+  fromUserName?: string;
+  requestId?: string;
 }
 
 interface NotificationCenterModalProps {
@@ -101,15 +107,38 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
 
     if (onNotificationClick) {
       onNotificationClick(n);
-    } else {
-      if (n.type === 'friend' && n.userId && onOpenChat) {
-        onOpenChat(n.userId, n.userName || 'همکار');
+      return;
+    }
+
+    const isChatOrFriend =
+      n.type === 'message' ||
+      n.type === 'friend' ||
+      n.id.startsWith('notif_msg_') ||
+      n.id.startsWith('notif_freq_') ||
+      n.id.startsWith('notif_f_acc_') ||
+      n.title.includes('پیام') ||
+      n.title.includes('دوستی') ||
+      n.title.includes('همکاری') ||
+      Boolean(n.senderId) ||
+      Boolean(n.fromUserId);
+
+    if (isChatOrFriend && onOpenChat) {
+      const targetUserId = n.senderId || n.fromUserId || n.userId;
+      const targetUserName = n.senderName || n.fromUserName || n.userName || 'همکار';
+      if (targetUserId) {
+        onOpenChat(targetUserId, targetUserName);
         onClose();
-      } else if (n.type === 'task' && onOpenTask) {
-        onOpenTask(n.taskId || '');
-        onClose();
+        return;
       }
     }
+
+    if (n.type === 'task' && onOpenTask) {
+      onOpenTask(n.taskId || '');
+      onClose();
+      return;
+    }
+
+    onClose();
   };
 
   return (
@@ -118,17 +147,17 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm bg-white rounded-[28px] shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[85vh] animate-in slide-in-from-top-4 duration-200 cursor-default"
+        className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[28px] shadow-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden flex flex-col max-h-[85vh] animate-in slide-in-from-top-4 duration-200 cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 px-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+        <div className="p-4 px-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/50">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-[#121212] text-white flex items-center justify-center">
               <Bell className="w-4 h-4 text-[#00b884]" />
             </div>
             <div>
-              <h3 className="font-black text-sm text-slate-900">
+              <h3 className="font-black text-sm text-slate-900 dark:text-white">
                 مرکز اعلان‌ها
               </h3>
               <span className="text-[10px] text-slate-400 font-bold">
@@ -142,7 +171,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               <button
                 type="button"
                 onClick={handleMarkAllRead}
-                className="text-[11px] font-bold text-slate-500 hover:text-black px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                className="text-[11px] font-bold text-slate-500 hover:text-black dark:text-slate-400 dark:hover:text-white px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 title="علامت خوانده شده برای همه"
               >
                 خواندن همه
@@ -151,7 +180,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             <button
               type="button"
               onClick={onClose}
-              className="p-1 rounded-full text-slate-400 hover:text-slate-800 cursor-pointer"
+              className="p-1 rounded-full text-slate-400 hover:text-slate-800 dark:hover:text-white cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -159,16 +188,21 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         </div>
 
         {/* Notifications list */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 divide-y divide-slate-100">
+        <div className="flex-1 overflow-y-auto p-3 space-y-2 divide-y divide-slate-100 dark:divide-slate-800">
           {currentList.map((n) => {
             let Icon = CheckSquare;
-            let iconColor = 'text-indigo-600 bg-indigo-50';
-            if (n.type === 'friend') {
+            let iconColor = 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400';
+            const isMsg = n.type === 'message' || n.id.startsWith('notif_msg_') || n.title.includes('پیام');
+            const isFriend = n.type === 'friend' || n.id.startsWith('notif_freq_') || n.id.startsWith('notif_f_acc_') || n.title.includes('دوستی') || n.title.includes('همکاری');
+            if (isMsg) {
+              Icon = MessageSquare;
+              iconColor = 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400';
+            } else if (isFriend) {
               Icon = Users;
-              iconColor = 'text-[#00895f] bg-emerald-50';
+              iconColor = 'text-[#00895f] bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400';
             } else if (n.type === 'broadcast') {
               Icon = Megaphone;
-              iconColor = 'text-amber-600 bg-amber-50';
+              iconColor = 'text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400';
             }
 
             return (
@@ -177,8 +211,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 onClick={() => handleClickItem(n)}
                 className={`p-3 rounded-2xl transition-all cursor-pointer flex items-start gap-3 pt-3 ${
                   !n.read
-                    ? 'bg-slate-50/90 border border-slate-200/80 shadow-2xs'
-                    : 'hover:bg-slate-50/60'
+                    ? 'bg-slate-50/90 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/60 shadow-2xs'
+                    : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/40'
                 }`}
               >
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${iconColor}`}>
@@ -187,14 +221,14 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
 
                 <div className="flex-1 min-w-0 space-y-0.5">
                   <div className="flex items-center justify-between gap-1">
-                    <h4 className="font-black text-xs text-slate-900 truncate">
+                    <h4 className="font-black text-xs text-slate-900 dark:text-white truncate">
                       {n.title}
                     </h4>
                     <span className="text-[10px] text-slate-400 font-mono font-bold flex-shrink-0">
-                      {n.timestamp}
+                      {n.timestamp.includes('T') ? n.timestamp.split('T')[0] : n.timestamp}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-600 leading-snug line-clamp-2">
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug line-clamp-2">
                     {n.message}
                   </p>
                 </div>
@@ -216,7 +250,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
 
         {/* Footer */}
         {currentList.length > 0 && (
-          <div className="p-3 border-t border-slate-100 bg-slate-50/50 flex justify-center">
+          <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex justify-center">
             <button
               type="button"
               onClick={handleClearAll}
