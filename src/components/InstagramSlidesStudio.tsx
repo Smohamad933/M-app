@@ -383,25 +383,25 @@ const generateInitial60DaysPlan = (): StoryDayPlan[] => {
       cycleColor: cycle.color,
       focusFeature: cycle.name,
       story1: {
-        time: '۱۰:۰۰ صبح (قلاب و تعامل)',
+        time: 'صبح بخیر ☀️',
         type: 'Poll / Question',
-        sticker: 'استیکر نظرسنجی (بله/خیر) یا اسلایدر آتش',
+        sticker: 'روی نظرسنجی بالا بزنید 👆',
         hook: `روز ${dayNum} • صبح بخیر! چقدر از کارهای دیروزت انجام شد؟`,
-        body: `بیشتر از ۸۰٪ کارهام رو زدم ✅\nمتاسفانه نصفشون موند ❌\n\nاگر حس می‌کنی سردرگمی، امروز قراره تکنیک «${cycle.name}» رو با هم باز کنیم.`,
+        body: `بیشتر از ۸۰٪ کارهام رو زدم ✅\nمتاسفانه نصفشون موند ❌\n\nاگر احساس سردرگمی داری، امروز قراره تکنیک «برنامه‌ریزی و دیلی‌پلنر ساعتی» رو با هم باز کنیم.`,
         action: 'روی نظرسنجی بالا کلیک کن تا نتایج رو ببینی!',
       },
       story2: {
-        time: '۱۴:۰۰ ظهر (آموزش و نمایش زنده ویژگی)',
+        time: 'آموزش روز ⚡',
         type: 'Value & Demo Spotlight',
-        sticker: 'اسکرین‌شات سامانه بَگ‌تایم + گیف اشاره‌گر',
+        sticker: 'پیش‌نمایش زنده در وب‌اپلیکیشن و افزونه',
         title: `آموزش روز ${dayNum}: نحوه اجرای ${cycle.name}`,
         body: `در سامانه بَگ‌تایم وقتی این ویژگی رو فعال می‌کنی، مغزت از حالت چندوظیفگی خلاص میشه و انرژی اراده روی مهم‌ترین کار متمرکز می‌مونه.\n\n📱 نمونه اجرا شده رو در تصویر می‌بینید.`,
         demoNote: 'قابل استفاده در وب‌اپلیکیشن PWA و افزونه مرورگر',
       },
       story3: {
-        time: '۱۹:۰۰ عصر (نتیجه عملی و دعوت به دایرکت)',
+        time: 'نکته پایانی 💡',
         type: 'Direct CTA & Engagement',
-        sticker: 'باکس سوال (Question Box) یا دایرکت پیج',
+        sticker: 'ارسال کلمه «بگ‌تایم» در دایرکت 📩',
         conclusion: `نتیجه روز ${dayNum}: امروز با بَگ‌تایم چقدر جلو افتادی؟`,
         ctaText: `برای دریافت دسترسی رایگان و شروع استفاده از ${cycle.name}: کلمه «بگ‌تایم» یا «دمو» رو به دایرکت بفرست! ✌️`,
         handles: '@bagtime_app',
@@ -464,13 +464,16 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
   const [isFontModalOpen, setIsFontModalOpen] = useState<boolean>(false);
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'content' | 'launch' | 'demo'>('all');
   const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('edit');
-  const [exportQuality, setExportQuality] = useState<'4k' | 'hd'>('4k');
+  const [exportQuality, setExportQuality] = useState<'4k' | 'hd'>('hd');
 
   // 60-Day Story Strategy State
   const [selectedStoryDay, setSelectedStoryDay] = useState<number>(1);
   const [activeStorySlot, setActiveStorySlot] = useState<1 | 2 | 3>(1);
   const [editingStorySlot, setEditingStorySlot] = useState<1 | 2 | 3 | null>(null);
   const [storyTheme, setStoryTheme] = useState<StoryTheme>('dark');
+  const [showStoryBadge, setShowStoryBadge] = useState<boolean>(false);
+  const [customStoryBadgeText, setCustomStoryBadgeText] = useState<string>('');
+  const [showStoryActionBox, setShowStoryActionBox] = useState<boolean>(false);
   const [showStoryFooter, setShowStoryFooter] = useState<boolean>(false);
   const [storyFooterRight, setStoryFooterRight] = useState<string>('');
   const [storyFooterLeft, setStoryFooterLeft] = useState<string>('');
@@ -1247,9 +1250,11 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
 
         {/* Center Body */}
         <div className="my-auto space-y-2.5 z-10 text-right py-2 flex-1 flex flex-col justify-center">
-          <div className={`inline-block px-2.5 py-1 rounded-xl font-black text-xs self-start ${theme.badge}`}>
-            {slotData.time}
-          </div>
+          {showStoryBadge && (
+            <div className={`inline-block px-2.5 py-1 rounded-xl font-black text-xs self-start ${theme.badge}`}>
+              {customStoryBadgeText || slotData.time}
+            </div>
+          )}
 
           <h2 className="text-base font-black leading-snug">
             {hookOrTitle}
@@ -1276,9 +1281,11 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
             {bodyText}
           </div>
 
-          <div className="p-2.5 rounded-xl border bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-xs font-bold">
-            {stickerOrNote}
-          </div>
+          {showStoryActionBox && (
+            <div className="p-2.5 rounded-xl border bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-xs font-bold">
+              {stickerOrNote}
+            </div>
+          )}
         </div>
 
         {/* Optional Footer (Hidden by default, user can toggle and edit) */}
@@ -2609,6 +2616,49 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
                       <span>📸 بارگذاری اسکرین‌شات اختصاصی سامانه</span>
                     </button>
                   )}
+                </div>
+              </div>
+
+              {/* Story Badge & Interaction Box Toggles */}
+              <div className="p-5 rounded-3xl bg-[#0d1322] border border-slate-800 space-y-3">
+                <span className="text-xs font-black text-white flex items-center gap-1.5">
+                  <Sliders className="w-4 h-4 text-amber-400" />
+                  <span>تنظیم نشانگر بالا و کادر پایین استوری</span>
+                </span>
+
+                <div className="space-y-2 pt-1 border-t border-slate-800/80">
+                  <label className="flex items-center justify-between cursor-pointer p-2.5 rounded-2xl bg-slate-900 border border-slate-800">
+                    <span className="text-xs font-bold text-slate-300">نمایش نشانگر بالای استوری (Badge)</span>
+                    <input
+                      type="checkbox"
+                      checked={showStoryBadge}
+                      onChange={(e) => setShowStoryBadge(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-500 bg-slate-800 border-slate-700 cursor-pointer"
+                    />
+                  </label>
+
+                  {showStoryBadge && (
+                    <div className="space-y-1 pr-2">
+                      <label className="text-[11px] text-slate-400 font-bold">متن نشانگر بالای استوری:</label>
+                      <input
+                        type="text"
+                        value={customStoryBadgeText}
+                        onChange={(e) => setCustomStoryBadgeText(e.target.value)}
+                        placeholder="مثال: صبح بخیر ☀️، نکته روز، بَگ‌تایم..."
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:border-amber-500 font-bold"
+                      />
+                    </div>
+                  )}
+
+                  <label className="flex items-center justify-between cursor-pointer p-2.5 rounded-2xl bg-slate-900 border border-slate-800">
+                    <span className="text-xs font-bold text-slate-300">نمایش کادر پایین استوری (استیکر / دایرکت)</span>
+                    <input
+                      type="checkbox"
+                      checked={showStoryActionBox}
+                      onChange={(e) => setShowStoryActionBox(e.target.checked)}
+                      className="w-4 h-4 rounded text-emerald-500 bg-slate-800 border-slate-700 cursor-pointer"
+                    />
+                  </label>
                 </div>
               </div>
 
