@@ -22,6 +22,7 @@ import { toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 
 export type TutorialFormat = 'feed_carousel' | 'story_highlight';
+export type FeedAspectRatio = '4:5' | '1:1';
 export type TutorialTheme = 'dark' | 'indigo' | 'emerald' | 'purple';
 
 export interface TutorialSlideData {
@@ -56,7 +57,7 @@ const DEFAULT_TUTORIAL_SLIDES: TutorialSlideData[] = [
     subtitle: 'سیستم ثبت هوشمند تسک‌ها و روتین‌های روزانه خودکار',
     bullets: [
       'با دکمه سبز «افزودن کار جدید» تسک‌های روزت رو ثبت کن',
-      'گزینه «تکرار به عنوان روتین» رو بزن تا خودکار برای تمام هفته یا تمام ماه (۳۰ روز) ثبت بشه',
+      'گزینه «تکرار به عنوان روتین» رو بزن تا خودکار برای تمام ماه ثبت بشه',
       'دیگه نیاز نیست کارهای تکراری روزانه رو هرروز دستی وارد کنی!',
       'امکان تعیین اولویت، دسته‌بندی و چک‌لیست زیرکارها',
     ],
@@ -98,93 +99,91 @@ const DEFAULT_TUTORIAL_SLIDES: TutorialSlideData[] = [
     subtitle: 'تحلیلگر هوشمند عادت‌ها و رفع چرایی کارهای نصفه مونده',
     bullets: [
       'اگر کاری انجام نشد، علت رو ثبت کن (خستگی، اتلاف وقت، تداخل...)',
-      'تسک یک «تیک قرمز هشدار» می‌گیره تا از یادت نره و بعدا اصلاحش کنی',
-      'در بخش «تحلیلگر عادت‌ها»، نمودارها بهت میگن بیشترین نقطه‌ضعف کجاست',
-      'رویکرد مبتنی بر داده برای بهبود مستمر بهره‌وری فردی',
+      'کارهای نصفه مونده با نشانگر متمایز «تیک قرمز» روی کارت مشخص میشن',
+      'هوش مصنوعی سامانه نمودار موانع اصلی موفقیتت رو رسم میکنه',
+      'تکنیک‌های رفع اهمال‌کاری متناسب با مشکل شما پیشنهاد داده میشه',
     ],
-    highlightTip: '🔍 تا نفهمی چرا کارهات عقب میفته، برنامه‌ت تغییر نمیکنه!',
+    highlightTip: '🔍 با شناخت دلایل تنبلی، دفعه بعد جلوش رو می‌گیری.',
     mockupType: 'habits',
   },
   {
     stepNumber: 6,
-    badge: 'گام پنجم • یادآورهای ۳۰ روزه',
-    title: 'یادآورهای دوره‌ای با آلارم و نوتیفیکیشن روزانه 🔔',
-    subtitle: 'عادت‌ها و قرارهای حیاتی رو حتی یک روز هم از دست نده',
+    badge: 'گام پنجم • یادآور ۳۰ روزه و تقویم',
+    title: 'یادآورهای دوره‌ای ۳۰ روزه و تقویم دوزبانه 🔔',
+    subtitle: 'فراموش نکردن قسط‌ها، چکاپ‌ها، جلسات ماهانه و پیگیری‌ها',
     bullets: [
-      'ساعت مشخص روز رو تعیین کن و دوره رو روی «عرض ۱ ماه هرروز» بذار',
-      'راس ساعت، صدای زنگ هشدار و نوتیفیکیشن مستقیم دریافت می‌کنی',
-      'مناسب برای مصرف ویتامین و دارو، بررسی ایمیل‌ها، ورزش و خواب',
-      'فعال‌سازی یا خاموش‌سازی هر یادآور با یک کلیک ساده',
+      'یادآورهای ماهانه و دوره‌ای ۳۰ روزه با شمارش معکوس دقیق',
+      'قابلیت سوئیچ یکپارچه بین تقویم شمسی (جلالی) و میلادی (گریگوری)',
+      'نمایش وضعیت روزها، استریک و ثبات در پایبندی به برنامه‌ها',
+      'اطلاع‌رسانی بلادرنگ پیامکی و اعلان روی دستگاه',
     ],
-    highlightTip: '⏰ یادآورهای بگ‌تایم نیازی به تقویم‌های پیچیده خارجی ندارند.',
+    highlightTip: '📅 ذهن برای ایده‌پردازیه، نه نگه داشتن تاریخ‌ها!',
     mockupType: 'reminders',
   },
   {
     stepNumber: 7,
-    badge: 'گام ششم • افزونه نیوتَب مرورگر',
-    title: 'افزونه تب جدید مرورگر (New Tab Assistant) 🌐',
-    subtitle: 'هر بار تب جدید باز می‌کنی، کارها و اهدافت جلو چشمته!',
+    badge: 'گام ششم • افزونه مرورگر',
+    title: 'اکستنشن تب جدید نیوتَب (Chrome & Firefox) 💻',
+    subtitle: 'برنامه‌هات با باز کردن هر تب جدید جلوی چشمته',
     bullets: [
-      'قابل نصب روی کروم، مایکروسافت اج و موزیلا فایرفاکس',
-      'ساعت دیجیتال مدرن، سرچ سریع، میانبرهای کاری و تسک‌های امروز',
-      'ورود همزمان و سینک خودکار تسک‌ها بین مرورگر و وب‌اپلیکیشن',
-      'جلوگیری از رفتن به یوتیوب و شبکه‌های اجتماعی هنگام کار با کامپیوتر',
+      'با نصب اکستنشن، هر تب مرورگر تبدیل به داشبورد اختصاصی بَگ‌تایم میشه',
+      'ساعت زنده، تسک‌های فوری امروز و وضعیت تمرکز بدون باز کردن سایت',
+      'جلوگیری از رفتن به یوتیوب و شبکه‌های اجتماعی هنگام کار با لپ‌تاپ',
+      'دانلود مستقیم با یک کلیک در پنل کاربری بَگ‌تایم',
     ],
-    highlightTip: '💻 با هر بار باز کردن تب مرورگر، روی مهم‌ترین کار متمرکز بمون.',
+    highlightTip: '🖥️ تمرکزت روی سیستم و لپ‌تاپ همیشه حفظ می‌مونه.',
     mockupType: 'extension',
   },
   {
     stepNumber: 8,
-    badge: 'گام آخر • شروع رایگان',
-    title: 'همین حالا روزت رو متحول کن! 🚀',
-    subtitle: 'سامانه بَگ‌تایم؛ بدون نیاز به نصب، کاملاً رایگان و در دسترس',
+    badge: 'گام آخر • شروع قدرتمند',
+    title: 'همین الان شروع کن و زندگیت رو سازماندهی کن! 🚀',
+    subtitle: 'ورود رایگان، بدون فیلترشکن و سازگار با همه دستگاه‌ها',
     bullets: [
-      'آدرس ورود مستقیم: task.mohusyn.ir یا bagtime.negahm.ir',
-      'ورود سریع با نام کاربری یا تایید شماره با ربات بله',
-      'دسترسی کامل به تمام ابزارهای پلنر، تمرکز، تقویم شمسی و روتین‌ها',
-      'برای دریافت لینک فوری، کلمه «بگ‌تایم» رو در دایرکت ارسال کن!',
+      'ورود مستقیم با شماره موبایل و ربات بله',
+      'آدرس دائمی سرور: task.mohusyn.ir و bagtime.negahm.ir',
+      'قابل نصب به صورت اپلیکیشن PWA روی آیفون و اندروید',
+      'سیستم ابری با ذخیره لحظه‌ای و امنیت بالا',
     ],
-    highlightTip: '✌️ از همین امروز کارهات رو طبق برنامه تموم کن و لذت ببر.',
+    highlightTip: '✨ تصمیم امروزت، موفقیت ۶ ماه آینده‌ت رو می‌سازه!',
     mockupType: 'cta',
   },
 ];
 
 export const AppTutorialStudio: React.FC = () => {
-  
-
-  const [format, setFormat] = useState<TutorialFormat>('feed_carousel');
-  const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
-  const [theme, setTheme] = useState<TutorialTheme>('dark');
-  const [quality, setQuality] = useState<'hd' | '4k'>('hd');
-  const [customHandle, setCustomHandle] = useState<string>(() => {
-    try {
-      return localStorage.getItem('bagtime_instagram_handle') || '@bagtime_app';
-    } catch {
-      return '@bagtime_app';
-    }
-  });
-
   const [slides, setSlides] = useState<TutorialSlideData[]>(() => {
     try {
       const saved = localStorage.getItem('bagtime_tutorial_slides_v2');
-      return saved ? JSON.parse(saved) : DEFAULT_TUTORIAL_SLIDES;
-    } catch {
-      return DEFAULT_TUTORIAL_SLIDES;
-    }
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_TUTORIAL_SLIDES;
   });
 
-  const [isExporting, setIsExporting] = useState<boolean>(false);
-  const [exportProgress, setExportProgress] = useState<string>('');
-  const [copiedCaption, setCopiedCaption] = useState<boolean>(false);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [format, setFormat] = useState<TutorialFormat>('feed_carousel');
+  const [feedRatio, setFeedRatio] = useState<FeedAspectRatio>('4:5'); // 4:5 is primary Instagram carousel standard!
+  const [theme, setTheme] = useState<TutorialTheme>('dark');
+  const [quality, setQuality] = useState<'hd' | '4k'>('hd');
+  const [customHandle, setCustomHandle] = useState<string>('@bagtime_app');
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState('');
+  const [copiedCaption, setCopiedCaption] = useState(false);
 
   const previewRef = useRef<HTMLDivElement>(null);
   const exportContainerRef = useRef<HTMLDivElement>(null);
 
   const activeSlide = slides[currentSlideIndex] || slides[0];
 
-  const updateActiveSlide = (patch: Partial<TutorialSlideData>) => {
+  const updateSlideField = (field: keyof TutorialSlideData, val: any) => {
     setSlides((prev) => {
-      const updated = prev.map((s, idx) => (idx === currentSlideIndex ? { ...s, ...patch } : s));
+      const updated = [...prev];
+      updated[currentSlideIndex] = {
+        ...updated[currentSlideIndex],
+        [field]: val,
+      };
       try {
         localStorage.setItem('bagtime_tutorial_slides_v2', JSON.stringify(updated));
       } catch {}
@@ -202,41 +201,62 @@ export const AppTutorialStudio: React.FC = () => {
     }
   };
 
-  // Color Theme Palettes
+  // Color Theme Palettes matching Instagram Studio & Bag Time Dark aesthetic
   const getThemeStyles = () => {
     switch (theme) {
       case 'indigo':
         return {
-          container: 'bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#131b31] text-white border-indigo-900/40',
-          badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-          card: 'bg-indigo-950/40 border-indigo-800/40 text-slate-200',
-          accent: 'text-amber-400',
-          bullet: 'text-indigo-400',
+          container: 'bg-gradient-to-b from-[#0b0e1a] via-[#1e1b4b] to-[#0f172a] text-white border border-indigo-800/40 shadow-2xl',
+          badge: 'bg-amber-400/20 text-amber-200 border border-amber-400/30',
+          card: 'bg-indigo-950/70 border border-indigo-700/60 text-indigo-100 shadow-md',
+          accent: 'text-amber-300',
+          bullet: 'text-amber-400',
+          glow1: 'bg-indigo-500/25',
+          glow2: 'bg-amber-500/20',
+          headerBorder: 'border-indigo-800/60',
+          footerBorder: 'border-indigo-800/60',
+          footerText: 'text-indigo-300',
         };
       case 'emerald':
         return {
-          container: 'bg-gradient-to-br from-[#041a14] via-[#02130e] to-[#072c22] text-white border-emerald-900/40',
-          badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-          card: 'bg-emerald-950/40 border-emerald-800/40 text-slate-200',
-          accent: 'text-emerald-400',
+          container: 'bg-gradient-to-b from-[#021f18] via-[#064e3b] to-[#022c22] text-white border border-emerald-800/40 shadow-2xl',
+          badge: 'bg-emerald-400/20 text-emerald-200 border border-emerald-400/30',
+          card: 'bg-emerald-950/70 border border-emerald-700/60 text-emerald-100 shadow-md',
+          accent: 'text-emerald-300',
           bullet: 'text-emerald-400',
+          glow1: 'bg-emerald-500/25',
+          glow2: 'bg-teal-500/20',
+          headerBorder: 'border-emerald-800/60',
+          footerBorder: 'border-emerald-800/60',
+          footerText: 'text-emerald-300',
         };
       case 'purple':
         return {
-          container: 'bg-gradient-to-br from-[#180a24] via-[#0f0517] to-[#250f38] text-white border-purple-900/40',
-          badge: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-          card: 'bg-purple-950/40 border-purple-800/40 text-slate-200',
-          accent: 'text-pink-400',
+          container: 'bg-gradient-to-b from-[#180a24] via-[#2e1065] to-[#140727] text-white border border-purple-800/40 shadow-2xl',
+          badge: 'bg-purple-500/25 text-purple-200 border border-purple-500/30',
+          card: 'bg-purple-950/70 border border-purple-700/60 text-purple-100 shadow-md',
+          accent: 'text-purple-300',
           bullet: 'text-purple-400',
+          glow1: 'bg-purple-500/25',
+          glow2: 'bg-pink-500/20',
+          headerBorder: 'border-purple-800/60',
+          footerBorder: 'border-purple-800/60',
+          footerText: 'text-purple-300',
         };
       case 'dark':
       default:
+        // Deep obsidian site dark theme (#070b14, #0b0f19, #0f172a)
         return {
-          container: 'bg-[#090d16] text-white border-slate-800',
-          badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-          card: 'bg-slate-900/80 border-slate-800 text-slate-200',
-          accent: 'text-[#00b884]',
+          container: 'bg-gradient-to-b from-[#0b0f19] via-[#0f172a] to-[#0b0f19] text-white border border-slate-800 shadow-2xl',
+          badge: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
+          card: 'bg-slate-900/95 border border-slate-800 text-slate-100 shadow-md',
+          accent: 'text-emerald-400',
           bullet: 'text-emerald-400',
+          glow1: 'bg-purple-500/20',
+          glow2: 'bg-emerald-500/20',
+          headerBorder: 'border-slate-800',
+          footerBorder: 'border-slate-800',
+          footerText: 'text-slate-400',
         };
     }
   };
@@ -248,78 +268,84 @@ export const AppTutorialStudio: React.FC = () => {
     switch (type) {
       case 'welcome':
         return (
-          <div className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 space-y-2.5 text-right font-mono text-[10px]">
+          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-2 text-right font-sans text-[10px]">
             <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-rose-500" />
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
               </div>
-              <span className="text-slate-400 text-[9px]">task.mohusyn.ir/login</span>
+              <span className="text-slate-400 text-[9px] font-mono" dir="ltr">task.mohusyn.ir/login</span>
             </div>
-            <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-900 border border-slate-800">
+            <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-900/90 border border-slate-800">
               <TaskMasterHexagon size={24} />
-              <div>
+              <div className="flex-1">
                 <div className="font-black text-white text-[11px]">سامانه مدیریت زمان بَگ‌تایم</div>
-                <div className="text-slate-400 text-[9px]">ورود با شماره موبایل یا ربات بله</div>
+                <div className="text-[8.5px] text-slate-400">ورود با شماره موبایل یا ربات بله</div>
               </div>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[8.5px] font-bold">
+                آنلاین
+              </span>
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-center font-bold">
-                ✓ تم دارک و لایت
-              </div>
-              <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-center font-bold">
-                ✓ تقویم شمسی و میلادی
-              </div>
+            <div className="grid grid-cols-2 gap-1.5 text-[8.5px] text-center font-bold">
+              <div className="p-1 rounded-lg bg-slate-800/90 border border-slate-700/80 text-emerald-300">✓ تم دارک و لایت</div>
+              <div className="p-1 rounded-lg bg-slate-800/90 border border-slate-700/80 text-purple-300">✓ تقویم شمسی و میلادی</div>
             </div>
           </div>
         );
 
       case 'routine':
         return (
-          <div className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 space-y-2 text-right text-[10px]">
-            <div className="flex items-center justify-between text-slate-400 pb-1.5 border-b border-slate-800">
-              <span className="text-emerald-400 font-bold flex items-center gap-1">
-                <Repeat className="w-3 h-3" />
-                <span>ثبت روتین تکرارشونده</span>
+          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+              <span className="font-black text-purple-400 flex items-center gap-1">
+                <Repeat className="w-3 h-3 text-purple-400" />
+                <span>روتین‌های تکرارشونده ماهانه</span>
               </span>
-              <span className="text-[9px] font-mono">Modal Preview</span>
+              <span className="text-[8px] text-slate-400">تکرار ۳۰ روزه</span>
             </div>
-            <div className="p-2 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-              <div className="text-white font-bold text-[11px]">ورزش صبحگاهی و پیاده‌روی</div>
-              <div className="flex items-center gap-1 text-[9px] text-indigo-300">
-                <Repeat className="w-2.5 h-2.5" />
-                <span>تکرار روزانه برای تمام این ماه (۳۰ روز متوالی)</span>
+            <div className="space-y-1">
+              <div className="p-1.5 rounded-xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3.5 h-3.5 rounded-md bg-purple-600 text-white flex items-center justify-center text-[8px] font-black">✓</span>
+                  <span className="font-bold text-white text-[9px]">ورزش و پیاده‌روی صبحگاهی</span>
+                </div>
+                <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[7.5px] font-bold">🔁 هرروز ماه</span>
               </div>
-            </div>
-            <div className="p-1.5 rounded-lg bg-indigo-950/60 border border-indigo-800/50 text-indigo-300 text-center font-bold text-[10px]">
-              ✓ ۳۰ تسک خودکار در تقویم درج شد بدون نیاز به تکرار دستی
+              <div className="p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3.5 h-3.5 rounded-md bg-emerald-600 text-white flex items-center justify-center text-[8px] font-black">✓</span>
+                  <span className="font-bold text-slate-200 text-[9px]">مطالعه ۳۰ صفحه کتاب تخصصی</span>
+                </div>
+                <span className="text-[8px] text-slate-400 font-mono">۲۱:۳۰</span>
+              </div>
             </div>
           </div>
         );
 
       case 'planner':
         return (
-          <div className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 space-y-2 text-right text-[10px]">
-            <div className="flex items-center justify-between text-slate-400 pb-1 border-b border-slate-800">
-              <span className="text-amber-400 font-bold">دیلی‌پلنر ساعتی بگ‌تایم</span>
-              <span className="text-[9px] text-slate-500 font-mono">ساعت ۱۰:۳۰</span>
+          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+              <span className="font-black text-emerald-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>دیلی‌پلنر ساعتی بَگ‌تایم</span>
+              </span>
+              <span className="text-slate-400 text-[8px]">چهارشنبه • امروز</span>
             </div>
-            <div className="space-y-1">
-              <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 line-through flex justify-between">
-                <span>۰۹:۰۰ جلسه و بررسی تسک‌ها</span>
-                <span className="text-emerald-400">تکمیل شد ✓</span>
-              </div>
-              <div className="p-2 rounded-xl bg-gradient-to-r from-emerald-950/80 to-slate-900 border border-emerald-500/50 flex items-center justify-between">
+            <div className="space-y-1 text-[9px]">
+              <div className="p-1.5 rounded-xl bg-gradient-to-r from-emerald-950/80 to-slate-900 border-r-4 border-emerald-500 border border-emerald-800/60 shadow-lg flex items-center justify-between">
                 <div>
-                  <span className="px-1.5 py-0.2 rounded bg-rose-500 text-white font-black text-[8px] ml-1">هم‌اکنون</span>
-                  <span className="text-white font-bold text-[11px]">توسعه پروژه و کار عمیق</span>
+                  <div className="font-black text-white text-[9.5px]">توسعه پروژه و کدنویسی عمیق</div>
+                  <div className="text-[7.5px] text-emerald-300">⏱️ ۱۰:۰۰ تا ۱۱:۳۰</div>
                 </div>
-                <span className="text-emerald-400 font-mono text-[9px]">۱۰:۰۰ - ۱۱:۳۰</span>
+                <span className="px-1.5 py-0.5 rounded bg-rose-500 text-white text-[7.5px] font-black animate-pulse">
+                  هم‌اکنون
+                </span>
               </div>
-              <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 flex justify-between">
-                <span>۱۱:۳۰ هماهنگی با تیم و ارسال گزارش</span>
-                <span className="text-slate-500">در انتظار</span>
+              <div className="p-1.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between text-slate-400">
+                <span>جلسه با کارفرما و ارائه گزارش</span>
+                <span className="text-[8px] font-mono">۱۲:۰۰</span>
               </div>
             </div>
           </div>
@@ -327,90 +353,82 @@ export const AppTutorialStudio: React.FC = () => {
 
       case 'focus':
         return (
-          <div className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 space-y-2 text-right text-[10px]">
-            <div className="flex items-center justify-between text-slate-400 pb-1 border-b border-slate-800">
-              <span className="text-emerald-400 font-bold">اتاق تمرکز پومودورو</span>
-              <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 text-[9px]">اتاق زنده فعال</span>
+          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+              <span className="font-black text-amber-400">اتاق تمرکز زنده (دیپ ورک)</span>
+              <span className="text-emerald-400 text-[8px] font-bold">🟢 ۴ نفر آنلاین</span>
             </div>
-            <div className="flex items-center justify-center py-1">
-              <div className="w-20 h-20 rounded-full border-4 border-emerald-500/30 border-t-emerald-400 flex flex-col items-center justify-center animate-pulse">
-                <span className="text-white font-black font-mono text-base">۲۴:۱۸</span>
-                <span className="text-[8px] text-emerald-400 font-bold">تمرکز عمیق</span>
+            <div className="p-2 rounded-xl bg-slate-900/90 border border-amber-500/30 flex items-center justify-between">
+              <div>
+                <div className="text-lg font-black font-mono text-white tracking-wider">۲۴:۵۲</div>
+                <div className="text-[8px] text-amber-300 font-bold">پومودورو ۲۵ دقیقه‌ای</div>
               </div>
-            </div>
-            <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[9px]">
-              <span className="text-slate-400 flex items-center gap-1">
-                <Smartphone className="w-3 h-3 text-emerald-400" />
-                ورود سریع دوستان با اسکن QR کد
-              </span>
-              <span className="text-emerald-400 font-bold">۳ نفر آنلاین</span>
+              <div className="text-left bg-slate-800 px-2 py-1 rounded-lg border border-slate-700">
+                <div className="text-[7.5px] text-emerald-400 font-bold">📱 ورود با اسکن QR</div>
+                <div className="text-[7px] text-slate-400">اتصال آنی بدون لاگین</div>
+              </div>
             </div>
           </div>
         );
 
       case 'habits':
         return (
-          <div className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 space-y-2 text-right text-[10px]">
-            <div className="flex items-center justify-between text-slate-400 pb-1 border-b border-slate-800">
-              <span className="text-rose-400 font-bold">تیک قرمز عدم انجام تسک</span>
-              <span className="text-rose-400 text-[9px]">علت‌یابی هوشمند</span>
+          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+              <span className="font-black text-rose-400">تیک قرمز و تحلیل علت عدم انجام</span>
+              <span className="text-slate-400 text-[8px]">هوش مصنوعی</span>
             </div>
-            <div className="p-2 rounded-xl bg-rose-950/30 border border-rose-500/40 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-white font-bold">طراحی صفحات فرود وب‌سایت</span>
-                <span className="px-1.5 py-0.2 rounded bg-rose-500 text-white font-black text-[9px]">تیک قرمز ❌</span>
+            <div className="p-1.5 rounded-xl bg-rose-950/30 border border-rose-500/40 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3.5 rounded-md bg-rose-600 text-white flex items-center justify-center text-[9px] font-black">✕</span>
+                <span className="font-bold text-white text-[9px]">تکمیل گزارش حسابداری شرکت</span>
               </div>
-              <div className="text-rose-300 text-[9px]">دلیل: کمبود وقت و فورس شدن جلسه فوری</div>
+              <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[7.5px] font-bold">تیک قرمز ❌</span>
             </div>
-            <div className="text-slate-400 text-[9px] flex justify-between items-center">
-              <span>ثبت شده در تحلیلگر عادت‌ها</span>
-              <span className="text-amber-400 font-bold">نمودار بهره‌وری بروز شد ✓</span>
+            <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[8px] flex items-center justify-between text-slate-300">
+              <span>علت ثبت‌شده: «کمبود وقت و تداخل کاری»</span>
+              <span className="text-amber-400 font-bold">راهکار: جابجایی به ۹ صبح</span>
             </div>
           </div>
         );
 
       case 'reminders':
         return (
-          <div className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 space-y-2 text-right text-[10px]">
-            <div className="flex items-center justify-between text-slate-400 pb-1 border-b border-slate-800">
-              <span className="text-amber-400 font-bold flex items-center gap-1">
-                <Bell className="w-3 h-3 text-amber-500" />
-                یادآورهای ۳۰ روزه روزانه
+          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+              <span className="font-black text-amber-300 flex items-center gap-1">
+                <Bell className="w-3 h-3 text-amber-400" />
+                <span>یادآورهای دوره‌ای ۳۰ روزه</span>
               </span>
-              <span className="text-[9px] text-emerald-400">فعال</span>
+              <span className="text-slate-400 text-[8px]">هوشمند</span>
             </div>
-            <div className="space-y-1.5">
-              <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <div className="text-white font-bold">مصرف ویتامین و نوشیدن آب 💧</div>
-                  <div className="text-[8px] text-slate-400">ساعت ۱۱:۰۰ • هرروز به مدت ۱ ماه</div>
-                </div>
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+            <div className="p-1.5 rounded-xl bg-amber-950/30 border border-amber-500/30 flex items-center justify-between">
+              <div>
+                <div className="font-bold text-white text-[9px]">پرداخت اجاره دفتر و تمدید هاست</div>
+                <div className="text-[7.5px] text-amber-300">🔔 هشدار ۳ روز قبل از موعد</div>
               </div>
-              <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <div className="text-white font-bold">مرور کارهای امروز و روتین شبانه 📝</div>
-                  <div className="text-[8px] text-slate-400">ساعت ۱۸:۰۰ • هشدار با صدای زنگ</div>
-                </div>
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              </div>
+              <span className="px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 text-[8px] font-black">
+                ۲ روز مانده
+              </span>
             </div>
           </div>
         );
 
       case 'extension':
         return (
-          <div className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 space-y-2 text-right text-[10px]">
-            <div className="flex items-center justify-between text-slate-400 pb-1 border-b border-slate-800">
-              <span className="text-indigo-400 font-bold">افزونه نیوتَب مرورگر بَگ‌تایم</span>
-              <span className="text-[9px] text-slate-500 font-mono">Chrome / Edge</span>
+          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+              <span className="font-black text-emerald-400">اکستنشن تب جدید مرورگر (New Tab)</span>
+              <span className="text-slate-400 text-[8px]">Chrome & Edge</span>
             </div>
-            <div className="text-center py-1">
-              <div className="text-2xl font-black text-white font-mono">۱۰:۴۵</div>
-              <div className="text-[9px] text-indigo-300">امروز ۴ تسک باقی‌مانده دارید</div>
+            <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-between text-[8px] text-slate-400 px-2">
+              <span>در هر تب جدید: ساعت زنده + تسک‌های فوری + تایمر</span>
+              <span>⚡</span>
             </div>
-            <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 text-center text-slate-300 text-[9px]">
-              🔍 سرچ مستقیم گوگل + دسترسی به تسک‌ها با هر تب جدید
+            <div className="grid grid-cols-3 gap-1 text-[8px] text-center font-bold">
+              <div className="p-1 rounded-lg bg-slate-800 text-slate-300">📌 بدون فیلتر</div>
+              <div className="p-1 rounded-lg bg-slate-800 text-emerald-300">⚡ سبک و سریع</div>
+              <div className="p-1 rounded-lg bg-slate-800 text-slate-300">🔄 همگام با سایت</div>
             </div>
           </div>
         );
@@ -418,25 +436,25 @@ export const AppTutorialStudio: React.FC = () => {
       case 'cta':
       default:
         return (
-          <div className="w-full rounded-2xl bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 border border-emerald-500/40 p-3 space-y-2 text-center text-[10px]">
-            <TaskMasterHexagon size={28} className="mx-auto" />
+          <div className="w-full rounded-2xl bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 border border-emerald-500/40 p-2.5 sm:p-3 space-y-1.5 text-center text-[10px]">
+            <TaskMasterHexagon size={26} className="mx-auto" />
             <div className="font-black text-white text-xs">سامانه مدیریت زمان بَگ‌تایم</div>
-            <div className="text-slate-300 text-[10px]">همین حالا رایگان شروع کن:</div>
+            <div className="text-slate-300 text-[9px]">همین حالا رایگان شروع کن:</div>
             <div className="p-1.5 rounded-xl bg-emerald-600 text-white font-black text-[11px] shadow-sm">
               task.mohusyn.ir ⚡
             </div>
-            <div className="text-[9px] text-slate-400 font-mono" dir="ltr">{customHandle}</div>
+            <div className="text-[8.5px] text-slate-400 font-mono" dir="ltr">{customHandle}</div>
           </div>
         );
     }
   };
 
-  // Render Single Slide Content (Unified for Feed 1:1 or Story 9:16)
+  // Render Single Slide Content (Unified for 4:5 Feed or 9:16 Story)
   const renderSlideGraphic = (s: TutorialSlideData, isStory = false) => {
     return (
       <div
         className={`w-full h-full ${themeStyles.container} ${
-          isStory ? 'p-6 flex flex-col justify-between' : 'p-6 sm:p-7 flex flex-col justify-between'
+          isStory ? 'p-6 sm:p-7 flex flex-col justify-between' : 'p-5 sm:p-6 flex flex-col justify-between'
         } relative overflow-hidden select-none`}
         dir="rtl"
         style={{
@@ -445,33 +463,36 @@ export const AppTutorialStudio: React.FC = () => {
         }}
       >
         {/* Glow Decors */}
-        <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
+        <div className={`absolute top-0 right-0 w-56 h-56 rounded-full ${themeStyles.glow1} blur-3xl pointer-events-none`} />
+        <div className={`absolute bottom-0 left-0 w-56 h-56 rounded-full ${themeStyles.glow2} blur-3xl pointer-events-none`} />
 
-        {/* Header */}
-        <div className="flex items-center justify-between pb-2 border-b border-slate-500/15 z-10 flex-shrink-0">
+        {/* Top Header */}
+        <div className={`flex items-center justify-between z-10 border-b ${themeStyles.headerBorder} pb-2.5 flex-shrink-0`}>
           <div className="flex items-center gap-2">
-            <TaskMasterHexagon size={26} />
-            <span className="font-black text-xs sm:text-sm">بَگ‌تایم</span>
+            <TaskMasterHexagon size={24} />
+            <div className="leading-tight">
+              <span className="font-black text-xs sm:text-sm text-white">بَگ‌تایم</span>
+              <span className="text-[8px] text-slate-400 block font-mono" dir="ltr">BagTime</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-black border ${themeStyles.badge}`}>
+            <span className={`px-2.5 py-0.5 rounded-xl text-[10px] font-black ${themeStyles.badge}`}>
               {s.badge}
             </span>
-            <span className="text-[10px] text-slate-400 font-mono font-bold">
-              {s.stepNumber} / {slides.length}
+            <span className="text-[10px] text-slate-400 font-mono font-bold" dir="ltr">
+              {toPersianDigits(s.stepNumber)}/{toPersianDigits(slides.length)}
             </span>
           </div>
         </div>
 
-        {/* Body Content */}
-        <div className="my-auto space-y-2.5 z-10 text-right py-2 flex-1 flex flex-col justify-center">
-          <h2 className={`font-black leading-snug ${isStory ? 'text-base' : 'text-sm sm:text-base text-white'}`}>
+        {/* Center Main Body */}
+        <div className="my-auto space-y-2 z-10 text-right py-1 flex-1 flex flex-col justify-center">
+          <h2 className="text-sm sm:text-base font-black leading-snug text-white">
             {s.title}
           </h2>
 
-          <p className="text-xs font-normal text-slate-400 leading-relaxed">
+          <p className="text-[10.5px] sm:text-[11px] font-bold text-slate-300 leading-relaxed">
             {s.subtitle}
           </p>
 
@@ -481,40 +502,46 @@ export const AppTutorialStudio: React.FC = () => {
           </div>
 
           {/* Bullet points */}
-          <div className="space-y-1.5 text-xs">
-            {s.bullets.map((b, idx) => (
+          <div className="space-y-1 text-xs">
+            {s.bullets.slice(0, 4).map((b, idx) => (
               <div
                 key={idx}
-                className={`p-2 rounded-xl ${themeStyles.card} flex items-start gap-2 text-right leading-relaxed`}
+                className={`p-1.5 sm:p-2 rounded-xl ${themeStyles.card} flex items-start gap-1.5 text-right leading-relaxed`}
               >
-                <span className={`font-black ${themeStyles.bullet}`}>•</span>
-                <span className="flex-1 text-[11px] font-bold">{b}</span>
+                <span className={`font-black ${themeStyles.bullet} text-xs`}>•</span>
+                <span className="flex-1 text-[10.5px] sm:text-[11px] font-bold text-slate-200">{b}</span>
               </div>
             ))}
           </div>
 
           {s.highlightTip && (
-            <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-black text-[11px] text-center">
+            <div className="p-1.5 sm:p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-black text-[10.5px] text-center">
               {s.highlightTip}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="pt-2 border-t border-slate-500/15 flex items-center justify-between text-[10px] text-slate-400 z-10 flex-shrink-0">
+        <div className={`pt-2 border-t ${themeStyles.footerBorder} flex items-center justify-between text-[10px] ${themeStyles.footerText} z-10 flex-shrink-0`}>
           <span className="font-bold">آموزش رسمی کار با سامانه بَگ‌تایم</span>
-          <span className="font-mono text-emerald-400" dir="ltr">{customHandle}</span>
+          <span className="font-mono text-emerald-400 font-bold" dir="ltr">{customHandle}</span>
         </div>
       </div>
     );
   };
+
+  // Dimensions computation
+  const isStory = format === 'story_highlight';
+  const previewWidth = isStory ? 340 : 360;
+  const previewHeight = isStory ? 604 : feedRatio === '4:5' ? 450 : 360; // 4:5 ratio: 360 x 450 (standard Instagram portrait)
+  const targetWidth = quality === '4k' ? 2160 : 1080;
+
 
   // Export current slide as PNG
   const handleExportSinglePNG = async () => {
     if (!previewRef.current || isExporting) return;
     setIsExporting(true);
     const is4K = quality === '4k';
-    const isStory = format === 'story_highlight';
     setExportProgress(`در حال رندر تصویر با کیفیت ${is4K ? '4K' : '۱۰۸۰p'}...`);
     sounds.playPop();
 
@@ -526,28 +553,25 @@ export const AppTutorialStudio: React.FC = () => {
         } catch {}
       }
 
-      const baseWidth = isStory ? 360 : 380;
-      const baseHeight = isStory ? 640 : 380;
-      const targetWidth = is4K ? 2160 : 1080;
-      const scaleFactor = targetWidth / baseWidth;
+      const scaleFactor = targetWidth / previewWidth;
 
       const canvas = await html2canvas(previewRef.current, {
         scale: scaleFactor,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#090d16',
+        backgroundColor: '#070b14',
         logging: false,
-        width: baseWidth,
-        height: baseHeight,
-        windowWidth: baseWidth,
-        windowHeight: baseHeight,
+        width: previewWidth,
+        height: previewHeight,
+        windowWidth: previewWidth,
+        windowHeight: previewHeight,
       });
 
       const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), 'image/png'));
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `bagtime-tutorial-${format}-step-${currentSlideIndex + 1}-${quality.toUpperCase()}.png`;
+      link.download = `bagtime-tutorial-${format}-${feedRatio === '4:5' ? '4x5' : '1x1'}-step-${currentSlideIndex + 1}-${quality.toUpperCase()}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -567,16 +591,12 @@ export const AppTutorialStudio: React.FC = () => {
     if (!exportContainerRef.current || isExporting) return;
     setIsExporting(true);
     const is4K = quality === '4k';
-    const isStory = format === 'story_highlight';
     sounds.playPop();
 
     const zip = new JSZip();
 
     try {
-      const baseWidth = isStory ? 360 : 380;
-      const baseHeight = isStory ? 640 : 380;
-      const targetWidth = is4K ? 2160 : 1080;
-      const scaleFactor = targetWidth / baseWidth;
+      const scaleFactor = targetWidth / previewWidth;
 
       for (let i = 0; i < slides.length; i++) {
         setExportProgress(`در حال پردازش اسلاید ${i + 1} از ${slides.length} (${is4K ? 'کیفیت 4K' : '۱۰۸۰p'})...`);
@@ -589,12 +609,12 @@ export const AppTutorialStudio: React.FC = () => {
           scale: scaleFactor,
           useCORS: true,
           allowTaint: true,
-          backgroundColor: '#090d16',
+          backgroundColor: '#070b14',
           logging: false,
-          width: baseWidth,
-          height: baseHeight,
-          windowWidth: baseWidth,
-          windowHeight: baseHeight,
+          width: previewWidth,
+          height: previewHeight,
+          windowWidth: previewWidth,
+          windowHeight: previewHeight,
           onclone: (clonedDoc) => {
             const el = clonedDoc.querySelector(`#tutorial-clean-${i}`) as HTMLElement;
             if (el) {
@@ -614,7 +634,7 @@ export const AppTutorialStudio: React.FC = () => {
       const url = URL.createObjectURL(zipBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `bagtime-app-complete-tutorial-${format}-${quality.toUpperCase()}.zip`;
+      link.download = `bagtime-app-complete-tutorial-${format}-${feedRatio === '4:5' ? '4x5' : '1x1'}-${quality.toUpperCase()}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -631,7 +651,7 @@ export const AppTutorialStudio: React.FC = () => {
 
   // Caption generator for Instagram
   const generateCaption = () => {
-    return `📌 آموزش کامل و صفر تا صد کار با بَگ‌تایم (Bag Time) ⚡\n\nاگر کارهات همیشه نصفه می‌مونه، بین تسک‌ها سردرگمی یا نمیدونی چطور از روزت حداکثر بازدهی رو بگیری، این پست راهنمای قدم‌به‌قدم شماست.\n\nدر این آموزش یاد می‌گیرید:\n۱. نحوه ثبت سریع تسک‌ها و روتین‌های روزانه/هفتگی\n۲. دیلی‌پلنر ساعتی و تکنیک Time Blocking\n۳. اتاق‌های تمرکز ۲۵ دقیقه‌ای و ورود با کد QR\n۴. ثبت تیک قرمز و تحلیلگر هوشمند عادت‌ها\n۵. یادآورهای دوره‌ای با هشدار ۳۰ روزه\n۶. افزونه تب جدید مرورگر (New Tab)\n\n🌐 آدرس ورود رایگان به سامانه:\ntask.mohusyn.ir\nbagtime.negahm.ir\n\n💬 کلمه «بگ‌تایم» رو توی دایرکت بفرست تا لینک دسترسی آنی برات ارسال بشه!\n\n${customHandle} #بگ_تایم #مدیریت_زمان #بهره_وری #برنامه_ریزی #پلنر_ساعتی`;
+    return `📌 آموزش کامل و صفر تا صد کار با بَگ‌تایم (Bag Time) ⚡\n\nاگر کارهات همیشه نصفه می‌مونه، بین تسک‌ها سردرگمی یا نمیدونی چطور از روزت حداکثر بازدهی رو بگیری، این راهنمای قدم‌به‌قدم برای شماست.\n\nدر این آموزش یاد می‌گیرید:\n۱. نحوه ثبت سریع تسک‌ها و روتین‌های روزانه/ماهانه\n۲. دیلی‌پلنر ساعتی و تکنیک Time Blocking (بلوک‌بندی ۲۴ ساعته)\n۳. اتاق‌های تمرکز ۲۵ دقیقه‌ای و ورود بدون لاگین با کد QR\n۴. ثبت تیک قرمز و تحلیلگر هوشمند موانع بهره‌وری\n۵. یادآورهای دوره‌ای با شمارش معکوس ۳۰ روزه\n۶. اکستنشن تب جدید مرورگر (Chrome & Edge)\n\n🌐 آدرس ورود به سامانه بدون نیاز به فیلترشکن:\ntask.mohusyn.ir\nbagtime.negahm.ir\n\n💬 کلمه «آموزش» رو توی دایرکت بفرست تا لینک دسترسی مستقیم برات ارسال بشه!\n\n${customHandle} #بگ_تایم #مدیریت_زمان #بهره_وری #برنامه_ریزی #پلنر_ساعتی`;
   };
 
   const copyCaption = () => {
@@ -658,11 +678,11 @@ export const AppTutorialStudio: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            طراحی و خروجی پست اسلایدی و استوری‌های هایلایت آموزش نحوه استفاده از تمامی بخش‌های بَگ‌تایم همراه با موکاپ‌های زنده
+            طراحی و خروجی پست اسلایدی پرتره (۴:۵) و استوری‌های هایلایت آموزش نحوه استفاده از تمامی بخش‌های بَگ‌تایم همراه با موکاپ‌های زنده
           </p>
         </div>
 
-        {/* Format Switcher: Carousel Post vs Story Highlight */}
+        {/* Format Switcher: Carousel Post (4:5) vs Story Highlight (9:16) */}
         <div className="flex items-center rounded-2xl bg-slate-900 p-1 border border-slate-800">
           <button
             type="button"
@@ -677,7 +697,7 @@ export const AppTutorialStudio: React.FC = () => {
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>پست اسلایدی فید (۱:۱)</span>
+            <span>پست اسلایدی فید ({feedRatio === '4:5' ? '۴:۵ پرتره' : '۱:۱'})</span>
           </button>
 
           <button
@@ -698,24 +718,24 @@ export const AppTutorialStudio: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Workspace Layout: Canvas on Right/Center + Customizer on Left */}
+      {/* Main Workspace: Left = Live Canvas Preview, Right = Step Selector & Content Editor */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (5 cols): Live Controls & Manual Editor */}
-        <div className="lg:col-span-5 space-y-5">
-          {/* Slide Navigation Strip */}
-          <div className="p-4 rounded-3xl bg-[#0d1322] border border-slate-800 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-white flex items-center gap-1.5">
-                <Sliders className="w-4 h-4 text-emerald-400" />
+        {/* Right Column: Step Selector, Theme, Quality, Custom Handle & Inputs */}
+        <div className="lg:col-span-6 space-y-4 order-2 lg:order-2">
+          {/* Step Selector (1 to 8) */}
+          <div className="p-4 rounded-3xl bg-[#0d1322] border border-slate-800 space-y-2.5">
+            <div className="flex items-center justify-between text-xs font-bold">
+              <span className="text-slate-300 flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5 text-emerald-400" />
                 <span>انتخاب مرحله آموزش:</span>
               </span>
-              <span className="text-xs font-mono font-bold text-slate-400">
-                مرحله {currentSlideIndex + 1} از {slides.length}
+              <span className="text-emerald-400">
+                مرحله {toPersianDigits(currentSlideIndex + 1)} از {toPersianDigits(slides.length)}
               </span>
             </div>
 
-            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
-              {slides.map((_s, idx) => (
+            <div className="grid grid-cols-8 gap-1.5">
+              {slides.map((s, idx) => (
                 <button
                   key={idx}
                   type="button"
@@ -723,11 +743,12 @@ export const AppTutorialStudio: React.FC = () => {
                     sounds.playPop();
                     setCurrentSlideIndex(idx);
                   }}
-                  className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                  className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                     currentSlideIndex === idx
-                      ? 'bg-emerald-600 text-white border-emerald-400 shadow-md scale-105'
-                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                      ? 'bg-emerald-500 text-white shadow-md ring-2 ring-emerald-400/50'
+                      : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
                   }`}
+                  title={s.title}
                 >
                   {toPersianDigits(idx + 1)}
                 </button>
@@ -735,44 +756,78 @@ export const AppTutorialStudio: React.FC = () => {
             </div>
           </div>
 
-          {/* Theme & Quality Controls */}
-          <div className="p-4 rounded-3xl bg-[#0d1322] border border-slate-800 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-400">تم رنگ‌بندی:</label>
+          {/* Theme, Ratio & Quality Controls */}
+          <div className="p-4 rounded-3xl bg-[#0d1322] border border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Color Theme */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-300">تم رنگ‌بندی:</label>
+              <div className="grid grid-cols-4 gap-1">
+                {(['dark', 'indigo', 'emerald', 'purple'] as TutorialTheme[]).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      setTheme(t);
+                    }}
+                    className={`py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
+                      theme === t
+                        ? 'bg-white text-slate-900 shadow-md'
+                        : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    {t === 'dark' ? 'تاریک' : t === 'indigo' ? 'ایندیگو' : t === 'emerald' ? 'زمردی' : 'بنفش'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Ratio (for feed posts) or Quality */}
+            {format === 'feed_carousel' ? (
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300">نسبت ابعاد پست فید:</label>
                 <div className="grid grid-cols-2 gap-1">
-                  {[
-                    { id: 'dark', label: 'تاریک' },
-                    { id: 'indigo', label: 'ایندیگو' },
-                    { id: 'emerald', label: 'زمردی' },
-                    { id: 'purple', label: 'بنفش' },
-                  ].map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setTheme(t.id as any)}
-                      className={`py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        theme === t.id
-                          ? 'bg-white text-slate-900 font-black'
-                          : 'bg-slate-900 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      setFeedRatio('4:5');
+                    }}
+                    className={`py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
+                      feedRatio === '4:5'
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    ۴:۵ پرتره (استاندارد)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      setFeedRatio('1:1');
+                    }}
+                    className={`py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
+                      feedRatio === '1:1'
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    ۱:۱ مربعی
+                  </button>
                 </div>
               </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-400">کیفیت خروجی PNG:</label>
+            ) : (
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300">کیفیت خروجی PNG:</label>
                 <div className="grid grid-cols-2 gap-1">
                   <button
                     type="button"
                     onClick={() => setQuality('hd')}
-                    className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
                       quality === 'hd'
-                        ? 'bg-slate-200 text-slate-900 font-black'
-                        : 'bg-slate-900 text-slate-400 hover:text-white'
+                        ? 'bg-slate-700 text-white shadow-md'
+                        : 'bg-slate-900 text-slate-400 border border-slate-800'
                     }`}
                   >
                     ۱۰۸۰p رتینا
@@ -780,47 +835,43 @@ export const AppTutorialStudio: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setQuality('4k')}
-                    className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
                       quality === '4k'
-                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black'
-                        : 'bg-slate-900 text-slate-400 hover:text-white'
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                        : 'bg-slate-900 text-slate-400 border border-slate-800'
                     }`}
                   >
-                    4K اولترا
+                    ۴K اولترا
                   </button>
                 </div>
               </div>
-            </div>
-
-            {/* Custom Handle Input */}
-            <div className="space-y-1 pt-2 border-t border-slate-800">
-              <label className="text-[11px] font-bold text-slate-400">آیدی / پیج روی خروجی:</label>
-              <input
-                type="text"
-                value={customHandle}
-                onChange={(e) => {
-                  setCustomHandle(e.target.value);
-                  try {
-                    localStorage.setItem('bagtime_instagram_handle', e.target.value);
-                  } catch {}
-                }}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:border-emerald-500 font-mono"
-                dir="ltr"
-              />
-            </div>
+            )}
           </div>
 
-          {/* Manual Slide Content Editor */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-[#0d1322] border border-slate-800 space-y-3.5">
+          {/* Custom Handle */}
+          <div className="p-4 rounded-3xl bg-[#0d1322] border border-slate-800 space-y-1.5">
+            <label className="text-[11px] font-bold text-slate-300">آیدی / پیج روی خروجی:</label>
+            <input
+              type="text"
+              value={customHandle}
+              onChange={(e) => setCustomHandle(e.target.value)}
+              placeholder="@bagtime_app"
+              className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-emerald-400 font-mono outline-none focus:border-emerald-500 text-left"
+              dir="ltr"
+            />
+          </div>
+
+          {/* Live Content Editor for Active Slide */}
+          <div className="p-4 rounded-3xl bg-[#0d1322] border border-slate-800 space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <span className="text-xs font-black text-white flex items-center gap-1.5">
-                <Edit3 className="w-4 h-4 text-amber-400" />
-                <span>ویرایش محتوای اسلاید {currentSlideIndex + 1}:</span>
+                <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                <span>ویرایش محتوای اسلاید {toPersianDigits(currentSlideIndex + 1)}:</span>
               </span>
               <button
                 type="button"
                 onClick={resetSlides}
-                className="text-[10px] text-slate-400 hover:text-rose-400 flex items-center gap-1 cursor-pointer"
+                className="text-[10px] text-slate-400 hover:text-rose-400 flex items-center gap-1"
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>بازنشانی پیش‌فرض</span>
@@ -828,122 +879,90 @@ export const AppTutorialStudio: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-400">نشانگر بالا (Badge):</label>
+              <label className="text-[10.5px] font-bold text-slate-300">نشانگر بالا (Badge):</label>
               <input
                 type="text"
                 value={activeSlide.badge}
-                onChange={(e) => updateActiveSlide({ badge: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:border-emerald-500 font-bold"
+                onChange={(e) => updateSlideField('badge', e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-emerald-500"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-400">عنوان اصلی اسلاید:</label>
+              <label className="text-[10.5px] font-bold text-slate-300">عنوان اصلی اسلاید:</label>
               <input
                 type="text"
                 value={activeSlide.title}
-                onChange={(e) => updateActiveSlide({ title: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:border-emerald-500 font-black"
+                onChange={(e) => updateSlideField('title', e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white font-bold outline-none focus:border-emerald-500"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-400">زیرعنوان توضیحی:</label>
+              <label className="text-[10.5px] font-bold text-slate-300">زیرعنوان توضیحی:</label>
               <input
                 type="text"
                 value={activeSlide.subtitle}
-                onChange={(e) => updateActiveSlide({ subtitle: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:border-emerald-500 font-normal"
+                onChange={(e) => updateSlideField('subtitle', e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-300 outline-none focus:border-emerald-500"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-400">نکات و گام‌های اجرایی (هر سطر یک نکته):</label>
+              <label className="text-[10.5px] font-bold text-slate-300">نکات و گام‌های اجرایی (هر سطر یک نکته):</label>
               <textarea
-                rows={3}
+                rows={4}
                 value={activeSlide.bullets.join('\n')}
-                onChange={(e) => updateActiveSlide({ bullets: e.target.value.split('\n') })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:border-emerald-500 leading-relaxed font-bold"
+                onChange={(e) => updateSlideField('bullets', e.target.value.split('\n'))}
+                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 outline-none focus:border-emerald-500 leading-relaxed"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-400">کادر نکته طلایی پایین:</label>
+              <label className="text-[10.5px] font-bold text-slate-300">کادر نکته طلایی پایین:</label>
               <input
                 type="text"
                 value={activeSlide.highlightTip || ''}
-                onChange={(e) => updateActiveSlide({ highlightTip: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:border-emerald-500 font-bold"
+                onChange={(e) => updateSlideField('highlightTip', e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-amber-300 outline-none focus:border-emerald-500"
               />
             </div>
           </div>
 
-          {/* Caption Generator Box */}
-          <div className="p-4 rounded-3xl bg-[#0d1322] border border-slate-800 space-y-2.5">
+          {/* Instagram Caption Box */}
+          <div className="p-4 rounded-3xl bg-[#0d1322] border border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-white flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-indigo-400" />
-                <span>کپشن آماده انتشار در اینستاگرام:</span>
+                <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                <span>کپشن آماده اینستاگرام:</span>
               </span>
               <button
                 type="button"
                 onClick={copyCaption}
-                className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
               >
                 {copiedCaption ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                <span>{copiedCaption ? 'کپی شد!' : 'کپی کپشن'}</span>
+                <span>{copiedCaption ? 'کپی شد' : 'کپی متن کامل'}</span>
               </button>
             </div>
-            <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+            <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-[10.5px] text-slate-300 leading-relaxed font-sans max-h-28 overflow-y-auto whitespace-pre-wrap select-all">
               {generateCaption()}
-            </p>
+            </div>
           </div>
         </div>
 
-        {/* Right Column (7 cols): Canvas Live Preview & Export Action Bar */}
-        <div className="lg:col-span-7 flex flex-col items-center space-y-4">
-          {/* Top Actions: Prev / Next / Export Status */}
-          <div className="w-full flex items-center justify-between bg-[#0d1322] border border-slate-800 p-3 rounded-2xl flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setCurrentSlideIndex((prev) => Math.max(0, prev - 1));
-                }}
-                disabled={currentSlideIndex === 0}
-                className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 disabled:opacity-30 cursor-pointer"
-                title="اسلاید قبل"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-
-              <span className="text-xs font-black text-white px-2">
-                اسلاید {toPersianDigits(currentSlideIndex + 1)} از {toPersianDigits(slides.length)}
-              </span>
-
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setCurrentSlideIndex((prev) => Math.min(slides.length - 1, prev + 1));
-                }}
-                disabled={currentSlideIndex === slides.length - 1}
-                className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 disabled:opacity-30 cursor-pointer"
-                title="اسلاید بعد"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            </div>
-
+        {/* Left Column: Live Canvas Preview & Quick Export */}
+        <div className="lg:col-span-6 flex flex-col items-center space-y-4 order-1 lg:order-1">
+          {/* Action Buttons */}
+          <div className="w-full flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleExportSinglePNG}
                 disabled={isExporting}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all flex items-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
               >
-                <Download className="w-3.5 h-3.5 text-emerald-400" />
+                <Download className="w-4 h-4" />
                 <span>دانلود همین اسلاید ({quality.toUpperCase()})</span>
               </button>
 
@@ -951,28 +970,51 @@ export const AppTutorialStudio: React.FC = () => {
                 type="button"
                 onClick={handleExportAllZip}
                 disabled={isExporting}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
+                className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-700 hover:from-teal-500 hover:to-emerald-600 text-white font-black text-xs transition-all flex items-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
               >
-                <Download className="w-3.5 h-3.5" />
+                <Download className="w-4 h-4" />
                 <span>دانلود زیپ کل پکیج آموزش ({quality.toUpperCase()})</span>
+              </button>
+            </div>
+
+            {/* Slide Navigation Buttons */}
+            <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-2xl border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setCurrentSlideIndex((prev) => Math.max(0, prev - 1))}
+                disabled={currentSlideIndex === 0}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-white disabled:opacity-30 cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-bold px-2 text-slate-300">
+                اسلاید {toPersianDigits(currentSlideIndex + 1)} از {toPersianDigits(slides.length)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentSlideIndex((prev) => Math.min(slides.length - 1, prev + 1))}
+                disabled={currentSlideIndex === slides.length - 1}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-white disabled:opacity-30 cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
               </button>
             </div>
           </div>
 
+          {/* Export Status Indicator */}
           {isExporting && (
-            <div className="w-full p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold text-center animate-pulse">
+            <div className="w-full p-2.5 rounded-2xl bg-emerald-950/80 border border-emerald-700 text-emerald-200 text-xs font-bold text-center animate-pulse">
               {exportProgress}
             </div>
           )}
 
           {/* Live Canvas Preview Frame */}
-          <div className="w-full flex items-center justify-center p-4 bg-slate-950/60 rounded-3xl border border-slate-800/80 shadow-2xl overflow-hidden min-h-[440px]">
+          <div className="w-full flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 rounded-3xl border border-slate-800/80 shadow-2xl overflow-hidden min-h-[480px]">
             <div
               ref={previewRef}
               style={{
-                width: format === 'story_highlight' ? '360px' : '380px',
-                height: format === 'story_highlight' ? '640px' : '380px',
-                aspectRatio: format === 'story_highlight' ? '9 / 16' : '1 / 1',
+                width: `${previewWidth}px`,
+                height: `${previewHeight}px`,
               }}
               className="rounded-3xl shadow-2xl overflow-hidden border border-slate-700/80 transition-all flex-shrink-0"
             >
@@ -989,7 +1031,7 @@ export const AppTutorialStudio: React.FC = () => {
           position: 'fixed',
           left: '-9999px',
           top: '0',
-          width: format === 'story_highlight' ? '360px' : '380px',
+          width: `${previewWidth}px`,
           pointerEvents: 'none',
         }}
       >
@@ -998,8 +1040,8 @@ export const AppTutorialStudio: React.FC = () => {
             key={idx}
             id={`tutorial-clean-${idx}`}
             style={{
-              width: format === 'story_highlight' ? '360px' : '380px',
-              height: format === 'story_highlight' ? '640px' : '380px',
+              width: `${previewWidth}px`,
+              height: `${previewHeight}px`,
               overflow: 'hidden',
             }}
           >
