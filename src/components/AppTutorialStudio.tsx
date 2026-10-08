@@ -13,9 +13,15 @@ import {
   Check,
   Edit3,
   Repeat,
-  Bell,
   FileText,
   RotateCcw,
+  ShieldCheck,
+  CheckCircle2,
+  Clock,
+  QrCode,
+  Flame,
+  Globe,
+  Share2,
 } from 'lucide-react';
 import { TaskMasterHexagon } from './TaskMasterLogo';
 import { toPersianDigits } from '../utils/persianDate';
@@ -32,128 +38,128 @@ export interface TutorialSlideData {
   subtitle: string;
   bullets: string[];
   highlightTip?: string;
-  mockupType: 'welcome' | 'routine' | 'planner' | 'focus' | 'habits' | 'reminders' | 'extension' | 'cta';
+  mockupType: 'auth' | 'pwa' | 'tasks' | 'routine' | 'planner' | 'focus' | 'habits' | 'extension';
 }
 
 const DEFAULT_TUTORIAL_SLIDES: TutorialSlideData[] = [
   {
     stepNumber: 1,
-    badge: 'معرفی جامع • شروع کار',
-    title: 'چطور با بَگ‌تایم روزت رو نجات بدی؟ ⚡',
-    subtitle: 'راهنمای گام‌به‌گام و صفر تا صد استفاده از سامانه مدیریت زمان',
+    badge: 'گام اول • احراز هویت و ورود امن',
+    title: 'احراز هویت سریع با شماره تماس یا بات بله 📲',
+    subtitle: 'ورود آسان و امن بدون نیاز به حفظ رمزهای پیچیده و بدون فیلترشکن',
     bullets: [
-      'پایان بلاتکلیفی، فراموشی کارهای مهم و سردرگمی روزانه',
-      'تلفیق هوشمند دیلی‌پلنر، زمان‌بندی ساعتی و تایمر تمرکز عمیق',
-      'دسترسی آنی و سریع در task.mohusyn.ir و bagtime.negahm.ir',
-      'پشتیبانی کامل از موبایل، تبلت و کامپیوتر بدون فیلتر',
+      'ورود مستقیم با شماره تلفن همراه معتبر ایران (۰۹...)',
+      'ورود فوق‌سریع و خودکار از طریق ربات پیام‌رسان بله با یک لمس',
+      'امنیت ۱۰۰٪ و محرمانگی شماره تماس کاربران در سامانه',
+      'دسترسی هم‌زمان از task.mohusyn.ir و bagtime.negahm.ir',
     ],
-    highlightTip: '💡 اسلایدها رو ورق بزن تا در ۳ دقیقه به کل سیستم مسلط بشی!',
-    mockupType: 'welcome',
+    highlightTip: '💡 با لمس دکمه «ورود با بله»، بدون معطلی کد پیامک مستقیم وارد حساب میشی!',
+    mockupType: 'auth',
   },
   {
     stepNumber: 2,
-    badge: 'گام اول • ثبت تسک و روتین',
-    title: 'یک‌بار بنویس، برای تمام ماه ثبت کن! 🔁',
-    subtitle: 'سیستم ثبت هوشمند تسک‌ها و روتین‌های روزانه خودکار',
+    badge: 'گام دوم • نصب PWA و تنظیمات',
+    title: 'نصب فوری روی گوشی و تنظیم تقویم دلخواه 📱',
+    subtitle: 'تبدیل وب‌سایت به اپلیکیشن بومی با یک لمس (Add to Home Screen)',
     bullets: [
-      'با دکمه سبز «افزودن کار جدید» تسک‌های روزت رو ثبت کن',
-      'گزینه «تکرار به عنوان روتین» رو بزن تا خودکار برای تمام ماه ثبت بشه',
-      'دیگه نیاز نیست کارهای تکراری روزانه رو هرروز دستی وارد کنی!',
-      'امکان تعیین اولویت، دسته‌بندی و چک‌لیست زیرکارها',
+      'نصب آنی روی آیفون (سافاری) و اندروید (کروم) بدون نیاز به اپ‌استور',
+      'قابلیت سوئیچ یکپارچه بین تقویم شمسی (جلالی) و میلادی (گریگوری)',
+      'تم دارک اولد (OLED Dark) برای راحتی چشم در کار شبانه',
+      'کارکرد پیوسته و هماهنگ‌سازی ابری اطلاعات در تمام دستگاه‌ها',
     ],
-    highlightTip: '⚡ تسک‌های روتین با نشانگر بنفش 🔁 روتین در تقویم مشخص میشن.',
-    mockupType: 'routine',
+    highlightTip: '📲 روی دکمه Share در آیفون یا ۳نقطه اندروید بزن و Add to Home Screen رو انتخاب کن.',
+    mockupType: 'pwa',
   },
   {
     stepNumber: 3,
-    badge: 'گام دوم • پلنر ساعتی',
-    title: 'بلوک‌های زمانی ساعت به ساعت (Time Blocking) 🕒',
-    subtitle: 'تکنیک برنامه‌ریزی افراد فوق‌موفق روی گانت ۲۴ ساعته',
+    badge: 'گام سوم • مدیریت تسک‌ها',
+    title: 'ثبت کارها، چک‌لیست و اولویت‌بندی هوشمند ✍️',
+    subtitle: 'ذهنت رو از کارهای انباشته‌شده خالی و روی کارهای کلیدی متمرکز کن',
     bullets: [
-      'برای کارهات ساعت مشخص تعیین کن تا روی خط زمانی روز بچینن',
-      'خط قرمز زنده «هم‌اکنون» دقیقا بهت نشون میده الان باید مشغول چی باشی',
-      'جلوگیری ۱۰۰٪ از پرش ذهن بین کارها و هدر رفتن ساعات مفید روز',
-      'قابلیت شیفت و هماهنگی کارها متناسب با انرژی روزانه',
+      'با دکمه سبز «افزودن کار جدید» برنامه‌های روزت رو بنویس',
+      'دسته‌بندی موضوعی کارها (کاری، درسی، مالی، شخصی و روتین)',
+      'افزودن چک‌لیست زیرکارها برای پروژه‌های چندمرحله‌ای',
+      'تعیین سطح اولویت فوری/مهم (ماتریس موفقیت آیزنهاور)',
     ],
-    highlightTip: '🎯 وقتی بدونی الان باید چی کار کنی، اراده‌ت تلف نمیشه!',
-    mockupType: 'planner',
+    highlightTip: '🎯 تسک‌های بزرگ رو به چند زیرکار کوچیک بشکن تا شروعش برات آسون بشه.',
+    mockupType: 'tasks',
   },
   {
     stepNumber: 4,
-    badge: 'گام سوم • تمرکز و اتاق زنده',
-    title: 'تمرکز عمیق ۲۵ دقیقه‌ای و ورود با کد QR ⏱️',
-    subtitle: 'تکنیک کار عمیق پومودورو بدون حواس‌پرتی گوشی و شبکه‌های اجتماعی',
+    badge: 'گام چهارم • روتین‌های خودکار',
+    title: 'یک‌بار بنویس، برای کل ۳۰ روز ماه ثبت کن! 🔁',
+    subtitle: 'سیستم ثبت هوشمند روتین‌ها بدون نیاز به تایپ تکراری هر روزه',
     bullets: [
-      'تایمر ۲۵ دقیقه تمرکز + ۵ دقیقه استراحت رو استارت بزن',
-      'دقایق تمرکز شما خودکار روی تسک و گزارش عملکرد ماهانه ذخیره میشه',
-      'امکان ایجاد «اتاق تمرکز زنده» با دوستان و همکاران',
-      'پیوستن فوق‌العاده سریع با اسکن کد QR بدون نیاز به نصب اپلیکیشن!',
+      'گزینه «تکرار به عنوان روتین» رو در فرم کار جدید فعال کن',
+      'انتخاب بازه تکرار: هر روز، روزهای کاری هفته یا تمام ماه (۳۰ روز)',
+      'نمایش متمایز با نشانگر بنفش 🔁 روتین روی کارت‌ها و تقویم',
+      'ثبت خودکار امتیاز استریک و پایبندی به عادات موفقیت',
     ],
-    highlightTip: '👥 وقتی در اتاق تمرکز با بقیه هستی، انگیزه و بازدهیت دوبرابر میشه.',
-    mockupType: 'focus',
+    highlightTip: '⚡ روتین‌های صبحگاهی و شبانگاهی پایه‌های موفقیت افراد فوق‌منظم هستن.',
+    mockupType: 'routine',
   },
   {
     stepNumber: 5,
-    badge: 'گام چهارم • تیک قرمز و تحلیلگر',
-    title: 'تیک قرمز و کشف علت عدم انجام کارها ❌',
-    subtitle: 'تحلیلگر هوشمند عادت‌ها و رفع چرایی کارهای نصفه مونده',
+    badge: 'گام پنجم • پلنر ساعتی',
+    title: 'بلوک‌های زمانی ساعت به ساعت (Time Blocking) 🕒',
+    subtitle: 'تکنیک برنامه‌ریزی افراد فوق‌موفق با نشانگر زنده «هم‌اکنون»',
     bullets: [
-      'اگر کاری انجام نشد، علت رو ثبت کن (خستگی، اتلاف وقت، تداخل...)',
-      'کارهای نصفه مونده با نشانگر متمایز «تیک قرمز» روی کارت مشخص میشن',
-      'هوش مصنوعی سامانه نمودار موانع اصلی موفقیتت رو رسم میکنه',
-      'تکنیک‌های رفع اهمال‌کاری متناسب با مشکل شما پیشنهاد داده میشه',
+      'برای کارهات ساعت شروع و پایان مشخص کن تا روی تایم‌لاین روز بشینن',
+      'نشانگر زنده قرمز «هم‌اکنون» دقیقاً مشخص می‌کنه الان باید روی چی باشی',
+      'جلوگیری ۱۰۰٪ از پرش ذهن، حواس‌پرتی و اتلاف ساعات طلایی روز',
+      'امکان شیفت و جابجایی راحت کارها متناسب با انرژی روزانه',
     ],
-    highlightTip: '🔍 با شناخت دلایل تنبلی، دفعه بعد جلوش رو می‌گیری.',
-    mockupType: 'habits',
+    highlightTip: '🕒 وقتی بدونی دقیقا الان باید روی چی وقت بذاری، استرس و بلاتکلیفی صفر میشه!',
+    mockupType: 'planner',
   },
   {
     stepNumber: 6,
-    badge: 'گام پنجم • یادآور ۳۰ روزه و تقویم',
-    title: 'یادآورهای دوره‌ای ۳۰ روزه و تقویم دوزبانه 🔔',
-    subtitle: 'فراموش نکردن قسط‌ها، چکاپ‌ها، جلسات ماهانه و پیگیری‌ها',
+    badge: 'گام ششم • تمرکز و اتاق زنده',
+    title: 'تمرکز عمیق ۲۵ دقیقه‌ای و ورود رفقا با کد QR ⏱️',
+    subtitle: 'تکنیک کار عمیق پومودورو بدون حواس‌پرتی گوشی و شبکه‌های اجتماعی',
     bullets: [
-      'یادآورهای ماهانه و دوره‌ای ۳۰ روزه با شمارش معکوس دقیق',
-      'قابلیت سوئیچ یکپارچه بین تقویم شمسی (جلالی) و میلادی (گریگوری)',
-      'نمایش وضعیت روزها، استریک و ثبات در پایبندی به برنامه‌ها',
-      'اطلاع‌رسانی بلادرنگ پیامکی و اعلان روی دستگاه',
+      'تایمر ۲۵ دقیقه تمرکز + ۵ دقیقه استراحت رو استارت بزن',
+      'امکان ساخت «اتاق تمرکز زنده» برای مطالعه و کار گروهی با همکاران',
+      'پیوستن فوق‌سریع دوستان تنها با اسکن کد QR بدون نیاز به لاگین!',
+      'پخش موزیک‌های آرامش‌بخش لوفای و ثبت دقایق تمرکز در گزارش ماهانه',
     ],
-    highlightTip: '📅 ذهن برای ایده‌پردازیه، نه نگه داشتن تاریخ‌ها!',
-    mockupType: 'reminders',
+    highlightTip: '👥 وقتی در اتاق تمرکز با بقیه هستی، تعهد جمعی مانع کار با گوشی میشه.',
+    mockupType: 'focus',
   },
   {
     stepNumber: 7,
-    badge: 'گام ششم • افزونه مرورگر',
-    title: 'اکستنشن تب جدید نیوتَب (Chrome & Firefox) 💻',
-    subtitle: 'برنامه‌هات با باز کردن هر تب جدید جلوی چشمته',
+    badge: 'گام هفتم • تیک قرمز و تحلیلگر',
+    title: 'کشف علت کارهای نصفه مونده با «تیک قرمز» ❌',
+    subtitle: 'تحلیلگر هوشمند عادت‌ها برای ریشه‌یابی خستگی، تنبلی و تداخل',
     bullets: [
-      'با نصب اکستنشن، هر تب مرورگر تبدیل به داشبورد اختصاصی بَگ‌تایم میشه',
-      'ساعت زنده، تسک‌های فوری امروز و وضعیت تمرکز بدون باز کردن سایت',
-      'جلوگیری از رفتن به یوتیوب و شبکه‌های اجتماعی هنگام کار با لپ‌تاپ',
-      'دانلود مستقیم با یک کلیک در پنل کاربری بَگ‌تایم',
+      'اگر کاری انجام نشد، به جای عذاب وجدان، علت رو دقیق ثبت کن',
+      'کارهای نصفه مونده با نشانگر متمایز «تیک قرمز» روی کارت مشخص میشن',
+      'تحلیلگر هوش مصنوعی نمودار موانع اصلی پیشرفتت رو برات رسم می‌کنه',
+      'ارائه راهکارهای شخصی‌سازی‌شده برای حل قطعی اهمال‌کاری',
     ],
-    highlightTip: '🖥️ تمرکزت روی سیستم و لپ‌تاپ همیشه حفظ می‌مونه.',
-    mockupType: 'extension',
+    highlightTip: '🔍 با شناخت دلایل ریشه‌ای شکست کارها، دفعه بعد جلوش رو می‌گیری.',
+    mockupType: 'habits',
   },
   {
     stepNumber: 8,
-    badge: 'گام آخر • شروع قدرتمند',
-    title: 'همین الان شروع کن و زندگیت رو سازماندهی کن! 🚀',
-    subtitle: 'ورود رایگان، بدون فیلترشکن و سازگار با همه دستگاه‌ها',
+    badge: 'گام هشتم • یادآور و اکستنشن',
+    title: 'یادآورهای ۳۰ روزه + افزونه تب جدید مرورگر 💻',
+    subtitle: 'تسلط کامل بر زمان؛ همین الان رایگان شروع کن و روزت رو نجات بده!',
     bullets: [
-      'ورود مستقیم با شماره موبایل و ربات بله',
-      'آدرس دائمی سرور: task.mohusyn.ir و bagtime.negahm.ir',
-      'قابل نصب به صورت اپلیکیشن PWA روی آیفون و اندروید',
-      'سیستم ابری با ذخیره لحظه‌ای و امنیت بالا',
+      'یادآورهای دوره‌ای ۳۰ روزه با شمارش معکوس برای اقساط و موعدها',
+      'اکستنشن تب جدید (Chrome & Firefox) برای نمایش تسک‌ها با باز شدن وب',
+      'ارتباط درون‌برنامه‌ای، پیام صوتی و چت مستقیم با همکاران و دوستان',
+      'ورود رایگان و فوری از دو آدرس: task.mohusyn.ir و bagtime.negahm.ir',
     ],
-    highlightTip: '✨ تصمیم امروزت، موفقیت ۶ ماه آینده‌ت رو می‌سازه!',
-    mockupType: 'cta',
+    highlightTip: '✨ تصمیم امروزت، موفقیت و آرامش ۶ ماه آینده‌ت رو می‌سازه!',
+    mockupType: 'extension',
   },
 ];
 
 export const AppTutorialStudio: React.FC = () => {
   const [slides, setSlides] = useState<TutorialSlideData[]>(() => {
     try {
-      const saved = localStorage.getItem('bagtime_tutorial_slides_v2');
+      const saved = localStorage.getItem('bagtime_tutorial_slides_v3');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -164,7 +170,7 @@ export const AppTutorialStudio: React.FC = () => {
 
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [format, setFormat] = useState<TutorialFormat>('feed_carousel');
-  const [feedRatio, setFeedRatio] = useState<FeedAspectRatio>('4:5'); // 4:5 is primary Instagram carousel standard!
+  const [feedRatio, setFeedRatio] = useState<FeedAspectRatio>('4:5'); // 4:5 is the primary Instagram carousel portrait standard!
   const [theme, setTheme] = useState<TutorialTheme>('dark');
   const [quality, setQuality] = useState<'hd' | '4k'>('hd');
   const [customHandle, setCustomHandle] = useState<string>('@bagtime_app');
@@ -185,17 +191,17 @@ export const AppTutorialStudio: React.FC = () => {
         [field]: val,
       };
       try {
-        localStorage.setItem('bagtime_tutorial_slides_v2', JSON.stringify(updated));
+        localStorage.setItem('bagtime_tutorial_slides_v3', JSON.stringify(updated));
       } catch {}
       return updated;
     });
   };
 
   const resetSlides = () => {
-    if (confirm('آیا مایل به بازنشانی اسلایدهای آموزش به متن‌های پیش‌فرض هستید؟')) {
+    if (confirm('آیا مایل به بازنشانی اسلایدهای آموزش کار با سامانه (از احراز هویت تا آخر) به متن‌های پیش‌فرض هستید؟')) {
       setSlides(DEFAULT_TUTORIAL_SLIDES);
       try {
-        localStorage.removeItem('bagtime_tutorial_slides_v2');
+        localStorage.removeItem('bagtime_tutorial_slides_v3');
       } catch {}
       sounds.playComplete();
     }
@@ -263,10 +269,11 @@ export const AppTutorialStudio: React.FC = () => {
 
   const themeStyles = getThemeStyles();
 
-  // Photorealistic UI Mockup Renderer based on tutorial step
+  // Photorealistic UI Mockup Renderer covering Auth all the way to the end
   const renderStepMockup = (type: TutorialSlideData['mockupType']) => {
     switch (type) {
-      case 'welcome':
+      case 'auth':
+        // 1. Authentic Phone & Bale Bot Authentication Mockup
         return (
           <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-2 text-right font-sans text-[10px]">
             <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
@@ -277,32 +284,124 @@ export const AppTutorialStudio: React.FC = () => {
               </div>
               <span className="text-slate-400 text-[9px] font-mono" dir="ltr">task.mohusyn.ir/login</span>
             </div>
-            <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-900/90 border border-slate-800">
-              <TaskMasterHexagon size={24} />
-              <div className="flex-1">
-                <div className="font-black text-white text-[11px]">سامانه مدیریت زمان بَگ‌تایم</div>
-                <div className="text-[8.5px] text-slate-400">ورود با شماره موبایل یا ربات بله</div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[9px]">
+                <span className="text-slate-300 font-bold">ورود به حساب کاربری:</span>
+                <span className="text-emerald-400 font-mono text-[8.5px]">🔒 تأیید دو مرحله‌ای</span>
               </div>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[8.5px] font-bold">
-                آنلاین
+
+              <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700/80 flex items-center justify-between text-slate-400 px-2.5">
+                <span className="font-mono text-slate-200">۰۹۱۲ · · · · · · ·</span>
+                <span className="text-[8.5px] text-slate-400">شماره موبایل</span>
+              </div>
+
+              {/* One-tap Bale Bot Login Button */}
+              <div className="p-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black flex items-center justify-between shadow-md cursor-pointer">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm">📲</span>
+                  <span className="text-[9.5px]">ورود آنی با ربات بله (بدون نیاز به رمز)</span>
+                </div>
+                <span className="text-[8px] bg-white/20 px-1.5 py-0.5 rounded-md">یک کلیک</span>
+              </div>
+
+              <div className="flex items-center justify-between text-[8px] text-slate-400 pt-0.5">
+                <span className="flex items-center gap-1 text-emerald-400">
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>رمزنگاری امن SSL سرور ایران</span>
+                </span>
+                <span>بدون فیلترشکن ⚡</span>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'pwa':
+        // 2. PWA Installation & Calendar/Theme Setup Mockup
+        return (
+          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-2 text-right font-sans text-[10px]">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
+              <span className="font-black text-white text-[9.5px] flex items-center gap-1">
+                <Share2 className="w-3 h-3 text-emerald-400" />
+                <span>نصب وب‌اپلیکیشن (PWA) روی گوشی</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[8px] font-bold">
+                آیفون و اندروید
               </span>
             </div>
+
+            <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TaskMasterHexagon size={26} />
+                <div>
+                  <div className="font-black text-white text-[10px]">افزودن به صفحه اصلی (Add to Home)</div>
+                  <div className="text-[8px] text-slate-400">اجرای تمام‌صفحه مانند اپ استور</div>
+                </div>
+              </div>
+              <span className="text-emerald-400 text-xs font-black">✓ نصب</span>
+            </div>
+
             <div className="grid grid-cols-2 gap-1.5 text-[8.5px] text-center font-bold">
-              <div className="p-1 rounded-lg bg-slate-800/90 border border-slate-700/80 text-emerald-300">✓ تم دارک و لایت</div>
-              <div className="p-1 rounded-lg bg-slate-800/90 border border-slate-700/80 text-purple-300">✓ تقویم شمسی و میلادی</div>
+              <div className="p-1 rounded-lg bg-slate-800/90 border border-slate-700/80 text-emerald-300">
+                🌙 تم دارک اختصاصی
+              </div>
+              <div className="p-1 rounded-lg bg-slate-800/90 border border-slate-700/80 text-purple-300">
+                📅 تقویم شمسی و میلادی
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'tasks':
+        // 3. Task Creation, Subtasks & Priority Mockup
+        return (
+          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+              <span className="font-black text-emerald-400 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                <span>ثبت کارها و چک‌لیست زیرکارها</span>
+              </span>
+              <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[7.5px] font-bold">
+                اولویت بالا 🔴
+              </span>
+            </div>
+
+            <div className="p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-black text-white text-[9.5px]">تکمیل پیشنهاد طرح پروژه جدید</span>
+                <span className="text-[8px] text-slate-400 font-mono">⏱️ ۱.۵ ساعت</span>
+              </div>
+
+              {/* Subtasks checklist */}
+              <div className="space-y-0.5 pt-0.5 border-t border-slate-800/80 text-[8.5px]">
+                <div className="flex items-center gap-1.5 text-emerald-400">
+                  <span className="w-3 h-3 rounded bg-emerald-600 text-white flex items-center justify-center text-[7.5px]">✓</span>
+                  <span className="line-through text-slate-400">تحلیل بازار و رقبا</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-slate-300">
+                  <span className="w-3 h-3 rounded border border-slate-600 bg-slate-800" />
+                  <span>طراحی فایل ارائه برای جلسه</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-[8px] text-slate-400">
+              <span className="text-emerald-400 font-bold">دسته‌بندی: شغلی و کارفرما</span>
+              <span>پیشرفت: ۵۰٪</span>
             </div>
           </div>
         );
 
       case 'routine':
+        // 4. Monthly Routines Mockup
         return (
           <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
             <div className="flex items-center justify-between pb-1 border-b border-slate-800">
               <span className="font-black text-purple-400 flex items-center gap-1">
                 <Repeat className="w-3 h-3 text-purple-400" />
-                <span>روتین‌های تکرارشونده ماهانه</span>
+                <span>روتین‌های تکرارشونده ۳۰ روزه</span>
               </span>
-              <span className="text-[8px] text-slate-400">تکرار ۳۰ روزه</span>
+              <span className="text-[8px] text-slate-400">خودکار برای تمام ماه</span>
             </div>
             <div className="space-y-1">
               <div className="p-1.5 rounded-xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-between">
@@ -317,26 +416,30 @@ export const AppTutorialStudio: React.FC = () => {
                   <span className="w-3.5 h-3.5 rounded-md bg-emerald-600 text-white flex items-center justify-center text-[8px] font-black">✓</span>
                   <span className="font-bold text-slate-200 text-[9px]">مطالعه ۳۰ صفحه کتاب تخصصی</span>
                 </div>
-                <span className="text-[8px] text-slate-400 font-mono">۲۱:۳۰</span>
+                <div className="flex items-center gap-1 text-[8px] text-amber-400">
+                  <Flame className="w-3 h-3 fill-amber-400" />
+                  <span>۱۴ روز استریک</span>
+                </div>
               </div>
             </div>
           </div>
         );
 
       case 'planner':
+        // 5. Hourly Planner with "Now" Badge Mockup
         return (
           <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
             <div className="flex items-center justify-between pb-1 border-b border-slate-800">
               <span className="font-black text-emerald-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>دیلی‌پلنر ساعتی بَگ‌تایم</span>
+                <Clock className="w-3 h-3 text-emerald-400" />
+                <span>دیلی‌پلنر ساعتی (Time Blocking)</span>
               </span>
               <span className="text-slate-400 text-[8px]">چهارشنبه • امروز</span>
             </div>
             <div className="space-y-1 text-[9px]">
               <div className="p-1.5 rounded-xl bg-gradient-to-r from-emerald-950/80 to-slate-900 border-r-4 border-emerald-500 border border-emerald-800/60 shadow-lg flex items-center justify-between">
                 <div>
-                  <div className="font-black text-white text-[9.5px]">توسعه پروژه و کدنویسی عمیق</div>
+                  <div className="font-black text-white text-[9.5px]">توسعه کدها و توسعه فیچر اصلی</div>
                   <div className="text-[7.5px] text-emerald-300">⏱️ ۱۰:۰۰ تا ۱۱:۳۰</div>
                 </div>
                 <span className="px-1.5 py-0.5 rounded bg-rose-500 text-white text-[7.5px] font-black animate-pulse">
@@ -344,7 +447,7 @@ export const AppTutorialStudio: React.FC = () => {
                 </span>
               </div>
               <div className="p-1.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between text-slate-400">
-                <span>جلسه با کارفرما و ارائه گزارش</span>
+                <span>جلسه هماهنگی تیم و ارائه گزارش</span>
                 <span className="text-[8px] font-mono">۱۲:۰۰</span>
               </div>
             </div>
@@ -352,10 +455,13 @@ export const AppTutorialStudio: React.FC = () => {
         );
 
       case 'focus':
+        // 6. Focus Room & QR Join Mockup
         return (
           <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
             <div className="flex items-center justify-between pb-1 border-b border-slate-800">
-              <span className="font-black text-amber-400">اتاق تمرکز زنده (دیپ ورک)</span>
+              <span className="font-black text-amber-400 flex items-center gap-1">
+                <span>اتاق تمرکز زنده (دیپ ورک)</span>
+              </span>
               <span className="text-emerald-400 text-[8px] font-bold">🟢 ۴ نفر آنلاین</span>
             </div>
             <div className="p-2 rounded-xl bg-slate-900/90 border border-amber-500/30 flex items-center justify-between">
@@ -363,15 +469,19 @@ export const AppTutorialStudio: React.FC = () => {
                 <div className="text-lg font-black font-mono text-white tracking-wider">۲۴:۵۲</div>
                 <div className="text-[8px] text-amber-300 font-bold">پومودورو ۲۵ دقیقه‌ای</div>
               </div>
-              <div className="text-left bg-slate-800 px-2 py-1 rounded-lg border border-slate-700">
-                <div className="text-[7.5px] text-emerald-400 font-bold">📱 ورود با اسکن QR</div>
-                <div className="text-[7px] text-slate-400">اتصال آنی بدون لاگین</div>
+              <div className="text-left bg-slate-800 px-2 py-1 rounded-lg border border-slate-700 flex items-center gap-1.5">
+                <QrCode className="w-4 h-4 text-emerald-400" />
+                <div>
+                  <div className="text-[7.5px] text-emerald-400 font-bold">ورود سریع با QR</div>
+                  <div className="text-[7px] text-slate-400">بدون نیاز به لاگین</div>
+                </div>
               </div>
             </div>
           </div>
         );
 
       case 'habits':
+        // 7. Red Tick Incomplete Analyzer Mockup
         return (
           <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
             <div className="flex items-center justify-between pb-1 border-b border-slate-800">
@@ -392,58 +502,27 @@ export const AppTutorialStudio: React.FC = () => {
           </div>
         );
 
-      case 'reminders':
-        return (
-          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
-            <div className="flex items-center justify-between pb-1 border-b border-slate-800">
-              <span className="font-black text-amber-300 flex items-center gap-1">
-                <Bell className="w-3 h-3 text-amber-400" />
-                <span>یادآورهای دوره‌ای ۳۰ روزه</span>
-              </span>
-              <span className="text-slate-400 text-[8px]">هوشمند</span>
-            </div>
-            <div className="p-1.5 rounded-xl bg-amber-950/30 border border-amber-500/30 flex items-center justify-between">
-              <div>
-                <div className="font-bold text-white text-[9px]">پرداخت اجاره دفتر و تمدید هاست</div>
-                <div className="text-[7.5px] text-amber-300">🔔 هشدار ۳ روز قبل از موعد</div>
-              </div>
-              <span className="px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 text-[8px] font-black">
-                ۲ روز مانده
-              </span>
-            </div>
-          </div>
-        );
-
       case 'extension':
+      default:
+        // 8. Chrome Extension + Reminders + Direct Start Mockup
         return (
           <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
             <div className="flex items-center justify-between pb-1 border-b border-slate-800">
-              <span className="font-black text-emerald-400">اکستنشن تب جدید مرورگر (New Tab)</span>
+              <span className="font-black text-emerald-400 flex items-center gap-1">
+                <Globe className="w-3 h-3 text-emerald-400" />
+                <span>اکستنشن تب جدید مرورگر + شروع</span>
+              </span>
               <span className="text-slate-400 text-[8px]">Chrome & Edge</span>
             </div>
             <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-between text-[8px] text-slate-400 px-2">
-              <span>در هر تب جدید: ساعت زنده + تسک‌های فوری + تایمر</span>
+              <span>در هر تب جدید: ساعت زنده + تسک‌های فوری امروز</span>
               <span>⚡</span>
             </div>
-            <div className="grid grid-cols-3 gap-1 text-[8px] text-center font-bold">
-              <div className="p-1 rounded-lg bg-slate-800 text-slate-300">📌 بدون فیلتر</div>
-              <div className="p-1 rounded-lg bg-slate-800 text-emerald-300">⚡ سبک و سریع</div>
-              <div className="p-1 rounded-lg bg-slate-800 text-slate-300">🔄 همگام با سایت</div>
+            <div className="p-1.5 rounded-xl bg-emerald-600 text-white font-black text-center text-[10px] shadow-sm flex items-center justify-center gap-1.5">
+              <span>task.mohusyn.ir</span>
+              <span>•</span>
+              <span>bagtime.negahm.ir</span>
             </div>
-          </div>
-        );
-
-      case 'cta':
-      default:
-        return (
-          <div className="w-full rounded-2xl bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 border border-emerald-500/40 p-2.5 sm:p-3 space-y-1.5 text-center text-[10px]">
-            <TaskMasterHexagon size={26} className="mx-auto" />
-            <div className="font-black text-white text-xs">سامانه مدیریت زمان بَگ‌تایم</div>
-            <div className="text-slate-300 text-[9px]">همین حالا رایگان شروع کن:</div>
-            <div className="p-1.5 rounded-xl bg-emerald-600 text-white font-black text-[11px] shadow-sm">
-              task.mohusyn.ir ⚡
-            </div>
-            <div className="text-[8.5px] text-slate-400 font-mono" dir="ltr">{customHandle}</div>
           </div>
         );
     }
@@ -535,7 +614,6 @@ export const AppTutorialStudio: React.FC = () => {
   const previewWidth = isStory ? 340 : 360;
   const previewHeight = isStory ? 604 : feedRatio === '4:5' ? 450 : 360; // 4:5 ratio: 360 x 450 (standard Instagram portrait)
   const targetWidth = quality === '4k' ? 2160 : 1080;
-
 
   // Export current slide as PNG
   const handleExportSinglePNG = async () => {
@@ -651,7 +729,7 @@ export const AppTutorialStudio: React.FC = () => {
 
   // Caption generator for Instagram
   const generateCaption = () => {
-    return `📌 آموزش کامل و صفر تا صد کار با بَگ‌تایم (Bag Time) ⚡\n\nاگر کارهات همیشه نصفه می‌مونه، بین تسک‌ها سردرگمی یا نمیدونی چطور از روزت حداکثر بازدهی رو بگیری، این راهنمای قدم‌به‌قدم برای شماست.\n\nدر این آموزش یاد می‌گیرید:\n۱. نحوه ثبت سریع تسک‌ها و روتین‌های روزانه/ماهانه\n۲. دیلی‌پلنر ساعتی و تکنیک Time Blocking (بلوک‌بندی ۲۴ ساعته)\n۳. اتاق‌های تمرکز ۲۵ دقیقه‌ای و ورود بدون لاگین با کد QR\n۴. ثبت تیک قرمز و تحلیلگر هوشمند موانع بهره‌وری\n۵. یادآورهای دوره‌ای با شمارش معکوس ۳۰ روزه\n۶. اکستنشن تب جدید مرورگر (Chrome & Edge)\n\n🌐 آدرس ورود به سامانه بدون نیاز به فیلترشکن:\ntask.mohusyn.ir\nbagtime.negahm.ir\n\n💬 کلمه «آموزش» رو توی دایرکت بفرست تا لینک دسترسی مستقیم برات ارسال بشه!\n\n${customHandle} #بگ_تایم #مدیریت_زمان #بهره_وری #برنامه_ریزی #پلنر_ساعتی`;
+    return `📌 آموزش کامل و صفر تا صد کار با بَگ‌تایم (از ثبت‌نام و احراز هویت تا تسلط کامل) ⚡\n\nاگر کارهات همیشه نصفه می‌مونه، بین تسک‌ها سردرگمی یا نمیدونی چطور از روزت حداکثر بازدهی رو بگیری، این راهنمای قدم‌به‌قدم برای شماست.\n\nدر این آموزش یاد می‌گیرید:\n۱. ورود فوق‌سریع و امن با شماره موبایل و بات پیام‌رسان بله\n۲. نصب وب‌اپلیکیشن (PWA) روی آیفون و اندروید بدون فیلتر\n۳. مدیریت هوشمند کارها، چک‌لیست زیرتسک‌ها و اولویت‌بندی\n۴. سیستم خودکار روتین‌های ۳۰ روزه با نشانگر بنفش 🔁\n۵. دیلی‌پلنر ساعتی و تکنیک Time Blocking (بلوک‌بندی با خط قرمز هم‌اکنون)\n۶. اتاق تمرکز عمیق ۲۵ دقیقه‌ای و ورود رفقا با کد QR\n۷. ثبت تیک قرمز و تحلیلگر هوش مصنوعی علت عدم انجام کارها\n۸. اکستنشن تب جدید مرورگر (Chrome & Edge) و یادآورها\n\n🌐 آدرس ورود به سامانه بدون نیاز به فیلترشکن:\ntask.mohusyn.ir\nbagtime.negahm.ir\n\n💬 کلمه «آموزش» رو توی دایرکت بفرست تا لینک دسترسی مستقیم برات ارسال بشه!\n\n${customHandle} #بگ_تایم #مدیریت_زمان #بهره_وری #برنامه_ریزی #پلنر_ساعتی`;
   };
 
   const copyCaption = () => {
@@ -671,7 +749,7 @@ export const AppTutorialStudio: React.FC = () => {
               <Sparkles className="w-4 h-4" />
             </span>
             <h2 className="text-base sm:text-lg font-black text-white">
-              استودیو مستقل آموزش کامل کار با سامانه (Onboarding & App Tutorial Studio)
+              استودیو مستقل آموزش کامل کار با سامانه (از احراز هویت تا انتها)
             </h2>
             <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
               آموزش ۰ تا ۱۰۰
@@ -727,9 +805,9 @@ export const AppTutorialStudio: React.FC = () => {
             <div className="flex items-center justify-between text-xs font-bold">
               <span className="text-slate-300 flex items-center gap-1.5">
                 <Sliders className="w-3.5 h-3.5 text-emerald-400" />
-                <span>انتخاب مرحله آموزش:</span>
+                <span>انتخاب مرحله آموزش (از احراز هویت تا انتها):</span>
               </span>
-              <span className="text-emerald-400">
+              <span className="text-emerald-400 font-bold">
                 مرحله {toPersianDigits(currentSlideIndex + 1)} از {toPersianDigits(slides.length)}
               </span>
             </div>
@@ -871,7 +949,7 @@ export const AppTutorialStudio: React.FC = () => {
               <button
                 type="button"
                 onClick={resetSlides}
-                className="text-[10px] text-slate-400 hover:text-rose-400 flex items-center gap-1"
+                className="text-[10px] text-slate-400 hover:text-rose-400 flex items-center gap-1 cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>بازنشانی پیش‌فرض</span>
