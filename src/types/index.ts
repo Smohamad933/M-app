@@ -1,3 +1,16 @@
+export interface ReminderItem {
+  id: string;
+  userId: string;
+  title: string;
+  time: string; // HH:mm (e.g. "09:00")
+  duration: 'month' | 'week' | 'always' | 'once'; // e.g. 'month' = daily for 1 month
+  startDate: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
+  active: boolean;
+  lastNotifiedDate?: string; // YYYY-MM-DD
+  createdAt: string;
+}
+
 export type Priority = 'high' | 'medium' | 'low';
 export type UserRole = 'admin' | 'user';
 
@@ -102,6 +115,8 @@ export interface Task {
   workLogs?: TaskWorkLog[];
   reminder?: boolean;
   repeat?: 'none' | 'daily' | 'weekly';
+  isRoutine?: boolean;
+  routineType?: 'none' | 'week' | 'month' | 'workdays';
   createdAt: string;
 }
 

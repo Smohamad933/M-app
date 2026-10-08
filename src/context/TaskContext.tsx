@@ -9,6 +9,7 @@ import type {
   User,
   TaskViewMode,
   TaskCreateInput,
+  ReminderItem,
   FocusRoom,
   TeamProject,
   CareerGoal,
@@ -165,8 +166,16 @@ interface TaskContextType {
   setActiveFocusTaskId: (id: string | null) => void;
   setIsShareModalOpen: (open: boolean) => void;
   
+  // Reminders management
+  reminders: ReminderItem[];
+  addReminder: (input: { title: string; time: string; duration: 'month' | 'week' | 'always' | 'once'; description?: string }) => Promise<void>;
+  toggleReminder: (id: string) => void;
+  deleteReminder: (id: string) => void;
+  isRemindersModalOpen: boolean;
+  setIsRemindersModalOpen: (open: boolean) => void;
+
   // Task management
-  addTask: (task: TaskCreateInput) => Promise<Task>;
+  addTask: (task: TaskCreateInput, routineType?: 'none' | 'week' | 'month' | 'workdays') => Promise<Task>;
   updateTask: (task: Task) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   toggleTaskComplete: (id: string) => Promise<void>;
@@ -554,6 +563,90 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const [selectedDate, setSelectedDate] = useState<string>(getTodayISO);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [isRemindersModalOpen, setIsRemindersModalOpen] = useState(false);
+  const [reminders, setReminders] = useState<ReminderItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('bagtime_reminders');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      {
+        id: 'rem_default_1',
+        userId: 'usr_admin_mohusyn',
+        title: 'نوشیدن آب و پیاده‌روی کوتاه 💧',
+        time: '11:00',
+        duration: 'month',
+        startDate: new Date().toISOString().slice(0, 10),
+        active: true,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'rem_default_2',
+        userId: 'usr_admin_mohusyn',
+        title: 'بررسی تسک‌ها و ثبت روتین‌های روز 📝',
+        time: '17:30',
+        duration: 'month',
+        startDate: new Date().toISOString().slice(0, 10),
+        active: true,
+        createdAt: new Date().toISOString(),
+      }
+    ];
+  });
+
+  const addReminder = async (input: { title: string; time: string; duration: 'month' | 'week' | 'always' | 'once'; description?: string }) => {
+    const today = new Date();
+    const startDate = today.toISOString().slice(0, 10);
+    const end = new Date(today);
+    if (input.duration === 'month') {
+      end.setDate(end.getDate() + 30);
+    } else if (input.duration === 'week') {
+      end.setDate(end.getDate() + 7);
+    }
+    const endDate = (input.duration === 'always' || input.duration === 'once') ? undefined : end.toISOString().slice(0, 10);
+
+    const newRem: ReminderItem = {
+      id: 'rem_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      userId: currentUser?.id || 'usr_admin_mohusyn',
+      title: input.title.trim(),
+      time: input.time,
+      duration: input.duration,
+      startDate,
+      endDate,
+      active: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    setReminders((prev) => {
+      const updated = [newRem, ...prev];
+      try {
+        localStorage.setItem('bagtime_reminders', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    sounds.playPop();
+  };
+
+  const toggleReminder = (id: string) => {
+    setReminders((prev) => {
+      const updated = prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r));
+      try {
+        localStorage.setItem('bagtime_reminders', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    sounds.playPop();
+  };
+
+  const deleteReminder = (id: string) => {
+    setReminders((prev) => {
+      const updated = prev.filter((r) => r.id !== id);
+      try {
+        localStorage.setItem('bagtime_reminders', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    sounds.playPop();
+  };
   const [taskViewMode, setTaskViewMode] = useState<TaskViewMode>('kanban');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
@@ -686,6 +779,65 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const interval = setInterval(checkDueReminders, 30000);
     return () => clearInterval(interval);
   }, [currentUser, tasks]);
+
+  // Periodic 20s Live Reminder Notifier (Fires notification every day at specified time for up to a month)
+  useEffect(() => {
+    if (!currentUser) return;
+    const checkReminders = () => {
+      const now = new Date();
+      const currentHours = String(now.getHours()).padStart(2, '0');
+      const currentMins = String(now.getMinutes()).padStart(2, '0');
+      const nowTimeStr = `${currentHours}:${currentMins}`;
+      const todayDateStr = now.toISOString().slice(0, 10);
+
+      reminders.forEach((rem) => {
+        if (!rem.active) return;
+        if (rem.time !== nowTimeStr) return;
+        if (rem.lastNotifiedDate === todayDateStr) return;
+
+        // Check if within date range
+        if (rem.endDate && todayDateStr > rem.endDate) return;
+        if (rem.startDate && todayDateStr < rem.startDate) return;
+
+        // Mark as notified for today
+        rem.lastNotifiedDate = todayDateStr;
+        try {
+          localStorage.setItem('bagtime_reminders', JSON.stringify(reminders));
+        } catch {}
+
+        sounds.playWarning();
+
+        // Add to Notification Center
+        const newNotif = {
+          id: 'notif_rem_' + Date.now(),
+          userId: currentUser.id,
+          title: `🔔 یادآور روزانه: ${rem.title}`,
+          message: `ساعت ${rem.time} فرا رسید: «${rem.title}». این یادآور به مدت ۳۰ روز هر روز به شما اعلام خواهد شد.`,
+          type: 'info' as const,
+          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false }),
+          read: false,
+        };
+
+        try {
+          const raw = localStorage.getItem('taskrooz_notifications');
+          const notifs = raw ? JSON.parse(raw) : [];
+          localStorage.setItem('taskrooz_notifications', JSON.stringify([newNotif, ...notifs]));
+        } catch {}
+
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification(`🔔 یادآور: ${rem.title}`, {
+              body: `ساعت ${rem.time} — بگ تایم`,
+              icon: '/icon-192.png',
+            });
+          } catch {}
+        }
+      });
+    };
+
+    const interval = setInterval(checkReminders, 20000);
+    return () => clearInterval(interval);
+  }, [currentUser, reminders]);
 
   // Refresh active room data
   const refreshActiveRoom = useCallback(async () => {
@@ -1584,7 +1736,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const addTask = async (taskData: TaskCreateInput): Promise<Task> => {
+  const addTask = async (taskData: TaskCreateInput, routineType?: 'none' | 'week' | 'month' | 'workdays'): Promise<Task> => {
     if (!isPro) {
       const activeTasksCount = tasks.filter((t) => t.userId === currentUser?.id && !t.completed).length;
       if (activeTasksCount >= 5) {
@@ -1593,13 +1745,63 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('سقف تسک‌های فعال در پلن رایگان ۵ عدد است. لطفاً جهت ثبت تسک‌های بیشتر، حساب خود را به نسخه ویژه (Pro) ارتقا دهید.');
       }
     }
-    const created = await api.createTask({
+
+    const isRoutine = Boolean(routineType && routineType !== 'none');
+    const primaryTaskInput = {
       ...taskData,
+      isRoutine,
+      routineType: routineType || 'none',
       userId: taskData.userId || currentUser?.id || 'usr_admin_1',
-    });
+    };
+
+    const created = await api.createTask(primaryTaskInput);
     setTasks((prev) => [created, ...prev]);
     sounds.playPop();
     broadcastSync('TASK_CREATED', { taskId: created.id, projectId: created.projectId });
+
+    // If routine is selected (for week or month or workdays), automatically create corresponding recurring instances!
+    if (isRoutine && taskData.date) {
+      const baseDate = new Date(taskData.date);
+      const totalDays = routineType === 'week' ? 7 : 30;
+      const extraTasksToCreate: TaskCreateInput[] = [];
+
+      for (let i = 1; i < totalDays; i++) {
+        const nextDate = new Date(baseDate);
+        nextDate.setDate(nextDate.getDate() + i);
+
+        // If workdays (Saturday to Wednesday in Iran): skip Friday (day 5)
+        if (routineType === 'workdays') {
+          if (nextDate.getDay() === 5) continue;
+        }
+
+        const dateStr = nextDate.toISOString().slice(0, 10);
+        extraTasksToCreate.push({
+          ...taskData,
+          date: dateStr,
+          isRoutine: true,
+          routineType,
+          userId: taskData.userId || currentUser?.id || 'usr_admin_1',
+        });
+      }
+
+      // Create recurring routine instances asynchronously
+      (async () => {
+        const batchCreated: Task[] = [];
+        for (const item of extraTasksToCreate) {
+          try {
+            const extra = await api.createTask({
+              ...item,
+              userId: item.userId || currentUser?.id || 'usr_admin_1',
+            });
+            batchCreated.push(extra);
+          } catch {}
+        }
+        if (batchCreated.length > 0) {
+          setTasks((prev) => [...batchCreated, ...prev]);
+        }
+      })();
+    }
+
     refreshUsers();
     refreshProjects();
     return created;
@@ -1841,6 +2043,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       syncRoomTimer,
       sendRoomMessage,
       refreshActiveRoom,
+      reminders,
+      addReminder,
+      toggleReminder,
+      deleteReminder,
+      isRemindersModalOpen,
+      setIsRemindersModalOpen,
       addTask,
       updateTask,
       deleteTask,

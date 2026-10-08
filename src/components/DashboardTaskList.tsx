@@ -2,16 +2,21 @@ import React from 'react';
 import { useTask } from '../context/TaskContext';
 import { TaskCard } from './TaskCard';
 import { toPersianDigits, getTodayISO } from '../utils/persianDate';
-import { Sparkles, Plus, MapPin, CalendarClock } from 'lucide-react';
+import { Sparkles, Plus, MapPin, CalendarClock, Bell, CheckCircle2 } from 'lucide-react';
+import { sounds } from '../utils/sound';
 
 /**
- * لیست داشبورد — تسک‌های در انتظار به ترتیب روز:
- * ۱) اول همهٔ تسک‌های پین‌شده
- * ۲) سپس بقیه به ترتیب تاریخ (زودترها اول — سررسیدها در بالاترین جایگاه)
- * ۳) داخل هر روز: تسک‌های دارای ساعت زودتر، بعد اولویت بالا
+ * لیست داشبورد و تسک‌ها — نسخه بهینه‌شده با تفکیک واضح بولد/غیربولد، روتین‌ها و یادآورها
  */
 export const DashboardTaskList: React.FC = () => {
-  const { tasks, openCreateModal, selectedDate } = useTask();
+  const {
+    tasks,
+    openCreateModal,
+    selectedDate,
+    interfaceMode,
+    reminders,
+    setIsRemindersModalOpen,
+  } = useTask();
 
   const todayISO = getTodayISO();
   const pending = tasks.filter((t) => !t.completed);
@@ -37,73 +42,131 @@ export const DashboardTaskList: React.FC = () => {
   const pinnedTasks = sorted.filter((t) => t.isPinned);
   const dayTasks = sorted.filter((t) => !t.isPinned);
   const overdueCount = dayTasks.filter((t) => t.date < todayISO).length;
-
-  if (sorted.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 text-center min-h-[220px]">
-        <div className="space-y-4">
-          <div className="w-14 h-14 rounded-3xl bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center mx-auto shadow-xs">
-            <Sparkles className="w-7 h-7 text-[#00b884]" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-sm font-extrabold text-slate-900">هنوز تسک در انتظاری نداری</h3>
-            <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-              اولین تسک را اضافه کن تا به ترتیب روز و با پین‌شده‌ها در صدر، اینجا برنامه‌ی تو شکل بگیرد.
-            </p>
-          </div>
-          <button
-            onClick={() => openCreateModal(selectedDate)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#121212] hover:bg-black text-white text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            افزودن تسک
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const activeReminders = reminders.filter((r) => r.active);
 
   return (
-    <div className="space-y-4">
-      {/* 1. Pinned group */}
-      {pinnedTasks.length > 0 && (
-        <div className="space-y-2.5">
-          <div className="flex items-center gap-1.5 px-1">
-            <MapPin className="w-3.5 h-3.5 text-[#f95738]" />
-            <span className="text-xs font-extrabold text-[#f95738]">پین‌شده — در صدر لیست</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#f95738]/10 text-[#f95738] border border-[#f95738]/30 font-bold">
-              {toPersianDigits(pinnedTasks.length)}
-            </span>
+    <div className="space-y-5">
+      {/* 1. Quick Reminders Bar (یادآورهای روزانه ۳۰ روزه) */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+            <Bell className="w-4 h-4 fill-amber-500/20" />
           </div>
-          <div className="space-y-2.5">
-            {pinnedTasks.map((task) => (
-              <TaskCard key={task.id} task={task} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 2. Rest of the tasks, ordered by day (sooner first) */}
-      {dayTasks.length > 0 && (
-        <div className="space-y-2.5">
-          <div className="flex items-center gap-1.5 px-1 flex-wrap">
-            <CalendarClock className="w-3.5 h-3.5 text-indigo-600" />
-            <span className="text-xs font-extrabold text-slate-600">به ترتیب روز — زودترها اول</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-bold">
-              {toPersianDigits(dayTasks.length)}
-            </span>
-            {overdueCount > 0 && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold">
-                {toPersianDigits(overdueCount)} سررسید گذشته
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-black text-xs text-amber-950 dark:text-amber-200">
+                یادآورهای روزانه (هشدار ۳۰ روزه):
               </span>
-            )}
-          </div>
-          <div className="space-y-2.5">
-            {dayTasks.map((task) => (
-              <TaskCard key={task.id} task={task} />
-            ))}
+              <span className="text-[10px] px-2 py-0.2 rounded-full bg-amber-200/60 dark:bg-amber-900/50 text-amber-900 dark:text-amber-300 font-black">
+                {toPersianDigits(activeReminders.length)} فعال
+              </span>
+            </div>
+            <p className="text-[11px] font-normal text-amber-800/80 dark:text-amber-400/80 mt-0.5 truncate">
+              {activeReminders.length > 0
+                ? activeReminders.map((r) => `${r.title} (ساعت ${toPersianDigits(r.time)})`).join(' • ')
+                : 'هنوز یادآوری ثبت نکرده‌اید. برای ثبت هشدار روزانه کلیک کنید.'}
+            </p>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            sounds.playPop();
+            setIsRemindersModalOpen(true);
+          }}
+          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5 flex-shrink-0 self-end sm:self-auto"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>تنظیم یادآور 🔔</span>
+        </button>
+      </div>
+
+      {/* 2. Empty State */}
+      {sorted.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-8 text-center min-h-[220px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800">
+          <div className="space-y-4">
+            <div className="w-14 h-14 rounded-3xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center justify-center mx-auto shadow-xs">
+              <Sparkles className="w-7 h-7 text-[#00b884]" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                هیچ کاری در انتظار انجام نیست! 🎉
+              </h3>
+              <p className="text-xs font-normal text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
+                تمام کارهای این روز تکمیل شده‌اند یا هنوز کاری ثبت نکرده‌اید. با دکمه زیر می‌توانید تسک عادی یا روتین هفتگی/ماهانه اضافه کنید.
+              </p>
+            </div>
+            <button
+              onClick={() => openCreateModal(selectedDate)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-slate-900 hover:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>افزودن کار جدید</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Simple Mode High-Contrast Heading */}
+          {interfaceMode === 'simple' && (
+            <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <h2 className="font-black text-sm text-slate-900 dark:text-white">
+                  کارهای من (امروز)
+                </h2>
+                <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                  — عنوان‌ها <b className="font-black text-slate-900 dark:text-white">بولد</b> و جزئیات <span className="font-normal">عادی</span>
+                </span>
+              </div>
+              <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300">
+                {toPersianDigits(sorted.length)} کار در انتظار
+              </span>
+            </div>
+          )}
+
+          {/* 3. Pinned group */}
+          {pinnedTasks.length > 0 && (
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-1.5 px-1">
+                <MapPin className="w-3.5 h-3.5 text-[#f95738]" />
+                <span className="text-xs font-black text-[#f95738]">کارهای پین‌شده (مهم‌ترین‌ها در صدر)</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#f95738]/10 text-[#f95738] border border-[#f95738]/30 font-bold">
+                  {toPersianDigits(pinnedTasks.length)}
+                </span>
+              </div>
+              <div className="space-y-2.5">
+                {pinnedTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 4. Rest of the tasks, ordered by day */}
+          {dayTasks.length > 0 && (
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-1.5 px-1 flex-wrap">
+                <CalendarClock className="w-3.5 h-3.5 text-indigo-600" />
+                <span className="text-xs font-black text-slate-900 dark:text-white">کارهای روزانه و روتین‌ها</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-bold">
+                  {toPersianDigits(dayTasks.length)} کار
+                </span>
+                {overdueCount > 0 && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60 font-bold">
+                    {toPersianDigits(overdueCount)} سررسید گذشته
+                  </span>
+                )}
+              </div>
+              <div className="space-y-2.5">
+                {dayTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

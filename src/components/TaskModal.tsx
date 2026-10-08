@@ -28,6 +28,7 @@ import {
   UserCheck,
   FolderKanban,
   Sparkles,
+  Repeat,
 } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -72,6 +73,7 @@ export const TaskModal: React.FC = () => {
 
   // Admin user assignment
   const [assignedUserId, setAssignedUserId] = useState<string>(currentUser?.id || '');
+  const [routineRepeat, setRoutineRepeat] = useState<'none' | 'week' | 'month' | 'workdays'>('none');
 
   const todayISO = getTodayISO();
 
@@ -90,6 +92,7 @@ export const TaskModal: React.FC = () => {
       setAssignedUserId(editingTask.userId || currentUser?.id || '');
       setReasonUncompleted(editingTask.reasonUncompleted);
     } else {
+      setRoutineRepeat('none');
       setTitle('');
       setDescription('');
       setDate(selectedDate || todayISO);
@@ -159,8 +162,10 @@ export const TaskModal: React.FC = () => {
           completed: false,
           isPinned,
           subtasks,
+          isRoutine: routineRepeat !== 'none',
+          routineType: routineRepeat,
           ...(currentUser?.role === 'admin' ? { userId: assignedUserId } : {}),
-        });
+        }, routineRepeat);
       }
       closeTaskModal();
     } catch (err: any) {
@@ -471,6 +476,49 @@ export const TaskModal: React.FC = () => {
               </div>
             </div>
           </div>
+
+                    {/* Recurring Routine Selector (تکرار خودکار برای تمام هفته یا تمام ماه) */}
+          {!editingTask && (
+            <div className="space-y-2 p-3.5 rounded-2xl bg-[#f8fafc] border border-slate-200">
+              <div className="flex items-center justify-between">
+                <label className="font-extrabold text-slate-700 flex items-center gap-1.5 text-xs">
+                  <Repeat className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>تکرار به عنوان روتین روزانه</span>
+                </label>
+                {routineRepeat !== 'none' && (
+                  <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200">
+                    فعال شد
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                با یک‌بار ثبت، این تسک به‌صورت خودکار در تمام روزهای آینده تکرار می‌شود و نیازی به وارد کردن دستی روزانه نیست:
+              </p>
+
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'none', label: 'فقط همین روز', desc: 'تک‌روز / بدون تکرار' },
+                  { id: 'week', label: '🔁 تمام این هفته', desc: '۷ روز متوالی' },
+                  { id: 'month', label: '📅 تمام این ماه', desc: '۳۰ روز متوالی' },
+                  { id: 'workdays', label: '💼 روزهای کاری', desc: 'شنبه تا چهارشنبه' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setRoutineRepeat(item.id as any)}
+                    className={`p-2.5 rounded-xl border text-right transition-all cursor-pointer flex flex-col gap-0.5 ${
+                      routineRepeat === item.id
+                        ? 'bg-indigo-50 border-indigo-500 text-indigo-900 shadow-xs font-black'
+                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <span className="font-extrabold text-xs">{item.label}</span>
+                    <span className="text-[10px] text-slate-400 font-bold">{item.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Priority */}
           <div className="space-y-1.5">

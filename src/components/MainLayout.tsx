@@ -30,6 +30,7 @@ import { MessagesView } from './MessagesView';
 import { AiTaskAgentModal } from './AiTaskAgentModal';
 import { DirectChatModal } from './DirectChatModal';
 import { NotificationCenterModal, type AppNotification } from './NotificationCenterModal';
+import { RemindersModal } from './RemindersModal';
 import { UpgradeToProModal } from './UpgradeToProModal';
 import { ExtensionDownloadModal } from './ExtensionDownloadModal';
 import { FirstLoginProfileModal } from './FirstLoginProfileModal';
@@ -128,6 +129,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
     toggleThemeMode,
     calendarType,
     toggleCalendarType,
+    reminders,
+    isRemindersModalOpen,
+    setIsRemindersModalOpen,
   } = useTask();
 
   const todayISO = getTodayISO();
@@ -899,6 +903,22 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                     <span>اسلایدهای اینستاگرام</span>
                   </button>
                 )}
+
+                {/* Reminders Button (desktop/tablet) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setIsRemindersModalOpen(true);
+                  }}
+                  className="w-8 sm:w-9 h-8 sm:h-9 rounded-full border border-amber-200/80 bg-amber-50/60 hover:bg-amber-100 flex items-center justify-center text-amber-700 transition-colors shadow-2xs relative cursor-pointer flex-shrink-0 hidden sm:flex"
+                  title="سیستم یادآورها و آلارم‌های ۳۰ روزه"
+                >
+                  <Bell className="w-4 h-4 text-amber-600" />
+                  {reminders.filter((r) => r.active).length > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-amber-500 absolute top-1 right-1 ring-2 ring-white" />
+                  )}
+                </button>
 
                 {/* Notification Bell with interactive Modal */}
                 <button
@@ -1716,6 +1736,25 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                 </button>
               )}
 
+              {/* Reminders Button in Mobile Drawer */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  sounds.playPop();
+                  setIsRemindersModalOpen(true);
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-amber-800 bg-amber-50/80 border border-amber-200/80 font-bold text-xs transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-amber-600" />
+                  <span>یادآورها (آلارم روزانه ۱ ماهه)</span>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-900 font-black">
+                  {toPersianDigits(reminders.filter((r) => r.active).length)} فعال
+                </span>
+              </button>
+
               {/* Theme & Calendar Quick Switcher in Mobile Drawer */}
               <div className="grid grid-cols-2 gap-1.5">
                 <button
@@ -1814,6 +1853,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
           setIsAiAgentModalOpen(false);
           openCreateModal(selectedDate);
         }}
+      />
+
+      {/* Reminders Modal (30-day daily alert system) */}
+      <RemindersModal
+        isOpen={isRemindersModalOpen}
+        onClose={() => setIsRemindersModalOpen(false)}
       />
 
       {/* Notification Center Modal */}

@@ -24,6 +24,7 @@ import {
   Folder,
   FolderKanban,
   AlertTriangle,
+  Repeat,
 } from 'lucide-react';
 
 interface TaskCardProps {
@@ -142,10 +143,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
         >
           <div className="flex items-center gap-2">
             <h3
-              className={`text-xs sm:text-sm font-extrabold leading-snug transition-colors line-clamp-2 ${
+              className={`text-xs sm:text-sm font-black leading-snug transition-colors line-clamp-2 ${
                 task.completed
-                  ? 'line-through text-slate-400'
-                  : 'text-slate-900'
+                  ? 'line-through text-slate-400 dark:text-slate-500 font-normal'
+                  : 'text-slate-900 dark:text-white'
               }`}
             >
               {task.title}
@@ -156,10 +157,20 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                 <Star className="w-3.5 h-3.5 fill-[#f95738] text-[#f95738] flex-shrink-0" />
               </span>
             )}
+
+            {task.isRoutine && (
+              <span
+                className="text-[10px] px-2 py-0.2 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 border border-indigo-200/60 font-bold flex items-center gap-1 flex-shrink-0"
+                title="تسک روتین دوره‌ای"
+              >
+                <Repeat className="w-2.5 h-2.5 text-indigo-500" />
+                <span>روتین</span>
+              </span>
+            )}
           </div>
 
           {task.description && !expanded && (
-            <p className="text-xs text-slate-500 mt-1 line-clamp-1 leading-relaxed">
+            <p className="text-xs font-normal text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 leading-relaxed">
               {task.description}
             </p>
           )}
