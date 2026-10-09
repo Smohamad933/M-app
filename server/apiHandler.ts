@@ -46,6 +46,9 @@ interface DBUser {
   baleUsername?: string;
   baleNotifToken?: string;
   baleNotificationsEnabled?: boolean;
+  ssoId?: string;
+  ssoProvider?: string;
+  lastActive?: string;
   createdAt: string;
 }
 
@@ -1147,6 +1150,92 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
   }
 
+  // 1.5 Unified SSO routes (/api/sso)
+  if (pathname.startsWith('/api/sso')) {
+    const action = urlObj.searchParams.get('action') || 'status';
+
+    if (action === 'status') {
+      sendJson(res, {
+        enabled: true,
+        testMode: true,
+        providerName: 'سامانه احراز هویت یکپارچه (تستی)',
+        redirectUri: '/api/sso?action=callback',
+        hasCustomConfig: false,
+      });
+      return true;
+    }
+
+    if (action === 'authorize') {
+      sendJson(res, {
+        testMode: true,
+        message: 'سیستم احراز هویت یکپارچه در حالت تست فعال است.',
+        testAccounts: [
+          {
+            ssoId: 'sso_emp_101',
+            username: 'sso_user1',
+            name: 'کاربر تستی احراز یکپارچه',
+            email: 'user1@company.ir',
+            role: 'user',
+            jobTitle: 'توسعه‌دهنده نرم‌افزار',
+          },
+          {
+            ssoId: 'sso_emp_102',
+            username: 'sso_admin',
+            name: 'مدیر احراز هویت یکپارچه',
+            email: 'admin@company.ir',
+            role: 'admin',
+            jobTitle: 'مدیر سامانه',
+          },
+        ],
+        callbackUrl: '/api/sso?action=mock_login',
+      });
+      return true;
+    }
+
+    if (action === 'mock_login') {
+      const body = await parseJsonBody(req);
+      const ssoId = body.ssoId || 'sso_emp_101';
+      const name = body.name || 'کاربر تستی احراز یکپارچه';
+      const username = body.username || `sso_${ssoId}`;
+      const role = body.role || 'user';
+
+      let user = db.users.find((u) => u.ssoId === ssoId || u.username.toLowerCase() === username.toLowerCase());
+      if (!user) {
+        const newUser: DBUser = {
+          id: `usr_sso_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          username,
+          password: Math.random().toString(36).substring(2, 10),
+          name,
+          role: role as 'admin' | 'user',
+          ssoId,
+          ssoProvider: 'unified_sso_test',
+          isVerified: true,
+          status: 'active',
+          jobTitle: body.jobTitle || 'عضو سامانه یکپارچه',
+          createdAt: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          birthDate: '1375/01/01',
+          city: 'تهران',
+          isProfileCompleted: true,
+        };
+        db.users.push(newUser);
+        writeDb(db);
+        user = newUser;
+      }
+
+      const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
+      recordSession(db, user.id, token, req.headers['user-agent'] as string, req.socket?.remoteAddress || '', user.city || user.province || 'ایران');
+      writeDb(db);
+
+      sendJson(res, {
+        message: 'ورود با احراز هویت یکپارچه با موفقیت انجام شد.',
+        user,
+        token,
+      });
+      return true;
+    }
+  }
+
   // 2. Users routes (Admin only — except self profile update below)
   if (pathname.startsWith('/api/users')) {
     // Parse body ONCE (stream can only be read once) and share across branches
@@ -2231,13 +2320,21 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
       if (action === 'toggle') {
         const id = body.id || urlObj.searchParams.get('id');
-        const task = db.tasks.find((t) => t.id === id);
+        const task = db.tasks.find((t) => String(t.id) === String(id));
         if (!task) {
           sendJson(res, { error: 'تسک پیدا نشد.' }, 404);
           return true;
         }
-        task.completed = !task.completed;
+        if (body.completed !== undefined) {
+          task.completed = Boolean(body.completed);
+        } else {
+          task.completed = !task.completed;
+        }
         task.completedAt = task.completed ? new Date().toISOString() : undefined;
+        if (task.completed) {
+          delete task.reasonUncompleted;
+          delete task.uncompletedCategory;
+        }
         writeDb(db);
         sendJson(res, { completed: task.completed, completedAt: task.completedAt, task });
         return true;

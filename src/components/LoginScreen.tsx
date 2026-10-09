@@ -20,6 +20,8 @@ import {
   Eye,
   EyeOff,
   Sparkles,
+  ShieldCheck,
+  Building2,
 } from 'lucide-react';
 
 import { BaleVerificationModal, type BaleVerificationInfo } from './BaleVerificationModal';
@@ -56,6 +58,43 @@ export const LoginScreen: React.FC = () => {
   const [isSubmittingOnboarding, setIsSubmittingOnboarding] = useState(false);
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
   const [balePollingStep, setBalePollingStep] = useState<'pending' | 'waiting_contact'>('pending');
+
+  // Unified SSO (Single Sign-On) State
+  const [isSsoLoading, setIsSsoLoading] = useState(false);
+  const [ssoModalData, setSsoModalData] = useState<{
+    testMode?: boolean;
+    testAccounts?: any[];
+    message?: string;
+  } | null>(null);
+
+  const handleStartSso = async () => {
+    setIsSsoLoading(true);
+    setError(null);
+    try {
+      const res = await api.startSsoAuth();
+      if (res.url) {
+        window.location.href = res.url;
+      } else if (res.testMode) {
+        setSsoModalData(res);
+      }
+    } catch (e: any) {
+      setError(e?.message || 'خطا در ارتباط با سامانه احراز هویت یکپارچه.');
+    } finally {
+      setIsSsoLoading(false);
+    }
+  };
+
+  const handleSsoMockLogin = async (acc: any) => {
+    setIsSsoLoading(true);
+    try {
+      await api.ssoMockLogin(acc);
+      window.location.reload();
+    } catch (e: any) {
+      setError(e?.message || 'خطا در ورود تستی SSO.');
+    } finally {
+      setIsSsoLoading(false);
+    }
+  };
 
   // Bale Auto-Login Polling Effect
   useEffect(() => {
@@ -405,6 +444,34 @@ export const LoginScreen: React.FC = () => {
                 <span>ورود و ثبت‌نام آنی با بازوی بله 🚀</span>
               </>
             )}
+          </button>
+        </div>
+
+        {/* Unified SSO Test Button */}
+        <div className="rounded-2xl p-3 bg-gradient-to-r from-indigo-50/90 to-purple-50/90 border border-indigo-200/80 flex items-center justify-between gap-2.5 shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black text-indigo-950">ورود یکپارچه سازمانی (SSO)</span>
+                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-indigo-200/80 text-indigo-800">
+                  تستی
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium truncate">
+                اتصال متمرکز سازمان و مهاجرت حساب‌های کاربری
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleStartSso}
+            disabled={isSsoLoading}
+            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-[11px] font-black shrink-0 transition-all cursor-pointer shadow-xs"
+          >
+            {isSsoLoading ? 'در حال اتصال...' : 'تست ورود'}
           </button>
         </div>
 
@@ -976,6 +1043,73 @@ export const LoginScreen: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Unified SSO (Single Sign-On) Test Simulation Modal */}
+      {ssoModalData && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">سامانه احراز هویت یکپارچه (SSO)</h3>
+                  <span className="text-[10px] text-indigo-600 font-bold">محیط آزمایشی و شبیه‌سازی ورود سازمانی</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSsoModalData(null)}
+                className="w-7 h-7 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              این ماژول جهت تست احراز هویت متمرکز سازمانی پیاده‌سازی شده است. با انتخاب هر یک از حساب‌های زیر، ورود انجام شده و حساب کاربری به‌صورت خودکار در دیتابیس سامانه ثبت و همگام‌سازی می‌شود:
+            </p>
+
+            <div className="space-y-2.5">
+              {(ssoModalData.testAccounts || []).map((acc: any) => (
+                <button
+                  key={acc.ssoId}
+                  type="button"
+                  onClick={() => handleSsoMockLogin(acc)}
+                  disabled={isSsoLoading}
+                  className="w-full text-right p-3.5 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40 transition-all flex items-center justify-between gap-3 cursor-pointer group"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-slate-900 group-hover:text-indigo-900">{acc.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 font-bold">
+                        {acc.role === 'admin' ? 'مدیر کل' : 'کاربر'}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                      نام کاربری: <span className="font-mono text-slate-700">{acc.username}</span> • {acc.jobTitle}
+                    </div>
+                  </div>
+                  <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 opacity-80 group-hover:opacity-100 shadow-xs">
+                    <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => setSsoModalData(null)}
+                className="text-xs font-bold text-slate-400 hover:text-slate-600"
+              >
+                انصراف و بازگشت
+              </button>
+            </div>
           </div>
         </div>
       )}

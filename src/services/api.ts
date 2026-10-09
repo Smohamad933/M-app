@@ -779,6 +779,29 @@ export const api = {
     }
   },
 
+  // Unified SSO (Single Sign-On) Test & Integration
+  async getSsoStatus(): Promise<{ enabled: boolean; testMode: boolean; providerName: string; hasCustomConfig: boolean }> {
+    try {
+      return await request('api/sso.php?action=status');
+    } catch {
+      return { enabled: true, testMode: true, providerName: 'سامانه احراز هویت یکپارچه (تستی)', hasCustomConfig: false };
+    }
+  },
+
+  async startSsoAuth(): Promise<{ testMode?: boolean; url?: string; testAccounts?: any[]; callbackUrl?: string }> {
+    return await request('api/sso.php?action=authorize');
+  },
+
+  async ssoMockLogin(account: any): Promise<{ user: User; token: string }> {
+    const res = await request<{ user: User; token: string }>('api/sso.php?action=mock_login', {
+      method: 'POST',
+      body: JSON.stringify(account),
+    });
+    setAuthToken(res.token);
+    this.setCachedUser(res.user);
+    return res;
+  },
+
   // Active Sessions & Device Management ("نشست‌های فعال و انداختن بیرون دستگاه")
   async getActiveSessions(): Promise<ActiveSession[]> {
     try {
@@ -1356,15 +1379,18 @@ export const api = {
     }
   },
 
-  async toggleTask(id: string): Promise<{ completed: boolean; completedAt?: string }> {
+  async toggleTask(id: string, completed?: boolean): Promise<{ completed: boolean; completedAt?: string }> {
+    clearApiCache('api/tasks');
+    const compParam = completed !== undefined ? `&completed=${completed ? '1' : '0'}` : '';
     try {
-      return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}`, {
+      return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}${compParam}`, {
         method: 'POST',
-        body: JSON.stringify({ action: 'toggle', id }),
+        body: JSON.stringify({ action: 'toggle', id, completed }),
       });
     } catch {
-      return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}`, {
+      return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}${compParam}`, {
         method: 'PATCH',
+        body: JSON.stringify({ action: 'toggle', id, completed }),
       });
     }
   },

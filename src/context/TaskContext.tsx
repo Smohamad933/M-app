@@ -1870,10 +1870,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       completed: newStatus,
     }));
 
+    const nowIso = new Date().toISOString();
     const updatedTask: Task = {
       ...task,
       completed: newStatus,
-      completedAt: newStatus ? new Date().toISOString() : undefined,
+      completedAt: newStatus ? nowIso : undefined,
       reasonUncompleted: newStatus ? undefined : task.reasonUncompleted,
       uncompletedCategory: newStatus ? undefined : task.uncompletedCategory,
       subtasks: updatedSubtasks,
@@ -1884,19 +1885,25 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       prev.map((t) => (String(t.id) === targetId ? updatedTask : t))
     );
 
-    // 2. Persist to API with resilient fallbacks
+    // 2. Persist to API: call toggleTask with explicit desired boolean state
     try {
-      await api.updateTask(updatedTask);
+      await api.toggleTask(targetId, newStatus);
+      if (updatedSubtasks.length > 0 || task.reasonUncompleted) {
+        await api.updateTask(updatedTask).catch(() => {});
+      }
     } catch (err) {
-      console.warn('api.updateTask error, falling back to toggleTask:', err);
+      console.warn('api.toggleTask failed, trying updateTask:', err);
       try {
-        await api.toggleTask(targetId);
+        await api.updateTask(updatedTask);
       } catch (err2) {
         console.error('All remote task updates failed:', err2);
       }
     }
 
-    // 3. Broadcast sync to other tabs
+    // 3. Clear cache store so next fetch immediately returns fresh data
+    clearApiCache('api/tasks');
+
+    // 4. Broadcast sync to other tabs
     broadcastSync('TASK_UPDATED', { taskId: targetId, projectId: task.projectId });
     refreshUsers();
     refreshProjects();

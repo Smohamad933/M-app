@@ -36,7 +36,8 @@ if ($method === 'POST') {
     if ($action === 'toggle') {
         $id = $input['id'] ?? $_GET['id'] ?? '';
         if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
-        $res = $db->toggleTask($id);
+        $desired = isset($input['completed']) ? !empty($input['completed']) : null;
+        $res = $db->toggleTask($id, $desired);
         if ($res) jsonResponse($res);
         jsonResponse(['error' => 'تسک پیدا نشد.'], 404);
     }
@@ -149,7 +150,8 @@ if ($method === 'PATCH') {
     }
 
     if ($action === 'toggle') {
-        $res = $db->toggleTask($id);
+        $desired = isset($input['completed']) ? !empty($input['completed']) : null;
+        $res = $db->toggleTask($id, $desired);
         if ($res) {
             jsonResponse($res);
         } else {

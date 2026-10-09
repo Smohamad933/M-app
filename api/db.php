@@ -2003,11 +2003,26 @@ class TaskRoozDB {
                 }
                 if (array_key_exists('completed', $data)) {
                     $fields[] = "`completed` = ?";
-                    $params[] = !empty($data['completed']) ? 1 : 0;
+                    $val = $data['completed'];
+                    $isComp = (!empty($val) && $val !== '0' && $val !== 0 && $val !== 'false');
+                    $params[] = $isComp ? 1 : 0;
+                    if ($isComp) {
+                        $fields[] = "`reason_uncompleted` = NULL";
+                        $fields[] = "`uncompleted_category` = NULL";
+                    } else {
+                        $fields[] = "`completed_at` = NULL";
+                    }
                 }
                 if (array_key_exists('completedAt', $data) || array_key_exists('completed_at', $data)) {
+                    $rawDate = $data['completedAt'] ?? ($data['completed_at'] ?? null);
+                    if ($rawDate) {
+                        $ts = strtotime((string)$rawDate);
+                        $formattedDate = $ts ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
+                    } else {
+                        $formattedDate = null;
+                    }
                     $fields[] = "`completed_at` = ?";
-                    $params[] = $data['completedAt'] ?? ($data['completed_at'] ?? null);
+                    $params[] = $formattedDate;
                 }
                 if (array_key_exists('isPinned', $data) || array_key_exists('is_pinned', $data)) {
                     $fields[] = "`is_pinned` = ?";
@@ -2078,7 +2093,7 @@ class TaskRoozDB {
         return false;
     }
 
-    public function toggleTask($id) {
+    public function toggleTask($id, $desiredCompleted = null) {
         $result = null;
 
         // 1. MySQL direct toggle
@@ -2088,9 +2103,13 @@ class TaskRoozDB {
                 $stmt->execute([$id]);
                 $row = $stmt->fetch();
                 if ($row) {
-                    $newCompleted = empty($row['completed']) ? 1 : 0;
+                    if ($desiredCompleted !== null) {
+                        $newCompleted = $desiredCompleted ? 1 : 0;
+                    } else {
+                        $newCompleted = empty($row['completed']) ? 1 : 0;
+                    }
                     $completedAt = $newCompleted ? date('Y-m-d H:i:s') : null;
-                    $up = $this->pdo->prepare("UPDATE tasks SET completed = ?, completed_at = ? WHERE id = ?");
+                    $up = $this->pdo->prepare("UPDATE tasks SET completed = ?, completed_at = ?, reason_uncompleted = NULL, uncompleted_category = NULL WHERE id = ?");
                     $up->execute([$newCompleted, $completedAt, $id]);
                     $result = ['completed' => (bool)$newCompleted, 'completedAt' => $completedAt];
                 }
@@ -2100,14 +2119,22 @@ class TaskRoozDB {
         // 2. JSON update / fallback
         $this->loadJson();
         foreach ($this->data['tasks'] as &$t) {
-            if ($t['id'] === $id) {
+            if (strval($t['id']) === strval($id)) {
                 if ($result !== null) {
                     $t['completed'] = $result['completed'];
                     $t['completedAt'] = $result['completedAt'];
                 } else {
-                    $t['completed'] = !empty($t['completed']) ? false : true;
+                    if ($desiredCompleted !== null) {
+                        $t['completed'] = (bool)$desiredCompleted;
+                    } else {
+                        $t['completed'] = !empty($t['completed']) ? false : true;
+                    }
                     $t['completedAt'] = $t['completed'] ? date('Y-m-d H:i:s') : null;
                     $result = ['completed' => $t['completed'], 'completedAt' => $t['completedAt']];
+                }
+                if ($t['completed']) {
+                    unset($t['reasonUncompleted']);
+                    unset($t['uncompletedCategory']);
                 }
                 $this->saveJson();
                 return $result;
