@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import { UserAvatar } from './UserAvatar';
 import { SubscriptionBadge } from './SubscriptionBadge';
 import { toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
-import type { User } from '../types';
+import { api } from '../services/api';
+import type { User, Task } from '../types';
 import {
   X,
   MessageSquare,
@@ -22,6 +23,7 @@ import {
   Edit3,
   CheckSquare,
   TrendingUp,
+  RefreshCw,
 } from 'lucide-react';
 
 interface PublicUserProfileModalProps {
@@ -40,13 +42,68 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
   onInviteToProject,
   onEditProfile,
 }) => {
-  const { currentUser, friends, sendFriendRequest, removeFriend } = useTask();
+  const { currentUser, friends, sendFriendRequest, removeFriend, tasks: contextTasks } = useTask();
   const [copiedId, setCopiedId] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
+
+  // User's tasks state
+  const [userTasks, setUserTasks] = useState<Task[]>([]);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    let isMounted = true;
+
+    // If viewing myself, we already have all tasks in context
+    if (currentUser?.id === user.id) {
+      setUserTasks(contextTasks.filter((t) => t.userId === user.id));
+      setIsLoadingTasks(false);
+      return;
+    }
+
+    setIsLoadingTasks(true);
+    const loadTasks = async () => {
+      try {
+        const fetched = await api.getTasks({ userId: user.id });
+        if (isMounted) {
+          if (Array.isArray(fetched) && fetched.length > 0) {
+            setUserTasks(fetched);
+          } else {
+            // Check context tasks as fallback (e.g. assigned tasks or project tasks)
+            const fallback = contextTasks.filter(
+              (t) => t.userId === user.id || t.userId === user.username
+            );
+            setUserTasks(fallback);
+          }
+        }
+      } catch {
+        try {
+          const report = await api.getUserReport(user.id);
+          if (isMounted && report && Array.isArray(report.tasks)) {
+            setUserTasks(report.tasks);
+          }
+        } catch {
+          if (isMounted) {
+            const fallback = contextTasks.filter(
+              (t) => t.userId === user.id || t.userId === user.username
+            );
+            setUserTasks(fallback);
+          }
+        }
+      } finally {
+        if (isMounted) setIsLoadingTasks(false);
+      }
+    };
+
+    loadTasks();
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id, user?.username, currentUser?.id, contextTasks]);
 
   if (!user) return null;
 
@@ -84,6 +141,14 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
   };
 
   const isPro = user.role === 'admin' || (!!user.subscription?.plan && user.subscription.plan !== 'free');
+
+  const totalTasksCount = userTasks.length > 0 ? userTasks.length : (user.totalTasks || 0);
+  const completedTasksCount = userTasks.length > 0
+    ? userTasks.filter((t) => t.completed).length
+    : (user.completedTasks || 0);
+  const progressPercent = totalTasksCount > 0
+    ? Math.round((completedTasksCount / totalTasksCount) * 100)
+    : (user.progressPercent || 0);
 
   return (
     <div
@@ -259,8 +324,9 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
                 <CheckSquare className="w-3 h-3 text-emerald-400" />
                 <span>تسک‌های تکمیل‌شده</span>
               </div>
-              <div className="text-base font-black text-white font-mono">
-                {toPersianDigits(user.completedTasks ?? 0)}
+              <div className="text-base font-black text-white font-mono flex items-center justify-center gap-1">
+                <span>{toPersianDigits(completedTasksCount)}</span>
+                <span className="text-[10px] text-zinc-500 font-normal">از {toPersianDigits(totalTasksCount)}</span>
               </div>
             </div>
 
@@ -270,9 +336,93 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
                 <span>درصد تعهد و پیشرفت</span>
               </div>
               <div className="text-base font-black text-emerald-400 font-mono">
-                {toPersianDigits(user.progressPercent ?? 0)}٪
+                {toPersianDigits(progressPercent)}٪
               </div>
             </div>
+          </div>
+
+          {/* User's Tasks Section */}
+          <div className="p-3.5 sm:p-4 rounded-3xl bg-zinc-900/90 border border-white/10 space-y-2.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold text-white">تسک‌ها و فعالیت‌های کاربر</span>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-mono font-bold border border-zinc-700">
+                {toPersianDigits(completedTasksCount)} از {toPersianDigits(totalTasksCount)} انجام‌شده ({toPersianDigits(progressPercent)}٪)
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full bg-zinc-800/90 h-1.5 rounded-full overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-emerald-500 via-teal-400 to-indigo-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+
+            {/* Tasks List */}
+            {isLoadingTasks ? (
+              <div className="py-4 text-center text-xs text-zinc-400 flex items-center justify-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                <span>در حال فراخوانی تسک‌ها...</span>
+              </div>
+            ) : userTasks.length === 0 ? (
+              <div className="py-3 text-center text-xs text-zinc-500 font-medium">
+                هنوز تسکی برای این کاربر ثبت نشده است.
+              </div>
+            ) : (
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                {userTasks.map((t) => (
+                  <div
+                    key={t.id}
+                    className={`p-2.5 rounded-2xl border text-xs flex items-center justify-between gap-2.5 transition-all ${
+                      t.completed
+                        ? 'bg-emerald-950/20 border-emerald-800/30 text-zinc-300'
+                        : 'bg-zinc-800/60 border-zinc-700/40 text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span
+                        className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 border ${
+                          t.completed
+                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                            : 'bg-zinc-700/50 border-zinc-600 text-zinc-500'
+                        }`}
+                      >
+                        {t.completed ? (
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        ) : (
+                          <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+                        )}
+                      </span>
+                      <span className={`truncate font-medium ${t.completed ? 'line-through text-zinc-400' : ''}`}>
+                        {t.title}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {t.time && (
+                        <span className="text-[10px] text-zinc-400 font-mono dir-ltr">
+                          {t.time}
+                        </span>
+                      )}
+                      <span
+                        className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${
+                          t.priority === 'high'
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                            : t.priority === 'medium'
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            : 'bg-zinc-700/60 text-zinc-300'
+                        }`}
+                      >
+                        {t.priority === 'high' ? 'مهم' : t.priority === 'medium' ? 'متوسط' : 'عادی'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Details Box (Phone, Bio, Username) */}

@@ -906,7 +906,7 @@ class TaskRoozDB {
                             SELECT user_id, COUNT(*) as totalTasks, SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completedTasks
                             FROM tasks
                             GROUP BY user_id
-                        ) t ON u.id = t.user_id
+                        ) t ON (u.id = t.user_id OR LOWER(u.username) = LOWER(t.user_id))
                         ORDER BY u.created_at ASC
                     ");
                     $users = $stmt ? $stmt->fetchAll() : null;

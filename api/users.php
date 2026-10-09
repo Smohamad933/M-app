@@ -206,6 +206,9 @@ if ($action === 'public' || $action === 'search') {
             'subscription' => $u['subscription'] ?? ['plan' => ($u['role'] === 'admin' ? 'pro' : 'free')],
             'isFriend' => $isFriend,
             'createdAt' => $u['createdAt'] ?? null,
+            'totalTasks' => (int)($u['totalTasks'] ?? 0),
+            'completedTasks' => (int)($u['completedTasks'] ?? 0),
+            'progressPercent' => (int)($u['progressPercent'] ?? 0),
         ];
     }
     jsonResponse(['users' => $safe]);

@@ -184,6 +184,7 @@ export const UserManagementView: React.FC = () => {
     appOperatingMode,
     setAppOperatingMode,
     approveUserRegistration,
+    setViewingPublicUser,
   } = useTask();
 
   // Active view tab inside Admin Panel
@@ -1488,10 +1489,24 @@ export const UserManagementView: React.FC = () => {
                         }`}
                         title={isUserLocked(u) ? 'حساب مدیر اصلی/جاری قابل انتخاب نیست' : 'انتخاب برای عملیات گروهی'}
                       />
-                      <UserAvatar name={u.name} avatar={u.avatar} size="w-11 h-11 text-sm" />
+                      <button
+                        type="button"
+                        onClick={() => setViewingPublicUser(u)}
+                        className="cursor-pointer hover:opacity-85 transition-opacity shrink-0"
+                        title="مشاهده شناسنامه و کارت پروفایل کاربر"
+                      >
+                        <UserAvatar name={u.name} avatar={u.avatar} size="w-11 h-11 text-sm" />
+                      </button>
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-black text-sm text-white">{u.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setViewingPublicUser(u)}
+                            className="font-black text-sm text-white hover:text-emerald-400 transition-colors text-right cursor-pointer"
+                            title="مشاهده شناسنامه و کارت پروفایل کاربر"
+                          >
+                            {u.name}
+                          </button>
                           {isCurrent && (
                             <span className="text-[10px] px-2 py-0.2 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
                               شما (مدیر)

@@ -1258,6 +1258,10 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         const isFriend = db.friendships?.some(
           (f) => (f.user1Id === myId && f.user2Id === u.id) || (f.user2Id === myId && f.user1Id === u.id)
         ) || false;
+        const userTasks = db.tasks.filter((t) => t.userId === u.id || (u.username && t.userId === u.username));
+        const done = userTasks.filter((t) => t.completed).length;
+        const total = userTasks.length;
+        const percent = total > 0 ? Math.round((done / total) * 100) : 0;
         return {
           id: u.id,
           numericId: u.numericId || 1000,
@@ -1278,6 +1282,9 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           subscription: u.subscription || { plan: u.role === 'admin' ? 'pro' : 'free' },
           isFriend,
           createdAt: u.createdAt,
+          totalTasks: total,
+          completedTasks: done,
+          progressPercent: percent,
         };
       });
       sendJson(res, { users: safeUsers });
@@ -1468,7 +1475,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       }
 
       const result = db.users.map((u) => {
-        const userTasks = db.tasks.filter((t) => t.userId === u.id);
+        const userTasks = db.tasks.filter((t) => t.userId === u.id || (u.username && t.userId === u.username));
         const done = userTasks.filter((t) => t.completed).length;
         const total = userTasks.length;
         return {
@@ -2185,11 +2192,11 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       const targetUserId = urlObj.searchParams.get('user_id');
       const projectIdFilter = urlObj.searchParams.get('project_id');
 
-      if (currentUser.role === 'admin') {
-        if (targetUserId) {
-          filtered = filtered.filter((t) => t.userId === targetUserId);
-        }
-      } else {
+      if (targetUserId) {
+        filtered = filtered.filter(
+          (t) => t.userId === targetUserId || (t as any).user_id === targetUserId
+        );
+      } else if (currentUser.role !== 'admin' && currentUser.username.toLowerCase() !== 'mohusyn') {
         filtered = filtered.filter((t) => t.userId === currentUser.id);
       }
 

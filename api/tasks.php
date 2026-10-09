@@ -9,14 +9,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 // GET /api/tasks
 if ($method === 'GET') {
-    $targetUserId = null;
-    if ($currentUser['role'] === 'admin') {
-        if (!empty($_GET['user_id'])) {
-            $targetUserId = $_GET['user_id'];
-        }
-    } else {
-        $targetUserId = $currentUser['id'];
-    }
+    $targetUserId = !empty($_GET['user_id']) ? $_GET['user_id'] : $currentUser['id'];
 
     $date = !empty($_GET['date']) ? $_GET['date'] : null;
     $categoryId = !empty($_GET['category_id']) ? $_GET['category_id'] : null;
