@@ -3649,6 +3649,28 @@ class TaskRoozDB {
         return $list;
     }
 
+    public function getAllMessagesAdmin() {
+        $this->loadJson();
+        $msgs = $this->data['messages'] ?? [];
+        $usersMap = [];
+        foreach (($this->data['users'] ?? []) as $u) {
+            $usersMap[$u['id']] = $u;
+        }
+        foreach ($msgs as &$m) {
+            $sId = $m['senderId'] ?? '';
+            $rId = $m['receiverId'] ?? '';
+            if (isset($usersMap[$sId])) {
+                $m['senderName'] = $usersMap[$sId]['name'] ?? ($m['senderName'] ?? 'کاربر');
+                $m['senderUsername'] = $usersMap[$sId]['username'] ?? '';
+            }
+            if (isset($usersMap[$rId])) {
+                $m['receiverName'] = $usersMap[$rId]['name'] ?? 'کاربر';
+                $m['receiverUsername'] = $usersMap[$rId]['username'] ?? '';
+            }
+        }
+        return $msgs;
+    }
+
     public function sendDirectMessage($senderUser, $receiverId, $text) {
         $cleanText = trim((string)$text);
         $canonicalReceiver = $this->getUserById($receiverId);

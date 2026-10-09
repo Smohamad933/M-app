@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTask } from '../context/TaskContext';
 import { TaskCard } from './TaskCard';
 import { toPersianDigits, getTodayISO } from '../utils/persianDate';
-import { Sparkles, Plus, MapPin, CalendarClock, Bell, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Plus, MapPin, CalendarClock, Bell, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { sounds } from '../utils/sound';
 
 /**
- * لیست داشبورد و تسک‌ها — نسخه بهینه‌شده با تفکیک واضح بولد/غیربولد، روتین‌ها و یادآورها
+ * لیست داشبورد و تسک‌ها — نسخه بهینه‌شده با تفکیک واضح کارهای در انتظار و انجام‌شده
  */
 export const DashboardTaskList: React.FC = () => {
   const {
@@ -18,8 +18,11 @@ export const DashboardTaskList: React.FC = () => {
     setIsRemindersModalOpen,
   } = useTask();
 
+  const [showCompleted, setShowCompleted] = useState(true);
+
   const todayISO = getTodayISO();
   const pending = tasks.filter((t) => !t.completed);
+  const completedToday = tasks.filter((t) => t.completed && t.date === selectedDate);
 
   const sorted = [...pending].sort((a, b) => {
     // 1. Pinned tasks always come first
@@ -64,7 +67,7 @@ export const DashboardTaskList: React.FC = () => {
             <p className="text-[11px] font-normal text-amber-800/80 dark:text-amber-400/80 mt-0.5 truncate">
               {activeReminders.length > 0
                 ? activeReminders.map((r) => `${r.title} (ساعت ${toPersianDigits(r.time)})`).join(' • ')
-                : 'هنوز یادآوری ثبت نکرده‌اید. برای ثبت هشدار روزانه کلیک کنید.'}
+                : 'هنوز یادآوری ثبت نکرده‌اید. با دکمه روبرو یادآور اختصاصی خود را تعریف کنید.'}
             </p>
           </div>
         </div>
@@ -82,8 +85,8 @@ export const DashboardTaskList: React.FC = () => {
         </button>
       </div>
 
-      {/* 2. Empty State */}
-      {sorted.length === 0 ? (
+      {/* 2. Empty State when no pending and no completed */}
+      {sorted.length === 0 && completedToday.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-8 text-center min-h-[220px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800">
           <div className="space-y-4">
             <div className="w-14 h-14 rounded-3xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center justify-center mx-auto shadow-xs">
@@ -164,6 +167,33 @@ export const DashboardTaskList: React.FC = () => {
                   <TaskCard key={task.id} task={task} />
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* 5. Completed Tasks Group (کارهای انجام‌شده امروز) */}
+          {completedToday.length > 0 && (
+            <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 space-y-2.5">
+              <button
+                type="button"
+                onClick={() => setShowCompleted(!showCompleted)}
+                className="w-full flex items-center justify-between px-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#00b884]" />
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                    کارهای تکمیل‌شده ({toPersianDigits(completedToday.length)})
+                  </span>
+                </div>
+                {showCompleted ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {showCompleted && (
+                <div className="space-y-2.5 animate-in fade-in">
+                  {completedToday.map((task) => (
+                    <TaskCard key={task.id} task={task} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>

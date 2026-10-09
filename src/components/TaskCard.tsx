@@ -112,7 +112,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       <div className="flex items-start gap-3">
         {/* Checkbox - Shows Green Check when completed, Red Check when marked uncompleted with reason */}
         <button
-          onClick={() => toggleTaskComplete(task.id)}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleTaskComplete(task.id);
+          }}
           aria-label={
             task.completed
               ? 'علامت‌گذاری به عنوان انجام نشده'

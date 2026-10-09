@@ -157,11 +157,11 @@ function getJalaliDateString() {
 
 // ── Official Dual Servers & Automated Best Server Detection ──
 const BAGTIME_SERVERS = [
-  'https://task.mohusyn.ir',
-  'https://bagtime.negahm.ir'
+  'https://bagtime.negahm.ir',
+  'https://task.mohusyn.ir'
 ];
 
-let activeServerUrl = 'https://task.mohusyn.ir';
+let activeServerUrl = 'https://bagtime.negahm.ir';
 
 async function initServerManager() {
   const saved = await Storage.get('active_server', null);

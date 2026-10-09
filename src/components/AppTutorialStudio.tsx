@@ -19,7 +19,6 @@ import {
   CheckCircle2,
   Clock,
   QrCode,
-  Flame,
   Globe,
   Share2,
 } from 'lucide-react';
@@ -51,7 +50,7 @@ const DEFAULT_TUTORIAL_SLIDES: TutorialSlideData[] = [
       'ورود مستقیم با شماره تلفن همراه معتبر ایران (۰۹...)',
       'ورود فوق‌سریع و خودکار از طریق ربات پیام‌رسان بله با یک لمس',
       'امنیت ۱۰۰٪ و محرمانگی شماره تماس کاربران در سامانه',
-      'دسترسی هم‌زمان از task.mohusyn.ir و bagtime.negahm.ir',
+      'دسترسی آنی و سریع از دامنه رسمی bagtime.negahm.ir',
     ],
     highlightTip: '💡 با لمس دکمه «ورود با بله»، بدون معطلی کد پیامک مستقیم وارد حساب میشی!',
     mockupType: 'auth',
@@ -149,7 +148,7 @@ const DEFAULT_TUTORIAL_SLIDES: TutorialSlideData[] = [
       'یادآورهای دوره‌ای ۳۰ روزه با شمارش معکوس برای اقساط و موعدها',
       'اکستنشن تب جدید (Chrome & Firefox) برای نمایش تسک‌ها با باز شدن وب',
       'ارتباط درون‌برنامه‌ای، پیام صوتی و چت مستقیم با همکاران و دوستان',
-      'ورود رایگان و فوری از دو آدرس: task.mohusyn.ir و bagtime.negahm.ir',
+      'ورود رایگان و فوری از آدرس رسمی: bagtime.negahm.ir',
     ],
     highlightTip: '✨ تصمیم امروزت، موفقیت و آرامش ۶ ماه آینده‌ت رو می‌سازه!',
     mockupType: 'extension',
@@ -270,270 +269,218 @@ export const AppTutorialStudio: React.FC = () => {
   const themeStyles = getThemeStyles();
 
   // Photorealistic UI Mockup Renderer covering Auth all the way to the end
-  const renderStepMockup = (type: TutorialSlideData['mockupType']) => {
+  const renderStepMockup = (type: TutorialSlideData['mockupType'], isSquare = false) => {
+    const compactClass = isSquare ? 'p-1.5 space-y-1 text-[8.5px]' : 'p-2.5 sm:p-3 space-y-2 text-[10px]';
     switch (type) {
       case 'auth':
-        // 1. Authentic Phone & Bale Bot Authentication Mockup
         return (
-          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-2 text-right font-sans text-[10px]">
-            <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
+          <div className={`w-full rounded-2xl bg-[#070b14] border border-slate-800 ${compactClass} text-right font-sans`}>
+            <div className="flex items-center justify-between pb-1 border-b border-slate-800/80">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-rose-500" />
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
               </div>
-              <span className="text-slate-400 text-[9px] font-mono" dir="ltr">task.mohusyn.ir/login</span>
+              <span className="text-slate-400 text-[8.5px] font-mono" dir="ltr">bagtime.negahm.ir/login</span>
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[9px]">
-                <span className="text-slate-300 font-bold">ورود به حساب کاربری:</span>
-                <span className="text-emerald-400 font-mono text-[8.5px]">🔒 تأیید دو مرحله‌ای</span>
-              </div>
-
-              <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700/80 flex items-center justify-between text-slate-400 px-2.5">
-                <span className="font-mono text-slate-200">۰۹۱۲ · · · · · · ·</span>
-                <span className="text-[8.5px] text-slate-400">شماره موبایل</span>
+            <div className="space-y-1">
+              <div className="p-1 rounded-xl bg-slate-900 border border-slate-700/80 flex items-center justify-between text-slate-400 px-2">
+                <span className="font-mono text-slate-200 text-[9px]">۰۹۱۲ · · · · · · ·</span>
+                <span className="text-[8px] text-slate-400">شماره موبایل</span>
               </div>
 
               {/* One-tap Bale Bot Login Button */}
-              <div className="p-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black flex items-center justify-between shadow-md cursor-pointer">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm">📲</span>
-                  <span className="text-[9.5px]">ورود آنی با ربات بله (بدون نیاز به رمز)</span>
+              <div className="p-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black flex items-center justify-between shadow-md">
+                <div className="flex items-center gap-1">
+                  <span className="text-xs">📲</span>
+                  <span className="text-[8.5px]">ورود با ربات بله (بدون نیاز به رمز)</span>
                 </div>
-                <span className="text-[8px] bg-white/20 px-1.5 py-0.5 rounded-md">یک کلیک</span>
+                <span className="text-[7.5px] bg-white/20 px-1 py-0.2 rounded">یک کلیک</span>
               </div>
 
-              <div className="flex items-center justify-between text-[8px] text-slate-400 pt-0.5">
+              <div className="flex items-center justify-between text-[7.5px] text-slate-400">
                 <span className="flex items-center gap-1 text-emerald-400">
-                  <ShieldCheck className="w-3 h-3" />
+                  <ShieldCheck className="w-2.5 h-2.5" />
                   <span>رمزنگاری امن SSL سرور ایران</span>
                 </span>
-                <span>بدون فیلترشکن ⚡</span>
+                <span>بدون فیلتر ⚡</span>
               </div>
             </div>
           </div>
         );
 
       case 'pwa':
-        // 2. PWA Installation & Calendar/Theme Setup Mockup
         return (
-          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-2 text-right font-sans text-[10px]">
-            <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
-              <span className="font-black text-white text-[9.5px] flex items-center gap-1">
-                <Share2 className="w-3 h-3 text-emerald-400" />
+          <div className={`w-full rounded-2xl bg-[#070b14] border border-slate-800 ${compactClass} text-right font-sans`}>
+            <div className="flex items-center justify-between pb-1 border-b border-slate-800/80">
+              <span className="font-black text-white text-[8.5px] flex items-center gap-1">
+                <Share2 className="w-2.5 h-2.5 text-emerald-400" />
                 <span>نصب وب‌اپلیکیشن (PWA) روی گوشی</span>
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[8px] font-bold">
+              <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 text-[7.5px] font-bold">
                 آیفون و اندروید
               </span>
             </div>
 
-            <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <TaskMasterHexagon size={26} />
+            <div className="p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <TaskMasterHexagon size={20} />
                 <div>
-                  <div className="font-black text-white text-[10px]">افزودن به صفحه اصلی (Add to Home)</div>
-                  <div className="text-[8px] text-slate-400">اجرای تمام‌صفحه مانند اپ استور</div>
+                  <div className="font-black text-white text-[9px]">افزودن به صفحه اصلی (Add to Home)</div>
+                  <div className="text-[7.5px] text-slate-400">اجرای تمام‌صفحه و سریع</div>
                 </div>
               </div>
-              <span className="text-emerald-400 text-xs font-black">✓ نصب</span>
+              <span className="text-emerald-400 text-[10px] font-black">✓ نصب</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5 text-[8.5px] text-center font-bold">
-              <div className="p-1 rounded-lg bg-slate-800/90 border border-slate-700/80 text-emerald-300">
-                🌙 تم دارک اختصاصی
+            <div className="grid grid-cols-2 gap-1 text-[7.5px] text-center font-bold">
+              <div className="p-0.5 rounded-lg bg-slate-800/90 border border-slate-700/80 text-emerald-300">
+                🌙 تم دارک
               </div>
-              <div className="p-1 rounded-lg bg-slate-800/90 border border-slate-700/80 text-purple-300">
-                📅 تقویم شمسی و میلادی
+              <div className="p-0.5 rounded-lg bg-slate-800/90 border border-slate-700/80 text-purple-300">
+                📅 تقویم شمسی/میلادی
               </div>
             </div>
           </div>
         );
 
       case 'tasks':
-        // 3. Task Creation, Subtasks & Priority Mockup
         return (
-          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
+          <div className={`w-full rounded-2xl bg-[#070b14] border border-slate-800 ${compactClass} text-right font-sans`}>
             <div className="flex items-center justify-between pb-1 border-b border-slate-800">
-              <span className="font-black text-emerald-400 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+              <span className="font-black text-emerald-400 flex items-center gap-1 text-[8.5px]">
+                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
                 <span>ثبت کارها و چک‌لیست زیرکارها</span>
               </span>
-              <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[7.5px] font-bold">
+              <span className="px-1 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[7px] font-bold">
                 اولویت بالا 🔴
               </span>
             </div>
 
-            <div className="p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+            <div className="p-1 rounded-xl bg-slate-900/90 border border-slate-800 space-y-0.5">
               <div className="flex items-center justify-between">
-                <span className="font-black text-white text-[9.5px]">تکمیل پیشنهاد طرح پروژه جدید</span>
-                <span className="text-[8px] text-slate-400 font-mono">⏱️ ۱.۵ ساعت</span>
+                <span className="font-black text-white text-[8.5px]">تکمیل پیشنهاد طرح پروژه جدید</span>
+                <span className="text-[7.5px] text-slate-400 font-mono">⏱️ ۱.۵ ساعت</span>
               </div>
-
-              {/* Subtasks checklist */}
-              <div className="space-y-0.5 pt-0.5 border-t border-slate-800/80 text-[8.5px]">
-                <div className="flex items-center gap-1.5 text-emerald-400">
-                  <span className="w-3 h-3 rounded bg-emerald-600 text-white flex items-center justify-center text-[7.5px]">✓</span>
-                  <span className="line-through text-slate-400">تحلیل بازار و رقبا</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-300">
-                  <span className="w-3 h-3 rounded border border-slate-600 bg-slate-800" />
-                  <span>طراحی فایل ارائه برای جلسه</span>
-                </div>
+              <div className="flex items-center gap-1 text-emerald-400 text-[7.5px]">
+                <span className="w-2.5 h-2.5 rounded bg-emerald-600 text-white flex items-center justify-center text-[7px]">✓</span>
+                <span className="line-through text-slate-400">تحلیل بازار و رقبا</span>
               </div>
-            </div>
-
-            <div className="flex items-center justify-between text-[8px] text-slate-400">
-              <span className="text-emerald-400 font-bold">دسته‌بندی: شغلی و کارفرما</span>
-              <span>پیشرفت: ۵۰٪</span>
             </div>
           </div>
         );
 
       case 'routine':
-        // 4. Monthly Routines Mockup
         return (
-          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
+          <div className={`w-full rounded-2xl bg-[#070b14] border border-slate-800 ${compactClass} text-right font-sans`}>
             <div className="flex items-center justify-between pb-1 border-b border-slate-800">
-              <span className="font-black text-purple-400 flex items-center gap-1">
-                <Repeat className="w-3 h-3 text-purple-400" />
+              <span className="font-black text-purple-400 flex items-center gap-1 text-[8.5px]">
+                <Repeat className="w-2.5 h-2.5 text-purple-400" />
                 <span>روتین‌های تکرارشونده ۳۰ روزه</span>
               </span>
-              <span className="text-[8px] text-slate-400">خودکار برای تمام ماه</span>
+              <span className="text-[7.5px] text-slate-400">خودکار برای تمام ماه</span>
             </div>
-            <div className="space-y-1">
-              <div className="p-1.5 rounded-xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3.5 h-3.5 rounded-md bg-purple-600 text-white flex items-center justify-center text-[8px] font-black">✓</span>
-                  <span className="font-bold text-white text-[9px]">ورزش و پیاده‌روی صبحگاهی</span>
-                </div>
-                <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[7.5px] font-bold">🔁 هرروز ماه</span>
+            <div className="p-1 rounded-xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-md bg-purple-600 text-white flex items-center justify-center text-[7.5px] font-black">✓</span>
+                <span className="font-bold text-white text-[8.5px]">ورزش و پیاده‌روی صبحگاهی</span>
               </div>
-              <div className="p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3.5 h-3.5 rounded-md bg-emerald-600 text-white flex items-center justify-center text-[8px] font-black">✓</span>
-                  <span className="font-bold text-slate-200 text-[9px]">مطالعه ۳۰ صفحه کتاب تخصصی</span>
-                </div>
-                <div className="flex items-center gap-1 text-[8px] text-amber-400">
-                  <Flame className="w-3 h-3 fill-amber-400" />
-                  <span>۱۴ روز استریک</span>
-                </div>
-              </div>
+              <span className="px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[7px] font-bold">🔁 هرروز ماه</span>
             </div>
           </div>
         );
 
       case 'planner':
-        // 5. Hourly Planner with "Now" Badge Mockup
         return (
-          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
+          <div className={`w-full rounded-2xl bg-[#070b14] border border-slate-800 ${compactClass} text-right font-sans`}>
             <div className="flex items-center justify-between pb-1 border-b border-slate-800">
-              <span className="font-black text-emerald-400 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-emerald-400" />
+              <span className="font-black text-emerald-400 flex items-center gap-1 text-[8.5px]">
+                <Clock className="w-2.5 h-2.5 text-emerald-400" />
                 <span>دیلی‌پلنر ساعتی (Time Blocking)</span>
               </span>
-              <span className="text-slate-400 text-[8px]">چهارشنبه • امروز</span>
+              <span className="text-slate-400 text-[7.5px]">امروز</span>
             </div>
-            <div className="space-y-1 text-[9px]">
-              <div className="p-1.5 rounded-xl bg-gradient-to-r from-emerald-950/80 to-slate-900 border-r-4 border-emerald-500 border border-emerald-800/60 shadow-lg flex items-center justify-between">
-                <div>
-                  <div className="font-black text-white text-[9.5px]">توسعه کدها و توسعه فیچر اصلی</div>
-                  <div className="text-[7.5px] text-emerald-300">⏱️ ۱۰:۰۰ تا ۱۱:۳۰</div>
-                </div>
-                <span className="px-1.5 py-0.5 rounded bg-rose-500 text-white text-[7.5px] font-black animate-pulse">
-                  هم‌اکنون
-                </span>
+            <div className="p-1 rounded-xl bg-gradient-to-r from-emerald-950/80 to-slate-900 border-r-4 border-emerald-500 border border-emerald-800/60 flex items-center justify-between">
+              <div>
+                <div className="font-black text-white text-[8.5px]">توسعه کدها و فیچر اصلی</div>
+                <div className="text-[7px] text-emerald-300">⏱️ ۱۰:۰۰ تا ۱۱:۳۰</div>
               </div>
-              <div className="p-1.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between text-slate-400">
-                <span>جلسه هماهنگی تیم و ارائه گزارش</span>
-                <span className="text-[8px] font-mono">۱۲:۰۰</span>
-              </div>
+              <span className="px-1 py-0.2 rounded bg-rose-500 text-white text-[7px] font-black animate-pulse">
+                هم‌اکنون
+              </span>
             </div>
           </div>
         );
 
       case 'focus':
-        // 6. Focus Room & QR Join Mockup
         return (
-          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
+          <div className={`w-full rounded-2xl bg-[#070b14] border border-slate-800 ${compactClass} text-right font-sans`}>
             <div className="flex items-center justify-between pb-1 border-b border-slate-800">
-              <span className="font-black text-amber-400 flex items-center gap-1">
-                <span>اتاق تمرکز زنده (دیپ ورک)</span>
-              </span>
-              <span className="text-emerald-400 text-[8px] font-bold">🟢 ۴ نفر آنلاین</span>
+              <span className="font-black text-amber-400 text-[8.5px]">اتاق تمرکز زنده (دیپ ورک)</span>
+              <span className="text-emerald-400 text-[7.5px] font-bold">🟢 ۴ نفر آنلاین</span>
             </div>
-            <div className="p-2 rounded-xl bg-slate-900/90 border border-amber-500/30 flex items-center justify-between">
+            <div className="p-1.5 rounded-xl bg-slate-900/90 border border-amber-500/30 flex items-center justify-between">
               <div>
-                <div className="text-lg font-black font-mono text-white tracking-wider">۲۴:۵۲</div>
-                <div className="text-[8px] text-amber-300 font-bold">پومودورو ۲۵ دقیقه‌ای</div>
+                <div className="text-base font-black font-mono text-white tracking-wider">۲۴:۵۲</div>
+                <div className="text-[7.5px] text-amber-300 font-bold">پومودورو ۲۵ دقیقه‌ای</div>
               </div>
-              <div className="text-left bg-slate-800 px-2 py-1 rounded-lg border border-slate-700 flex items-center gap-1.5">
-                <QrCode className="w-4 h-4 text-emerald-400" />
-                <div>
-                  <div className="text-[7.5px] text-emerald-400 font-bold">ورود سریع با QR</div>
-                  <div className="text-[7px] text-slate-400">بدون نیاز به لاگین</div>
-                </div>
+              <div className="text-left bg-slate-800 px-1.5 py-0.5 rounded-lg border border-slate-700 flex items-center gap-1">
+                <QrCode className="w-3 h-3 text-emerald-400" />
+                <div className="text-[7px] text-emerald-400 font-bold">ورود سریع با QR</div>
               </div>
             </div>
           </div>
         );
 
       case 'habits':
-        // 7. Red Tick Incomplete Analyzer Mockup
         return (
-          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
+          <div className={`w-full rounded-2xl bg-[#070b14] border border-slate-800 ${compactClass} text-right font-sans`}>
             <div className="flex items-center justify-between pb-1 border-b border-slate-800">
-              <span className="font-black text-rose-400">تیک قرمز و تحلیل علت عدم انجام</span>
-              <span className="text-slate-400 text-[8px]">هوش مصنوعی</span>
+              <span className="font-black text-rose-400 text-[8.5px]">تیک قرمز و تحلیل عدم انجام</span>
+              <span className="text-slate-400 text-[7.5px]">هوش مصنوعی</span>
             </div>
-            <div className="p-1.5 rounded-xl bg-rose-950/30 border border-rose-500/40 flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="w-3.5 h-3.5 rounded-md bg-rose-600 text-white flex items-center justify-center text-[9px] font-black">✕</span>
-                <span className="font-bold text-white text-[9px]">تکمیل گزارش حسابداری شرکت</span>
+            <div className="p-1 rounded-xl bg-rose-950/30 border border-rose-500/40 flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-md bg-rose-600 text-white flex items-center justify-center text-[7.5px] font-black">✕</span>
+                <span className="font-bold text-white text-[8.5px]">تکمیل گزارش حسابداری</span>
               </div>
-              <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[7.5px] font-bold">تیک قرمز ❌</span>
-            </div>
-            <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[8px] flex items-center justify-between text-slate-300">
-              <span>علت ثبت‌شده: «کمبود وقت و تداخل کاری»</span>
-              <span className="text-amber-400 font-bold">راهکار: جابجایی به ۹ صبح</span>
+              <span className="px-1 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[7px] font-bold">تیک قرمز ❌</span>
             </div>
           </div>
         );
 
       case 'extension':
       default:
-        // 8. Chrome Extension + Reminders + Direct Start Mockup
         return (
-          <div className="w-full rounded-2xl bg-[#070b14] border border-slate-800 p-2.5 sm:p-3 space-y-1.5 text-right font-sans text-[10px]">
+          <div className={`w-full rounded-2xl bg-[#070b14] border border-slate-800 ${compactClass} text-right font-sans`}>
             <div className="flex items-center justify-between pb-1 border-b border-slate-800">
-              <span className="font-black text-emerald-400 flex items-center gap-1">
-                <Globe className="w-3 h-3 text-emerald-400" />
+              <span className="font-black text-emerald-400 flex items-center gap-1 text-[8.5px]">
+                <Globe className="w-2.5 h-2.5 text-emerald-400" />
                 <span>اکستنشن تب جدید مرورگر + شروع</span>
               </span>
-              <span className="text-slate-400 text-[8px]">Chrome & Edge</span>
+              <span className="text-slate-400 text-[7.5px]">Chrome & Edge</span>
             </div>
-            <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-between text-[8px] text-slate-400 px-2">
-              <span>در هر تب جدید: ساعت زنده + تسک‌های فوری امروز</span>
-              <span>⚡</span>
-            </div>
-            <div className="p-1.5 rounded-xl bg-emerald-600 text-white font-black text-center text-[10px] shadow-sm flex items-center justify-center gap-1.5">
-              <span>task.mohusyn.ir</span>
-              <span>•</span>
-              <span>bagtime.negahm.ir</span>
+            <div className="p-1 rounded-xl bg-emerald-600 text-white font-black text-center text-[9px] shadow-sm flex items-center justify-center gap-1">
+              <span>bagtime.negahm.ir ⚡</span>
             </div>
           </div>
         );
     }
   };
 
-  // Render Single Slide Content (Unified for 4:5 Feed or 9:16 Story)
+  // Render Single Slide Content (Unified for 4:5 Feed, 1:1 Square, or 9:16 Story)
   const renderSlideGraphic = (s: TutorialSlideData, isStory = false) => {
+    const isSquare = !isStory && feedRatio === '1:1';
+
     return (
       <div
         className={`w-full h-full ${themeStyles.container} ${
-          isStory ? 'p-6 sm:p-7 flex flex-col justify-between' : 'p-5 sm:p-6 flex flex-col justify-between'
+          isStory
+            ? 'p-6 sm:p-7 flex flex-col justify-between'
+            : isSquare
+            ? 'p-3.5 sm:p-4 flex flex-col justify-between'
+            : 'p-5 sm:p-6 flex flex-col justify-between'
         } relative overflow-hidden select-none`}
         dir="rtl"
         style={{
@@ -546,62 +493,62 @@ export const AppTutorialStudio: React.FC = () => {
         <div className={`absolute bottom-0 left-0 w-56 h-56 rounded-full ${themeStyles.glow2} blur-3xl pointer-events-none`} />
 
         {/* Top Header */}
-        <div className={`flex items-center justify-between z-10 border-b ${themeStyles.headerBorder} pb-2.5 flex-shrink-0`}>
+        <div className={`flex items-center justify-between z-10 border-b ${themeStyles.headerBorder} ${isSquare ? 'pb-1.5' : 'pb-2.5'} flex-shrink-0`}>
           <div className="flex items-center gap-2">
-            <TaskMasterHexagon size={24} />
+            <TaskMasterHexagon size={isSquare ? 20 : 24} />
             <div className="leading-tight">
-              <span className="font-black text-xs sm:text-sm text-white">بَگ‌تایم</span>
-              <span className="text-[8px] text-slate-400 block font-mono" dir="ltr">BagTime</span>
+              <span className={`font-black ${isSquare ? 'text-xs' : 'text-xs sm:text-sm'} text-white`}>بَگ‌تایم</span>
+              <span className="text-[7.5px] text-slate-400 block font-mono" dir="ltr">BagTime</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className={`px-2.5 py-0.5 rounded-xl text-[10px] font-black ${themeStyles.badge}`}>
+          <div className="flex items-center gap-1.5">
+            <span className={`px-2 py-0.5 rounded-xl ${isSquare ? 'text-[8.5px]' : 'text-[10px]'} font-black ${themeStyles.badge}`}>
               {s.badge}
             </span>
-            <span className="text-[10px] text-slate-400 font-mono font-bold" dir="ltr">
+            <span className="text-[9px] text-slate-400 font-mono font-bold" dir="ltr">
               {toPersianDigits(s.stepNumber)}/{toPersianDigits(slides.length)}
             </span>
           </div>
         </div>
 
         {/* Center Main Body */}
-        <div className="my-auto space-y-2 z-10 text-right py-1 flex-1 flex flex-col justify-center">
-          <h2 className="text-sm sm:text-base font-black leading-snug text-white">
+        <div className={`my-auto ${isSquare ? 'space-y-1 py-0.5' : 'space-y-2 py-1'} z-10 text-right flex-1 flex flex-col justify-center overflow-hidden`}>
+          <h2 className={`${isSquare ? 'text-[12px] sm:text-[13px]' : 'text-sm sm:text-base'} font-black leading-snug text-white`}>
             {s.title}
           </h2>
 
-          <p className="text-[10.5px] sm:text-[11px] font-bold text-slate-300 leading-relaxed">
+          <p className={`${isSquare ? 'text-[9px] leading-tight line-clamp-1' : 'text-[10.5px] sm:text-[11px] leading-relaxed'} font-bold text-slate-300`}>
             {s.subtitle}
           </p>
 
           {/* Interactive UI Mockup */}
-          <div className="my-1">
-            {renderStepMockup(s.mockupType)}
+          <div className="my-0.5">
+            {renderStepMockup(s.mockupType, isSquare)}
           </div>
 
           {/* Bullet points */}
-          <div className="space-y-1 text-xs">
-            {s.bullets.slice(0, 4).map((b, idx) => (
+          <div className={`${isSquare ? 'space-y-0.5 text-[8.5px]' : 'space-y-1 text-xs'}`}>
+            {(isSquare ? s.bullets.slice(0, 3) : s.bullets.slice(0, 4)).map((b, idx) => (
               <div
                 key={idx}
-                className={`p-1.5 sm:p-2 rounded-xl ${themeStyles.card} flex items-start gap-1.5 text-right leading-relaxed`}
+                className={`${isSquare ? 'p-1 rounded-lg' : 'p-1.5 sm:p-2 rounded-xl'} ${themeStyles.card} flex items-start gap-1.5 text-right leading-tight`}
               >
-                <span className={`font-black ${themeStyles.bullet} text-xs`}>•</span>
-                <span className="flex-1 text-[10.5px] sm:text-[11px] font-bold text-slate-200">{b}</span>
+                <span className={`font-black ${themeStyles.bullet} text-xs flex-shrink-0`}>•</span>
+                <span className={`flex-1 ${isSquare ? 'text-[8.5px]' : 'text-[10.5px] sm:text-[11px]'} font-bold text-slate-200`}>{b}</span>
               </div>
             ))}
           </div>
 
           {s.highlightTip && (
-            <div className="p-1.5 sm:p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-black text-[10.5px] text-center">
+            <div className={`${isSquare ? 'p-1 rounded-lg text-[8px] line-clamp-1' : 'p-1.5 sm:p-2 rounded-xl text-[10.5px]'} bg-amber-500/15 border border-amber-500/30 text-amber-300 font-black text-center`}>
               {s.highlightTip}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className={`pt-2 border-t ${themeStyles.footerBorder} flex items-center justify-between text-[10px] ${themeStyles.footerText} z-10 flex-shrink-0`}>
+        <div className={`${isSquare ? 'pt-1.5 text-[8.5px]' : 'pt-2 text-[10px]'} border-t ${themeStyles.footerBorder} flex items-center justify-between ${themeStyles.footerText} z-10 flex-shrink-0`}>
           <span className="font-bold">آموزش رسمی کار با سامانه بَگ‌تایم</span>
           <span className="font-mono text-emerald-400 font-bold" dir="ltr">{customHandle}</span>
         </div>
@@ -729,7 +676,7 @@ export const AppTutorialStudio: React.FC = () => {
 
   // Caption generator for Instagram
   const generateCaption = () => {
-    return `📌 آموزش کامل و صفر تا صد کار با بَگ‌تایم (از ثبت‌نام و احراز هویت تا تسلط کامل) ⚡\n\nاگر کارهات همیشه نصفه می‌مونه، بین تسک‌ها سردرگمی یا نمیدونی چطور از روزت حداکثر بازدهی رو بگیری، این راهنمای قدم‌به‌قدم برای شماست.\n\nدر این آموزش یاد می‌گیرید:\n۱. ورود فوق‌سریع و امن با شماره موبایل و بات پیام‌رسان بله\n۲. نصب وب‌اپلیکیشن (PWA) روی آیفون و اندروید بدون فیلتر\n۳. مدیریت هوشمند کارها، چک‌لیست زیرتسک‌ها و اولویت‌بندی\n۴. سیستم خودکار روتین‌های ۳۰ روزه با نشانگر بنفش 🔁\n۵. دیلی‌پلنر ساعتی و تکنیک Time Blocking (بلوک‌بندی با خط قرمز هم‌اکنون)\n۶. اتاق تمرکز عمیق ۲۵ دقیقه‌ای و ورود رفقا با کد QR\n۷. ثبت تیک قرمز و تحلیلگر هوش مصنوعی علت عدم انجام کارها\n۸. اکستنشن تب جدید مرورگر (Chrome & Edge) و یادآورها\n\n🌐 آدرس ورود به سامانه بدون نیاز به فیلترشکن:\ntask.mohusyn.ir\nbagtime.negahm.ir\n\n💬 کلمه «آموزش» رو توی دایرکت بفرست تا لینک دسترسی مستقیم برات ارسال بشه!\n\n${customHandle} #بگ_تایم #مدیریت_زمان #بهره_وری #برنامه_ریزی #پلنر_ساعتی`;
+    return `📌 آموزش کامل و صفر تا صد کار با بَگ‌تایم (از ثبت‌نام و احراز هویت تا تسلط کامل) ⚡\n\nاگر کارهات همیشه نصفه می‌مونه، بین تسک‌ها سردرگمی یا نمیدونی چطور از روزت حداکثر بازدهی رو بگیری، این راهنمای قدم‌به‌قدم برای شماست.\n\nدر این آموزش یاد می‌گیرید:\n۱. ورود فوق‌سریع و امن با شماره موبایل و بات پیام‌رسان بله\n۲. نصب وب‌اپلیکیشن (PWA) روی آیفون و اندروید بدون فیلتر\n۳. مدیریت هوشمند کارها، چک‌لیست زیرتسک‌ها و اولویت‌بندی\n۴. سیستم خودکار روتین‌های ۳۰ روزه با نشانگر بنفش 🔁\n۵. دیلی‌پلنر ساعتی و تکنیک Time Blocking (بلوک‌بندی با خط قرمز هم‌اکنون)\n۶. اتاق تمرکز عمیق ۲۵ دقیقه‌ای و ورود رفقا با کد QR\n۷. ثبت تیک قرمز و تحلیلگر هوش مصنوعی علت عدم انجام کارها\n۸. اکستنشن تب جدید مرورگر (Chrome & Edge) و یادآورها\n\n🌐 آدرس ورود به سامانه بدون نیاز به فیلترشکن:\nbagtime.negahm.ir\n\n💬 کلمه «آموزش» رو توی دایرکت بفرست تا لینک دسترسی مستقیم برات ارسال بشه!\n\n${customHandle} #بگ_تایم #مدیریت_زمان #بهره_وری #برنامه_ریزی #پلنر_ساعتی`;
   };
 
   const copyCaption = () => {

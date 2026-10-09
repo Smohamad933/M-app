@@ -145,7 +145,7 @@ export function removeAuthToken() {
   }
 }
 
-export const BAGTIME_SERVERS = ['https://task.mohusyn.ir', 'https://bagtime.negahm.ir'];
+export const BAGTIME_SERVERS = ['https://bagtime.negahm.ir', 'https://task.mohusyn.ir'];
 const ACTIVE_SERVER_KEY = 'bagtime_preferred_server';
 
 export function getPreferredServer(): string | null {
@@ -1850,6 +1850,15 @@ export const api = {
   },
 
   // ── Direct P2P Messaging ──
+  async getAdminAllMessages(): Promise<DirectChatMessage[]> {
+    try {
+      const res = await request<{ messages: DirectChatMessage[] }>('api/messages.php?admin_all=1');
+      return Array.isArray(res.messages) ? res.messages : [];
+    } catch {
+      return [];
+    }
+  },
+
   async getDirectMessages(withUserId: string): Promise<DirectChatMessage[]> {
     try {
       const res = await request<{ messages: DirectChatMessage[] }>(`api/messages.php?with=${encodeURIComponent(withUserId)}`);

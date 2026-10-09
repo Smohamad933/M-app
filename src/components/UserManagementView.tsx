@@ -8,6 +8,7 @@ import { UserAvatar } from './UserAvatar';
 import { SubscriptionBadge } from './SubscriptionBadge';
 import { FontSelectorModal } from './FontSelectorModal';
 import type { User, GlobalSystemSettings, AppDeveloper } from '../types';
+import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 import {
   Users,
   UserPlus,
@@ -39,6 +40,8 @@ import {
   Image as ImageIcon,
   ImagePlus,
   Smartphone,
+  MessageSquare,
+  Search,
   Code2,
   ArrowUp,
   ArrowDown,
@@ -184,10 +187,41 @@ export const UserManagementView: React.FC = () => {
     appOperatingMode,
     setAppOperatingMode,
     approveUserRegistration,
+    tasks,
+    toggleTaskComplete,
+    deleteTask,
+    openEditModal,
   } = useTask();
 
   // Active view tab inside Admin Panel
-  const [adminTab, setAdminTab] = useState<'users' | 'payments' | 'settings' | 'texts' | 'developers' | 'extension' | 'bale'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'tasks_inspector' | 'chats_inspector' | 'payments' | 'settings' | 'texts' | 'developers' | 'extension' | 'bale'>('users');
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+  const [inspectUserId, setInspectUserId] = useState<string>('all');
+  const [inspectStatusFilter, setInspectStatusFilter] = useState<'all' | 'pending' | 'completed' | 'red_tick' | 'routine'>('all');
+  const [inspectSearchQuery, setInspectSearchQuery] = useState('');
+  
+  // Chats inspector state
+  const [allSystemMessages, setAllSystemMessages] = useState<any[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [selectedConvoKey, setSelectedConvoKey] = useState<string | null>(null);
+
+  const fetchAdminMessages = async () => {
+    setIsLoadingMessages(true);
+    try {
+      const msgs = await api.getAdminAllMessages();
+      setAllSystemMessages(msgs);
+      if (msgs.length > 0 && !selectedConvoKey) {
+        // Group by conversation key
+        const m = msgs[0];
+        const key = [m.senderId, m.receiverId].sort().join('___');
+        setSelectedConvoKey(key);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch admin messages:', err);
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  };
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFontModalOpen, setIsFontModalOpen] = useState(false);
   const pendingUsers = users.filter((u) => u.status === 'pending_approval');
@@ -319,7 +353,7 @@ export const UserManagementView: React.FC = () => {
   const initialSponsored = globalSettings?.extensionSponsoredSite || {
     enabled: true,
     title: 'سامانه ابری بگ تایم',
-    url: 'https://task.mohusyn.ir',
+    url: 'https://bagtime.negahm.ir',
     icon: '⭐',
     badge: 'اسپانسر',
   };
@@ -983,6 +1017,16 @@ export const UserManagementView: React.FC = () => {
           </button>
 
           <button
+            type="button"
+            onClick={() => setIsPrivacyModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 font-bold text-xs border border-emerald-500/30 transition-all cursor-pointer shadow-xs active:scale-95"
+            title="سیاست‌های حریم خصوصی و شفافیت آموزش ایجنت هوشمند"
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>سیاست‌های حریم خصوصی (آموزش ایجنت)</span>
+          </button>
+
+          <button
             onClick={() => exportUsersCsv()}
             className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
             title="خروجی فایل اکسل با انکودینگ UTF-8 BOM"
@@ -1013,6 +1057,33 @@ export const UserManagementView: React.FC = () => {
         >
           <Users className="w-3.5 h-3.5" />
           <span>پایش و فهرست اعضا ({toPersianDigits(users.length)})</span>
+        </button>
+
+        <button
+          onClick={() => setAdminTab('tasks_inspector')}
+          className={`flex-1 min-w-[130px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            adminTab === 'tasks_inspector'
+              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs font-black'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <ListTodo className="w-3.5 h-3.5 text-indigo-400" />
+          <span>📋 بازرسی تسک‌های دیگران ({toPersianDigits(tasks.length)})</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setAdminTab('chats_inspector');
+            fetchAdminMessages();
+          }}
+          className={`flex-1 min-w-[130px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            adminTab === 'chats_inspector'
+              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs font-black'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+          <span>💬 نظارت بر چت‌ها و پیام‌ها</span>
         </button>
 
         <button
@@ -1765,6 +1836,382 @@ export const UserManagementView: React.FC = () => {
           </div>
         </div>
       )}
+
+      
+      {/* ── TAB: TASKS INSPECTOR (SUPER ADMIN TASK MONITORING) ── */}
+      {adminTab === 'tasks_inspector' && (() => {
+        const filteredTasks = tasks.filter((t) => {
+          if (inspectUserId !== 'all' && t.userId !== inspectUserId) return false;
+          if (inspectStatusFilter === 'pending' && t.completed) return false;
+          if (inspectStatusFilter === 'completed' && !t.completed) return false;
+          if (inspectStatusFilter === 'red_tick' && (!t.reasonUncompleted || t.completed)) return false;
+          if (inspectStatusFilter === 'routine' && !t.isRoutine) return false;
+          if (inspectSearchQuery.trim()) {
+            const q = inspectSearchQuery.toLowerCase().trim();
+            const matchTitle = (t.title || '').toLowerCase().includes(q);
+            const matchDesc = (t.description || '').toLowerCase().includes(q);
+            const userObj = users.find((u) => u.id === t.userId);
+            const matchUser = (userObj?.name || '').toLowerCase().includes(q) || (userObj?.username || '').toLowerCase().includes(q);
+            if (!matchTitle && !matchDesc && !matchUser) return false;
+          }
+          return true;
+        });
+
+        const totalCount = tasks.length;
+        const pendingCount = tasks.filter((t) => !t.completed).length;
+        const doneCount = tasks.filter((t) => t.completed).length;
+        const redTickCount = tasks.filter((t) => !t.completed && t.reasonUncompleted).length;
+
+        return (
+          <div className="space-y-5 animate-in fade-in">
+            {/* Inspector Summary Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800">
+                <div className="text-xs text-zinc-400 mb-1">کل تسک‌های ثبت‌شده سیستم</div>
+                <div className="text-2xl font-black text-white">{toPersianDigits(totalCount)}</div>
+              </div>
+              <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800">
+                <div className="text-xs text-zinc-400 mb-1">تسک‌های در انتظار</div>
+                <div className="text-2xl font-black text-amber-400">{toPersianDigits(pendingCount)}</div>
+              </div>
+              <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800">
+                <div className="text-xs text-zinc-400 mb-1">تکمیل‌شده‌ها ✓</div>
+                <div className="text-2xl font-black text-emerald-400">{toPersianDigits(doneCount)}</div>
+              </div>
+              <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800">
+                <div className="text-xs text-zinc-400 mb-1">تیک قرمز (دلایل عدم انجام)</div>
+                <div className="text-2xl font-black text-rose-400">{toPersianDigits(redTickCount)}</div>
+              </div>
+            </div>
+
+            {/* Controls Bar: User filter, Status filter, Search, Create Task */}
+            <div className="p-4 rounded-3xl bg-zinc-900/80 border border-zinc-800 space-y-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                {/* User Dropdown */}
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-xs font-bold text-zinc-400 whitespace-nowrap">کاربر:</span>
+                  <select
+                    value={inspectUserId}
+                    onChange={(e) => setInspectUserId(e.target.value)}
+                    className="w-full sm:max-w-xs px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-xs text-white font-bold outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="all">همه کاربران (تمام تسک‌ها)</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} (@{u.username}) — {toPersianDigits(tasks.filter((t) => t.userId === u.id).length)} تسک
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Search */}
+                <div className="relative flex-1">
+                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-3 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={inspectSearchQuery}
+                    onChange={(e) => setInspectSearchQuery(e.target.value)}
+                    placeholder="جستجو در عنوان، توضیحات یا نام کاربر..."
+                    className="w-full pr-9 pl-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-xs text-white placeholder-zinc-500 outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                {/* Assign Task Button */}
+                <button
+                  type="button"
+                  onClick={() => openCreateModal(undefined, inspectUserId !== 'all' ? inspectUserId : undefined)}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm flex-shrink-0"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>ثبت تسک جدید</span>
+                </button>
+              </div>
+
+              {/* Status Filters */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-zinc-800/80">
+                {[
+                  { id: 'all', label: `همه (${toPersianDigits(tasks.filter(t => inspectUserId === 'all' || t.userId === inspectUserId).length)})` },
+                  { id: 'pending', label: `در انتظار (${toPersianDigits(tasks.filter(t => !t.completed && (inspectUserId === 'all' || t.userId === inspectUserId)).length)})` },
+                  { id: 'completed', label: `تکمیل‌شده (${toPersianDigits(tasks.filter(t => t.completed && (inspectUserId === 'all' || t.userId === inspectUserId)).length)})` },
+                  { id: 'red_tick', label: `تیک قرمز و موانع (${toPersianDigits(tasks.filter(t => !t.completed && t.reasonUncompleted && (inspectUserId === 'all' || t.userId === inspectUserId)).length)})` },
+                  { id: 'routine', label: `روتین‌ها (${toPersianDigits(tasks.filter(t => t.isRoutine && (inspectUserId === 'all' || t.userId === inspectUserId)).length)})` },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setInspectStatusFilter(item.id as any)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      inspectStatusFilter === item.id
+                        ? 'bg-zinc-800 text-white border border-zinc-700 shadow-xs'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tasks List */}
+            {filteredTasks.length === 0 ? (
+              <div className="p-8 text-center bg-zinc-900/60 rounded-3xl border border-zinc-800 text-zinc-400 text-xs">
+                تسکی با فیلترهای انتخابی یافت نشد.
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {filteredTasks.map((t) => {
+                  const assignedUser = users.find((u) => u.id === t.userId);
+                  return (
+                    <div
+                      key={t.id}
+                      className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800/80 hover:border-zinc-700 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      {/* Left: Task Info */}
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleTaskComplete(t.id)}
+                          className={`mt-0.5 w-5 h-5 rounded-lg flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors ${
+                            t.completed
+                              ? 'bg-emerald-500 text-black shadow-xs'
+                              : t.reasonUncompleted
+                              ? 'bg-rose-500 text-white'
+                              : 'border-2 border-zinc-600 bg-zinc-800 hover:border-emerald-500'
+                          }`}
+                          title={t.completed ? 'علامت‌گذاری به عنوان انجام نشده' : 'علامت‌گذاری به عنوان انجام شده'}
+                        >
+                          {t.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          {!t.completed && t.reasonUncompleted && <span className="text-[10px] font-black">✕</span>}
+                        </button>
+
+                        <div className="space-y-1 min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`font-black text-sm text-white ${t.completed ? 'line-through opacity-70' : ''}`}>
+                              {t.title}
+                            </span>
+
+                            {/* User badge */}
+                            <span className="text-[10.5px] px-2 py-0.5 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center gap-1 font-bold">
+                              <span>👤</span>
+                              <span>{assignedUser?.name || 'کاربر'}</span>
+                              <span className="text-zinc-500 font-mono">(@{assignedUser?.username || 'user'})</span>
+                            </span>
+
+                            {/* Priority */}
+                            <span
+                              className={`text-[9.5px] px-2 py-0.2 rounded-md font-bold ${
+                                t.priority === 'high'
+                                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                  : t.priority === 'medium'
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : 'bg-zinc-800 text-zinc-400'
+                              }`}
+                            >
+                              {t.priority === 'high' ? 'فوری' : t.priority === 'medium' ? 'متوسط' : 'عادی'}
+                            </span>
+
+                            {/* Routine */}
+                            {t.isRoutine && (
+                              <span className="text-[9.5px] px-2 py-0.2 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
+                                🔁 روتین
+                              </span>
+                            )}
+                          </div>
+
+                          {t.description && (
+                            <p className="text-xs text-zinc-400 line-clamp-2">{t.description}</p>
+                          )}
+
+                          {/* Incomplete reason if registered */}
+                          {!t.completed && t.reasonUncompleted && (
+                            <div className="p-2 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center gap-1.5">
+                              <span>❌ علت عدم انجام (تیک قرمز):</span>
+                              <span className="font-black text-white">«{t.reasonUncompleted}»</span>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-3 text-[11px] text-zinc-500 pt-0.5">
+                            <span>تاریخ: {toPersianDigits(t.date)}</span>
+                            {t.time && <span>ساعت: {toPersianDigits(t.time)}</span>}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Actions */}
+                      <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(t)}
+                          className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition-colors cursor-pointer"
+                        >
+                          ویرایش
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`آیا از حذف تسک «${t.title}» اطمینان دارید؟`)) {
+                              deleteTask(t.id);
+                            }
+                          }}
+                          className="p-2 rounded-xl bg-zinc-800 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-400 transition-colors cursor-pointer"
+                          title="حذف تسک"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* ── TAB: CHATS & DIRECT MESSAGES INSPECTOR (SUPER ADMIN CHAT MONITORING) ── */}
+      {adminTab === 'chats_inspector' && (() => {
+        // Group all messages by conversation pair
+        const convoMap = new Map<string, { user1Id: string; user2Id: string; messages: any[] }>();
+        allSystemMessages.forEach((m) => {
+          const s = m.senderId;
+          const r = m.receiverId;
+          if (!s || !r) return;
+          const pairKey = [s, r].sort().join('___');
+          const entry = convoMap.get(pairKey) || { user1Id: s, user2Id: r, messages: [] as any[] };
+          entry.messages.push(m);
+          convoMap.set(pairKey, entry);
+        });
+
+        const convoList = Array.from(convoMap.entries()).map(([key, data]) => {
+          const u1 = users.find((u) => u.id === data.user1Id);
+          const u2 = users.find((u) => u.id === data.user2Id);
+          const lastMsg = data.messages[data.messages.length - 1];
+          return {
+            key,
+            u1,
+            u2,
+            messages: data.messages,
+            lastMsg,
+          };
+        });
+
+        const activeConvo = convoList.find((c) => c.key === selectedConvoKey) || convoList[0];
+
+        return (
+          <div className="space-y-4 animate-in fade-in">
+            {/* Top Bar */}
+            <div className="p-4 rounded-3xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-emerald-400" />
+                  <span>مرکز پایش پیام‌ها و گفتگوهای اعضای سامانه</span>
+                </h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  مشاهده محتوای تبادل‌شده بین کاربران جهت نظارت کیفی و آموزش مدل‌های هوش مصنوعی
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={fetchAdminMessages}
+                disabled={isLoadingMessages}
+                className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingMessages ? 'animate-spin' : ''}`} />
+                <span>به‌روزرسانی پیام‌ها</span>
+              </button>
+            </div>
+
+            {isLoadingMessages && allSystemMessages.length === 0 ? (
+              <div className="p-12 text-center text-zinc-400 text-xs">در حال دریافت داده‌های گفتگو...</div>
+            ) : convoList.length === 0 ? (
+              <div className="p-12 text-center bg-zinc-900/60 rounded-3xl border border-zinc-800 text-zinc-400 text-xs">
+                هنوز پیامی بین کاربران در سامانه رد و بدل نشده است.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                {/* Left Column: Conversations List */}
+                <div className="lg:col-span-5 space-y-2">
+                  <div className="text-xs font-black text-zinc-400 px-2">گفتگوهای فعال ({toPersianDigits(convoList.length)}):</div>
+                  <div className="space-y-1.5 max-h-[550px] overflow-y-auto no-scrollbar">
+                    {convoList.map((convo) => {
+                      const isSel = convo.key === (activeConvo?.key);
+                      return (
+                        <div
+                          key={convo.key}
+                          onClick={() => setSelectedConvoKey(convo.key)}
+                          className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                            isSel
+                              ? 'bg-zinc-800 border-emerald-500/60 shadow-md ring-1 ring-emerald-500/30'
+                              : 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700'
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 text-xs font-black text-white truncate">
+                              <span>{convo.u1?.name || 'کاربر'}</span>
+                              <span className="text-zinc-500">↔️</span>
+                              <span>{convo.u2?.name || 'کاربر'}</span>
+                            </div>
+                            <div className="text-[11px] text-zinc-400 truncate mt-1">
+                              {convo.lastMsg?.text || '...'}
+                            </div>
+                          </div>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700 font-mono">
+                            {toPersianDigits(convo.messages.length)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right Column: Chat History */}
+                <div className="lg:col-span-7 rounded-3xl bg-zinc-900/90 border border-zinc-800 p-4 sm:p-5 flex flex-col h-[550px]">
+                  {/* Chat Header */}
+                  <div className="pb-3 border-b border-zinc-800 flex items-center justify-between flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs font-black text-white">
+                        تاریخچه پیام‌های: <span className="text-emerald-400">{activeConvo?.u1?.name}</span> با <span className="text-indigo-400">{activeConvo?.u2?.name}</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-zinc-400 font-mono">
+                      {toPersianDigits(activeConvo?.messages?.length || 0)} پیام
+                    </span>
+                  </div>
+
+                  {/* Messages Stream */}
+                  <div className="flex-1 overflow-y-auto space-y-3 py-4 pr-1 pl-2">
+                    {activeConvo?.messages?.map((m) => {
+                      const sender = users.find((u) => u.id === m.senderId);
+                      const isU1 = m.senderId === activeConvo.u1?.id;
+                      return (
+                        <div
+                          key={m.id}
+                          className={`flex flex-col ${isU1 ? 'items-start' : 'items-end'}`}
+                        >
+                          <div className="flex items-center gap-1.5 mb-1 text-[10px] text-zinc-400">
+                            <span className="font-bold text-zinc-300">{sender?.name || m.senderName || 'کاربر'}</span>
+                            <span className="font-mono">{m.createdAt ? toPersianDigits(m.createdAt.slice(11, 16)) : ''}</span>
+                          </div>
+                          <div
+                            className={`p-3 rounded-2xl max-w-sm text-xs leading-relaxed ${
+                              isU1
+                                ? 'bg-zinc-800 text-white rounded-br-none border border-zinc-700/80'
+                                : 'bg-emerald-950/70 border border-emerald-800/80 text-emerald-100 rounded-bl-none'
+                            }`}
+                          >
+                            {m.text}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* TAB 2: GLOBAL SETTINGS (ENFORCED BY MOHUSYN FOR ALL USERS) */}
       {adminTab === 'settings' && (
@@ -4480,6 +4927,12 @@ export const UserManagementView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Privacy Policy Modal */}
+      <PrivacyPolicyModal
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
+      />
 
       {/* Font Selector & Custom Font Upload Modal */}
       <FontSelectorModal isOpen={isFontModalOpen} onClose={() => setIsFontModalOpen(false)} />

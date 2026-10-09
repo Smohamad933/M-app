@@ -3039,6 +3039,22 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     const myId = currentUser.id;
 
     if (method === 'GET') {
+      if (currentUser.role === 'admin' && (urlObj.searchParams.get('admin_all') === '1' || urlObj.searchParams.get('action') === 'admin_all')) {
+        const msgs = (db.messages || []).map((m) => {
+          const sender = (db.users || []).find((u) => u.id === m.senderId);
+          const receiver = (db.users || []).find((u) => u.id === m.receiverId);
+          return {
+            ...m,
+            senderName: sender?.name || m.senderName || 'کاربر',
+            senderUsername: sender?.username || '',
+            receiverName: receiver?.name || 'کاربر',
+            receiverUsername: receiver?.username || '',
+          };
+        });
+        sendJson(res, { messages: msgs });
+        return true;
+      }
+
       const rawWithUserId = urlObj.searchParams.get('with') || urlObj.searchParams.get('chatWith') || urlObj.searchParams.get('userId');
       if (rawWithUserId) {
         const partnerUser = (db.users || []).find((u) => u.id === rawWithUserId || u.username === rawWithUserId || String(u.numericId) === String(rawWithUserId));

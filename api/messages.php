@@ -18,6 +18,12 @@ $dbObj = TaskRoozDB::getInstance();
 
 // GET Messages: either with a specific user, or for a project, or all conversations
 if ($method === 'GET') {
+    // Admin inspection of all system messages
+    if ($currentUser['role'] === 'admin' && ($action === 'admin_all' || isset($_GET['admin_all']))) {
+        $all = $dbObj->getAllMessagesAdmin();
+        jsonResponse(['messages' => $all]);
+    }
+
     // Project chat
     $projectId = $_GET['project_id'] ?? '';
     if (!empty($projectId)) {

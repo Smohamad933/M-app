@@ -175,7 +175,12 @@ interface TaskContextType {
   setIsRemindersModalOpen: (open: boolean) => void;
 
   // Task management
-  addTask: (task: TaskCreateInput, routineType?: 'none' | 'week' | 'month' | 'workdays') => Promise<Task>;
+  addTask: (
+    task: TaskCreateInput, 
+    routineType?: 'none' | 'week' | 'month' | 'workdays' | 'custom_days',
+    customWeekdays?: number[],
+    durationDays?: number
+  ) => Promise<Task>;
   updateTask: (task: Task) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   toggleTaskComplete: (id: string) => Promise<void>;
@@ -567,30 +572,15 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [reminders, setReminders] = useState<ReminderItem[]>(() => {
     try {
       const saved = localStorage.getItem('bagtime_reminders');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return [
-      {
-        id: 'rem_default_1',
-        userId: 'usr_admin_mohusyn',
-        title: 'نوشیدن آب و پیاده‌روی کوتاه 💧',
-        time: '11:00',
-        duration: 'month',
-        startDate: new Date().toISOString().slice(0, 10),
-        active: true,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'rem_default_2',
-        userId: 'usr_admin_mohusyn',
-        title: 'بررسی تسک‌ها و ثبت روتین‌های روز 📝',
-        time: '17:30',
-        duration: 'month',
-        startDate: new Date().toISOString().slice(0, 10),
-        active: true,
-        createdAt: new Date().toISOString(),
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Filter out the two hardcoded default reminders as requested
+          return parsed.filter(r => r.id !== 'rem_default_1' && r.id !== 'rem_default_2');
+        }
       }
-    ];
+    } catch {}
+    return [];
   });
 
   const addReminder = async (input: { title: string; time: string; duration: 'month' | 'week' | 'always' | 'once'; description?: string }) => {
@@ -1736,7 +1726,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const addTask = async (taskData: TaskCreateInput, routineType?: 'none' | 'week' | 'month' | 'workdays'): Promise<Task> => {
+  const addTask = async (
+    taskData: TaskCreateInput,
+    routineType?: 'none' | 'week' | 'month' | 'workdays' | 'custom_days',
+    customWeekdays?: number[],
+    durationDays?: number
+  ): Promise<Task> => {
     if (!isPro) {
       const activeTasksCount = tasks.filter((t) => t.userId === currentUser?.id && !t.completed).length;
       if (activeTasksCount >= 5) {
@@ -1750,7 +1745,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const primaryTaskInput = {
       ...taskData,
       isRoutine,
-      routineType: routineType || 'none',
+      routineType: (routineType as any) || 'none',
       userId: taskData.userId || currentUser?.id || 'usr_admin_1',
     };
 
@@ -1759,19 +1754,26 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sounds.playPop();
     broadcastSync('TASK_CREATED', { taskId: created.id, projectId: created.projectId });
 
-    // If routine is selected (for week or month or workdays), automatically create corresponding recurring instances!
+    // If routine is selected (for workdays, month, custom days), automatically replicate across the period!
     if (isRoutine && taskData.date) {
       const baseDate = new Date(taskData.date);
-      const totalDays = routineType === 'week' ? 7 : 30;
+      const totalDays = durationDays || (routineType === 'week' ? 7 : 30);
+      const targetWeekdays =
+        routineType === 'workdays'
+          ? [6, 0, 1, 2, 3] // شنبه تا چهارشنبه در تقویم ایران (شنبه=6، یکشنبه=0، دوشنبه=1، سه‌شنبه=2، چهارشنبه=3)
+          : routineType === 'custom_days' && customWeekdays && customWeekdays.length > 0
+          ? customWeekdays
+          : null; // null means every consecutive day
+
       const extraTasksToCreate: TaskCreateInput[] = [];
 
       for (let i = 1; i < totalDays; i++) {
         const nextDate = new Date(baseDate);
         nextDate.setDate(nextDate.getDate() + i);
 
-        // If workdays (Saturday to Wednesday in Iran): skip Friday (day 5)
-        if (routineType === 'workdays') {
-          if (nextDate.getDay() === 5) continue;
+        // Check if day matches selected weekdays
+        if (targetWeekdays !== null && !targetWeekdays.includes(nextDate.getDay())) {
+          continue;
         }
 
         const dateStr = nextDate.toISOString().slice(0, 10);
@@ -1779,7 +1781,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...taskData,
           date: dateStr,
           isRoutine: true,
-          routineType,
+          routineType: (routineType as any),
           userId: taskData.userId || currentUser?.id || 'usr_admin_1',
         });
       }
@@ -1864,6 +1866,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...task,
       completed: newStatus,
       completedAt: newStatus ? new Date().toISOString() : undefined,
+      reasonUncompleted: newStatus ? undefined : task.reasonUncompleted,
+      uncompletedCategory: newStatus ? undefined : task.uncompletedCategory,
       subtasks: updatedSubtasks,
     };
 

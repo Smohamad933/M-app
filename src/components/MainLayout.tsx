@@ -36,6 +36,7 @@ import { ExtensionDownloadModal } from './ExtensionDownloadModal';
 import { FirstLoginProfileModal } from './FirstLoginProfileModal';
 import { PublicUserProfileModal } from './PublicUserProfileModal';
 import { SubscriptionBadge } from './SubscriptionBadge';
+import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 import { api } from '../services/api';
 import type { User } from '../types';
 import { BottomNav } from './BottomNav';
@@ -298,6 +299,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
 
   const isCurrentTabSecondary = !simplePrimaryTabs.includes(activeTab);
   const [isMoreToolsOpen, setIsMoreToolsOpen] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'users' && !isAdmin) {
@@ -1532,27 +1534,43 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
             )}
           </main>
 
-          {/* Micro Footer Under Pages: "بَگ‌تایم، از خانوادهٔ کیان فناوران نگاه" */}
+          {/* Micro Footer Under Pages: "بَگ‌تایم، از خانوادهٔ کیان فناوران نگاه" & Privacy Policy */}
           {globalSettings?.footerBranding?.enabled !== false && (
-            <footer className="py-2 px-4 text-center select-none text-[10.5px] text-slate-400 border-t border-slate-200/40 mt-auto bg-transparent">
+            <footer className="py-2.5 px-4 text-center select-none text-[10.5px] text-slate-400 border-t border-slate-200/40 mt-auto bg-transparent flex items-center justify-center gap-2 flex-wrap">
               <span>{globalSettings?.footerBranding?.prefixText || 'بَگ‌تایم، از خانوادهٔ'}{' '}</span>
               {globalSettings?.footerBranding?.isLinkEnabled && globalSettings?.footerBranding?.companyUrl ? (
                 <a
                   href={globalSettings.footerBranding.companyUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-black text-slate-600 hover:text-indigo-600 transition-colors underline decoration-slate-300 underline-offset-2 hover:decoration-indigo-500"
+                  className="font-black text-slate-600 dark:text-slate-300 hover:text-indigo-600 transition-colors underline decoration-slate-300 underline-offset-2 hover:decoration-indigo-500"
                 >
                   {globalSettings?.footerBranding?.companyName || 'کیان فناوران نگاه'}
                 </a>
               ) : (
-                <strong className="font-black text-slate-600">
+                <strong className="font-black text-slate-600 dark:text-slate-300">
                   {globalSettings?.footerBranding?.companyName || 'کیان فناوران نگاه'}
                 </strong>
               )}
+
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+
+              <button
+                type="button"
+                onClick={() => setIsPrivacyModalOpen(true)}
+                className="font-bold text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer hover:underline"
+              >
+                سیاست‌های حریم خصوصی (شفافیت آموزش ایجنت) 🔒
+              </button>
             </footer>
           )}
         </div>
+
+      {/* Privacy Policy Modal */}
+      <PrivacyPolicyModal
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
+      />
 
       {/* Mobile Bottom Navigation (screens < 1024px) */}
       <BottomNav />

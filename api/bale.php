@@ -388,7 +388,7 @@ if ($action === 'set_webhook') {
 
     $rawUrl = trim($input['url'] ?? ($_POST['url'] ?? ''));
     if (empty($rawUrl)) {
-        $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+        $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
         $rawUrl = 'https://' . $host . '/api/bale.php?action=webhook';
     }
     // Bale API strictly requires HTTPS protocol! Force https://
@@ -1085,7 +1085,7 @@ if ($isWebhook) {
                 $dbObj->data['payments'][] = $newPayment;
                 $dbObj->saveJson();
 
-                $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+                $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
                 $webAppUrl = 'https://' . $host . '/index.html';
 
                 $successMsg = "🎉 **پرداخت با موفقیت انجام شد!** ✅\n\n" .
@@ -1252,7 +1252,7 @@ if ($isWebhook) {
                 saveBaleTicketsData($tickets);
             }
 
-            $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+            $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
             $webAppUrl = 'https://' . $host . '/index.html';
 
             // Remove reply keyboard first
@@ -1407,7 +1407,7 @@ if ($isWebhook) {
             $dbObj->data['payments'][] = $newPayment;
             $dbObj->saveJson();
 
-            $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+            $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
             $webAppUrl = 'https://' . $host . '/index.html';
 
             $successMsg = "🎉 **پرداخت شما با کیف پول بله با موفقیت انجام شد!** ✅\n\n" .
@@ -1591,7 +1591,7 @@ if ($isWebhook) {
         ];
         saveBaleTicketsData($tickets);
 
-        $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+        $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
         $webAppUrl = 'https://' . $host . '/index.html';
         $displayName = $matchedUser['name'] ?: $matchedUser['username'];
 
@@ -1679,7 +1679,7 @@ if ($isWebhook) {
             ];
             saveBaleTicketsData($tickets);
 
-            $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+            $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
             $webAppUrl = 'https://' . $host . '/index.html';
             $displayName = $matchedUser['name'] ?: $matchedUser['username'];
 
@@ -1703,7 +1703,7 @@ if ($isWebhook) {
             exit;
         }
 
-        $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
+        $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
         $webAppUrl = 'https://' . $host . '/index.html';
         $displayName = $matchedUser['name'] ?: $matchedUser['username'];
 

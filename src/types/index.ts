@@ -116,7 +116,7 @@ export interface Task {
   reminder?: boolean;
   repeat?: 'none' | 'daily' | 'weekly';
   isRoutine?: boolean;
-  routineType?: 'none' | 'week' | 'month' | 'workdays';
+  routineType?: 'none' | 'week' | 'month' | 'workdays' | 'custom_days';
   createdAt: string;
 }
 
