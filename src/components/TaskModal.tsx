@@ -304,7 +304,7 @@ export const TaskModal: React.FC = () => {
               <div className="flex items-center justify-between">
                 <label className="font-extrabold text-slate-700 flex items-center gap-1.5 text-xs">
                   <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>تاریخ شمسی تسک</span>
+                  <span>تاریخ {calendarType === 'gregorian' ? 'میلادی' : 'شمسی'} تسک</span>
                 </label>
                 <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200">
                   {formatAppDate(date || todayISO, calendarType, 'full')}

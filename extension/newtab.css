@@ -1315,6 +1315,29 @@ body {
   padding: 0.15rem 0.55rem;
 }
 
+.ext-cal-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #eff6ff;
+  color: #4f46e5;
+  border: 1px solid #dbeafe;
+  border-radius: var(--radius-full);
+  padding: 0.15rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.ext-cal-toggle-btn:hover {
+  background: #e0e7ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+  transform: translateY(-1px);
+}
+
 .cal-date-banner {
   font-size: 0.78rem;
   font-weight: 800;

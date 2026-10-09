@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
-import { toPersianDigits, getTodayISO, formatPersianDate } from '../utils/persianDate';
+import { toPersianDigits, getTodayISO, formatAppDate } from '../utils/persianDate';
 import { greetingKeySet } from '../utils/appTexts';
 import { UserAvatar } from './UserAvatar';
 import { ProfileModal } from './ProfileModal';
@@ -973,15 +973,19 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   {themeMode === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
                 </button>
 
-                {/* Calendar Type Switcher (hidden on mobile, set via profile/settings) */}
+                {/* Calendar Type Switcher */}
                 <button
                   type="button"
                   onClick={toggleCalendarType}
-                  className="h-8 sm:h-9 px-2.5 rounded-full border border-slate-200/80 bg-white hover:bg-slate-100 text-slate-700 items-center gap-1 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 hidden md:flex"
+                  className={`h-8 sm:h-9 px-2.5 rounded-full border items-center gap-1.5 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 hidden md:flex ${
+                    calendarType === 'gregorian'
+                      ? 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                      : 'border-slate-200/80 bg-white hover:bg-slate-100 text-slate-700'
+                  }`}
                   title={calendarType === 'jalali' ? 'تقویم خورشیدی (شمسی) فعال است — کلیک برای تغییر به میلادی' : 'تقویم میلادی فعال است — کلیک برای تغییر به شمسی'}
                 >
-                  <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>{calendarType === 'jalali' ? 'شمسی' : 'میلادی'}</span>
+                  <Calendar className={`w-3.5 h-3.5 ${calendarType === 'gregorian' ? 'text-indigo-600' : 'text-slate-500'}`} />
+                  <span>{calendarType === 'jalali' ? 'تقویم شمسی' : 'تقویم میلادی'}</span>
                 </button>
 
                 {/* Settings Cogwheel (hidden on small screens, in menu) */}
@@ -1111,7 +1115,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
 
                 <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200/60">
                   <CalendarDays className="w-3 h-3 text-slate-400" />
-                  <span>{formatPersianDate(new Date(), 'full')}</span>
+                  <span>{formatAppDate(new Date(), calendarType, 'full')}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 font-mono font-bold border border-slate-200/60 hidden sm:inline-flex">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00b884] animate-pulse" />
@@ -1790,7 +1794,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   className="py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200/80 cursor-pointer"
                 >
                   <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>{calendarType === 'jalali' ? 'شمسی' : 'میلادی'}</span>
+                  <span>{calendarType === 'jalali' ? 'تقویم شمسی' : 'تقویم میلادی'}</span>
                 </button>
               </div>
 

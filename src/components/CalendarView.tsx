@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTask } from '../context/TaskContext';
 import {
   gregorianToJalali,
@@ -6,7 +6,9 @@ import {
   formatAppDate,
   toPersianDigits,
   PERSIAN_MONTHS,
+  GREGORIAN_MONTHS,
   getTodayISO,
+  parseISODate,
 } from '../utils/persianDate';
 import { TaskCard } from './TaskCard';
 import { ChevronRight, ChevronLeft, Plus, Calendar as CalendarIcon } from 'lucide-react';
@@ -14,11 +16,29 @@ import { ChevronRight, ChevronLeft, Plus, Calendar as CalendarIcon } from 'lucid
 export const CalendarView: React.FC = () => {
   const { tasks, selectedDate, setSelectedDate, openCreateModal, calendarType } = useTask();
 
+  const isGregorian = calendarType === 'gregorian';
   const today = new Date();
   const [currentJy, currentJm] = gregorianToJalali(today.getFullYear(), today.getMonth() + 1, today.getDate());
 
-  const [viewYear, setViewYear] = useState(currentJy);
-  const [viewMonth, setViewMonth] = useState(currentJm);
+  const [viewYear, setViewYear] = useState<number>(() => {
+    return isGregorian ? today.getFullYear() : currentJy;
+  });
+  const [viewMonth, setViewMonth] = useState<number>(() => {
+    return isGregorian ? today.getMonth() + 1 : currentJm;
+  });
+
+  // Re-sync view year/month when calendarType or selectedDate changes
+  useEffect(() => {
+    const targetDate = selectedDate ? parseISODate(selectedDate) : new Date();
+    if (isGregorian) {
+      setViewYear(targetDate.getFullYear());
+      setViewMonth(targetDate.getMonth() + 1);
+    } else {
+      const [jy, jm] = gregorianToJalali(targetDate.getFullYear(), targetDate.getMonth() + 1, targetDate.getDate());
+      setViewYear(jy);
+      setViewMonth(jm);
+    }
+  }, [calendarType]);
 
   const handlePrevMonth = () => {
     if (viewMonth === 1) {
@@ -38,29 +58,54 @@ export const CalendarView: React.FC = () => {
     }
   };
 
-  const daysInMonth = viewMonth <= 6 ? 31 : viewMonth <= 11 ? 30 : 29;
-  const [gYear, gMonth, gDay] = jalaliToGregorian(viewYear, viewMonth, 1);
-  const firstDayDate = new Date(gYear, gMonth - 1, gDay);
-  const jsDay = firstDayDate.getDay();
-  const persianFirstDayOffset = (jsDay + 1) % 7;
+  const daysInMonth = isGregorian
+    ? new Date(viewYear, viewMonth, 0).getDate()
+    : viewMonth <= 6 ? 31 : viewMonth <= 11 ? 30 : 29;
+
+  const firstDayOffset = useMemo(() => {
+    if (isGregorian) {
+      const firstDayDate = new Date(viewYear, viewMonth - 1, 1);
+      return firstDayDate.getDay(); // Sunday = 0
+    }
+    const [gYear, gMonth, gDay] = jalaliToGregorian(viewYear, viewMonth, 1);
+    const firstDayDate = new Date(gYear, gMonth - 1, gDay);
+    const jsDay = firstDayDate.getDay();
+    return (jsDay + 1) % 7; // Saturday = 0
+  }, [isGregorian, viewYear, viewMonth]);
 
   const selectedDayTasks = tasks.filter((t) => t.date === selectedDate);
   const todayISO = getTodayISO();
 
-  const monthDays = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    const [gy, gm, gd] = jalaliToGregorian(viewYear, viewMonth, d);
-    const iso = `${gy}-${String(gm).padStart(2, '0')}-${String(gd).padStart(2, '0')}`;
-    const dayTasks = tasks.filter((t) => t.date === iso);
-    monthDays.push({
-      day: d,
-      iso,
-      tasksCount: dayTasks.length,
-      allDone: dayTasks.length > 0 && dayTasks.every((t) => t.completed),
-      isToday: iso === todayISO,
-      isSelected: iso === selectedDate,
-    });
-  }
+  const monthDays = useMemo(() => {
+    const list = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      let iso: string;
+      if (isGregorian) {
+        iso = `${viewYear}-${String(viewMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      } else {
+        const [gy, gm, gd] = jalaliToGregorian(viewYear, viewMonth, d);
+        iso = `${gy}-${String(gm).padStart(2, '0')}-${String(gd).padStart(2, '0')}`;
+      }
+      const dayTasks = tasks.filter((t) => t.date === iso);
+      list.push({
+        day: d,
+        iso,
+        tasksCount: dayTasks.length,
+        allDone: dayTasks.length > 0 && dayTasks.every((t) => t.completed),
+        isToday: iso === todayISO,
+        isSelected: iso === selectedDate,
+      });
+    }
+    return list;
+  }, [isGregorian, viewYear, viewMonth, daysInMonth, tasks, todayISO, selectedDate]);
+
+  const monthTitle = isGregorian
+    ? `${GREGORIAN_MONTHS[viewMonth - 1]} ${viewYear}`
+    : `${PERSIAN_MONTHS[viewMonth - 1]} ${toPersianDigits(viewYear)}`;
+
+  const weekDayHeaders = isGregorian
+    ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    : ['ش', '۱ش', '۲ش', '۳ش', '۴ش', '۵ش', 'ج'];
 
   return (
     <div className="space-y-5 animate-in fade-in pb-16">
@@ -69,7 +114,7 @@ export const CalendarView: React.FC = () => {
         <button
           onClick={handlePrevMonth}
           className="w-9 h-9 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
-          title="ماه قبل"
+          title={isGregorian ? 'Previous Month' : 'ماه قبل'}
         >
           <ChevronRight className="w-5 h-5" />
         </button>
@@ -77,35 +122,37 @@ export const CalendarView: React.FC = () => {
         <div className="flex items-center gap-2">
           <CalendarIcon className="w-4 h-4 text-[#00b884]" />
           <span className="text-sm sm:text-base font-black text-slate-900">
-            {PERSIAN_MONTHS[viewMonth - 1]} {toPersianDigits(viewYear)}
+            {monthTitle}
           </span>
           <button
             type="button"
             onClick={() => setSelectedDate(todayISO)}
             className="text-[10px] font-black px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors mr-2 cursor-pointer"
           >
-            امروز
+            {isGregorian ? 'Today' : 'امروز'}
           </button>
         </div>
 
         <button
           onClick={handleNextMonth}
           className="w-9 h-9 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
-          title="ماه بعد"
+          title={isGregorian ? 'Next Month' : 'ماه بعد'}
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Persian Calendar Grid */}
+      {/* Calendar Grid */}
       <div className="bg-white p-5 sm:p-6 rounded-[28px] border border-slate-200/90 shadow-sm">
         {/* Weekday headers */}
         <div className="grid grid-cols-7 gap-1 text-center mb-3">
-          {['ش', '۱ش', '۲ش', '۳ش', '۴ش', '۵ش', 'ج'].map((wd, i) => (
+          {weekDayHeaders.map((wd, i) => (
             <span
               key={i}
               className={`text-xs font-black ${
-                i === 6 ? 'text-[#f95738]' : 'text-slate-400'
+                (isGregorian && (i === 0 || i === 6)) || (!isGregorian && i === 6)
+                  ? 'text-[#f95738]'
+                  : 'text-slate-400'
               }`}
             >
               {wd}
@@ -115,7 +162,7 @@ export const CalendarView: React.FC = () => {
 
         {/* Days cells */}
         <div className="grid grid-cols-7 gap-2">
-          {Array.from({ length: persianFirstDayOffset }).map((_, i) => (
+          {Array.from({ length: firstDayOffset }).map((_, i) => (
             <div key={`empty-${i}`} className="h-12" />
           ))}
 
@@ -131,7 +178,9 @@ export const CalendarView: React.FC = () => {
                   : 'hover:bg-slate-100 text-slate-700 font-bold bg-[#f8fafc] border border-slate-200/60'
               }`}
             >
-              <span className="text-xs sm:text-sm font-extrabold">{toPersianDigits(item.day)}</span>
+              <span className="text-xs sm:text-sm font-extrabold">
+                {isGregorian ? item.day : toPersianDigits(item.day)}
+              </span>
 
               {item.tasksCount > 0 && (
                 <div className="flex items-center gap-0.5 mt-1">
@@ -150,7 +199,7 @@ export const CalendarView: React.FC = () => {
                         item.isSelected ? 'text-slate-300' : 'text-slate-400'
                       }`}
                     >
-                      {toPersianDigits(item.tasksCount)}
+                      {isGregorian ? item.tasksCount : toPersianDigits(item.tasksCount)}
                     </span>
                   )}
                 </div>

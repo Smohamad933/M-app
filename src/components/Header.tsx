@@ -60,7 +60,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }
             title={calendarType === 'jalali' ? 'تغییر به تقویم میلادی' : 'تغییر به تقویم شمسی'}
           >
             <Calendar className="w-3 h-3 text-indigo-500" />
-            <span>{calendarType === 'jalali' ? 'شمسی' : 'میلادی'}</span>
+            <span>{calendarType === 'jalali' ? 'تقویم شمسی' : 'تقویم میلادی'}</span>
           </button>
 
           <button

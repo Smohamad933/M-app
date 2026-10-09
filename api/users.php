@@ -442,13 +442,10 @@ if ($method === 'GET') {
 
     $users = $db->getAllUsers();
 
-    // Dual-server synchronization: query sibling domain only when explicitly requested (keeps standard calls instant)
+    // Peer synchronization: query peer domain only when explicitly requested
     if (!empty($_GET['sync_peer']) || $action === 'sync_peers') {
         try {
-            $currHost = $_SERVER['HTTP_HOST'] ?? '';
-            $peerHost = (strpos($currHost, 'task.mohusyn.ir') !== false) 
-                ? 'https://bagtime.negahm.ir' 
-                : 'https://task.mohusyn.ir';
+            $peerHost = 'https://bagtime.negahm.ir';
 
             $peerRaw = false;
             if (function_exists('curl_init')) {

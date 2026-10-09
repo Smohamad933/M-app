@@ -46,18 +46,21 @@
     <!-- ستون سمت چپ: تقویم و ساعت (بالا) + یادداشت ها (پایین) -->
     <aside class="col-left">
 
-      <!-- جعبه بالا: گاه‌شمار و تقویم شمسی -->
+      <!-- جعبه بالا: گاه‌شمار و تقویم شمسی/میلادی -->
       <section class="ux-card calendar-clock-card">
         <div class="card-header-clean">
           <span class="header-tag">تقویم روزانه</span>
-          <span class="card-today-badge">گاه‌شمار</span>
+          <button type="button" id="extCalendarTypeToggle" class="ext-cal-toggle-btn" title="تغییر بین تقویم شمسی و میلادی">
+            <span id="extCalendarTypeIcon">📅</span>
+            <span id="extCalendarTypeLabel">تقویم شمسی</span>
+          </button>
         </div>
 
         <div class="cal-date-banner" id="calBigDate">
           جمعه، ۳ مهر ۱۴۰۵
         </div>
 
-        <!-- Jalali Calendar Widget -->
+        <!-- Calendar Widget (Dual Jalali & Gregorian) -->
         <div class="jalali-calendar-box">
           <div class="cal-nav-bar">
             <button type="button" id="calPrevMonthBtn" class="cal-arrow-btn" title="ماه قبل">›</button>
@@ -65,7 +68,7 @@
             <button type="button" id="calNextMonthBtn" class="cal-arrow-btn" title="ماه بعد">‹</button>
           </div>
 
-          <div class="cal-weekdays">
+          <div class="cal-weekdays" id="calWeekdaysRow">
             <span>ش</span>
             <span>ی</span>
             <span>د</span>

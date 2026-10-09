@@ -29,6 +29,17 @@ const Storage = {
 
 async function loadPopup() {
   const tasks = (await Storage.get('tasks', [])) || [];
+  const calType = (await Storage.get('calendarType', 'jalali')) || 'jalali';
+  const badge = document.getElementById('dateBadge');
+  if (badge) {
+    if (calType === 'gregorian') {
+      const now = new Date();
+      badge.textContent = `${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    } else {
+      badge.textContent = 'امروز';
+    }
+  }
+
   const listEl = document.getElementById('popupTasks');
   
   if (tasks.length === 0) {

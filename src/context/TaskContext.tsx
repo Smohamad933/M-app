@@ -556,7 +556,10 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSettings((prev) => ({ ...prev, calendarType: type }));
     try {
       localStorage.setItem('taskrooz_calendar_type', type);
+      localStorage.setItem('bagtime_calendar_type', type);
       localStorage.setItem('taskrooz_settings', JSON.stringify({ ...settings, calendarType: type }));
+      window.dispatchEvent(new CustomEvent('bagtime-calendar-type-changed', { detail: { calendarType: type } }));
+      window.postMessage({ type: 'BAGTIME_CALENDAR_TYPE_CHANGED', calendarType: type }, '*');
     } catch {}
     sounds.playPop();
   };
