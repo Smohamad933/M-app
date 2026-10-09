@@ -56,6 +56,8 @@ import {
   Database,
   Sun,
   Moon,
+  Globe,
+  UserCheck,
 } from 'lucide-react';
 
 /**
@@ -462,6 +464,80 @@ export const UserManagementView: React.FC = () => {
       alert(e.message || 'خطا در ذخیره تنظیمات ربات بله');
     } finally {
       setBaleSaving(false);
+    }
+  };
+
+  // Unified SSO (sso.negahm.ir) State
+  const initialSso = (globalSettings as any)?.ssoSettings || {
+    enabled: true,
+    testMode: true,
+    serverUrl: 'https://sso.negahm.ir',
+    appKey: '',
+    appSecret: '',
+    autoProvisionUsers: true,
+  };
+  const [ssoForm, setSsoForm] = useState(initialSso);
+  const [ssoTesting, setSsoTesting] = useState(false);
+  const [ssoTestResult, setSsoTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [ssoSaving, setSsoSaving] = useState(false);
+  const [ssoImporting, setSsoImporting] = useState(false);
+
+  useEffect(() => {
+    if ((globalSettings as any)?.ssoSettings) {
+      setSsoForm((globalSettings as any).ssoSettings);
+    }
+  }, [globalSettings]);
+
+  const handleTestSsoHealth = async () => {
+    setSsoTesting(true);
+    setSsoTestResult(null);
+    sounds.playPop();
+    try {
+      const res = await api.checkSsoHealth();
+      sounds.playComplete();
+      setSsoTestResult({
+        ok: true,
+        message: `سرویس احراز هویت یکپارچه آنلاین است (${res.serverUrl})`,
+      });
+    } catch (e: any) {
+      setSsoTestResult({
+        ok: false,
+        message: e?.message || 'خطا در ارتباط با سرور احراز هویت یکپارچه نگاه.',
+      });
+    } finally {
+      setSsoTesting(false);
+    }
+  };
+
+  const handleSaveSsoConfig = async () => {
+    setSsoSaving(true);
+    sounds.playPop();
+    try {
+      await updateGlobalSettings({
+        ssoSettings: ssoForm,
+      });
+      sounds.playComplete();
+      alert('تنظیمات احراز هویت یکپارچه (SSO) با موفقیت ذخیره شد.');
+    } catch (e: any) {
+      alert(e?.message || 'خطا در ذخیره تنظیمات SSO');
+    } finally {
+      setSsoSaving(false);
+    }
+  };
+
+  const handleImportSsoUsers = async () => {
+    if (!confirm('آیا مایل به دریافت و همگام‌سازی کاربران از سامانه احراز هویت یکپارچه به دیتابیس سامانه هستید؟')) return;
+    setSsoImporting(true);
+    sounds.playPop();
+    try {
+      const res = await api.importSsoUsers();
+      sounds.playComplete();
+      alert(res.message);
+      refreshUsers();
+    } catch (e: any) {
+      alert(e?.message || 'خطا در همگام‌سازی کاربران از SSO.');
+    } finally {
+      setSsoImporting(false);
     }
   };
 
@@ -4129,6 +4205,159 @@ export const UserManagementView: React.FC = () => {
                   </span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Unified SSO (sso.negahm.ir) Settings Card */}
+          <div className="p-6 md:p-8 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-indigo-400" />
+                <span>سامانه احراز هویت یکپارچه سازمانی نگاه (sso.negahm.ir)</span>
+              </h4>
+              <span className="text-[10px] px-2.5 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-bold flex items-center gap-1.5 w-fit">
+                <Globe className="w-3 h-3" />
+                OpenAPI 3.0.3 Compatible
+              </span>
+            </div>
+
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              این بخش امکان اتصال مستقیم به سرویس متمرکز <span className="text-indigo-300 font-mono">https://sso.negahm.ir</span>، مهاجرت خودکار اعضا، و احراز هویت بدون نیاز به رمز عبور محلی را فراهم می‌سازد. در صورت فعال بودن «حالت آزمایشی»، امکان تست سریع با سناریوهای تستی بدون ایجاد تداخل برای کاربران فعلی فراهم است.
+            </p>
+
+            {/* Switches */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label className="flex items-start gap-3 p-3.5 bg-zinc-950/70 border border-zinc-800/80 rounded-2xl cursor-pointer hover:border-zinc-700 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={ssoForm.enabled}
+                  onChange={(e) => setSsoForm({ ...ssoForm, enabled: e.target.checked })}
+                  className="w-4 h-4 rounded text-indigo-600 focus:ring-0 mt-0.5 cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-white">فعال‌سازی سرویس SSO</div>
+                  <div className="text-[10px] text-zinc-400">نمایش دکمه ورود سازمانی</div>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 p-3.5 bg-zinc-950/70 border border-zinc-800/80 rounded-2xl cursor-pointer hover:border-zinc-700 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={ssoForm.testMode}
+                  onChange={(e) => setSsoForm({ ...ssoForm, testMode: e.target.checked })}
+                  className="w-4 h-4 rounded text-indigo-600 focus:ring-0 mt-0.5 cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-white">حالت آزمایشی (Sandbox)</div>
+                  <div className="text-[10px] text-zinc-400">تست با حساب‌های شبیه‌سازی‌شده</div>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 p-3.5 bg-zinc-950/70 border border-zinc-800/80 rounded-2xl cursor-pointer hover:border-zinc-700 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={ssoForm.autoProvisionUsers}
+                  onChange={(e) => setSsoForm({ ...ssoForm, autoProvisionUsers: e.target.checked })}
+                  className="w-4 h-4 rounded text-indigo-600 focus:ring-0 mt-0.5 cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-white">ثبت‌نام خودکار (Provisioning)</div>
+                  <div className="text-[10px] text-zinc-400">ایجاد کاربر جدید در اولین ورود</div>
+                </div>
+              </label>
+            </div>
+
+            {/* Inputs */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-300">نشانی سرور احراز هویت (Server URL)</label>
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={ssoForm.serverUrl}
+                  onChange={(e) => setSsoForm({ ...ssoForm, serverUrl: e.target.value })}
+                  placeholder="https://sso.negahm.ir"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white font-mono text-xs focus:border-indigo-500 outline-none"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-300">کلید شناسه اپ (X-Api-Key)</label>
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={ssoForm.appKey}
+                  onChange={(e) => setSsoForm({ ...ssoForm, appKey: e.target.value })}
+                  placeholder="App Key دریافتی از نگاه"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white font-mono text-xs focus:border-indigo-500 outline-none"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-300">کلید امنیتی اپ (X-Api-Secret)</label>
+                <input
+                  type="password"
+                  dir="ltr"
+                  value={ssoForm.appSecret}
+                  onChange={(e) => setSsoForm({ ...ssoForm, appSecret: e.target.value })}
+                  placeholder="App Secret"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white font-mono text-xs focus:border-indigo-500 outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Test result banner if any */}
+            {ssoTestResult && (
+              <div
+                className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs ${
+                  ssoTestResult.ok
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {ssoTestResult.ok ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-rose-400" />
+                  )}
+                  <span>{ssoTestResult.message}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleSaveSsoConfig}
+                disabled={ssoSaving}
+                className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-colors cursor-pointer shadow-md flex items-center gap-2"
+              >
+                <Check className="w-4 h-4" />
+                <span>{ssoSaving ? 'در حال ذخیره...' : 'ذخیره تنظیمات SSO'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleTestSsoHealth}
+                disabled={ssoTesting}
+                className="px-5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition-colors cursor-pointer border border-zinc-700 flex items-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${ssoTesting ? 'animate-spin text-indigo-400' : ''}`} />
+                <span>{ssoTesting ? 'در حال استعلام...' : 'تست سلامت سرور (v1/health)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleImportSsoUsers}
+                disabled={ssoImporting}
+                className="px-5 py-3 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 font-bold text-xs transition-colors cursor-pointer border border-indigo-500/40 flex items-center gap-2"
+                title="دریافت لیست کاربران فعال از سرور SSO و ایجاد حساب محلی برای آن‌ها"
+              >
+                <UserCheck className="w-4 h-4 text-indigo-400" />
+                <span>{ssoImporting ? 'در حال مهاجرت...' : 'همگام‌سازی و ورود کاربران از SSO (v1/users)'}</span>
+              </button>
             </div>
           </div>
         </div>

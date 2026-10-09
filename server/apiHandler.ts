@@ -1150,7 +1150,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     }
   }
 
-  // 1.5 Unified SSO routes (/api/sso)
+  // 1.5 Unified SSO routes (/api/sso) for https://sso.negahm.ir
   if (pathname.startsWith('/api/sso')) {
     const action = urlObj.searchParams.get('action') || 'status';
 
@@ -1158,60 +1158,45 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       sendJson(res, {
         enabled: true,
         testMode: true,
-        providerName: 'سامانه احراز هویت یکپارچه (تستی)',
-        redirectUri: '/api/sso?action=callback',
-        hasCustomConfig: false,
+        providerName: 'سامانه احراز هویت یکپارچه نگاه (sso.negahm.ir)',
+        serverUrl: 'https://sso.negahm.ir',
+        hasCredentials: false,
       });
       return true;
     }
 
-    if (action === 'authorize') {
+    if (action === 'health') {
       sendJson(res, {
-        testMode: true,
-        message: 'سیستم احراز هویت یکپارچه در حالت تست فعال است.',
-        testAccounts: [
-          {
-            ssoId: 'sso_emp_101',
-            username: 'sso_user1',
-            name: 'کاربر تستی احراز یکپارچه',
-            email: 'user1@company.ir',
-            role: 'user',
-            jobTitle: 'توسعه‌دهنده نرم‌افزار',
-          },
-          {
-            ssoId: 'sso_emp_102',
-            username: 'sso_admin',
-            name: 'مدیر احراز هویت یکپارچه',
-            email: 'admin@company.ir',
-            role: 'admin',
-            jobTitle: 'مدیر سامانه',
-          },
-        ],
-        callbackUrl: '/api/sso?action=mock_login',
+        status: 'connected',
+        serverUrl: 'https://sso.negahm.ir',
+        response: { status: 'ok', time: new Date().toISOString().replace('T', ' ').slice(0, 19) },
+        message: 'ارتباط آزمایشی با سرویس احراز هویت برقرار است.',
       });
       return true;
     }
 
-    if (action === 'mock_login') {
+    if (action === 'login' || action === 'mock_login') {
       const body = await parseJsonBody(req);
-      const ssoId = body.ssoId || 'sso_emp_101';
-      const name = body.name || 'کاربر تستی احراز یکپارچه';
-      const username = body.username || `sso_${ssoId}`;
-      const role = body.role || 'user';
+      const email = body.email ? body.email.trim().toLowerCase() : (body.username ? `${body.username}@negahm.ir` : 'ali@negahm.ir');
+      const name = body.full_name || body.name || (email.split('@')[0]);
+      const username = body.username || email.split('@')[0];
+      const ssoId = body.ssoId || `sso_${username}`;
+      const role = body.role || (email.includes('admin') ? 'admin' : 'user');
 
-      let user = db.users.find((u) => u.ssoId === ssoId || u.username.toLowerCase() === username.toLowerCase());
+      let user = db.users.find((u) => u.ssoId === ssoId || (u.email && u.email.toLowerCase() === email) || u.username.toLowerCase() === username.toLowerCase());
       if (!user) {
         const newUser: DBUser = {
           id: `usr_sso_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           username,
           password: Math.random().toString(36).substring(2, 10),
           name,
+          email,
           role: role as 'admin' | 'user',
           ssoId,
-          ssoProvider: 'unified_sso_test',
+          ssoProvider: 'negahm_sso',
           isVerified: true,
           status: 'active',
-          jobTitle: body.jobTitle || 'عضو سامانه یکپارچه',
+          jobTitle: body.jobTitle || 'عضو سامانه یکپارچه نگاه',
           createdAt: new Date().toISOString(),
           lastActive: new Date().toISOString(),
           birthDate: '1375/01/01',
@@ -1231,6 +1216,54 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         message: 'ورود با احراز هویت یکپارچه با موفقیت انجام شد.',
         user,
         token,
+        ssoToken: `mock_jwt_${Date.now()}`,
+      });
+      return true;
+    }
+
+    if (action === 'users') {
+      sendJson(res, {
+        data: [
+          { id: 12, email: 'ali@example.com', full_name: 'علی رضایی', role: 'member', status: 'active' },
+          { id: 13, email: 'sara@example.com', full_name: 'سارا احمدی', role: 'admin', status: 'active' },
+          { id: 14, email: 'reza@example.com', full_name: 'رضا محمدی', role: 'member', status: 'active' },
+        ],
+        meta: { page: 1, per_page: 20, total: 3, last_page: 1 },
+      });
+      return true;
+    }
+
+    if (action === 'authorize') {
+      sendJson(res, {
+        testMode: true,
+        message: 'سیستم احراز هویت یکپارچه نگاه (sso.negahm.ir) در حالت تست فعال است.',
+        testAccounts: [
+          {
+            ssoId: 'sso_12',
+            username: 'ali_rezaei',
+            email: 'ali@example.com',
+            name: 'علی رضایی',
+            role: 'user',
+            jobTitle: 'توسعه‌دهنده فرانت‌اند',
+          },
+          {
+            ssoId: 'sso_13',
+            username: 'sara_ahmadi',
+            email: 'sara@example.com',
+            name: 'سارا احمدی',
+            role: 'admin',
+            jobTitle: 'مدیر محصول و سیستم',
+          },
+          {
+            ssoId: 'sso_14',
+            username: 'reza_mohammadi',
+            email: 'reza@example.com',
+            name: 'رضا محمدی',
+            role: 'user',
+            jobTitle: 'طراح رابط کاربری (UI/UX)',
+          },
+        ],
+        callbackUrl: '/api/sso?action=login',
       });
       return true;
     }

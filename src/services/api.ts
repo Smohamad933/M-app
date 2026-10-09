@@ -88,6 +88,14 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
     sendNotifications: true,
     allowTaskCreation: true,
   },
+  ssoSettings: {
+    enabled: true,
+    testMode: true,
+    serverUrl: 'https://sso.negahm.ir',
+    appKey: '',
+    appSecret: '',
+    autoProvisionUsers: true,
+  },
   footerBranding: {
     enabled: true,
     prefixText: 'بَگ‌تایم، از خانوادهٔ',
@@ -780,26 +788,51 @@ export const api = {
   },
 
   // Unified SSO (Single Sign-On) Test & Integration
-  async getSsoStatus(): Promise<{ enabled: boolean; testMode: boolean; providerName: string; hasCustomConfig: boolean }> {
+  async getSsoStatus(): Promise<{ enabled: boolean; testMode: boolean; providerName: string; serverUrl?: string; hasCredentials?: boolean }> {
     try {
       return await request('api/sso.php?action=status');
     } catch {
-      return { enabled: true, testMode: true, providerName: 'سامانه احراز هویت یکپارچه (تستی)', hasCustomConfig: false };
+      return { enabled: true, testMode: true, providerName: 'سامانه احراز هویت یکپارچه نگاه (sso.negahm.ir)', serverUrl: 'https://sso.negahm.ir', hasCredentials: false };
     }
+  },
+
+  async checkSsoHealth(): Promise<{ status: string; serverUrl: string; response?: any; message?: string }> {
+    return await request('api/sso.php?action=health');
   },
 
   async startSsoAuth(): Promise<{ testMode?: boolean; url?: string; testAccounts?: any[]; callbackUrl?: string }> {
     return await request('api/sso.php?action=authorize');
   },
 
-  async ssoMockLogin(account: any): Promise<{ user: User; token: string }> {
-    const res = await request<{ user: User; token: string }>('api/sso.php?action=mock_login', {
+  async ssoLogin(credentials: { email: string; password?: string; isTest?: boolean; full_name?: string; jobTitle?: string }): Promise<{ user: User; token: string }> {
+    const res = await request<{ user: User; token: string }>('api/sso.php?action=login', {
       method: 'POST',
-      body: JSON.stringify(account),
+      body: JSON.stringify(credentials),
     });
     setAuthToken(res.token);
     this.setCachedUser(res.user);
     return res;
+  },
+
+  async ssoMockLogin(account: any): Promise<{ user: User; token: string }> {
+    return this.ssoLogin({
+      email: account.email || `${account.username || 'user'}@negahm.ir`,
+      password: account.password || 'Test123456',
+      isTest: true,
+      full_name: account.name,
+      jobTitle: account.jobTitle,
+    });
+  },
+
+  async getSsoUsers(): Promise<{ data?: any[]; users?: any[] }> {
+    return await request('api/sso.php?action=users');
+  },
+
+  async importSsoUsers(users?: any[]): Promise<{ message: string; importedCount: number; updatedCount: number }> {
+    return await request('api/sso.php?action=import_users', {
+      method: 'POST',
+      body: JSON.stringify({ users }),
+    });
   },
 
   // Active Sessions & Device Management ("نشست‌های فعال و انداختن بیرون دستگاه")

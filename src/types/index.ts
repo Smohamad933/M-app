@@ -372,6 +372,15 @@ export interface GlobalSystemSettings {
     allowTaskCreation: boolean;
     providerToken?: string;
   };
+  /** Unified SSO (sso.negahm.ir) Integration */
+  ssoSettings?: {
+    enabled: boolean;
+    testMode: boolean;
+    serverUrl: string;
+    appKey: string;
+    appSecret: string;
+    autoProvisionUsers: boolean;
+  };
   /** Extension Sponsored Website / First shortcut in New Tab */
   extensionSponsoredSite?: {
     enabled?: boolean;

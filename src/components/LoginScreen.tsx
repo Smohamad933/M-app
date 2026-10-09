@@ -61,6 +61,9 @@ export const LoginScreen: React.FC = () => {
 
   // Unified SSO (Single Sign-On) State
   const [isSsoLoading, setIsSsoLoading] = useState(false);
+  const [customSsoEmail, setCustomSsoEmail] = useState('');
+  const [customSsoPassword, setCustomSsoPassword] = useState('');
+  const [ssoServerStatus, setSsoServerStatus] = useState<string | null>(null);
   const [ssoModalData, setSsoModalData] = useState<{
     testMode?: boolean;
     testAccounts?: any[];
@@ -84,6 +87,15 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
+  const handleCheckHealth = async () => {
+    try {
+      const h = await api.checkSsoHealth();
+      setSsoServerStatus(h.status === 'connected' ? 'آنلاین (متصل)' : 'آفلاین');
+    } catch {
+      setSsoServerStatus('عدم دسترسی');
+    }
+  };
+
   const handleSsoMockLogin = async (acc: any) => {
     setIsSsoLoading(true);
     try {
@@ -91,6 +103,24 @@ export const LoginScreen: React.FC = () => {
       window.location.reload();
     } catch (e: any) {
       setError(e?.message || 'خطا در ورود تستی SSO.');
+    } finally {
+      setIsSsoLoading(false);
+    }
+  };
+
+  const handleCustomSsoLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customSsoEmail) return;
+    setIsSsoLoading(true);
+    try {
+      await api.ssoLogin({
+        email: customSsoEmail,
+        password: customSsoPassword || 'Password123',
+        isTest: true,
+      });
+      window.location.reload();
+    } catch (err: any) {
+      setError(err?.message || 'خطا در ورود یکپارچه.');
     } finally {
       setIsSsoLoading(false);
     }
@@ -1070,36 +1100,81 @@ export const LoginScreen: React.FC = () => {
               </button>
             </div>
 
+            <div className="flex items-center justify-between text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <span className="font-bold text-slate-600">سرور احراز هویت:</span>
+              <span className="font-mono text-indigo-600 font-bold">sso.negahm.ir</span>
+              <button
+                type="button"
+                onClick={handleCheckHealth}
+                className="text-[10px] text-slate-400 hover:text-indigo-600 font-bold underline"
+              >
+                {ssoServerStatus ? `وضعیت: ${ssoServerStatus}` : 'تست اتصال'}
+              </button>
+            </div>
+
             <p className="text-xs text-slate-600 leading-relaxed">
-              این ماژول جهت تست احراز هویت متمرکز سازمانی پیاده‌سازی شده است. با انتخاب هر یک از حساب‌های زیر، ورود انجام شده و حساب کاربری به‌صورت خودکار در دیتابیس سامانه ثبت و همگام‌سازی می‌شود:
+              این ماژول جهت تست احراز هویت متمرکز سازمانی پیاده‌سازی شده است. می‌توانید با انتخاب یکی از حساب‌های نمونه زیر یا با وارد کردن ایمیل سازمانی خود تست را انجام دهید:
             </p>
 
-            <div className="space-y-2.5">
-              {(ssoModalData.testAccounts || []).map((acc: any) => (
-                <button
-                  key={acc.ssoId}
-                  type="button"
-                  onClick={() => handleSsoMockLogin(acc)}
-                  disabled={isSsoLoading}
-                  className="w-full text-right p-3.5 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40 transition-all flex items-center justify-between gap-3 cursor-pointer group"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-slate-900 group-hover:text-indigo-900">{acc.name}</span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 font-bold">
-                        {acc.role === 'admin' ? 'مدیر کل' : 'کاربر'}
-                      </span>
+            <div className="space-y-2">
+              <span className="text-[11px] font-black text-slate-700">حساب‌های تستی آماده:</span>
+              <div className="space-y-2">
+                {(ssoModalData.testAccounts || []).map((acc: any) => (
+                  <button
+                    key={acc.ssoId}
+                    type="button"
+                    onClick={() => handleSsoMockLogin(acc)}
+                    disabled={isSsoLoading}
+                    className="w-full text-right p-3 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40 transition-all flex items-center justify-between gap-3 cursor-pointer group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-slate-900 group-hover:text-indigo-900">{acc.name}</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 font-bold">
+                          {acc.role === 'admin' ? 'مدیر کل' : 'کاربر'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                        ایمیل: <span className="font-mono text-slate-700">{acc.email}</span> • {acc.jobTitle}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
-                      نام کاربری: <span className="font-mono text-slate-700">{acc.username}</span> • {acc.jobTitle}
+                    <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 opacity-80 group-hover:opacity-100 shadow-xs">
+                      <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
                     </div>
-                  </div>
-                  <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 opacity-80 group-hover:opacity-100 shadow-xs">
-                    <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
-                  </div>
-                </button>
-              ))}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Custom Email/Password test input */}
+            <form onSubmit={handleCustomSsoLogin} className="pt-2 border-t border-slate-100 space-y-2.5">
+              <span className="text-[11px] font-black text-slate-700">یا ورود با ایمیل دلخواه سازمانی:</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input
+                  type="email"
+                  dir="ltr"
+                  value={customSsoEmail}
+                  onChange={(e) => setCustomSsoEmail(e.target.value)}
+                  placeholder="ایمیل سازمانی (مثال: user@negahm.ir)"
+                  className="px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none"
+                />
+                <input
+                  type="password"
+                  dir="ltr"
+                  value={customSsoPassword}
+                  onChange={(e) => setCustomSsoPassword(e.target.value)}
+                  placeholder="رمز عبور"
+                  className="px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isSsoLoading || !customSsoEmail}
+                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-xs transition-all disabled:opacity-50 cursor-pointer active:scale-95"
+              >
+                ورود و همگام‌سازی کاربر 🚀
+              </button>
+            </form>
 
             <div className="pt-2 text-center">
               <button
