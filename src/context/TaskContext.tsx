@@ -1849,10 +1849,15 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const toggleTaskComplete = async (id: string) => {
-    const task = tasks.find((t) => t.id === id);
-    if (!task) return;
+    const targetId = String(id);
+    const task = tasks.find((t) => String(t.id) === targetId);
+    if (!task) {
+      console.warn('Task not found for id:', id);
+      return;
+    }
 
-    const newStatus = !task.completed;
+    const currentCompleted = Boolean(task.completed && (task.completed as any) !== '0');
+    const newStatus = !currentCompleted;
     if (newStatus) {
       sounds.playComplete();
       triggerConfetti();
@@ -1874,22 +1879,37 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subtasks: updatedSubtasks,
     };
 
+    // 1. Optimistic instant UI update
     setTasks((prev) =>
-      prev.map((t) => (t.id === id ? updatedTask : t))
+      prev.map((t) => (String(t.id) === targetId ? updatedTask : t))
     );
 
-    await api.updateTask(updatedTask);
-    broadcastSync('TASK_UPDATED', { taskId: id, projectId: task.projectId });
+    // 2. Persist to API with resilient fallbacks
+    try {
+      await api.updateTask(updatedTask);
+    } catch (err) {
+      console.warn('api.updateTask error, falling back to toggleTask:', err);
+      try {
+        await api.toggleTask(targetId);
+      } catch (err2) {
+        console.error('All remote task updates failed:', err2);
+      }
+    }
+
+    // 3. Broadcast sync to other tabs
+    broadcastSync('TASK_UPDATED', { taskId: targetId, projectId: task.projectId });
     refreshUsers();
     refreshProjects();
   };
 
   const toggleSubtask = async (taskId: string, subtaskId: string) => {
-    const task = tasks.find((t) => t.id === taskId);
+    const targetTaskId = String(taskId);
+    const targetSubtaskId = String(subtaskId);
+    const task = tasks.find((t) => String(t.id) === targetTaskId);
     if (!task) return;
 
-    const updatedSubtasks = task.subtasks.map((st) =>
-      st.id === subtaskId ? { ...st, completed: !st.completed } : st
+    const updatedSubtasks = (task.subtasks || []).map((st) =>
+      String(st.id) === targetSubtaskId ? { ...st, completed: !st.completed } : st
     );
 
     const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
@@ -1907,8 +1927,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       completedAt: allCompleted ? (task.completedAt || new Date().toISOString()) : undefined,
     };
 
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));
-    await api.updateTask(updatedTask);
+    setTasks((prev) => prev.map((t) => (String(t.id) === targetTaskId ? updatedTask : t)));
+    try {
+      await api.updateTask(updatedTask);
+    } catch (e) {
+      console.warn('Subtask update error:', e);
+    }
     refreshUsers();
     refreshProjects();
   };

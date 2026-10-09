@@ -773,21 +773,22 @@ async function addTask(title, time = '', priority = 'medium') {
 }
 
 async function toggleTask(id, completed) {
-  const t = tasks.find((item) => item.id === id);
+  const t = tasks.find((item) => String(item.id) === String(id));
   if (!t) return;
   t.completed = completed;
   await Storage.set('tasks', tasks);
   renderTasks();
+  renderCalendar();
   if (t.completed) AudioFeedback.playCheck();
 
   if (currentAccount && currentAccount.token) {
-    smartServerFetch('/api/tasks.php', {
+    smartServerFetch('/api/tasks.php?action=toggle&id=' + encodeURIComponent(id), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${currentAccount.token}`,
       },
-      body: JSON.stringify({ action: 'toggle', id }),
+      body: JSON.stringify({ action: 'toggle', id, completed }),
     }).catch(() => {});
   }
 }

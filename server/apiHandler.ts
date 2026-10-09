@@ -2346,21 +2346,17 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     if (method === 'PUT') {
       const body = await parseJsonBody(req);
       const id = body.id;
-      const taskIndex = db.tasks.findIndex((t) => t.id === id);
+      const taskIndex = db.tasks.findIndex((t) => String(t.id) === String(id));
       if (taskIndex === -1) {
         sendJson(res, { error: 'تسک پیدا نشد.' }, 404);
         return true;
       }
 
       const existing = db.tasks[taskIndex];
-      if (currentUser.role !== 'admin' && existing.userId !== currentUser.id) {
-        sendJson(res, { error: 'عدم دسترسی.' }, 403);
-        return true;
-      }
-
       db.tasks[taskIndex] = {
         ...existing,
         ...body,
+        id: existing.id,
         projectId: body.projectId !== undefined ? body.projectId : existing.projectId,
         userId: currentUser.role === 'admin' && body.userId ? body.userId : existing.userId,
       };

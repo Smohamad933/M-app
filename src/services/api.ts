@@ -1305,7 +1305,15 @@ export const api = {
 
     const qs = params.toString() ? `?${params.toString()}` : '';
     const data = await request<{ tasks: Task[] }>(`api/tasks.php${qs}`);
-    return Array.isArray(data.tasks) ? data.tasks : [];
+    if (Array.isArray(data.tasks)) {
+      return data.tasks.map((t) => ({
+        ...t,
+        id: String(t.id),
+        completed: Boolean(t.completed && (t.completed as any) !== '0'),
+        isPinned: Boolean(t.isPinned && (t.isPinned as any) !== '0'),
+      }));
+    }
+    return [];
   },
 
   async createTask(task: Omit<Task, 'id' | 'createdAt'>): Promise<Task> {
@@ -1349,9 +1357,16 @@ export const api = {
   },
 
   async toggleTask(id: string): Promise<{ completed: boolean; completedAt?: string }> {
-    return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-    });
+    try {
+      return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}`, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'toggle', id }),
+      });
+    } catch {
+      return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+      });
+    }
   },
 
   async addFocusMinutes(id: string, minutes: number): Promise<void> {

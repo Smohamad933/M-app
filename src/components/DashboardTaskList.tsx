@@ -21,8 +21,12 @@ export const DashboardTaskList: React.FC = () => {
   const [showCompleted, setShowCompleted] = useState(true);
 
   const todayISO = getTodayISO();
-  const pending = tasks.filter((t) => !t.completed);
-  const completedToday = tasks.filter((t) => t.completed && t.date === selectedDate);
+  const pending = tasks.filter((t) => !t.completed || (t.completed as any) === '0');
+  const completedToday = tasks.filter((t) => {
+    const isDone = Boolean(t.completed && (t.completed as any) !== '0');
+    if (!isDone) return false;
+    return t.date === selectedDate || t.completedAt?.startsWith(selectedDate) || !selectedDate;
+  });
 
   const sorted = [...pending].sort((a, b) => {
     // 1. Pinned tasks always come first

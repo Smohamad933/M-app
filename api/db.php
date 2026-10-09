@@ -2066,7 +2066,11 @@ class TaskRoozDB {
         $this->loadJson();
         foreach ($this->data['tasks'] as &$t) {
             if ($t['id'] === $id) {
-                $t = array_merge($t, $data);
+                foreach ($data as $k => $v) {
+                    if ($v !== null || in_array($k, ['reasonUncompleted', 'uncompletedCategory', 'projectId', 'completedAt', 'description'])) {
+                        $t[$k] = $v;
+                    }
+                }
                 $this->saveJson();
                 return true;
             }

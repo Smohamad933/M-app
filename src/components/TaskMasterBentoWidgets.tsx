@@ -280,7 +280,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
         {displayTasks.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {displayTasks.map((task) => {
-              const isCompleted = task.completed;
+              const isCompleted = Boolean(task.completed && (task.completed as any) !== '0');
               const subCount = task.subtasks?.length || 0;
               const subDone = task.subtasks?.filter((s) => s.completed).length || 0;
               const progress = isCompleted ? 100 : subCount > 0 ? Math.round((subDone / subCount) * 100) : 0;
@@ -290,12 +290,11 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
                 <div
                   key={task.id}
                   onClick={() => {
-                    sounds.playPop();
                     toggleTaskComplete(task.id);
                   }}
-                  className={`bg-[#f8fafc] border rounded-2xl p-4 flex flex-col justify-between space-y-3 transition-all cursor-pointer shadow-2xs ${
+                  className={`bg-[#f8fafc] border rounded-2xl p-4 flex flex-col justify-between space-y-3 transition-all cursor-pointer shadow-2xs select-none active:scale-[0.99] ${
                     isCompleted
-                      ? 'border-emerald-200 bg-emerald-50/20'
+                      ? 'border-emerald-300 bg-emerald-50/30'
                       : 'border-slate-200/80 hover:border-slate-300 hover:bg-white'
                   }`}
                 >
@@ -322,14 +321,17 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        sounds.playPop();
                         toggleTaskComplete(task.id);
                       }}
-                      className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-colors flex-shrink-0 ${
-                        isCompleted ? 'bg-[#00b884] border-[#00b884] text-white' : 'border-slate-300 bg-white'
+                      className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all flex-shrink-0 cursor-pointer ${
+                        isCompleted
+                          ? 'bg-[#00b884] border-[#00b884] text-white shadow-xs'
+                          : 'border-slate-300 hover:border-emerald-500 bg-white hover:bg-slate-50'
                       }`}
+                      aria-label={isCompleted ? 'تسک تکمیل شده است. کلیک برای لغو' : 'کلیک برای علامت‌گذاری به عنوان تکمیل‌شده'}
+                      title={isCompleted ? 'تکمیل شده (کلیک برای لغو)' : 'تکمیل تسک'}
                     >
-                      {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      {isCompleted && <Check className="w-4 h-4 stroke-[3]" />}
                     </button>
                   </div>
 
