@@ -167,18 +167,17 @@ html.dark ::-webkit-scrollbar-thumb:hover {
   animation: modal-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Global Dark Mode Overrides for Complete Coverage (Unified Deep Obsidian Studio Theme) */
+/* Global Dark Mode Overrides for Complete Coverage */
 html.dark {
-  --bg-main: #070b14;
-  --bg-surface: #0d1322;
-  --bg-surface-elevated: #131b2e;
-  --border-color: #1e293b;
+  --bg-main: #0b0f17;
+  --bg-surface: #131823;
+  --bg-surface-elevated: #1a202e;
+  --border-color: #262f40;
 }
 
 html.dark body,
 html.dark main,
 html.dark .bg-\[\#edf1f7\],
-html.dark .bg-\[\#edf0f4\],
 html.dark .bg-\[\#e4e9f2\] {
   background-color: var(--bg-main) !important;
   color: #f1f5f9;
@@ -195,14 +194,14 @@ html.dark .bg-\[\#f8fafc\] {
 }
 
 html.dark .bg-slate-100 {
-  background-color: #141d30 !important;
+  background-color: #1e2636 !important;
 }
 
 html.dark .bg-slate-200\/70,
 html.dark .bg-slate-200\/80,
 html.dark .bg-slate-200\/90,
 html.dark .bg-slate-200 {
-  background-color: #1a243b !important;
+  background-color: #242c3d !important;
 }
 
 html.dark .border-slate-100,
@@ -231,12 +230,12 @@ html.dark .text-slate-400 {
 }
 
 html.dark aside {
-  background-color: #0b0f19 !important;
+  background-color: #0e131d !important;
   border-color: var(--border-color) !important;
 }
 
 html.dark header {
-  background-color: rgba(11, 15, 25, 0.95) !important;
+  background-color: rgba(14, 19, 29, 0.95) !important;
   border-color: var(--border-color) !important;
 }
 
@@ -247,7 +246,7 @@ html.dark nav {
 html.dark input:not([type="checkbox"]):not([type="radio"]),
 html.dark textarea,
 html.dark select {
-  background-color: #0d1322 !important;
+  background-color: #161c28 !important;
   border-color: var(--border-color) !important;
   color: #f8fafc !important;
 }

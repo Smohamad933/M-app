@@ -33,13 +33,13 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
     $phone = trim($input['phone'] ?? $_POST['phone'] ?? $_GET['phone'] ?? '');
     $email = trim($input['email'] ?? $_POST['email'] ?? $_GET['email'] ?? $input['gmail'] ?? '');
 
-         = !empty(['HTTP_X_TEST_SUITE']) || !empty(['is_test']) || !empty(['skipVerificationForTest']);
-    if (empty() && !) {
+    $isTestSuite = !empty($_SERVER['HTTP_X_TEST_SUITE']) || !empty($input['is_test']) || !empty($input['skipVerificationForTest']);
+    if (empty($phone) && !$isTestSuite) {
         jsonResponse(['error' => 'شماره موبایل الزامی است. لطفاً شماره موبایل خود را وارد کنید.'], 400);
     }
 
     // Check if user already exists
-     = ->getUserByUsername();yUsername($username);
+    $existing = $db->getUserByUsername($username);
     if ($existing && strtolower($username) !== 'mohusyn') {
         jsonResponse(['error' => 'این نام کاربری قبلاً ثبت شده است. لطفاً نام دیگری انتخاب کنید.'], 400);
     }
@@ -381,6 +381,12 @@ if ($method === 'GET' && $action === 'me') {
     $user = getCurrentUser();
     if (!$user) {
         jsonResponse(['authenticated' => false], 200);
+    }
+
+    if (isUserAdmin($user)) {
+        $user['role'] = 'admin';
+        $user['isVerified'] = true;
+        $user['status'] = 'active';
     }
 
     // Ensure user has a valid verification code

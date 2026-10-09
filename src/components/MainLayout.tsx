@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
-import { toPersianDigits, getTodayISO, formatAppDate } from '../utils/persianDate';
+import { toPersianDigits, getTodayISO, formatPersianDate } from '../utils/persianDate';
 import { greetingKeySet } from '../utils/appTexts';
 import { UserAvatar } from './UserAvatar';
 import { ProfileModal } from './ProfileModal';
@@ -36,7 +36,6 @@ import { ExtensionDownloadModal } from './ExtensionDownloadModal';
 import { FirstLoginProfileModal } from './FirstLoginProfileModal';
 import { PublicUserProfileModal } from './PublicUserProfileModal';
 import { SubscriptionBadge } from './SubscriptionBadge';
-import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 import { api } from '../services/api';
 import type { User } from '../types';
 import { BottomNav } from './BottomNav';
@@ -299,7 +298,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
 
   const isCurrentTabSecondary = !simplePrimaryTabs.includes(activeTab);
   const [isMoreToolsOpen, setIsMoreToolsOpen] = useState(false);
-  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'users' && !isAdmin) {
@@ -973,19 +971,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   {themeMode === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
                 </button>
 
-                {/* Calendar Type Switcher */}
+                {/* Calendar Type Switcher (hidden on mobile, set via profile/settings) */}
                 <button
                   type="button"
                   onClick={toggleCalendarType}
-                  className={`h-8 sm:h-9 px-2.5 rounded-full border items-center gap-1.5 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 hidden md:flex ${
-                    calendarType === 'gregorian'
-                      ? 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
-                      : 'border-slate-200/80 bg-white hover:bg-slate-100 text-slate-700'
-                  }`}
+                  className="h-8 sm:h-9 px-2.5 rounded-full border border-slate-200/80 bg-white hover:bg-slate-100 text-slate-700 items-center gap-1 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 hidden md:flex"
                   title={calendarType === 'jalali' ? 'تقویم خورشیدی (شمسی) فعال است — کلیک برای تغییر به میلادی' : 'تقویم میلادی فعال است — کلیک برای تغییر به شمسی'}
                 >
-                  <Calendar className={`w-3.5 h-3.5 ${calendarType === 'gregorian' ? 'text-indigo-600' : 'text-slate-500'}`} />
-                  <span>{calendarType === 'jalali' ? 'تقویم شمسی' : 'تقویم میلادی'}</span>
+                  <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>{calendarType === 'jalali' ? 'شمسی' : 'میلادی'}</span>
                 </button>
 
                 {/* Settings Cogwheel (hidden on small screens, in menu) */}
@@ -1115,7 +1109,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
 
                 <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200/60">
                   <CalendarDays className="w-3 h-3 text-slate-400" />
-                  <span>{formatAppDate(new Date(), calendarType, 'full')}</span>
+                  <span>{formatPersianDate(new Date(), 'full')}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 font-mono font-bold border border-slate-200/60 hidden sm:inline-flex">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00b884] animate-pulse" />
@@ -1538,43 +1532,27 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
             )}
           </main>
 
-          {/* Micro Footer Under Pages: "بَگ‌تایم، از خانوادهٔ کیان فناوران نگاه" & Privacy Policy */}
+          {/* Micro Footer Under Pages: "بَگ‌تایم، از خانوادهٔ کیان فناوران نگاه" */}
           {globalSettings?.footerBranding?.enabled !== false && (
-            <footer className="py-2.5 px-4 text-center select-none text-[10.5px] text-slate-400 border-t border-slate-200/40 mt-auto bg-transparent flex items-center justify-center gap-2 flex-wrap">
+            <footer className="py-2 px-4 text-center select-none text-[10.5px] text-slate-400 border-t border-slate-200/40 mt-auto bg-transparent">
               <span>{globalSettings?.footerBranding?.prefixText || 'بَگ‌تایم، از خانوادهٔ'}{' '}</span>
               {globalSettings?.footerBranding?.isLinkEnabled && globalSettings?.footerBranding?.companyUrl ? (
                 <a
                   href={globalSettings.footerBranding.companyUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-black text-slate-600 dark:text-slate-300 hover:text-indigo-600 transition-colors underline decoration-slate-300 underline-offset-2 hover:decoration-indigo-500"
+                  className="font-black text-slate-600 hover:text-indigo-600 transition-colors underline decoration-slate-300 underline-offset-2 hover:decoration-indigo-500"
                 >
                   {globalSettings?.footerBranding?.companyName || 'کیان فناوران نگاه'}
                 </a>
               ) : (
-                <strong className="font-black text-slate-600 dark:text-slate-300">
+                <strong className="font-black text-slate-600">
                   {globalSettings?.footerBranding?.companyName || 'کیان فناوران نگاه'}
                 </strong>
               )}
-
-              <span className="text-slate-300 dark:text-slate-700">•</span>
-
-              <button
-                type="button"
-                onClick={() => setIsPrivacyModalOpen(true)}
-                className="font-bold text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer hover:underline"
-              >
-                سیاست‌های حریم خصوصی (شفافیت آموزش ایجنت) 🔒
-              </button>
             </footer>
           )}
         </div>
-
-      {/* Privacy Policy Modal */}
-      <PrivacyPolicyModal
-        isOpen={isPrivacyModalOpen}
-        onClose={() => setIsPrivacyModalOpen(false)}
-      />
 
       {/* Mobile Bottom Navigation (screens < 1024px) */}
       <BottomNav />
@@ -1794,7 +1772,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   className="py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200/80 cursor-pointer"
                 >
                   <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>{calendarType === 'jalali' ? 'تقویم شمسی' : 'تقویم میلادی'}</span>
+                  <span>{calendarType === 'jalali' ? 'شمسی' : 'میلادی'}</span>
                 </button>
               </div>
 

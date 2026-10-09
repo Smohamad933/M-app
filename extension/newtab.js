@@ -1,9 +1,9 @@
 /**
  * Bag Time Assistant Extension - New Tab Engine
  * 100% Offline-capable, Multi-Search-Engine, Dynamic Persian Font Inheritance,
- * Bag Time Official Server (bagtime.negahm.ir),
+ * Dual-Server Automatic Failover (task.mohusyn.ir & bagtime.negahm.ir),
  * Bale 1-Click Login, Sponsored Shortcuts, Time-based Tasks, Quick Notes,
- * and Dual Jalali & Gregorian Calendar.
+ * and Jalali Calendar.
  */
 
 // Storage Abstraction (chrome.storage.local or localStorage fallback)
@@ -147,6 +147,17 @@ const PERSIAN_WEEKDAYS = [
   'یک‌شنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'
 ];
 
+const GREGORIAN_MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+const GREGORIAN_WEEKDAYS = [
+  'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+];
+
+let calendarType = 'jalali'; // 'jalali' | 'gregorian'
+
 function getJalaliDateString() {
   const now = new Date();
   const [jy, jm, jd] = gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
@@ -155,44 +166,24 @@ function getJalaliDateString() {
   return `${weekday}، ${toPersianDigits(jd)} ${monthName} ${toPersianDigits(jy)}`;
 }
 
-const GREGORIAN_MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-];
-
-const GREGORIAN_MONTHS_FA = [
-  'ژانویه', 'فوریه', 'مارس', 'آوریل', 'مه', 'ژوئن',
-  'ژوئیه', 'اوت', 'سپتامبر', 'اکتبر', 'نوامبر', 'دسامبر'
-];
-
-const GREGORIAN_WEEKDAYS = [
-  'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
-];
-
-const GREGORIAN_WEEKDAYS_SHORT = [
-  'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'
-];
-
-function getGregorianDateString(date = new Date()) {
-  const d = date instanceof Date ? date : new Date(date);
-  const weekday = GREGORIAN_WEEKDAYS[d.getDay()];
-  const monthName = GREGORIAN_MONTHS[d.getMonth()];
-  return `${weekday}, ${d.getDate()} ${monthName} ${d.getFullYear()}`;
+function getGregorianDateString() {
+  const now = new Date();
+  const weekday = GREGORIAN_WEEKDAYS[now.getDay()];
+  const monthName = GREGORIAN_MONTHS[now.getMonth()];
+  return `${weekday}, ${now.getDate()} ${monthName} ${now.getFullYear()}`;
 }
 
-function getAppDateString(date = new Date()) {
-  if (calendarType === 'gregorian') {
-    return getGregorianDateString(date);
-  }
-  return getJalaliDateString();
+function getAppDateString() {
+  return calendarType === 'gregorian' ? getGregorianDateString() : getJalaliDateString();
 }
 
-// ── Official Bag Time Server Manager ──
+// ── Official Dual Servers & Automated Best Server Detection ──
 const BAGTIME_SERVERS = [
+  'https://task.mohusyn.ir',
   'https://bagtime.negahm.ir'
 ];
 
-let activeServerUrl = 'https://bagtime.negahm.ir';
+let activeServerUrl = 'https://task.mohusyn.ir';
 
 async function initServerManager() {
   const saved = await Storage.get('active_server', null);
@@ -390,11 +381,6 @@ const noteStatusText = document.getElementById('noteStatusText');
 const saveNoteBtn = document.getElementById('saveNoteBtn');
 const copyNoteBtn = document.getElementById('copyNoteBtn');
 
-let calendarType = 'jalali';
-const extCalendarTypeToggle = document.getElementById('extCalendarTypeToggle');
-const extCalendarTypeLabel = document.getElementById('extCalendarTypeLabel');
-const calWeekdaysRow = document.getElementById('calWeekdaysRow');
-
 const calPrevMonthBtn = document.getElementById('calPrevMonthBtn');
 const calNextMonthBtn = document.getElementById('calNextMonthBtn');
 const calCurrentMonthTitle = document.getElementById('calCurrentMonthTitle');
@@ -438,18 +424,10 @@ function updateClock() {
   const h = String(now.getHours()).padStart(2, '0');
   const m = String(now.getMinutes()).padStart(2, '0');
   const s = String(now.getSeconds()).padStart(2, '0');
-  const timeFormatted = calendarType === 'gregorian'
-    ? `${h}:${m}:${s}`
-    : `${toPersianDigits(h)}:${toPersianDigits(m)}:${toPersianDigits(s)}`;
+  const timeFormatted = `${toPersianDigits(h)}:${toPersianDigits(m)}:${toPersianDigits(s)}`;
 
   if (headerClock) headerClock.textContent = timeFormatted;
   if (calLiveClock) calLiveClock.textContent = timeFormatted;
-
-  if (s === '00') {
-    const curDateStr = getAppDateString();
-    if (headerDate) headerDate.textContent = curDateStr;
-    if (calLiveDate && !selectedCalDate) calLiveDate.textContent = curDateStr;
-  }
 }
 
 // ── Font Management & Server Font Inheritance ──
@@ -773,22 +751,21 @@ async function addTask(title, time = '', priority = 'medium') {
 }
 
 async function toggleTask(id, completed) {
-  const t = tasks.find((item) => String(item.id) === String(id));
+  const t = tasks.find((item) => item.id === id);
   if (!t) return;
   t.completed = completed;
   await Storage.set('tasks', tasks);
   renderTasks();
-  renderCalendar();
   if (t.completed) AudioFeedback.playCheck();
 
   if (currentAccount && currentAccount.token) {
-    smartServerFetch('/api/tasks.php?action=toggle&id=' + encodeURIComponent(id), {
+    smartServerFetch('/api/tasks.php', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${currentAccount.token}`,
       },
-      body: JSON.stringify({ action: 'toggle', id, completed }),
+      body: JSON.stringify({ action: 'toggle', id }),
     }).catch(() => {});
   }
 }
@@ -874,17 +851,8 @@ function getTodayDateKey() {
   return new Date().toISOString().split('T')[0];
 }
 
-// ── Interactive Dual-System Calendar (Jalali & Gregorian) ──
-async function initCalendar() {
-  const savedType = await Storage.get('calendarType', null);
-  if (savedType === 'jalali' || savedType === 'gregorian') {
-    calendarType = savedType;
-  }
-  syncCalendarViewToToday();
-  renderCalendar();
-}
-
-function syncCalendarViewToToday() {
+// ── Interactive Calendar (Jalali & Gregorian) ──
+function initCalendar() {
   const now = new Date();
   if (calendarType === 'gregorian') {
     calViewYear = now.getFullYear();
@@ -897,50 +865,49 @@ function syncCalendarViewToToday() {
     selectedCalDay = jd;
   }
   selectedCalDate = getTodayDateKey();
+  renderCalendar();
 }
 
 function renderCalendar() {
   if (!calDaysGrid || !calCurrentMonthTitle) return;
 
-  if (extCalendarTypeLabel) {
-    extCalendarTypeLabel.textContent = calendarType === 'gregorian' ? 'تقویم میلادی' : 'تقویم شمسی';
-  }
+  const isGregorian = calendarType === 'gregorian';
+  const weekdaysContainer = document.querySelector('.cal-weekdays');
 
-  // Update Weekday Headers
-  if (calWeekdaysRow) {
-    if (calendarType === 'gregorian') {
-      calWeekdaysRow.innerHTML = GREGORIAN_WEEKDAYS_SHORT.map((w) => `<span>${w}</span>`).join('');
+  if (weekdaysContainer) {
+    if (isGregorian) {
+      weekdaysContainer.innerHTML = '<span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>';
     } else {
-      calWeekdaysRow.innerHTML = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'].map((w) => `<span>${w}</span>`).join('');
+      weekdaysContainer.innerHTML = '<span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span>ج</span>';
     }
   }
 
-  const now = new Date();
-  let todayY, todayM, todayD;
-  let weekdayOffset = 0;
-  let monthDaysCount = 30;
-
-  if (calendarType === 'gregorian') {
+  if (isGregorian) {
     calCurrentMonthTitle.textContent = `${GREGORIAN_MONTHS[calViewMonth - 1]} ${calViewYear}`;
+  } else {
+    calCurrentMonthTitle.textContent = `${PERSIAN_MONTHS[calViewMonth - 1]} ${toPersianDigits(calViewYear)}`;
+  }
+  calDaysGrid.innerHTML = '';
+
+  const now = new Date();
+  let todayY, todayM, todayD, weekdayOffset, monthDaysCount;
+
+  if (isGregorian) {
     todayY = now.getFullYear();
     todayM = now.getMonth() + 1;
     todayD = now.getDate();
-    const firstDayDate = new Date(calViewYear, calViewMonth - 1, 1);
-    weekdayOffset = firstDayDate.getDay(); // Sunday = 0
+    weekdayOffset = new Date(calViewYear, calViewMonth - 1, 1).getDay();
     monthDaysCount = new Date(calViewYear, calViewMonth, 0).getDate();
   } else {
-    calCurrentMonthTitle.textContent = `${PERSIAN_MONTHS[calViewMonth - 1]} ${toPersianDigits(calViewYear)}`;
     const [jy, jm, jd] = gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
     todayY = jy;
     todayM = jm;
     todayD = jd;
     const [gy, gm, gd] = jalaliToGregorian(calViewYear, calViewMonth, 1);
     const firstDayDate = new Date(gy, gm - 1, gd);
-    weekdayOffset = (firstDayDate.getDay() + 1) % 7; // Saturday = 0
+    weekdayOffset = (firstDayDate.getDay() + 1) % 7;
     monthDaysCount = (calViewMonth <= 6) ? 31 : ((calViewMonth <= 11) ? 30 : 29);
   }
-
-  calDaysGrid.innerHTML = '';
 
   for (let i = 0; i < weekdayOffset; i++) {
     const emptyCell = document.createElement('div');
@@ -951,19 +918,16 @@ function renderCalendar() {
   for (let d = 1; d <= monthDaysCount; d++) {
     const dayCell = document.createElement('div');
     const isToday = (calViewYear === todayY && calViewMonth === todayM && d === todayD);
-    let dayISO;
-    if (calendarType === 'gregorian') {
-      dayISO = `${calViewYear}-${String(calViewMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    } else {
-      dayISO = jalaliToISO(calViewYear, calViewMonth, d);
-    }
+    const dayISO = isGregorian
+      ? `${calViewYear}-${String(calViewMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      : jalaliToISO(calViewYear, calViewMonth, d);
     const isSelected = (selectedCalDate === dayISO) || (!selectedCalDate && isToday);
     const hasTasks = tasks.some((t) => t.date === dayISO);
 
     dayCell.className = `cal-day-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${hasTasks ? 'has-tasks' : ''}`;
-    dayCell.textContent = calendarType === 'gregorian' ? String(d) : toPersianDigits(d);
-    dayCell.title = calendarType === 'gregorian'
-      ? `${GREGORIAN_MONTHS[calViewMonth - 1]} ${d}, ${calViewYear} (${hasTasks ? 'has tasks' : 'no tasks'})`
+    dayCell.textContent = isGregorian ? d : toPersianDigits(d);
+    dayCell.title = isGregorian
+      ? `${d} ${GREGORIAN_MONTHS[calViewMonth - 1]} ${calViewYear} (${hasTasks ? 'Has Tasks' : 'No Tasks'})`
       : `${d} ${PERSIAN_MONTHS[calViewMonth - 1]} ${toPersianDigits(calViewYear)} (${hasTasks ? 'دارای تسک' : 'بدون تسک'})`;
 
     dayCell.addEventListener('click', () => {
@@ -971,15 +935,11 @@ function renderCalendar() {
       selectedCalDate = dayISO;
       const calBigDate = document.getElementById('calBigDate');
       if (calBigDate) {
-        if (calendarType === 'gregorian') {
-          calBigDate.textContent = isToday
-            ? getGregorianDateString()
-            : `${GREGORIAN_WEEKDAYS[new Date(calViewYear, calViewMonth - 1, d).getDay()]}, ${d} ${GREGORIAN_MONTHS[calViewMonth - 1]} ${calViewYear}`;
-        } else {
-          calBigDate.textContent = isToday
-            ? getJalaliDateString()
-            : `کارهای ${toPersianDigits(d)} ${PERSIAN_MONTHS[calViewMonth - 1]} ${toPersianDigits(calViewYear)}`;
-        }
+        calBigDate.textContent = isToday
+          ? getAppDateString()
+          : (isGregorian
+              ? `Tasks for ${d} ${GREGORIAN_MONTHS[calViewMonth - 1]} ${calViewYear}`
+              : `کارهای ${toPersianDigits(d)} ${PERSIAN_MONTHS[calViewMonth - 1]} ${toPersianDigits(calViewYear)}`);
       }
       renderCalendar();
       renderTasks();
@@ -1232,8 +1192,9 @@ function escapeHtml(s) {
 
 // ── Initialize App ──
 async function init() {
-  // Initialize Calendar & Calendar Type First
-  await initCalendar();
+  // Load calendar preferences
+  currentAccount = await Storage.get('account', null);
+  calendarType = currentAccount?.user?.calendarType || (await Storage.get('calendar_type', 'jalali'));
 
   updateClock();
   setInterval(updateClock, 1000);
@@ -1242,8 +1203,11 @@ async function init() {
   if (headerDate) headerDate.textContent = curDateStr;
   if (calLiveDate) calLiveDate.textContent = curDateStr;
 
-  // Initialize Server Manager
+  // Initialize Dual-Server Manager
   await initServerManager();
+
+  // Initialize Calendar
+  initCalendar();
 
   // Load Saved Font
   const savedFont = await Storage.get('font_family', 'vazirmatn');
@@ -1360,20 +1324,6 @@ async function init() {
     });
   }
 
-  // Calendar Type Toggle (Jalali <-> Gregorian)
-  if (extCalendarTypeToggle) {
-    extCalendarTypeToggle.addEventListener('click', async () => {
-      calendarType = calendarType === 'jalali' ? 'gregorian' : 'jalali';
-      await Storage.set('calendarType', calendarType);
-      syncCalendarViewToToday();
-      const curDateStr = getAppDateString();
-      if (headerDate) headerDate.textContent = curDateStr;
-      if (calLiveDate) calLiveDate.textContent = curDateStr;
-      renderCalendar();
-      renderTasks();
-    });
-  }
-
   // Task Filter Tabs
   document.querySelectorAll('.filter-tab').forEach((tab) => {
     tab.addEventListener('click', () => {
@@ -1410,7 +1360,7 @@ async function init() {
 
   if (choiceSrv1) {
     choiceSrv1.addEventListener('click', async () => {
-      activeServerUrl = 'https://bagtime.negahm.ir';
+      activeServerUrl = 'https://task.mohusyn.ir';
       await Storage.set('active_server', activeServerUrl);
       updateServerUI();
       if (serverPickerMenu) serverPickerMenu.style.display = 'none';

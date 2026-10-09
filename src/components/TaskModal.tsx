@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
-import { sounds } from '../utils/sound';
 import type { Priority, SubTask } from '../types';
 import {
   getTodayISO,
@@ -74,9 +73,7 @@ export const TaskModal: React.FC = () => {
 
   // Admin user assignment
   const [assignedUserId, setAssignedUserId] = useState<string>(currentUser?.id || '');
-  const [routineRepeat, setRoutineRepeat] = useState<'none' | 'workdays' | 'month' | 'week' | 'custom_days'>('none');
-  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([6, 0, 1, 2, 3]); // شنبه تا چهارشنبه (روزهای کاری)
-  const [routineDurationDays, setRoutineDurationDays] = useState<number>(30); // یک ماه (۳۰ روز)
+  const [routineRepeat, setRoutineRepeat] = useState<'none' | 'week' | 'month' | 'workdays'>('none');
 
   const todayISO = getTodayISO();
 
@@ -168,7 +165,7 @@ export const TaskModal: React.FC = () => {
           isRoutine: routineRepeat !== 'none',
           routineType: routineRepeat,
           ...(currentUser?.role === 'admin' ? { userId: assignedUserId } : {}),
-        }, routineRepeat, selectedWeekdays, routineDurationDays);
+        }, routineRepeat);
       }
       closeTaskModal();
     } catch (err: any) {
@@ -304,7 +301,7 @@ export const TaskModal: React.FC = () => {
               <div className="flex items-center justify-between">
                 <label className="font-extrabold text-slate-700 flex items-center gap-1.5 text-xs">
                   <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>تاریخ {calendarType === 'gregorian' ? 'میلادی' : 'شمسی'} تسک</span>
+                  <span>تاریخ شمسی تسک</span>
                 </label>
                 <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200">
                   {formatAppDate(date || todayISO, calendarType, 'full')}
@@ -480,41 +477,35 @@ export const TaskModal: React.FC = () => {
             </div>
           </div>
 
-                    {/* Recurring Routine Selector (تکرار هوشمند برای چند روز دلخواه در ماه یا روزهای کاری) */}
+                    {/* Recurring Routine Selector (تکرار خودکار برای تمام هفته یا تمام ماه) */}
           {!editingTask && (
-            <div className="space-y-3 p-3.5 rounded-2xl bg-[#f8fafc] border border-slate-200">
+            <div className="space-y-2 p-3.5 rounded-2xl bg-[#f8fafc] border border-slate-200">
               <div className="flex items-center justify-between">
                 <label className="font-extrabold text-slate-700 flex items-center gap-1.5 text-xs">
                   <Repeat className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>تکرار هوشمند به عنوان روتین دوره‌ای</span>
+                  <span>تکرار به عنوان روتین روزانه</span>
                 </label>
                 {routineRepeat !== 'none' && (
-                  <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200">
-                    فعال • {routineDurationDays} روزه
+                  <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200">
+                    فعال شد
                   </span>
                 )}
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                می‌توانید روزهای کاری (شنبه تا چهارشنبه) یا روزهای دلخواه هفته را انتخاب کنید تا تسک به‌صورت خودکار در طول یک ماه (یا بازه انتخابی) تکرار شود:
+                با یک‌بار ثبت، این تسک به‌صورت خودکار در تمام روزهای آینده تکرار می‌شود و نیازی به وارد کردن دستی روزانه نیست:
               </p>
 
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: 'none', label: 'فقط همین روز', desc: 'تک‌روز / بدون تکرار' },
-                  { id: 'workdays', label: '💼 شنبه تا چهارشنبه', desc: 'روزهای کاری (۲۴ روز ماه)' },
-                  { id: 'month', label: '📅 تمام روزهای ماه', desc: '۳۰ روز متوالی' },
-                  { id: 'custom_days', label: '⚙️ انتخاب روزهای هفته', desc: 'انتخاب دلخواه روزها' },
+                  { id: 'week', label: '🔁 تمام این هفته', desc: '۷ روز متوالی' },
+                  { id: 'month', label: '📅 تمام این ماه', desc: '۳۰ روز متوالی' },
+                  { id: 'workdays', label: '💼 روزهای کاری', desc: 'شنبه تا چهارشنبه' },
                 ].map((item) => (
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => {
-                      sounds.playPop();
-                      setRoutineRepeat(item.id as any);
-                      if (item.id === 'workdays') {
-                        setSelectedWeekdays([6, 0, 1, 2, 3]);
-                      }
-                    }}
+                    onClick={() => setRoutineRepeat(item.id as any)}
                     className={`p-2.5 rounded-xl border text-right transition-all cursor-pointer flex flex-col gap-0.5 ${
                       routineRepeat === item.id
                         ? 'bg-indigo-50 border-indigo-500 text-indigo-900 shadow-xs font-black'
@@ -526,94 +517,6 @@ export const TaskModal: React.FC = () => {
                   </button>
                 ))}
               </div>
-
-              {/* Weekday Toggles when custom_days or workdays is active */}
-              {(routineRepeat === 'custom_days' || routineRepeat === 'workdays') && (
-                <div className="pt-2 border-t border-slate-200/80 space-y-2 animate-in fade-in">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-slate-700">روزهای فعال در هفته:</span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedWeekdays([6, 0, 1, 2, 3])}
-                        className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer"
-                      >
-                        شنبه تا چهارشنبه
-                      </button>
-                      <span>•</span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedWeekdays([6, 0, 1, 2, 3, 4, 5])}
-                        className="text-[10px] font-bold text-slate-500 hover:underline cursor-pointer"
-                      >
-                        همه روزها
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-7 gap-1 text-center">
-                    {[
-                      { day: 6, label: 'شنبه' },
-                      { day: 0, label: '۱شنبه' },
-                      { day: 1, label: '۲شنبه' },
-                      { day: 2, label: '۳شنبه' },
-                      { day: 3, label: '۴شنبه' },
-                      { day: 4, label: '۵شنبه' },
-                      { day: 5, label: 'جمعه' },
-                    ].map((d) => {
-                      const isSel = selectedWeekdays.includes(d.day);
-                      return (
-                        <button
-                          key={d.day}
-                          type="button"
-                          onClick={() => {
-                            sounds.playPop();
-                            setSelectedWeekdays((prev) =>
-                              isSel ? prev.filter((x) => x !== d.day) : [...prev, d.day]
-                            );
-                            setRoutineRepeat('custom_days');
-                          }}
-                          className={`py-1.5 rounded-lg text-[10px] font-black border transition-all cursor-pointer ${
-                            isSel
-                              ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs'
-                              : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          {d.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Duration Selector */}
-                  <div className="flex items-center justify-between pt-1 text-[11px]">
-                    <span className="text-slate-500">بازه تکرار خودکار:</span>
-                    <div className="flex items-center gap-1 bg-white p-0.5 rounded-xl border border-slate-200">
-                      {[
-                        { days: 30, label: 'یک ماه (۳۰ روز)' },
-                        { days: 14, label: '۲ هفته (۱۴ روز)' },
-                        { days: 60, label: '۲ ماه (۶۰ روز)' },
-                      ].map((item) => (
-                        <button
-                          key={item.days}
-                          type="button"
-                          onClick={() => {
-                            sounds.playPop();
-                            setRoutineDurationDays(item.days);
-                          }}
-                          className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                            routineDurationDays === item.days
-                              ? 'bg-indigo-600 text-white font-black'
-                              : 'text-slate-500 hover:text-slate-800'
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

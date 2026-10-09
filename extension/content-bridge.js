@@ -27,11 +27,6 @@
     try {
       const token = localStorage.getItem('taskrooz_auth_token') || localStorage.getItem('taskrooz_token') || localStorage.getItem('bagtime_token');
       const userStr = localStorage.getItem('taskrooz_current_user') || localStorage.getItem('taskrooz_user') || localStorage.getItem('bagtime_user');
-      const calType = localStorage.getItem('taskrooz_calendar_type') || localStorage.getItem('bagtime_calendar_type');
-
-      if (calType && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set({ calendarType: calType });
-      }
 
       if (token && userStr) {
         const user = JSON.parse(userStr);
@@ -88,13 +83,6 @@
         version: '1.0.1',
         features: ['sso', 'quick_tasks', 'time_blocking'],
       }, '*');
-    }
-
-    if (event.data.type === 'BAGTIME_CALENDAR_TYPE_CHANGED') {
-      const { calendarType } = event.data;
-      if (calendarType && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set({ calendarType });
-      }
     }
 
     if (event.data.type === 'BAGTIME_SSO_LOGIN') {

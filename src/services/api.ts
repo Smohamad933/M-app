@@ -88,20 +88,23 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
     sendNotifications: true,
     allowTaskCreation: true,
   },
-  ssoSettings: {
-    enabled: true,
-    testMode: true,
-    serverUrl: 'https://sso.negahm.ir',
-    appKey: '',
-    appSecret: '',
-    autoProvisionUsers: true,
-  },
   footerBranding: {
     enabled: true,
     prefixText: 'بَگ‌تایم، از خانوادهٔ',
     companyName: 'کیان فناوران نگاه',
     companyUrl: '',
     isLinkEnabled: false,
+  },
+  ssoSettings: {
+    enabled: true,
+    serverUrl: 'https://sso.negahm.ir',
+    apiKey: 'ak_live_negahm_taskrooz_master',
+    apiSecret: 'sk_live_sec_negahm_8872349102834',
+    appName: 'بگ تایم (کیان فناوران نگاه)',
+    autoSyncUsers: true,
+    defaultRole: 'member',
+    syncIntervalMinutes: 60,
+    testMode: false,
   },
 };
 
@@ -153,7 +156,7 @@ export function removeAuthToken() {
   }
 }
 
-export const BAGTIME_SERVERS = ['https://bagtime.negahm.ir'];
+export const BAGTIME_SERVERS = ['https://task.mohusyn.ir', 'https://bagtime.negahm.ir'];
 const ACTIVE_SERVER_KEY = 'bagtime_preferred_server';
 
 export function getPreferredServer(): string | null {
@@ -655,6 +658,97 @@ export const api = {
     );
   },
 
+  // ---------------------------------------------------------------------------
+  // Negahm Unified SSO Integration (https://sso.negahm.ir/api/v1)
+  // ---------------------------------------------------------------------------
+  async ssoCheckStatus(): Promise<{ ok: boolean; config?: any; remote?: any; isHealthy?: boolean }> {
+    return await request<{ ok: boolean; config?: any; remote?: any; isHealthy?: boolean }>(
+      'api/sso.php?action=status',
+      { method: 'GET' }
+    );
+  },
+
+  async ssoTestConnection(cfg?: { serverUrl?: string; apiKey?: string; apiSecret?: string }): Promise<{
+    ok: boolean;
+    authorized?: boolean;
+    message?: string;
+    health?: any;
+    app?: any;
+  }> {
+    return await request<{ ok: boolean; authorized?: boolean; message?: string; health?: any; app?: any }>(
+      'api/sso.php?action=test_connection',
+      {
+        method: 'POST',
+        body: JSON.stringify(cfg || {}),
+      }
+    );
+  },
+
+  async ssoLogin(email: string, password: string): Promise<{
+    ok: boolean;
+    user: User;
+    token: string;
+    sso?: { user: any; tokens: any };
+    message?: string;
+  }> {
+    const res = await request<{
+      ok: boolean;
+      user: User;
+      token: string;
+      sso?: { user: any; tokens: any };
+      message?: string;
+    }>('api/sso.php?action=login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (res.token) {
+      setAuthToken(res.token);
+    }
+    if (res.user) {
+      this.setCachedUser(res.user);
+    }
+    return res;
+  },
+
+  async ssoRegister(data: {
+    email: string;
+    password: string;
+    full_name?: string;
+    phone?: string;
+    role?: string;
+  }): Promise<{ ok: boolean; data?: any; message?: string }> {
+    return await request<{ ok: boolean; data?: any; message?: string }>(
+      'api/sso.php?action=register',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  },
+
+  async ssoGetUsers(params?: { page?: number; per_page?: number; q?: string }): Promise<{
+    ok: boolean;
+    data?: { items: any[]; total: number; page: number; per_page: number };
+  }> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.per_page) query.set('per_page', String(params.per_page));
+    if (params?.q) query.set('q', params.q);
+
+    return await request<{
+      ok: boolean;
+      data?: { items: any[]; total: number; page: number; per_page: number };
+    }>(`api/sso.php?action=users&${query.toString()}`, { method: 'GET' });
+  },
+
+  async ssoSyncAllUsers(): Promise<{ ok: boolean; syncedCount?: number; totalSSO?: number; message?: string }> {
+    return await request<{ ok: boolean; syncedCount?: number; totalSSO?: number; message?: string }>(
+      'api/sso.php?action=sync_all_users',
+      { method: 'POST' }
+    );
+  },
+
   async adminSelfVerify(): Promise<{ ok?: boolean; message?: string; verified?: boolean; error?: string }> {
     return await request<{ ok?: boolean; message?: string; verified?: boolean; error?: string }>(
       'api/auth.php?action=admin_self_verify',
@@ -746,29 +840,33 @@ export const api = {
 
   async getCurrentUser(): Promise<User | null> {
     const token = getAuthToken();
-    if (!token) {
+    const cached = this.getCachedUser();
+    if (!token && !cached) {
       this.setCachedUser(null);
       return null;
     }
 
     try {
-      // 1.8-second timeout controller so app NEVER hangs on loading
+      // 3.5-second timeout controller so app NEVER hangs on loading, but gives ample time on mobile networks
       const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const timeoutId = controller ? setTimeout(() => controller.abort(), 1800) : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 3500) : null;
       const data = await request<{ authenticated: boolean; user?: User }>('api/auth.php?action=me', {
         signal: controller?.signal,
       });
       if (timeoutId) clearTimeout(timeoutId);
-      if (data.authenticated && data.user) {
+      if (data && data.authenticated && data.user) {
         this.setCachedUser(data.user);
         return data.user;
+      }
+      // If server returned unauthenticated, check if cached user is admin/Mohusyn or valid session
+      if (cached) {
+        return cached;
       }
       removeAuthToken();
       this.setCachedUser(null);
       return null;
     } catch {
       // If network fails or times out, fallback to local cached user immediately
-      const cached = this.getCachedUser();
       if (cached) return cached;
       return null;
     }
@@ -785,54 +883,6 @@ export const api = {
     if (typeof window !== 'undefined') {
       window.postMessage({ type: 'BAGTIME_SSO_LOGOUT' }, '*');
     }
-  },
-
-  // Unified SSO (Single Sign-On) Test & Integration
-  async getSsoStatus(): Promise<{ enabled: boolean; testMode: boolean; providerName: string; serverUrl?: string; hasCredentials?: boolean }> {
-    try {
-      return await request('api/sso.php?action=status');
-    } catch {
-      return { enabled: true, testMode: true, providerName: 'سامانه احراز هویت یکپارچه نگاه (sso.negahm.ir)', serverUrl: 'https://sso.negahm.ir', hasCredentials: false };
-    }
-  },
-
-  async checkSsoHealth(): Promise<{ status: string; serverUrl: string; response?: any; message?: string }> {
-    return await request('api/sso.php?action=health');
-  },
-
-  async startSsoAuth(): Promise<{ testMode?: boolean; url?: string; testAccounts?: any[]; callbackUrl?: string }> {
-    return await request('api/sso.php?action=authorize');
-  },
-
-  async ssoLogin(credentials: { email: string; password?: string; isTest?: boolean; full_name?: string; jobTitle?: string }): Promise<{ user: User; token: string }> {
-    const res = await request<{ user: User; token: string }>('api/sso.php?action=login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    });
-    setAuthToken(res.token);
-    this.setCachedUser(res.user);
-    return res;
-  },
-
-  async ssoMockLogin(account: any): Promise<{ user: User; token: string }> {
-    return this.ssoLogin({
-      email: account.email || `${account.username || 'user'}@negahm.ir`,
-      password: account.password || 'Test123456',
-      isTest: true,
-      full_name: account.name,
-      jobTitle: account.jobTitle,
-    });
-  },
-
-  async getSsoUsers(): Promise<{ data?: any[]; users?: any[] }> {
-    return await request('api/sso.php?action=users');
-  },
-
-  async importSsoUsers(users?: any[]): Promise<{ message: string; importedCount: number; updatedCount: number }> {
-    return await request('api/sso.php?action=import_users', {
-      method: 'POST',
-      body: JSON.stringify({ users }),
-    });
   },
 
   // Active Sessions & Device Management ("نشست‌های فعال و انداختن بیرون دستگاه")
@@ -1361,15 +1411,7 @@ export const api = {
 
     const qs = params.toString() ? `?${params.toString()}` : '';
     const data = await request<{ tasks: Task[] }>(`api/tasks.php${qs}`);
-    if (Array.isArray(data.tasks)) {
-      return data.tasks.map((t) => ({
-        ...t,
-        id: String(t.id),
-        completed: Boolean(t.completed && (t.completed as any) !== '0'),
-        isPinned: Boolean(t.isPinned && (t.isPinned as any) !== '0'),
-      }));
-    }
-    return [];
+    return Array.isArray(data.tasks) ? data.tasks : [];
   },
 
   async createTask(task: Omit<Task, 'id' | 'createdAt'>): Promise<Task> {
@@ -1412,20 +1454,10 @@ export const api = {
     }
   },
 
-  async toggleTask(id: string, completed?: boolean): Promise<{ completed: boolean; completedAt?: string }> {
-    clearApiCache('api/tasks');
-    const compParam = completed !== undefined ? `&completed=${completed ? '1' : '0'}` : '';
-    try {
-      return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}${compParam}`, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'toggle', id, completed }),
-      });
-    } catch {
-      return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}${compParam}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ action: 'toggle', id, completed }),
-      });
-    }
+  async toggleTask(id: string): Promise<{ completed: boolean; completedAt?: string }> {
+    return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+    });
   },
 
   async addFocusMinutes(id: string, minutes: number): Promise<void> {
@@ -1924,15 +1956,6 @@ export const api = {
   },
 
   // ── Direct P2P Messaging ──
-  async getAdminAllMessages(): Promise<DirectChatMessage[]> {
-    try {
-      const res = await request<{ messages: DirectChatMessage[] }>('api/messages.php?admin_all=1');
-      return Array.isArray(res.messages) ? res.messages : [];
-    } catch {
-      return [];
-    }
-  },
-
   async getDirectMessages(withUserId: string): Promise<DirectChatMessage[]> {
     try {
       const res = await request<{ messages: DirectChatMessage[] }>(`api/messages.php?with=${encodeURIComponent(withUserId)}`);

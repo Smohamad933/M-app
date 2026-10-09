@@ -30,9 +30,8 @@ export const TaskList: React.FC = () => {
 
     if (filterCategory && task.categoryId !== filterCategory) return false;
 
-    const isDone = Boolean(task.completed && (task.completed as any) !== '0');
-    if (filterStatus === 'pending' && isDone) return false;
-    if (filterStatus === 'completed' && !isDone) return false;
+    if (filterStatus === 'pending' && task.completed) return false;
+    if (filterStatus === 'completed' && !task.completed) return false;
     if (filterStatus === 'starred' && !task.isPinned) return false;
     if (filterStatus === 'urgent' && task.priority !== 'high') return false;
 
@@ -41,7 +40,7 @@ export const TaskList: React.FC = () => {
 
   // Sort
   const sortedPending = filteredTasks
-    .filter((t) => !t.completed || (t.completed as any) === '0')
+    .filter((t) => !t.completed)
     .sort((a, b) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
@@ -59,7 +58,7 @@ export const TaskList: React.FC = () => {
     });
 
   const sortedCompleted = filteredTasks
-    .filter((t) => Boolean(t.completed && (t.completed as any) !== '0'))
+    .filter((t) => t.completed)
     .sort((a, b) => {
       const aTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
       const bTime = b.completedAt ? new Date(b.completedAt).getTime() : 0;

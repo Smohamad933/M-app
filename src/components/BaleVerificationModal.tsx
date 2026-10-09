@@ -64,7 +64,7 @@ export const BaleVerificationModal: React.FC<BaleVerificationModalProps> = ({
         const check = await api.checkVerification(data.userId);
         if (check.verified && check.user && isMounted) {
           sounds.playComplete();
-          completeBaleVerification(check.user);
+          completeBaleVerification(check.user, check.token);
           if (onVerified) onVerified();
           onClose();
         }
@@ -92,7 +92,7 @@ export const BaleVerificationModal: React.FC<BaleVerificationModalProps> = ({
       const check = await api.checkVerification(data.userId);
       if (check.verified && check.user) {
         sounds.playComplete();
-        completeBaleVerification(check.user);
+        completeBaleVerification(check.user, check.token);
         if (onVerified) onVerified();
         onClose();
       } else {

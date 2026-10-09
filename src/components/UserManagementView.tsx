@@ -8,7 +8,6 @@ import { UserAvatar } from './UserAvatar';
 import { SubscriptionBadge } from './SubscriptionBadge';
 import { FontSelectorModal } from './FontSelectorModal';
 import type { User, GlobalSystemSettings, AppDeveloper } from '../types';
-import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 import {
   Users,
   UserPlus,
@@ -40,8 +39,6 @@ import {
   Image as ImageIcon,
   ImagePlus,
   Smartphone,
-  MessageSquare,
-  Search,
   Code2,
   ArrowUp,
   ArrowDown,
@@ -56,8 +53,6 @@ import {
   Database,
   Sun,
   Moon,
-  Globe,
-  UserCheck,
 } from 'lucide-react';
 
 /**
@@ -189,45 +184,110 @@ export const UserManagementView: React.FC = () => {
     appOperatingMode,
     setAppOperatingMode,
     approveUserRegistration,
-    tasks,
-    toggleTaskComplete,
-    deleteTask,
-    openEditModal,
   } = useTask();
 
   // Active view tab inside Admin Panel
-  const [adminTab, setAdminTab] = useState<'users' | 'tasks_inspector' | 'chats_inspector' | 'payments' | 'settings' | 'texts' | 'developers' | 'extension' | 'bale'>('users');
-  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
-  const [inspectUserId, setInspectUserId] = useState<string>('all');
-  const [inspectStatusFilter, setInspectStatusFilter] = useState<'all' | 'pending' | 'completed' | 'red_tick' | 'routine'>('all');
-  const [inspectSearchQuery, setInspectSearchQuery] = useState('');
-  
-  // Chats inspector state
-  const [allSystemMessages, setAllSystemMessages] = useState<any[]>([]);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [selectedConvoKey, setSelectedConvoKey] = useState<string | null>(null);
-
-  const fetchAdminMessages = async () => {
-    setIsLoadingMessages(true);
-    try {
-      const msgs = await api.getAdminAllMessages();
-      setAllSystemMessages(msgs);
-      if (msgs.length > 0 && !selectedConvoKey) {
-        // Group by conversation key
-        const m = msgs[0];
-        const key = [m.senderId, m.receiverId].sort().join('___');
-        setSelectedConvoKey(key);
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch admin messages:', err);
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  };
+  const [adminTab, setAdminTab] = useState<'users' | 'payments' | 'settings' | 'texts' | 'developers' | 'extension' | 'bale' | 'sso'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFontModalOpen, setIsFontModalOpen] = useState(false);
   const pendingUsers = users.filter((u) => u.status === 'pending_approval');
   const [planFilter, setPlanFilter] = useState<'all' | 'pro' | 'free'>('all');
+
+  // Negahm Unified SSO State
+  const initialSso = (globalSettings as any)?.ssoSettings || {
+    enabled: true,
+    serverUrl: 'https://sso.negahm.ir',
+    apiKey: 'ak_live_negahm_taskrooz_master',
+    apiSecret: 'sk_live_sec_negahm_8872349102834',
+    appName: 'بگ تایم (کیان فناوران نگاه)',
+    autoSyncUsers: true,
+    defaultRole: 'member',
+    testMode: false,
+  };
+  const [ssoForm, setSsoForm] = useState(initialSso);
+  const [ssoTesting, setSsoTesting] = useState(false);
+  const [ssoTestResult, setSsoTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [ssoSaving, setSsoSaving] = useState(false);
+  const [ssoUsers, setSsoUsers] = useState<any[]>([]);
+  const [isLoadingSsoUsers, setIsLoadingSsoUsers] = useState(false);
+  const [isSyncingSso, setIsSyncingSso] = useState(false);
+
+  useEffect(() => {
+    if ((globalSettings as any)?.ssoSettings) {
+      setSsoForm((globalSettings as any).ssoSettings);
+    }
+  }, [globalSettings]);
+
+  const handleTestSsoConnection = async () => {
+    setSsoTesting(true);
+    setSsoTestResult(null);
+    sounds.playPop();
+    try {
+      const res = await api.ssoTestConnection(ssoForm);
+      if (res.ok) {
+        sounds.playComplete();
+        setSsoTestResult({
+          ok: true,
+          message: res.message || 'اتصال به سامانه SSO نگاه با موفقیت برقرار شد.',
+        });
+      } else {
+        setSsoTestResult({
+          ok: false,
+          message: res.message || 'خطا در برقراری ارتباط با سامانه SSO نگاه.',
+        });
+      }
+    } catch (e: any) {
+      setSsoTestResult({
+        ok: false,
+        message: e.message || 'خطا در تست اتصال SSO نگاه',
+      });
+    } finally {
+      setSsoTesting(false);
+    }
+  };
+
+  const handleSaveSsoConfig = async () => {
+    setSsoSaving(true);
+    sounds.playPop();
+    try {
+      await updateGlobalSettings({
+        ssoSettings: ssoForm,
+      });
+      sounds.playComplete();
+      alert('تنظیمات سامانه متمرکز نگاه با موفقیت ذخیره شد.');
+    } catch (e: any) {
+      alert(e.message || 'خطا در ذخیره تنظیمات SSO');
+    } finally {
+      setSsoSaving(false);
+    }
+  };
+
+  const handleSyncAllSsoUsers = async () => {
+    setIsSyncingSso(true);
+    sounds.playPop();
+    try {
+      const res = await api.ssoSyncAllUsers();
+      sounds.playComplete();
+      alert(res.message || 'همگام‌سازی کاربران انجام شد.');
+      await refreshUsers();
+    } catch (e: any) {
+      alert(e.message || 'خطا در همگام‌سازی کاربران از SSO');
+    } finally {
+      setIsSyncingSso(false);
+    }
+  };
+
+  const handleLoadSsoUsers = async () => {
+    setIsLoadingSsoUsers(true);
+    try {
+      const res = await api.ssoGetUsers({ per_page: 50 });
+      setSsoUsers(res.data?.items || []);
+    } catch {
+      // ignore
+    } finally {
+      setIsLoadingSsoUsers(false);
+    }
+  };
 
   // Payments management state
   const [paymentsList, setPaymentsList] = useState<any[]>([]);
@@ -355,7 +415,7 @@ export const UserManagementView: React.FC = () => {
   const initialSponsored = globalSettings?.extensionSponsoredSite || {
     enabled: true,
     title: 'سامانه ابری بگ تایم',
-    url: 'https://bagtime.negahm.ir',
+    url: 'https://task.mohusyn.ir',
     icon: '⭐',
     badge: 'اسپانسر',
   };
@@ -464,80 +524,6 @@ export const UserManagementView: React.FC = () => {
       alert(e.message || 'خطا در ذخیره تنظیمات ربات بله');
     } finally {
       setBaleSaving(false);
-    }
-  };
-
-  // Unified SSO (sso.negahm.ir) State
-  const initialSso = (globalSettings as any)?.ssoSettings || {
-    enabled: true,
-    testMode: true,
-    serverUrl: 'https://sso.negahm.ir',
-    appKey: '',
-    appSecret: '',
-    autoProvisionUsers: true,
-  };
-  const [ssoForm, setSsoForm] = useState(initialSso);
-  const [ssoTesting, setSsoTesting] = useState(false);
-  const [ssoTestResult, setSsoTestResult] = useState<{ ok: boolean; message: string } | null>(null);
-  const [ssoSaving, setSsoSaving] = useState(false);
-  const [ssoImporting, setSsoImporting] = useState(false);
-
-  useEffect(() => {
-    if ((globalSettings as any)?.ssoSettings) {
-      setSsoForm((globalSettings as any).ssoSettings);
-    }
-  }, [globalSettings]);
-
-  const handleTestSsoHealth = async () => {
-    setSsoTesting(true);
-    setSsoTestResult(null);
-    sounds.playPop();
-    try {
-      const res = await api.checkSsoHealth();
-      sounds.playComplete();
-      setSsoTestResult({
-        ok: true,
-        message: `سرویس احراز هویت یکپارچه آنلاین است (${res.serverUrl})`,
-      });
-    } catch (e: any) {
-      setSsoTestResult({
-        ok: false,
-        message: e?.message || 'خطا در ارتباط با سرور احراز هویت یکپارچه نگاه.',
-      });
-    } finally {
-      setSsoTesting(false);
-    }
-  };
-
-  const handleSaveSsoConfig = async () => {
-    setSsoSaving(true);
-    sounds.playPop();
-    try {
-      await updateGlobalSettings({
-        ssoSettings: ssoForm,
-      });
-      sounds.playComplete();
-      alert('تنظیمات احراز هویت یکپارچه (SSO) با موفقیت ذخیره شد.');
-    } catch (e: any) {
-      alert(e?.message || 'خطا در ذخیره تنظیمات SSO');
-    } finally {
-      setSsoSaving(false);
-    }
-  };
-
-  const handleImportSsoUsers = async () => {
-    if (!confirm('آیا مایل به دریافت و همگام‌سازی کاربران از سامانه احراز هویت یکپارچه به دیتابیس سامانه هستید؟')) return;
-    setSsoImporting(true);
-    sounds.playPop();
-    try {
-      const res = await api.importSsoUsers();
-      sounds.playComplete();
-      alert(res.message);
-      refreshUsers();
-    } catch (e: any) {
-      alert(e?.message || 'خطا در همگام‌سازی کاربران از SSO.');
-    } finally {
-      setSsoImporting(false);
     }
   };
 
@@ -1093,16 +1079,6 @@ export const UserManagementView: React.FC = () => {
           </button>
 
           <button
-            type="button"
-            onClick={() => setIsPrivacyModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 font-bold text-xs border border-emerald-500/30 transition-all cursor-pointer shadow-xs active:scale-95"
-            title="سیاست‌های حریم خصوصی و شفافیت آموزش ایجنت هوشمند"
-          >
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>سیاست‌های حریم خصوصی (آموزش ایجنت)</span>
-          </button>
-
-          <button
             onClick={() => exportUsersCsv()}
             className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
             title="خروجی فایل اکسل با انکودینگ UTF-8 BOM"
@@ -1133,33 +1109,6 @@ export const UserManagementView: React.FC = () => {
         >
           <Users className="w-3.5 h-3.5" />
           <span>پایش و فهرست اعضا ({toPersianDigits(users.length)})</span>
-        </button>
-
-        <button
-          onClick={() => setAdminTab('tasks_inspector')}
-          className={`flex-1 min-w-[130px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            adminTab === 'tasks_inspector'
-              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs font-black'
-              : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          <ListTodo className="w-3.5 h-3.5 text-indigo-400" />
-          <span>📋 بازرسی تسک‌های دیگران ({toPersianDigits(tasks.length)})</span>
-        </button>
-
-        <button
-          onClick={() => {
-            setAdminTab('chats_inspector');
-            fetchAdminMessages();
-          }}
-          className={`flex-1 min-w-[130px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            adminTab === 'chats_inspector'
-              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs font-black'
-              : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-          <span>💬 نظارت بر چت‌ها و پیام‌ها</span>
         </button>
 
         <button
@@ -1225,6 +1174,21 @@ export const UserManagementView: React.FC = () => {
         >
           <Bot className="w-3.5 h-3.5 text-blue-400" />
           <span>ربات بله (Bale Bot)</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setAdminTab('sso');
+            handleLoadSsoUsers();
+          }}
+          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            adminTab === 'sso'
+              ? 'bg-emerald-600 text-white shadow-xs font-black'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          <span>سامانه متمرکز نگاه (SSO)</span>
         </button>
 
         <button
@@ -1554,10 +1518,24 @@ export const UserManagementView: React.FC = () => {
                               کاربر عادی (رایگان)
                             </span>
                           )}
+
+                          {/* Bale Verification Status Badge */}
+                          {u.role !== 'admin' && (
+                            u.isVerified !== false && u.status !== 'pending_verification' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-medium" title="حساب کاربری تأییدشده">
+                                <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
+                                <span>تأییدشده بله</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-medium animate-pulse" title="نیازمند تأیید در بله یا تأیید دستی مدیر">
+                                <span>در انتظار تأیید بله ⏳</span>
+                              </span>
+                            )
+                          )}
                         </div>
 
                         {/* Metadata tags */}
-                        <div className="flex items-center gap-3 text-xs text-zinc-400 flex-wrap pt-0.5">
+                        <div className="flex items-center gap-2.5 text-xs text-zinc-400 flex-wrap pt-0.5">
                           <span className="font-mono text-zinc-500 dir-ltr text-left">@{u.username}</span>
 
                           {u.numericId && (
@@ -1580,17 +1558,45 @@ export const UserManagementView: React.FC = () => {
                             </span>
                           )}
 
-                          {u.phone && (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-zinc-400 font-mono">
-                              <Phone className="w-3 h-3 text-zinc-500" />
-                              {u.phone}
+                          {/* Phone */}
+                          {u.phone ? (
+                            <a
+                              href={`tel:${u.phone}`}
+                              className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-lg border border-emerald-800/40 hover:bg-emerald-900/40 transition-colors"
+                              title="تماس با شماره کاربر"
+                            >
+                              <Phone className="w-3 h-3 text-emerald-400 shrink-0" />
+                              <span dir="ltr">{u.phone}</span>
+                            </a>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 bg-zinc-900/60 px-2 py-0.5 rounded-lg border border-zinc-800/80" title="شماره تماس ثبت نشده">
+                              <Phone className="w-3 h-3 text-zinc-600 shrink-0" />
+                              <span>بدون شماره</span>
                             </span>
                           )}
 
-                          {u.email && (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-zinc-400 font-mono">
-                              <Mail className="w-3 h-3 text-zinc-500" />
-                              {u.email}
+                          {/* Email */}
+                          {u.email ? (
+                            <a
+                              href={`mailto:${u.email}`}
+                              className="inline-flex items-center gap-1 text-[11px] font-mono text-sky-300 bg-sky-950/40 px-2 py-0.5 rounded-lg border border-sky-800/40 hover:bg-sky-900/40 transition-colors"
+                              title="ارسال ایمیل به کاربر"
+                            >
+                              <Mail className="w-3 h-3 text-sky-400 shrink-0" />
+                              <span dir="ltr">{u.email}</span>
+                            </a>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 bg-zinc-900/60 px-2 py-0.5 rounded-lg border border-zinc-800/80" title="ایمیل ثبت نشده">
+                              <Mail className="w-3 h-3 text-zinc-600 shrink-0" />
+                              <span>بدون ایمیل</span>
+                            </span>
+                          )}
+
+                          {/* Bale Username */}
+                          {u.baleUsername && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-300 bg-zinc-800/80 px-2 py-0.5 rounded-lg border border-emerald-800/40" title="شناسه کاربری در پیام‌رسان بله">
+                              <Bot className="w-3 h-3 text-emerald-400 shrink-0" />
+                              <span dir="ltr">@{u.baleUsername}</span>
                             </span>
                           )}
                         </div>
@@ -1640,7 +1646,7 @@ export const UserManagementView: React.FC = () => {
                       {/* Action buttons */}
                       <div className="flex items-center gap-2 flex-wrap">
                         {/* Approval button if user is unverified or pending Bale */}
-                        {u.role !== 'admin' && (u.status === 'pending_verification' || !u.isVerified) && (
+                        {u.role !== 'admin' && (u.status === 'pending_verification' || u.isVerified === false) && (
                           <button
                             type="button"
                             onClick={async () => {
@@ -1912,382 +1918,6 @@ export const UserManagementView: React.FC = () => {
           </div>
         </div>
       )}
-
-      
-      {/* ── TAB: TASKS INSPECTOR (SUPER ADMIN TASK MONITORING) ── */}
-      {adminTab === 'tasks_inspector' && (() => {
-        const filteredTasks = tasks.filter((t) => {
-          if (inspectUserId !== 'all' && t.userId !== inspectUserId) return false;
-          if (inspectStatusFilter === 'pending' && t.completed) return false;
-          if (inspectStatusFilter === 'completed' && !t.completed) return false;
-          if (inspectStatusFilter === 'red_tick' && (!t.reasonUncompleted || t.completed)) return false;
-          if (inspectStatusFilter === 'routine' && !t.isRoutine) return false;
-          if (inspectSearchQuery.trim()) {
-            const q = inspectSearchQuery.toLowerCase().trim();
-            const matchTitle = (t.title || '').toLowerCase().includes(q);
-            const matchDesc = (t.description || '').toLowerCase().includes(q);
-            const userObj = users.find((u) => u.id === t.userId);
-            const matchUser = (userObj?.name || '').toLowerCase().includes(q) || (userObj?.username || '').toLowerCase().includes(q);
-            if (!matchTitle && !matchDesc && !matchUser) return false;
-          }
-          return true;
-        });
-
-        const totalCount = tasks.length;
-        const pendingCount = tasks.filter((t) => !t.completed).length;
-        const doneCount = tasks.filter((t) => t.completed).length;
-        const redTickCount = tasks.filter((t) => !t.completed && t.reasonUncompleted).length;
-
-        return (
-          <div className="space-y-5 animate-in fade-in">
-            {/* Inspector Summary Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800">
-                <div className="text-xs text-zinc-400 mb-1">کل تسک‌های ثبت‌شده سیستم</div>
-                <div className="text-2xl font-black text-white">{toPersianDigits(totalCount)}</div>
-              </div>
-              <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800">
-                <div className="text-xs text-zinc-400 mb-1">تسک‌های در انتظار</div>
-                <div className="text-2xl font-black text-amber-400">{toPersianDigits(pendingCount)}</div>
-              </div>
-              <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800">
-                <div className="text-xs text-zinc-400 mb-1">تکمیل‌شده‌ها ✓</div>
-                <div className="text-2xl font-black text-emerald-400">{toPersianDigits(doneCount)}</div>
-              </div>
-              <div className="p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800">
-                <div className="text-xs text-zinc-400 mb-1">تیک قرمز (دلایل عدم انجام)</div>
-                <div className="text-2xl font-black text-rose-400">{toPersianDigits(redTickCount)}</div>
-              </div>
-            </div>
-
-            {/* Controls Bar: User filter, Status filter, Search, Create Task */}
-            <div className="p-4 rounded-3xl bg-zinc-900/80 border border-zinc-800 space-y-3">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                {/* User Dropdown */}
-                <div className="flex items-center gap-2 flex-1">
-                  <span className="text-xs font-bold text-zinc-400 whitespace-nowrap">کاربر:</span>
-                  <select
-                    value={inspectUserId}
-                    onChange={(e) => setInspectUserId(e.target.value)}
-                    className="w-full sm:max-w-xs px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-xs text-white font-bold outline-none focus:border-indigo-500 cursor-pointer"
-                  >
-                    <option value="all">همه کاربران (تمام تسک‌ها)</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name} (@{u.username}) — {toPersianDigits(tasks.filter((t) => t.userId === u.id).length)} تسک
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Search */}
-                <div className="relative flex-1">
-                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-3 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={inspectSearchQuery}
-                    onChange={(e) => setInspectSearchQuery(e.target.value)}
-                    placeholder="جستجو در عنوان، توضیحات یا نام کاربر..."
-                    className="w-full pr-9 pl-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-xs text-white placeholder-zinc-500 outline-none focus:border-indigo-500"
-                  />
-                </div>
-
-                {/* Assign Task Button */}
-                <button
-                  type="button"
-                  onClick={() => openCreateModal(undefined, inspectUserId !== 'all' ? inspectUserId : undefined)}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm flex-shrink-0"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  <span>ثبت تسک جدید</span>
-                </button>
-              </div>
-
-              {/* Status Filters */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-zinc-800/80">
-                {[
-                  { id: 'all', label: `همه (${toPersianDigits(tasks.filter(t => inspectUserId === 'all' || t.userId === inspectUserId).length)})` },
-                  { id: 'pending', label: `در انتظار (${toPersianDigits(tasks.filter(t => !t.completed && (inspectUserId === 'all' || t.userId === inspectUserId)).length)})` },
-                  { id: 'completed', label: `تکمیل‌شده (${toPersianDigits(tasks.filter(t => t.completed && (inspectUserId === 'all' || t.userId === inspectUserId)).length)})` },
-                  { id: 'red_tick', label: `تیک قرمز و موانع (${toPersianDigits(tasks.filter(t => !t.completed && t.reasonUncompleted && (inspectUserId === 'all' || t.userId === inspectUserId)).length)})` },
-                  { id: 'routine', label: `روتین‌ها (${toPersianDigits(tasks.filter(t => t.isRoutine && (inspectUserId === 'all' || t.userId === inspectUserId)).length)})` },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setInspectStatusFilter(item.id as any)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                      inspectStatusFilter === item.id
-                        ? 'bg-zinc-800 text-white border border-zinc-700 shadow-xs'
-                        : 'text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tasks List */}
-            {filteredTasks.length === 0 ? (
-              <div className="p-8 text-center bg-zinc-900/60 rounded-3xl border border-zinc-800 text-zinc-400 text-xs">
-                تسکی با فیلترهای انتخابی یافت نشد.
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {filteredTasks.map((t) => {
-                  const assignedUser = users.find((u) => u.id === t.userId);
-                  return (
-                    <div
-                      key={t.id}
-                      className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800/80 hover:border-zinc-700 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                    >
-                      {/* Left: Task Info */}
-                      <div className="flex items-start gap-3 min-w-0 flex-1">
-                        <button
-                          type="button"
-                          onClick={() => toggleTaskComplete(t.id)}
-                          className={`mt-0.5 w-5 h-5 rounded-lg flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors ${
-                            t.completed
-                              ? 'bg-emerald-500 text-black shadow-xs'
-                              : t.reasonUncompleted
-                              ? 'bg-rose-500 text-white'
-                              : 'border-2 border-zinc-600 bg-zinc-800 hover:border-emerald-500'
-                          }`}
-                          title={t.completed ? 'علامت‌گذاری به عنوان انجام نشده' : 'علامت‌گذاری به عنوان انجام شده'}
-                        >
-                          {t.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                          {!t.completed && t.reasonUncompleted && <span className="text-[10px] font-black">✕</span>}
-                        </button>
-
-                        <div className="space-y-1 min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`font-black text-sm text-white ${t.completed ? 'line-through opacity-70' : ''}`}>
-                              {t.title}
-                            </span>
-
-                            {/* User badge */}
-                            <span className="text-[10.5px] px-2 py-0.5 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center gap-1 font-bold">
-                              <span>👤</span>
-                              <span>{assignedUser?.name || 'کاربر'}</span>
-                              <span className="text-zinc-500 font-mono">(@{assignedUser?.username || 'user'})</span>
-                            </span>
-
-                            {/* Priority */}
-                            <span
-                              className={`text-[9.5px] px-2 py-0.2 rounded-md font-bold ${
-                                t.priority === 'high'
-                                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                                  : t.priority === 'medium'
-                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                                  : 'bg-zinc-800 text-zinc-400'
-                              }`}
-                            >
-                              {t.priority === 'high' ? 'فوری' : t.priority === 'medium' ? 'متوسط' : 'عادی'}
-                            </span>
-
-                            {/* Routine */}
-                            {t.isRoutine && (
-                              <span className="text-[9.5px] px-2 py-0.2 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
-                                🔁 روتین
-                              </span>
-                            )}
-                          </div>
-
-                          {t.description && (
-                            <p className="text-xs text-zinc-400 line-clamp-2">{t.description}</p>
-                          )}
-
-                          {/* Incomplete reason if registered */}
-                          {!t.completed && t.reasonUncompleted && (
-                            <div className="p-2 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center gap-1.5">
-                              <span>❌ علت عدم انجام (تیک قرمز):</span>
-                              <span className="font-black text-white">«{t.reasonUncompleted}»</span>
-                            </div>
-                          )}
-
-                          <div className="flex items-center gap-3 text-[11px] text-zinc-500 pt-0.5">
-                            <span>تاریخ: {toPersianDigits(t.date)}</span>
-                            {t.time && <span>ساعت: {toPersianDigits(t.time)}</span>}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: Actions */}
-                      <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(t)}
-                          className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition-colors cursor-pointer"
-                        >
-                          ویرایش
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm(`آیا از حذف تسک «${t.title}» اطمینان دارید؟`)) {
-                              deleteTask(t.id);
-                            }
-                          }}
-                          className="p-2 rounded-xl bg-zinc-800 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-400 transition-colors cursor-pointer"
-                          title="حذف تسک"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* ── TAB: CHATS & DIRECT MESSAGES INSPECTOR (SUPER ADMIN CHAT MONITORING) ── */}
-      {adminTab === 'chats_inspector' && (() => {
-        // Group all messages by conversation pair
-        const convoMap = new Map<string, { user1Id: string; user2Id: string; messages: any[] }>();
-        allSystemMessages.forEach((m) => {
-          const s = m.senderId;
-          const r = m.receiverId;
-          if (!s || !r) return;
-          const pairKey = [s, r].sort().join('___');
-          const entry = convoMap.get(pairKey) || { user1Id: s, user2Id: r, messages: [] as any[] };
-          entry.messages.push(m);
-          convoMap.set(pairKey, entry);
-        });
-
-        const convoList = Array.from(convoMap.entries()).map(([key, data]) => {
-          const u1 = users.find((u) => u.id === data.user1Id);
-          const u2 = users.find((u) => u.id === data.user2Id);
-          const lastMsg = data.messages[data.messages.length - 1];
-          return {
-            key,
-            u1,
-            u2,
-            messages: data.messages,
-            lastMsg,
-          };
-        });
-
-        const activeConvo = convoList.find((c) => c.key === selectedConvoKey) || convoList[0];
-
-        return (
-          <div className="space-y-4 animate-in fade-in">
-            {/* Top Bar */}
-            <div className="p-4 rounded-3xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <h3 className="text-sm font-black text-white flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-emerald-400" />
-                  <span>مرکز پایش پیام‌ها و گفتگوهای اعضای سامانه</span>
-                </h3>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  مشاهده محتوای تبادل‌شده بین کاربران جهت نظارت کیفی و آموزش مدل‌های هوش مصنوعی
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={fetchAdminMessages}
-                disabled={isLoadingMessages}
-                className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingMessages ? 'animate-spin' : ''}`} />
-                <span>به‌روزرسانی پیام‌ها</span>
-              </button>
-            </div>
-
-            {isLoadingMessages && allSystemMessages.length === 0 ? (
-              <div className="p-12 text-center text-zinc-400 text-xs">در حال دریافت داده‌های گفتگو...</div>
-            ) : convoList.length === 0 ? (
-              <div className="p-12 text-center bg-zinc-900/60 rounded-3xl border border-zinc-800 text-zinc-400 text-xs">
-                هنوز پیامی بین کاربران در سامانه رد و بدل نشده است.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-                {/* Left Column: Conversations List */}
-                <div className="lg:col-span-5 space-y-2">
-                  <div className="text-xs font-black text-zinc-400 px-2">گفتگوهای فعال ({toPersianDigits(convoList.length)}):</div>
-                  <div className="space-y-1.5 max-h-[550px] overflow-y-auto no-scrollbar">
-                    {convoList.map((convo) => {
-                      const isSel = convo.key === (activeConvo?.key);
-                      return (
-                        <div
-                          key={convo.key}
-                          onClick={() => setSelectedConvoKey(convo.key)}
-                          className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                            isSel
-                              ? 'bg-zinc-800 border-emerald-500/60 shadow-md ring-1 ring-emerald-500/30'
-                              : 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700'
-                          }`}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 text-xs font-black text-white truncate">
-                              <span>{convo.u1?.name || 'کاربر'}</span>
-                              <span className="text-zinc-500">↔️</span>
-                              <span>{convo.u2?.name || 'کاربر'}</span>
-                            </div>
-                            <div className="text-[11px] text-zinc-400 truncate mt-1">
-                              {convo.lastMsg?.text || '...'}
-                            </div>
-                          </div>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700 font-mono">
-                            {toPersianDigits(convo.messages.length)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Right Column: Chat History */}
-                <div className="lg:col-span-7 rounded-3xl bg-zinc-900/90 border border-zinc-800 p-4 sm:p-5 flex flex-col h-[550px]">
-                  {/* Chat Header */}
-                  <div className="pb-3 border-b border-zinc-800 flex items-center justify-between flex-shrink-0">
-                    <div className="flex items-center gap-2">
-                      <div className="text-xs font-black text-white">
-                        تاریخچه پیام‌های: <span className="text-emerald-400">{activeConvo?.u1?.name}</span> با <span className="text-indigo-400">{activeConvo?.u2?.name}</span>
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-zinc-400 font-mono">
-                      {toPersianDigits(activeConvo?.messages?.length || 0)} پیام
-                    </span>
-                  </div>
-
-                  {/* Messages Stream */}
-                  <div className="flex-1 overflow-y-auto space-y-3 py-4 pr-1 pl-2">
-                    {activeConvo?.messages?.map((m) => {
-                      const sender = users.find((u) => u.id === m.senderId);
-                      const isU1 = m.senderId === activeConvo.u1?.id;
-                      return (
-                        <div
-                          key={m.id}
-                          className={`flex flex-col ${isU1 ? 'items-start' : 'items-end'}`}
-                        >
-                          <div className="flex items-center gap-1.5 mb-1 text-[10px] text-zinc-400">
-                            <span className="font-bold text-zinc-300">{sender?.name || m.senderName || 'کاربر'}</span>
-                            <span className="font-mono">{m.createdAt ? toPersianDigits(m.createdAt.slice(11, 16)) : ''}</span>
-                          </div>
-                          <div
-                            className={`p-3 rounded-2xl max-w-sm text-xs leading-relaxed ${
-                              isU1
-                                ? 'bg-zinc-800 text-white rounded-br-none border border-zinc-700/80'
-                                : 'bg-emerald-950/70 border border-emerald-800/80 text-emerald-100 rounded-bl-none'
-                            }`}
-                          >
-                            {m.text}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })()}
 
       {/* TAB 2: GLOBAL SETTINGS (ENFORCED BY MOHUSYN FOR ALL USERS) */}
       {adminTab === 'settings' && (
@@ -4207,103 +3837,140 @@ export const UserManagementView: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Unified SSO (sso.negahm.ir) Settings Card */}
-          <div className="p-6 md:p-8 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-indigo-400" />
-                <span>سامانه احراز هویت یکپارچه سازمانی نگاه (sso.negahm.ir)</span>
-              </h4>
-              <span className="text-[10px] px-2.5 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-bold flex items-center gap-1.5 w-fit">
-                <Globe className="w-3 h-3" />
-                OpenAPI 3.0.3 Compatible
-              </span>
+      {/* TAB 8: NEGAHM UNIFIED SSO INTEGRATION */}
+      {adminTab === 'sso' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Main SSO Config Card */}
+          <div className="p-6 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>سامانه احراز هویت متمرکز نگاه (Negahm Unified SSO v1)</span>
+                </div>
+                <h3 className="text-base font-black text-white">
+                  مدیریت اتصال به SSO کیان فناوران نگاه
+                </h3>
+                <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
+                  پشتیبانی کامل از احراز هویت درخواست‌ها با کلید و راز اپلیکیشن (X-Api-Key و X-Api-Secret)، ثبت‌نام و ورود خودکار کاربران و هماهنگی با پایگاه داده متمرکز نگاه بر پایه مشخصات استاندارد API v1.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className={`w-3 h-3 rounded-full ${ssoForm.enabled ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`} />
+                <span className="text-xs font-bold text-zinc-300">
+                  {ssoForm.enabled ? 'فعال در سامانه' : 'غیرفعال'}
+                </span>
+              </div>
             </div>
 
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              این بخش امکان اتصال مستقیم به سرویس متمرکز <span className="text-indigo-300 font-mono">https://sso.negahm.ir</span>، مهاجرت خودکار اعضا، و احراز هویت بدون نیاز به رمز عبور محلی را فراهم می‌سازد. در صورت فعال بودن «حالت آزمایشی»، امکان تست سریع با سناریوهای تستی بدون ایجاد تداخل برای کاربران فعلی فراهم است.
-            </p>
-
-            {/* Switches */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <label className="flex items-start gap-3 p-3.5 bg-zinc-950/70 border border-zinc-800/80 rounded-2xl cursor-pointer hover:border-zinc-700 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={ssoForm.enabled}
-                  onChange={(e) => setSsoForm({ ...ssoForm, enabled: e.target.checked })}
-                  className="w-4 h-4 rounded text-indigo-600 focus:ring-0 mt-0.5 cursor-pointer"
-                />
-                <div className="space-y-0.5">
-                  <div className="text-xs font-bold text-white">فعال‌سازی سرویس SSO</div>
-                  <div className="text-[10px] text-zinc-400">نمایش دکمه ورود سازمانی</div>
-                </div>
-              </label>
-
-              <label className="flex items-start gap-3 p-3.5 bg-zinc-950/70 border border-zinc-800/80 rounded-2xl cursor-pointer hover:border-zinc-700 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={ssoForm.testMode}
-                  onChange={(e) => setSsoForm({ ...ssoForm, testMode: e.target.checked })}
-                  className="w-4 h-4 rounded text-indigo-600 focus:ring-0 mt-0.5 cursor-pointer"
-                />
-                <div className="space-y-0.5">
-                  <div className="text-xs font-bold text-white">حالت آزمایشی (Sandbox)</div>
-                  <div className="text-[10px] text-zinc-400">تست با حساب‌های شبیه‌سازی‌شده</div>
-                </div>
-              </label>
-
-              <label className="flex items-start gap-3 p-3.5 bg-zinc-950/70 border border-zinc-800/80 rounded-2xl cursor-pointer hover:border-zinc-700 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={ssoForm.autoProvisionUsers}
-                  onChange={(e) => setSsoForm({ ...ssoForm, autoProvisionUsers: e.target.checked })}
-                  className="w-4 h-4 rounded text-indigo-600 focus:ring-0 mt-0.5 cursor-pointer"
-                />
-                <div className="space-y-0.5">
-                  <div className="text-xs font-bold text-white">ثبت‌نام خودکار (Provisioning)</div>
-                  <div className="text-[10px] text-zinc-400">ایجاد کاربر جدید در اولین ورود</div>
-                </div>
-              </label>
-            </div>
-
-            {/* Inputs */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Server URL */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-zinc-300">نشانی سرور احراز هویت (Server URL)</label>
+                <label className="block text-xs font-bold text-zinc-300">
+                  نشانی سرور SSO (Base Server URL)
+                </label>
                 <input
                   type="text"
                   dir="ltr"
-                  value={ssoForm.serverUrl}
+                  value={ssoForm.serverUrl || 'https://sso.negahm.ir'}
                   onChange={(e) => setSsoForm({ ...ssoForm, serverUrl: e.target.value })}
                   placeholder="https://sso.negahm.ir"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white font-mono text-xs focus:border-indigo-500 outline-none"
+                  className="w-full text-xs font-mono px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 focus:border-emerald-500 outline-none"
+                />
+                <span className="text-[10px] text-zinc-500">
+                  مسیرهای API به صورت خودکار به <code className="text-emerald-400">/api/v1/...</code> متصل می‌شوند.
+                </span>
+              </div>
+
+              {/* App Name */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-zinc-300">
+                  نام اپلیکیشن در سامانه نگاه (App Name)
+                </label>
+                <input
+                  type="text"
+                  value={ssoForm.appName || 'بگ تایم'}
+                  onChange={(e) => setSsoForm({ ...ssoForm, appName: e.target.value })}
+                  placeholder="بگ تایم (کیان فناوران نگاه)"
+                  className="w-full text-xs px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 focus:border-emerald-500 outline-none"
                 />
               </div>
 
+              {/* API Key */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-zinc-300">کلید شناسه اپ (X-Api-Key)</label>
+                <label className="block text-xs font-bold text-zinc-300">
+                  کلید اپلیکیشن (X-Api-Key)
+                </label>
                 <input
                   type="text"
                   dir="ltr"
-                  value={ssoForm.appKey}
-                  onChange={(e) => setSsoForm({ ...ssoForm, appKey: e.target.value })}
-                  placeholder="App Key دریافتی از نگاه"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white font-mono text-xs focus:border-indigo-500 outline-none"
+                  value={ssoForm.apiKey || ''}
+                  onChange={(e) => setSsoForm({ ...ssoForm, apiKey: e.target.value })}
+                  placeholder="ak_live_xxxxxxxxxxxxxxxx"
+                  className="w-full text-xs font-mono px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 focus:border-emerald-500 outline-none"
                 />
               </div>
 
+              {/* API Secret */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-zinc-300">کلید امنیتی اپ (X-Api-Secret)</label>
+                <label className="block text-xs font-bold text-zinc-300">
+                  رمز محرمانه اپلیکیشن (X-Api-Secret)
+                </label>
                 <input
                   type="password"
                   dir="ltr"
-                  value={ssoForm.appSecret}
-                  onChange={(e) => setSsoForm({ ...ssoForm, appSecret: e.target.value })}
-                  placeholder="App Secret"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white font-mono text-xs focus:border-indigo-500 outline-none"
+                  value={ssoForm.apiSecret || ''}
+                  onChange={(e) => setSsoForm({ ...ssoForm, apiSecret: e.target.value })}
+                  placeholder="••••••••••••••••••••••••••••••••"
+                  className="w-full text-xs font-mono px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 focus:border-emerald-500 outline-none"
                 />
               </div>
+            </div>
+
+            {/* Checkboxes */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <label className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-center gap-3 cursor-pointer hover:border-zinc-700 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={!!ssoForm.enabled}
+                  onChange={(e) => setSsoForm({ ...ssoForm, enabled: e.target.checked })}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                />
+                <div>
+                  <div className="text-xs font-bold text-white">فعال‌سازی ماژول SSO</div>
+                  <div className="text-[10px] text-zinc-400">نمایش گزینه ورود در صفحه اول</div>
+                </div>
+              </label>
+
+              <label className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-center gap-3 cursor-pointer hover:border-zinc-700 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={!!ssoForm.autoSyncUsers}
+                  onChange={(e) => setSsoForm({ ...ssoForm, autoSyncUsers: e.target.checked })}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                />
+                <div>
+                  <div className="text-xs font-bold text-white">اتصال و همگام‌سازی خودکار</div>
+                  <div className="text-[10px] text-zinc-400">ثبت آنی کاربر واردشده در دیتابیس</div>
+                </div>
+              </label>
+
+              <label className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-center gap-3 cursor-pointer hover:border-zinc-700 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={!!ssoForm.testMode}
+                  onChange={(e) => setSsoForm({ ...ssoForm, testMode: e.target.checked })}
+                  className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500"
+                />
+                <div>
+                  <div className="text-xs font-bold text-white">حالت تست / Sandbox</div>
+                  <div className="text-[10px] text-zinc-400">پاسخ موک در صورت قطعی شبکه</div>
+                </div>
+              </label>
             </div>
 
             {/* Test result banner if any */}
@@ -4317,22 +3984,22 @@ export const UserManagementView: React.FC = () => {
               >
                 <div className="flex items-center gap-2">
                   {ssoTestResult.ok ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                   ) : (
-                    <AlertTriangle className="w-4 h-4 text-rose-400" />
+                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
                   )}
                   <span>{ssoTestResult.message}</span>
                 </div>
               </div>
             )}
 
-            {/* Action Buttons */}
+            {/* Actions */}
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleSaveSsoConfig}
                 disabled={ssoSaving}
-                className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-colors cursor-pointer shadow-md flex items-center gap-2"
+                className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors cursor-pointer shadow-md flex items-center gap-2"
               >
                 <Check className="w-4 h-4" />
                 <span>{ssoSaving ? 'در حال ذخیره...' : 'ذخیره تنظیمات SSO'}</span>
@@ -4340,25 +4007,99 @@ export const UserManagementView: React.FC = () => {
 
               <button
                 type="button"
-                onClick={handleTestSsoHealth}
+                onClick={handleTestSsoConnection}
                 disabled={ssoTesting}
                 className="px-5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition-colors cursor-pointer border border-zinc-700 flex items-center gap-2"
               >
-                <RefreshCw className={`w-4 h-4 ${ssoTesting ? 'animate-spin text-indigo-400' : ''}`} />
-                <span>{ssoTesting ? 'در حال استعلام...' : 'تست سلامت سرور (v1/health)'}</span>
+                <RefreshCw className={`w-4 h-4 ${ssoTesting ? 'animate-spin text-emerald-400' : ''}`} />
+                <span>{ssoTesting ? 'در حال بررسی اتصال...' : 'تست اتصال (Health & Me)'}</span>
               </button>
 
               <button
                 type="button"
-                onClick={handleImportSsoUsers}
-                disabled={ssoImporting}
-                className="px-5 py-3 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 font-bold text-xs transition-colors cursor-pointer border border-indigo-500/40 flex items-center gap-2"
-                title="دریافت لیست کاربران فعال از سرور SSO و ایجاد حساب محلی برای آن‌ها"
+                onClick={handleSyncAllSsoUsers}
+                disabled={isSyncingSso}
+                className="px-5 py-3 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-emerald-300 font-bold text-xs transition-colors cursor-pointer border border-emerald-500/30 flex items-center gap-2"
               >
-                <UserCheck className="w-4 h-4 text-indigo-400" />
-                <span>{ssoImporting ? 'در حال مهاجرت...' : 'همگام‌سازی و ورود کاربران از SSO (v1/users)'}</span>
+                <Users className="w-4 h-4 text-emerald-400" />
+                <span>{isSyncingSso ? 'در حال همگام‌سازی...' : 'دریافت و همگام‌سازی کاربران (/v1/users)'}</span>
               </button>
             </div>
+          </div>
+
+          {/* SSO Users Directory */}
+          <div className="p-6 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-black text-white flex items-center gap-2">
+                  <Users className="w-4 h-4 text-emerald-400" />
+                  <span>فهرست کاربران واکشی‌شده از نگاه</span>
+                </h4>
+                <p className="text-[11px] text-zinc-400">
+                  کاربران دریافت شده از مسیر <code className="text-emerald-400">GET /v1/users</code> با سطح دسترسی app
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleLoadSsoUsers}
+                disabled={isLoadingSsoUsers}
+                className="px-3.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingSsoUsers ? 'animate-spin text-emerald-400' : ''}`} />
+                <span>به‌روزرسانی فهرست</span>
+              </button>
+            </div>
+
+            {isLoadingSsoUsers ? (
+              <div className="py-8 text-center text-xs text-zinc-400 font-bold">
+                در حال بارگذاری کاربران از SSO نگاه...
+              </div>
+            ) : ssoUsers.length === 0 ? (
+              <div className="p-8 text-center bg-zinc-950/60 rounded-2xl border border-dashed border-zinc-800 text-xs text-zinc-400 space-y-1">
+                <p>هنوز فهرستی از کاربران SSO بارگذاری نشده است.</p>
+                <p className="text-[10px] text-zinc-500">برای مشاهده و همگام‌سازی، دکمه «به‌روزرسانی فهرست» را بزنید.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-right text-xs">
+                  <thead>
+                    <tr className="border-b border-zinc-800 text-zinc-400">
+                      <th className="py-2.5 px-3">نام و نام خانوادگی</th>
+                      <th className="py-2.5 px-3">ایمیل</th>
+                      <th className="py-2.5 px-3">نقش</th>
+                      <th className="py-2.5 px-3">وضعیت</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/60">
+                    {ssoUsers.map((u, idx) => (
+                      <tr key={u.id || idx} className="hover:bg-zinc-800/30 transition-colors">
+                        <td className="py-2.5 px-3 font-bold text-white">
+                          {u.full_name || u.name || 'بدون نام'}
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-zinc-300" dir="ltr">
+                          {u.email}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                            u.role === 'admin' || u.role === 'owner'
+                              ? 'bg-amber-500/20 text-amber-300'
+                              : 'bg-zinc-700 text-zinc-300'
+                          }`}>
+                            {u.role || 'member'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 font-bold">
+                            {u.status || 'active'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -5156,12 +4897,6 @@ export const UserManagementView: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Privacy Policy Modal */}
-      <PrivacyPolicyModal
-        isOpen={isPrivacyModalOpen}
-        onClose={() => setIsPrivacyModalOpen(false)}
-      />
 
       {/* Font Selector & Custom Font Upload Modal */}
       <FontSelectorModal isOpen={isFontModalOpen} onClose={() => setIsFontModalOpen(false)} />

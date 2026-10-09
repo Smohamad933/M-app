@@ -924,11 +924,13 @@ class TaskRoozDB {
                         $u['progressPercent'] = $total > 0 ? round(($done / $total) * 100) : 0;
                         $u['skills'] = !empty($u['skills_json']) ? (is_array($u['skills_json']) ? $u['skills_json'] : json_decode($u['skills_json'], true)) : [];
                         $u['dailyTimeline'] = !empty($u['timeline_json']) ? (is_array($u['timeline_json']) ? $u['timeline_json'] : json_decode($u['timeline_json'], true)) : [];
-                        $u['isVerified'] = !empty($u['is_verified'] ?? $u['isVerified']);
+                        $u['isVerified'] = !empty($u['is_verified']) || !empty($u['isVerified']) || ($u['status'] ?? '') === 'active' || ($u['role'] ?? '') === 'admin';
                         $u['verificationCode'] = $u['verification_code'] ?? $u['verificationCode'] ?? null;
                         $u['numericId'] = (int)($u['numeric_id'] ?? $u['numericId'] ?? 1000);
                         $u['birthDate'] = $u['birth_date'] ?? $u['birthDate'] ?? '';
                         $u['jobTitle'] = $u['job_title'] ?? $u['jobTitle'] ?? '';
+                        $u['phone'] = $u['phone'] ?? ($u['bale_phone_number'] ?? '');
+                        $u['email'] = $u['email'] ?? '';
                         $u['baleChatId'] = $u['bale_chat_id'] ?? $u['baleChatId'] ?? null;
                         $u['baleUsername'] = $u['bale_username'] ?? $u['baleUsername'] ?? null;
                         $u['baleNotifToken'] = $u['bale_notif_token'] ?? $u['baleNotifToken'] ?? null;
@@ -978,8 +980,8 @@ class TaskRoozDB {
                 'username' => $u['username'],
                 'name' => $u['name'],
                 'role' => $u['role'] ?? 'user',
-                'phone' => $u['phone'] ?? '',
-                'email' => $u['email'] ?? $u['gmail'] ?? '',
+                'phone' => $u['phone'] ?? ($u['balePhoneNumber'] ?? ''),
+                'email' => $u['email'] ?? ($u['gmail'] ?? ''),
                 'province' => $u['province'] ?? '',
                 'city' => $u['city'] ?? '',
                 'birthDate' => $u['birthDate'] ?? $u['birth_date'] ?? '',
@@ -989,7 +991,7 @@ class TaskRoozDB {
                 'dailyTimeline' => $u['dailyTimeline'] ?? [],
                 'status' => $u['status'] ?? 'active',
                 'isDemo' => !empty($u['isDemo']),
-                'isVerified' => !empty($u['isVerified']),
+                'isVerified' => isset($u['isVerified']) ? !empty($u['isVerified']) : (($u['status'] ?? 'active') === 'active' || ($u['role'] ?? '') === 'admin'),
                 'baleChatId' => $u['baleChatId'] ?? null,
                 'baleUsername' => $u['baleUsername'] ?? null,
                 'baleNotifToken' => $u['baleNotifToken'] ?? ($u['bale_notif_token'] ?? null),
@@ -2003,26 +2005,11 @@ class TaskRoozDB {
                 }
                 if (array_key_exists('completed', $data)) {
                     $fields[] = "`completed` = ?";
-                    $val = $data['completed'];
-                    $isComp = (!empty($val) && $val !== '0' && $val !== 0 && $val !== 'false');
-                    $params[] = $isComp ? 1 : 0;
-                    if ($isComp) {
-                        $fields[] = "`reason_uncompleted` = NULL";
-                        $fields[] = "`uncompleted_category` = NULL";
-                    } else {
-                        $fields[] = "`completed_at` = NULL";
-                    }
+                    $params[] = !empty($data['completed']) ? 1 : 0;
                 }
                 if (array_key_exists('completedAt', $data) || array_key_exists('completed_at', $data)) {
-                    $rawDate = $data['completedAt'] ?? ($data['completed_at'] ?? null);
-                    if ($rawDate) {
-                        $ts = strtotime((string)$rawDate);
-                        $formattedDate = $ts ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
-                    } else {
-                        $formattedDate = null;
-                    }
                     $fields[] = "`completed_at` = ?";
-                    $params[] = $formattedDate;
+                    $params[] = $data['completedAt'] ?? ($data['completed_at'] ?? null);
                 }
                 if (array_key_exists('isPinned', $data) || array_key_exists('is_pinned', $data)) {
                     $fields[] = "`is_pinned` = ?";
@@ -2081,11 +2068,7 @@ class TaskRoozDB {
         $this->loadJson();
         foreach ($this->data['tasks'] as &$t) {
             if ($t['id'] === $id) {
-                foreach ($data as $k => $v) {
-                    if ($v !== null || in_array($k, ['reasonUncompleted', 'uncompletedCategory', 'projectId', 'completedAt', 'description'])) {
-                        $t[$k] = $v;
-                    }
-                }
+                $t = array_merge($t, $data);
                 $this->saveJson();
                 return true;
             }
@@ -2093,7 +2076,7 @@ class TaskRoozDB {
         return false;
     }
 
-    public function toggleTask($id, $desiredCompleted = null) {
+    public function toggleTask($id) {
         $result = null;
 
         // 1. MySQL direct toggle
@@ -2103,13 +2086,9 @@ class TaskRoozDB {
                 $stmt->execute([$id]);
                 $row = $stmt->fetch();
                 if ($row) {
-                    if ($desiredCompleted !== null) {
-                        $newCompleted = $desiredCompleted ? 1 : 0;
-                    } else {
-                        $newCompleted = empty($row['completed']) ? 1 : 0;
-                    }
+                    $newCompleted = empty($row['completed']) ? 1 : 0;
                     $completedAt = $newCompleted ? date('Y-m-d H:i:s') : null;
-                    $up = $this->pdo->prepare("UPDATE tasks SET completed = ?, completed_at = ?, reason_uncompleted = NULL, uncompleted_category = NULL WHERE id = ?");
+                    $up = $this->pdo->prepare("UPDATE tasks SET completed = ?, completed_at = ? WHERE id = ?");
                     $up->execute([$newCompleted, $completedAt, $id]);
                     $result = ['completed' => (bool)$newCompleted, 'completedAt' => $completedAt];
                 }
@@ -2119,22 +2098,14 @@ class TaskRoozDB {
         // 2. JSON update / fallback
         $this->loadJson();
         foreach ($this->data['tasks'] as &$t) {
-            if (strval($t['id']) === strval($id)) {
+            if ($t['id'] === $id) {
                 if ($result !== null) {
                     $t['completed'] = $result['completed'];
                     $t['completedAt'] = $result['completedAt'];
                 } else {
-                    if ($desiredCompleted !== null) {
-                        $t['completed'] = (bool)$desiredCompleted;
-                    } else {
-                        $t['completed'] = !empty($t['completed']) ? false : true;
-                    }
+                    $t['completed'] = !empty($t['completed']) ? false : true;
                     $t['completedAt'] = $t['completed'] ? date('Y-m-d H:i:s') : null;
                     $result = ['completed' => $t['completed'], 'completedAt' => $t['completedAt']];
-                }
-                if ($t['completed']) {
-                    unset($t['reasonUncompleted']);
-                    unset($t['uncompletedCategory']);
                 }
                 $this->saveJson();
                 return $result;
@@ -3678,28 +3649,6 @@ class TaskRoozDB {
             $this->saveMessages();
         }
         return $list;
-    }
-
-    public function getAllMessagesAdmin() {
-        $this->loadJson();
-        $msgs = $this->data['messages'] ?? [];
-        $usersMap = [];
-        foreach (($this->data['users'] ?? []) as $u) {
-            $usersMap[$u['id']] = $u;
-        }
-        foreach ($msgs as &$m) {
-            $sId = $m['senderId'] ?? '';
-            $rId = $m['receiverId'] ?? '';
-            if (isset($usersMap[$sId])) {
-                $m['senderName'] = $usersMap[$sId]['name'] ?? ($m['senderName'] ?? 'کاربر');
-                $m['senderUsername'] = $usersMap[$sId]['username'] ?? '';
-            }
-            if (isset($usersMap[$rId])) {
-                $m['receiverName'] = $usersMap[$rId]['name'] ?? 'کاربر';
-                $m['receiverUsername'] = $usersMap[$rId]['username'] ?? '';
-            }
-        }
-        return $msgs;
     }
 
     public function sendDirectMessage($senderUser, $receiverId, $text) {

@@ -29,17 +29,6 @@ const Storage = {
 
 async function loadPopup() {
   const tasks = (await Storage.get('tasks', [])) || [];
-  const calType = (await Storage.get('calendarType', 'jalali')) || 'jalali';
-  const badge = document.getElementById('dateBadge');
-  if (badge) {
-    if (calType === 'gregorian') {
-      const now = new Date();
-      badge.textContent = `${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-    } else {
-      badge.textContent = 'امروز';
-    }
-  }
-
   const listEl = document.getElementById('popupTasks');
   
   if (tasks.length === 0) {
@@ -72,7 +61,7 @@ async function loadPopup() {
     // Push to server if account is connected
     const account = await Storage.get('auth_account', null);
     if (account && account.token) {
-      const baseUrl = (account.serverUrl || 'https://bagtime.negahm.ir').replace(/\/+$/, '');
+      const baseUrl = (account.serverUrl || 'https://task.mohusyn.ir').replace(/\/+$/, '');
       fetch(`${baseUrl}/api/tasks.php`, {
         method: 'POST',
         headers: {

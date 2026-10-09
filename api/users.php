@@ -152,7 +152,7 @@ if ($action === 'public' || $action === 'search') {
     $rawQ = isset($_GET['q']) ? (string)$_GET['q'] : '';
     $q = normalizePersianSearch($rawQ);
     $myId = $currentUser ? $currentUser['id'] : '';
-    $isAdmin = $currentUser && ($currentUser['role'] === 'admin');
+    $isAdmin = isUserAdmin($currentUser);
     $dbObj = TaskRoozDB::getInstance();
     $friendships = $dbObj->data['friendships'] ?? [];
 
@@ -184,6 +184,7 @@ if ($action === 'public' || $action === 'search') {
         }
 
         $canSeePhone = $isAdmin || ($currentUser && $currentUser['id'] === $u['id']);
+        $canSeeEmail = $isAdmin || ($currentUser && $currentUser['id'] === $u['id']);
 
         $safe[] = [
             'id' => $u['id'],
@@ -194,6 +195,11 @@ if ($action === 'public' || $action === 'search') {
             'jobTitle' => $u['jobTitle'] ?? null,
             'role' => $u['role'] ?? 'user',
             'phone' => $canSeePhone ? ($u['phone'] ?? null) : null,
+            'email' => $canSeeEmail ? ($u['email'] ?? null) : null,
+            'isVerified' => isset($u['isVerified']) ? !empty($u['isVerified']) : (($u['status'] ?? 'active') === 'active' || ($u['role'] ?? '') === 'admin'),
+            'status' => $u['status'] ?? 'active',
+            'baleChatId' => $isAdmin ? ($u['baleChatId'] ?? null) : null,
+            'baleUsername' => $u['baleUsername'] ?? null,
             'province' => $u['province'] ?? null,
             'city' => $u['city'] ?? null,
             'skills' => $u['skills'] ?? [],
@@ -442,10 +448,13 @@ if ($method === 'GET') {
 
     $users = $db->getAllUsers();
 
-    // Peer synchronization: query peer domain only when explicitly requested
+    // Dual-server synchronization: query sibling domain only when explicitly requested (keeps standard calls instant)
     if (!empty($_GET['sync_peer']) || $action === 'sync_peers') {
         try {
-            $peerHost = 'https://bagtime.negahm.ir';
+            $currHost = $_SERVER['HTTP_HOST'] ?? '';
+            $peerHost = (strpos($currHost, 'task.mohusyn.ir') !== false) 
+                ? 'https://bagtime.negahm.ir' 
+                : 'https://task.mohusyn.ir';
 
             $peerRaw = false;
             if (function_exists('curl_init')) {

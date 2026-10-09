@@ -22,15 +22,13 @@ import {
   AtSign,
   Camera,
   Trash2,
-  Smartphone,
 } from 'lucide-react';
 import { useTask } from '../context/TaskContext';
 import { sounds } from '../utils/sound';
 import { TaskMasterHexagon } from './TaskMasterLogo';
 import { FontSelectorModal } from './FontSelectorModal';
-import { AppTutorialStudio } from './AppTutorialStudio';
 
-type StudioTab = 'feed_posts' | 'stories_strategy' | 'app_tutorial';
+type StudioTab = 'feed_posts' | 'stories_strategy';
 type SlideTheme = 'light' | 'dark' | 'indigo' | 'emerald';
 type StoryTheme = 'dark' | 'light' | 'indigo' | 'emerald' | 'sunset';
 type AspectRatio = 'portrait' | 'square'; // portrait: 1080x1350 (4:5), square: 1080x1080 (1:1)
@@ -1186,7 +1184,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
 
     return (
       <div className="rounded-2xl border border-slate-700/80 overflow-hidden shadow-2xl bg-slate-950 my-1">
-        {windowHeader('بَگ‌تایم • BagTime', 'bagtime.negahm.ir')}
+        {windowHeader('بَگ‌تایم • BagTime', 'task.mohusyn.ir')}
         {innerContent}
       </div>
     );
@@ -1458,7 +1456,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
           <button
             type="button"
             onClick={() => setActiveTab('stories_strategy')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
               activeTab === 'stories_strategy'
                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
@@ -1466,19 +1464,6 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
           >
             <Calendar className="w-3.5 h-3.5" />
             <span>تقویم ۶۰ روزه استوری‌ها</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('app_tutorial')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'app_tutorial'
-                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>📱 استودیو آموزش کامل اپ (پست + استوری)</span>
           </button>
         </div>
       </header>
@@ -2843,11 +2828,6 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
             </div>
           </div>
         </div>
-      )}
-
-      {/* ── TAB 3: DEDICATED APP TUTORIAL POST & STORY STUDIO ── */}
-      {activeTab === 'app_tutorial' && (
-        <AppTutorialStudio />
       )}
 
       {/* ── NATIVE UNTRANSFORMED OFF-SCREEN RENDER CONTAINERS (0% ERROR - IDENTICAL TO PREVIEW) ── */}

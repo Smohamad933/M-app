@@ -32,7 +32,7 @@
       </div>
 
       <!-- Open App Link (Dynamic Active Server) -->
-      <a id="openWebAppBtn" href="https://bagtime.negahm.ir" target="_blank" class="btn-open-app" title="باز کردن سامانه اصلی بگ تایم">
+      <a id="openWebAppBtn" href="https://task.mohusyn.ir" target="_blank" class="btn-open-app" title="باز کردن سامانه اصلی بگ تایم">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
         <span>پلنر اصلی</span>
       </a>
@@ -46,21 +46,18 @@
     <!-- ستون سمت چپ: تقویم و ساعت (بالا) + یادداشت ها (پایین) -->
     <aside class="col-left">
 
-      <!-- جعبه بالا: گاه‌شمار و تقویم شمسی/میلادی -->
+      <!-- جعبه بالا: گاه‌شمار و تقویم شمسی -->
       <section class="ux-card calendar-clock-card">
         <div class="card-header-clean">
           <span class="header-tag">تقویم روزانه</span>
-          <button type="button" id="extCalendarTypeToggle" class="ext-cal-toggle-btn" title="تغییر بین تقویم شمسی و میلادی">
-            <span id="extCalendarTypeIcon">📅</span>
-            <span id="extCalendarTypeLabel">تقویم شمسی</span>
-          </button>
+          <span class="card-today-badge">گاه‌شمار</span>
         </div>
 
         <div class="cal-date-banner" id="calBigDate">
           جمعه، ۳ مهر ۱۴۰۵
         </div>
 
-        <!-- Calendar Widget (Dual Jalali & Gregorian) -->
+        <!-- Jalali Calendar Widget -->
         <div class="jalali-calendar-box">
           <div class="cal-nav-bar">
             <button type="button" id="calPrevMonthBtn" class="cal-arrow-btn" title="ماه قبل">›</button>
@@ -68,7 +65,7 @@
             <button type="button" id="calNextMonthBtn" class="cal-arrow-btn" title="ماه بعد">‹</button>
           </div>
 
-          <div class="cal-weekdays" id="calWeekdaysRow">
+          <div class="cal-weekdays">
             <span>ش</span>
             <span>ی</span>
             <span>د</span>
@@ -277,7 +274,7 @@
         <!-- Card Footer Link -->
         <div class="card-footer-row">
           <span class="footer-tip">💡 کلید <kbd>/</kbd> برای جستجو</span>
-          <a id="tasksFooterLink" href="https://bagtime.negahm.ir" target="_blank" class="footer-action-link">
+          <a id="tasksFooterLink" href="https://task.mohusyn.ir" target="_blank" class="footer-action-link">
             <span>مدیریت کامل زمان</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>

@@ -4,7 +4,6 @@ import { useTask } from '../context/TaskContext';
 import { toPersianDigits, formatAppDate } from '../utils/persianDate';
 import {
   Check,
-  X,
   Calendar,
   Clock,
   Star,
@@ -99,12 +98,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     }
   };
 
-  const isCompleted = Boolean(task.completed && (task.completed as any) !== '0');
-
   return (
     <div
       className={`group relative rounded-2xl p-4 transition-all duration-200 border ${
-        isCompleted
+        task.completed
           ? 'bg-slate-50/70 border-slate-200/60 opacity-75'
           : task.isPinned
           ? 'bg-white border-[#f95738]/40 shadow-sm ring-1 ring-[#f95738]/10'
@@ -113,32 +110,28 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     >
       {/* Top row: Checkbox, Title, Pin, Actions Menu */}
       <div className="flex items-start gap-3">
-        {/* Checkbox - Shows Green Check when completed, Red X when marked uncompleted with reason */}
+        {/* Checkbox - Shows Green Check when completed, Red Check when marked uncompleted with reason */}
         <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleTaskComplete(task.id);
-          }}
+          onClick={() => toggleTaskComplete(task.id)}
           aria-label={
-            isCompleted
+            task.completed
               ? 'علامت‌گذاری به عنوان انجام نشده'
               : task.reasonUncompleted
               ? ('ثبت شده به عنوان انجام‌نشده: ' + task.reasonUncompleted)
               : 'علامت‌گذاری به عنوان انجام شده'
           }
           className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer ${
-            isCompleted
+            task.completed
               ? 'bg-[#00b884] text-white shadow-xs'
               : task.reasonUncompleted
-              ? 'bg-rose-50 border-2 border-rose-400 text-rose-500 hover:bg-rose-100 ring-2 ring-rose-100'
+              ? 'bg-rose-500 border-2 border-rose-600 text-white shadow-xs ring-2 ring-rose-200'
               : 'border-2 border-slate-300 hover:border-[#00b884] bg-white'
           }`}
-          title={isCompleted ? 'تکمیل شده (کلیک برای لغو)' : task.reasonUncompleted ? ('انجام نشده: «' + task.reasonUncompleted + '» (کلیک برای تکمیل)') : 'علامت‌گذاری به عنوان تکمیل شده'}
+          title={task.reasonUncompleted ? ('تیک قرمز: عدم انجام به دلیل «' + task.reasonUncompleted + '»') : undefined}
         >
-          {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-          {!isCompleted && task.reasonUncompleted && (
-            <X className="w-3.5 h-3.5 stroke-[2.5]" />
+          {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+          {!task.completed && task.reasonUncompleted && (
+            <Check className="w-3.5 h-3.5 stroke-[3] text-white" />
           )}
         </button>
 

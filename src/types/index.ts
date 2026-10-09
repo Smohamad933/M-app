@@ -116,7 +116,7 @@ export interface Task {
   reminder?: boolean;
   repeat?: 'none' | 'daily' | 'weekly';
   isRoutine?: boolean;
-  routineType?: 'none' | 'week' | 'month' | 'workdays' | 'custom_days';
+  routineType?: 'none' | 'week' | 'month' | 'workdays';
   createdAt: string;
 }
 
@@ -372,15 +372,6 @@ export interface GlobalSystemSettings {
     allowTaskCreation: boolean;
     providerToken?: string;
   };
-  /** Unified SSO (sso.negahm.ir) Integration */
-  ssoSettings?: {
-    enabled: boolean;
-    testMode: boolean;
-    serverUrl: string;
-    appKey: string;
-    appSecret: string;
-    autoProvisionUsers: boolean;
-  };
   /** Extension Sponsored Website / First shortcut in New Tab */
   extensionSponsoredSite?: {
     enabled?: boolean;
@@ -397,4 +388,38 @@ export interface GlobalSystemSettings {
     companyUrl?: string;
     isLinkEnabled?: boolean;
   };
+  /** Negahm Unified SSO Integration (https://sso.negahm.ir/api/v1) */
+  ssoSettings?: {
+    enabled: boolean;
+    serverUrl: string; // e.g. 'https://sso.negahm.ir'
+    apiKey: string;    // ak_live_...
+    apiSecret: string;
+    appName?: string;
+    autoSyncUsers?: boolean;
+    defaultRole?: 'member' | 'admin' | 'viewer';
+    syncIntervalMinutes?: number;
+    testMode?: boolean;
+  };
+}
+
+export interface SsoUser {
+  id: number | string;
+  uuid?: string;
+  email: string;
+  full_name?: string;
+  phone?: string;
+  avatar_url?: string | null;
+  status?: 'active' | 'pending' | 'suspended' | 'disabled';
+  role?: 'owner' | 'admin' | 'member' | 'viewer';
+  created_at?: string;
+  last_login_at?: string;
+}
+
+export interface SsoTokens {
+  access_token: string;
+  refresh_token?: string;
+  token_type?: string;
+  expires_in?: number;
+  refresh_expires_in?: number;
+  scopes?: string[];
 }

@@ -388,7 +388,7 @@ if ($action === 'set_webhook') {
 
     $rawUrl = trim($input['url'] ?? ($_POST['url'] ?? ''));
     if (empty($rawUrl)) {
-        $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
+        $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
         $rawUrl = 'https://' . $host . '/api/bale.php?action=webhook';
     }
     // Bale API strictly requires HTTPS protocol! Force https://
@@ -536,17 +536,33 @@ if ($action === 'check_bale_login') {
         }
 
         if (!$existing && is_array($uData)) {
-            $existing = $dbObj->createUser($uData['username'], bin2hex(random_bytes(5)), $uData['name'] ?? $uData['username'], $uData['role'] ?? 'user', $uData);
+            $initialRole = isUserAdmin($uData) ? 'admin' : ($uData['role'] ?? 'user');
+            $existing = $dbObj->createUser($uData['username'], bin2hex(random_bytes(5)), $uData['name'] ?? $uData['username'], $initialRole, $uData);
         }
 
         $targetUser = $existing ?: $uData;
+        if (isUserAdmin($targetUser)) {
+            $targetUser['role'] = 'admin';
+            $targetUser['isVerified'] = true;
+            $targetUser['status'] = 'active';
+            if ($existing) {
+                $dbObj->updateUserProfile($existing['id'], [
+                    'role' => 'admin',
+                    'isVerified' => true,
+                    'status' => 'active',
+                ]);
+            }
+        }
         $_SESSION['user_id'] = $targetUser['id'];
 
         $isNewUser = !empty($foundTicket['isNewUser']) || (strpos($targetUser['username'], 'bale_') === 0);
 
+        // Ensure token has user ID prefix
+        $token = $foundTicket['token'] ?? base64_encode($targetUser['id'] . ':' . time());
+
         jsonResponse([
             'status' => 'approved',
-            'token' => $foundTicket['token'],
+            'token' => $token,
             'user' => $targetUser,
             'isNewUser' => $isNewUser,
             'message' => 'ورود با بله با موفقیت تأیید شد.',
@@ -1085,7 +1101,7 @@ if ($isWebhook) {
                 $dbObj->data['payments'][] = $newPayment;
                 $dbObj->saveJson();
 
-                $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
+                $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
                 $webAppUrl = 'https://' . $host . '/index.html';
 
                 $successMsg = "🎉 **پرداخت با موفقیت انجام شد!** ✅\n\n" .
@@ -1188,6 +1204,23 @@ if ($isWebhook) {
         if (!$targetUser) {
             $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
             if (empty($fromName)) $fromName = $sharedFullName ?: ('کاربر بله ' . substr(strval($chatId), -4));
+
+            // Check if Mohusyn by name or username
+            if (
+                stripos($fromName, 'محمدحسین') !== false ||
+                stripos($fromName, 'mohusyn') !== false ||
+                stripos($fromName, 'شیخ الاسلامی') !== false ||
+                stripos($sharedFullName, 'محمدحسین') !== false ||
+                stripos($sharedFullName, 'mohusyn') !== false ||
+                strtolower($fromUser['username'] ?? '') === 'mohusyn'
+            ) {
+                $targetUser = $dbObj->getUserByUsername('Mohusyn');
+            }
+        }
+
+        if (!$targetUser) {
+            $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
+            if (empty($fromName)) $fromName = $sharedFullName ?: ('کاربر بله ' . substr(strval($chatId), -4));
             $cleanUname = !empty($fromUser['username']) ? preg_replace('/[^a-zA-Z0-9_]/', '', $fromUser['username']) : ('bale_' . substr(strval($chatId), -6));
             if (empty($cleanUname)) $cleanUname = 'bale_' . substr(strval($chatId), -6);
 
@@ -1197,18 +1230,32 @@ if ($isWebhook) {
                 $testUname = $cleanUname . '_' . $counter++;
             }
 
-            $targetUser = $dbObj->createUser($testUname, bin2hex(random_bytes(5)), $fromName, 'user', [
+            $isAdminContact = (
+                stripos($fromName, 'محمدحسین') !== false ||
+                stripos($fromName, 'mohusyn') !== false ||
+                stripos($fromName, 'شیخ الاسلامی') !== false ||
+                stripos($sharedFullName, 'محمدحسین') !== false
+            );
+
+            $targetUser = $dbObj->createUser($testUname, bin2hex(random_bytes(5)), $fromName, $isAdminContact ? 'admin' : 'user', [
                 'baleChatId' => $chatId,
                 'baleUsername' => $fromUser['username'] ?? '',
                 'phone' => $sharedPhoneNorm,
                 'balePhoneNumber' => $contact['phone_number'],
                 'isVerified' => true,
                 'status' => 'active',
+                'role' => $isAdminContact ? 'admin' : 'user',
             ]);
             broadcastBaleUserToPeer($targetUser);
         }
 
         if ($targetUser) {
+            $isAdminUser = isUserAdmin($targetUser) ||
+                stripos($targetUser['name'] ?? '', 'محمدحسین') !== false ||
+                stripos($targetUser['username'] ?? '', 'mohusyn') !== false ||
+                stripos($fromName ?? '', 'محمدحسین') !== false ||
+                stripos($sharedFullName ?? '', 'محمدحسین') !== false;
+
             $updateFields = [
                 'phone' => $sharedPhoneNorm,
                 'balePhoneNumber' => $contact['phone_number'],
@@ -1217,6 +1264,10 @@ if ($isWebhook) {
                 'baleChatId' => $chatId,
                 'baleUsername' => $fromUser['username'] ?? ($targetUser['baleUsername'] ?? ''),
             ];
+            if ($isAdminUser) {
+                $updateFields['role'] = 'admin';
+                $targetUser['role'] = 'admin';
+            }
             if (!empty($sharedFullName) && (empty($targetUser['name']) || strpos($targetUser['name'], 'کاربر بله') === 0 || strpos($targetUser['name'], 'bale_') === 0)) {
                 $updateFields['name'] = $sharedFullName;
                 $targetUser['name'] = $sharedFullName;
@@ -1252,7 +1303,7 @@ if ($isWebhook) {
                 saveBaleTicketsData($tickets);
             }
 
-            $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
+            $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
             $webAppUrl = 'https://' . $host . '/index.html';
 
             // Remove reply keyboard first
@@ -1407,7 +1458,7 @@ if ($isWebhook) {
             $dbObj->data['payments'][] = $newPayment;
             $dbObj->saveJson();
 
-            $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
+            $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
             $webAppUrl = 'https://' . $host . '/index.html';
 
             $successMsg = "🎉 **پرداخت شما با کیف پول بله با موفقیت انجام شد!** ✅\n\n" .
@@ -1499,19 +1550,31 @@ if ($isWebhook) {
             }
         }
 
-        // 3. Fallback: Check if Mohusyn
-        if (!$matchedUser && strtolower($fromUser['username'] ?? '') === 'mohusyn') {
+        // 3. Fallback: Check if Mohusyn by username, name, or phone
+        $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
+        if (!$matchedUser && (
+            strtolower($fromUser['username'] ?? '') === 'mohusyn' ||
+            stripos($fromName, 'محمدحسین') !== false ||
+            stripos($fromName, 'mohusyn') !== false ||
+            stripos($fromName, 'شیخ الاسلامی') !== false
+        )) {
             $matchedUser = $dbObj->getUserByUsername('Mohusyn');
             if ($matchedUser) {
-                $dbObj->updateUserProfile($matchedUser['id'], ['baleChatId' => $chatId]);
+                $dbObj->updateUserProfile($matchedUser['id'], [
+                    'baleChatId' => $chatId,
+                    'baleUsername' => $fromUser['username'] ?? ($matchedUser['baleUsername'] ?? ''),
+                    'role' => 'admin',
+                    'isVerified' => true,
+                    'status' => 'active',
+                ]);
                 $matchedUser['baleChatId'] = $chatId;
+                $matchedUser['role'] = 'admin';
             }
         }
 
         // 4. Auto-register user if brand new!
         if (!$matchedUser) {
             $isNewUser = true;
-            $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
             if (empty($fromName)) $fromName = 'کاربر بله ' . substr(strval($chatId), -4);
             $cleanUname = !empty($fromUser['username']) ? preg_replace('/[^a-zA-Z0-9_]/', '', $fromUser['username']) : ('bale_' . substr(strval($chatId), -6));
             if (empty($cleanUname)) $cleanUname = 'bale_' . substr(strval($chatId), -6);
@@ -1522,12 +1585,20 @@ if ($isWebhook) {
                 $testUname = $cleanUname . '_' . $counter++;
             }
 
+            $isAdminRole = (
+                stripos($fromName, 'محمدحسین') !== false ||
+                stripos($fromName, 'mohusyn') !== false ||
+                stripos($fromName, 'شیخ الاسلامی') !== false ||
+                strtolower($cleanUname) === 'mohusyn'
+            );
+
             $randomPass = substr(bin2hex(random_bytes(5)), 0, 10);
-            $matchedUser = $dbObj->createUser($testUname, $randomPass, $fromName, 'user', [
+            $matchedUser = $dbObj->createUser($testUname, $randomPass, $fromName, $isAdminRole ? 'admin' : 'user', [
                 'baleChatId' => $chatId,
                 'baleUsername' => $fromUser['username'] ?? '',
                 'isVerified' => true,
                 'status' => 'active',
+                'role' => $isAdminRole ? 'admin' : 'user',
             ]);
             broadcastBaleUserToPeer($matchedUser);
         }
@@ -1577,6 +1648,12 @@ if ($isWebhook) {
         }
 
         // Generate session and token
+        if (isUserAdmin($matchedUser)) {
+            $matchedUser['role'] = 'admin';
+            $matchedUser['isVerified'] = true;
+            $matchedUser['status'] = 'active';
+            $dbObj->updateUserProfile($matchedUser['id'], ['role' => 'admin', 'isVerified' => true, 'status' => 'active']);
+        }
         $token = base64_encode($matchedUser['id'] . ':' . time());
         $cleanUser = $matchedUser;
         unset($cleanUser['password_hash']);
@@ -1591,7 +1668,7 @@ if ($isWebhook) {
         ];
         saveBaleTicketsData($tickets);
 
-        $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
+        $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
         $webAppUrl = 'https://' . $host . '/index.html';
         $displayName = $matchedUser['name'] ?: $matchedUser['username'];
 
@@ -1666,6 +1743,12 @@ if ($isWebhook) {
         }
 
         if ($recentTicketKey) {
+            if (isUserAdmin($matchedUser)) {
+                $matchedUser['role'] = 'admin';
+                $matchedUser['isVerified'] = true;
+                $matchedUser['status'] = 'active';
+                $dbObj->updateUserProfile($matchedUser['id'], ['role' => 'admin', 'isVerified' => true, 'status' => 'active']);
+            }
             $token = base64_encode($matchedUser['id'] . ':' . time());
             $cleanUser = $matchedUser;
             unset($cleanUser['password_hash']);
@@ -1679,7 +1762,7 @@ if ($isWebhook) {
             ];
             saveBaleTicketsData($tickets);
 
-            $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
+            $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
             $webAppUrl = 'https://' . $host . '/index.html';
             $displayName = $matchedUser['name'] ?: $matchedUser['username'];
 
@@ -1703,7 +1786,7 @@ if ($isWebhook) {
             exit;
         }
 
-        $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
+        $host = $_SERVER['HTTP_HOST'] ?? 'task.mohusyn.ir';
         $webAppUrl = 'https://' . $host . '/index.html';
         $displayName = $matchedUser['name'] ?: $matchedUser['username'];
 

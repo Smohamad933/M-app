@@ -22,7 +22,7 @@ import type {
   AppOperatingMode,
   TaskWorkLog,
 } from '../types';
-import { api, DEFAULT_GLOBAL_SETTINGS, onSyncEvent, broadcastSync, clearApiCache } from '../services/api';
+import { api, setAuthToken, DEFAULT_GLOBAL_SETTINGS, onSyncEvent, broadcastSync, clearApiCache } from '../services/api';
 import { getTodayISO, formatPersianDate, toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import { DEFAULT_APP_TEXTS } from '../utils/appTexts';
@@ -68,7 +68,7 @@ interface TaskContextType {
     skills?: string[];
     dailyTimeline?: UserTimeline;
   }) => Promise<any>;
-  completeBaleVerification: (user: User) => void;
+  completeBaleVerification: (user: User, token?: string) => void;
   logout: () => Promise<void>;
   createUser: (data: {
     username: string;
@@ -175,12 +175,7 @@ interface TaskContextType {
   setIsRemindersModalOpen: (open: boolean) => void;
 
   // Task management
-  addTask: (
-    task: TaskCreateInput, 
-    routineType?: 'none' | 'week' | 'month' | 'workdays' | 'custom_days',
-    customWeekdays?: number[],
-    durationDays?: number
-  ) => Promise<Task>;
+  addTask: (task: TaskCreateInput, routineType?: 'none' | 'week' | 'month' | 'workdays') => Promise<Task>;
   updateTask: (task: Task) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   toggleTaskComplete: (id: string) => Promise<void>;
@@ -556,10 +551,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSettings((prev) => ({ ...prev, calendarType: type }));
     try {
       localStorage.setItem('taskrooz_calendar_type', type);
-      localStorage.setItem('bagtime_calendar_type', type);
       localStorage.setItem('taskrooz_settings', JSON.stringify({ ...settings, calendarType: type }));
-      window.dispatchEvent(new CustomEvent('bagtime-calendar-type-changed', { detail: { calendarType: type } }));
-      window.postMessage({ type: 'BAGTIME_CALENDAR_TYPE_CHANGED', calendarType: type }, '*');
     } catch {}
     sounds.playPop();
   };
@@ -575,15 +567,30 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [reminders, setReminders] = useState<ReminderItem[]>(() => {
     try {
       const saved = localStorage.getItem('bagtime_reminders');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          // Filter out the two hardcoded default reminders as requested
-          return parsed.filter(r => r.id !== 'rem_default_1' && r.id !== 'rem_default_2');
-        }
-      }
+      if (saved) return JSON.parse(saved);
     } catch {}
-    return [];
+    return [
+      {
+        id: 'rem_default_1',
+        userId: 'usr_admin_mohusyn',
+        title: 'نوشیدن آب و پیاده‌روی کوتاه 💧',
+        time: '11:00',
+        duration: 'month',
+        startDate: new Date().toISOString().slice(0, 10),
+        active: true,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'rem_default_2',
+        userId: 'usr_admin_mohusyn',
+        title: 'بررسی تسک‌ها و ثبت روتین‌های روز 📝',
+        time: '17:30',
+        duration: 'month',
+        startDate: new Date().toISOString().slice(0, 10),
+        active: true,
+        createdAt: new Date().toISOString(),
+      }
+    ];
   });
 
   const addReminder = async (input: { title: string; time: string; duration: 'month' | 'week' | 'always' | 'once'; description?: string }) => {
@@ -1507,8 +1514,14 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const completeBaleVerification = (user: User) => {
+  const completeBaleVerification = (user: User, token?: string) => {
     const userObj = { ...user, isProfileCompleted: true };
+    api.setCachedUser(userObj);
+    if (token) {
+      setAuthToken(token);
+    } else if (!api.getAuthToken()) {
+      setAuthToken(btoa(user.id + ':' + Date.now()));
+    }
     setCurrentUser(userObj);
     try {
       localStorage.setItem('taskrooz_user_profile_completed_' + user.id, 'true');
@@ -1729,12 +1742,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const addTask = async (
-    taskData: TaskCreateInput,
-    routineType?: 'none' | 'week' | 'month' | 'workdays' | 'custom_days',
-    customWeekdays?: number[],
-    durationDays?: number
-  ): Promise<Task> => {
+  const addTask = async (taskData: TaskCreateInput, routineType?: 'none' | 'week' | 'month' | 'workdays'): Promise<Task> => {
     if (!isPro) {
       const activeTasksCount = tasks.filter((t) => t.userId === currentUser?.id && !t.completed).length;
       if (activeTasksCount >= 5) {
@@ -1748,7 +1756,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const primaryTaskInput = {
       ...taskData,
       isRoutine,
-      routineType: (routineType as any) || 'none',
+      routineType: routineType || 'none',
       userId: taskData.userId || currentUser?.id || 'usr_admin_1',
     };
 
@@ -1757,26 +1765,19 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sounds.playPop();
     broadcastSync('TASK_CREATED', { taskId: created.id, projectId: created.projectId });
 
-    // If routine is selected (for workdays, month, custom days), automatically replicate across the period!
+    // If routine is selected (for week or month or workdays), automatically create corresponding recurring instances!
     if (isRoutine && taskData.date) {
       const baseDate = new Date(taskData.date);
-      const totalDays = durationDays || (routineType === 'week' ? 7 : 30);
-      const targetWeekdays =
-        routineType === 'workdays'
-          ? [6, 0, 1, 2, 3] // شنبه تا چهارشنبه در تقویم ایران (شنبه=6، یکشنبه=0، دوشنبه=1، سه‌شنبه=2، چهارشنبه=3)
-          : routineType === 'custom_days' && customWeekdays && customWeekdays.length > 0
-          ? customWeekdays
-          : null; // null means every consecutive day
-
+      const totalDays = routineType === 'week' ? 7 : 30;
       const extraTasksToCreate: TaskCreateInput[] = [];
 
       for (let i = 1; i < totalDays; i++) {
         const nextDate = new Date(baseDate);
         nextDate.setDate(nextDate.getDate() + i);
 
-        // Check if day matches selected weekdays
-        if (targetWeekdays !== null && !targetWeekdays.includes(nextDate.getDay())) {
-          continue;
+        // If workdays (Saturday to Wednesday in Iran): skip Friday (day 5)
+        if (routineType === 'workdays') {
+          if (nextDate.getDay() === 5) continue;
         }
 
         const dateStr = nextDate.toISOString().slice(0, 10);
@@ -1784,7 +1785,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...taskData,
           date: dateStr,
           isRoutine: true,
-          routineType: (routineType as any),
+          routineType,
           userId: taskData.userId || currentUser?.id || 'usr_admin_1',
         });
       }
@@ -1849,15 +1850,10 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const toggleTaskComplete = async (id: string) => {
-    const targetId = String(id);
-    const task = tasks.find((t) => String(t.id) === targetId);
-    if (!task) {
-      console.warn('Task not found for id:', id);
-      return;
-    }
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
 
-    const currentCompleted = Boolean(task.completed && (task.completed as any) !== '0');
-    const newStatus = !currentCompleted;
+    const newStatus = !task.completed;
     if (newStatus) {
       sounds.playComplete();
       triggerConfetti();
@@ -1870,53 +1866,29 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       completed: newStatus,
     }));
 
-    const nowIso = new Date().toISOString();
     const updatedTask: Task = {
       ...task,
       completed: newStatus,
-      completedAt: newStatus ? nowIso : undefined,
-      reasonUncompleted: newStatus ? undefined : task.reasonUncompleted,
-      uncompletedCategory: newStatus ? undefined : task.uncompletedCategory,
+      completedAt: newStatus ? new Date().toISOString() : undefined,
       subtasks: updatedSubtasks,
     };
 
-    // 1. Optimistic instant UI update
     setTasks((prev) =>
-      prev.map((t) => (String(t.id) === targetId ? updatedTask : t))
+      prev.map((t) => (t.id === id ? updatedTask : t))
     );
 
-    // 2. Persist to API: call toggleTask with explicit desired boolean state
-    try {
-      await api.toggleTask(targetId, newStatus);
-      if (updatedSubtasks.length > 0 || task.reasonUncompleted) {
-        await api.updateTask(updatedTask).catch(() => {});
-      }
-    } catch (err) {
-      console.warn('api.toggleTask failed, trying updateTask:', err);
-      try {
-        await api.updateTask(updatedTask);
-      } catch (err2) {
-        console.error('All remote task updates failed:', err2);
-      }
-    }
-
-    // 3. Clear cache store so next fetch immediately returns fresh data
-    clearApiCache('api/tasks');
-
-    // 4. Broadcast sync to other tabs
-    broadcastSync('TASK_UPDATED', { taskId: targetId, projectId: task.projectId });
+    await api.updateTask(updatedTask);
+    broadcastSync('TASK_UPDATED', { taskId: id, projectId: task.projectId });
     refreshUsers();
     refreshProjects();
   };
 
   const toggleSubtask = async (taskId: string, subtaskId: string) => {
-    const targetTaskId = String(taskId);
-    const targetSubtaskId = String(subtaskId);
-    const task = tasks.find((t) => String(t.id) === targetTaskId);
+    const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    const updatedSubtasks = (task.subtasks || []).map((st) =>
-      String(st.id) === targetSubtaskId ? { ...st, completed: !st.completed } : st
+    const updatedSubtasks = task.subtasks.map((st) =>
+      st.id === subtaskId ? { ...st, completed: !st.completed } : st
     );
 
     const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
@@ -1934,12 +1906,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       completedAt: allCompleted ? (task.completedAt || new Date().toISOString()) : undefined,
     };
 
-    setTasks((prev) => prev.map((t) => (String(t.id) === targetTaskId ? updatedTask : t)));
-    try {
-      await api.updateTask(updatedTask);
-    } catch (e) {
-      console.warn('Subtask update error:', e);
-    }
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));
+    await api.updateTask(updatedTask);
     refreshUsers();
     refreshProjects();
   };
