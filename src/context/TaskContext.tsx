@@ -736,6 +736,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Periodic Task Reminder & Bale Notification Dispatcher
   const remindedTaskIdsRef = useRef<Set<string>>(new Set());
+  // In-flight / optimistic locks for recently toggled or updated tasks (5000ms window)
+  const recentlyUpdatedTasksRef = useRef<Map<string, { task: Task; timestamp: number }>>(new Map());
 
   useEffect(() => {
     if (!currentUser) return;
@@ -1325,7 +1327,20 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         filter.projectId = selectedProjectId;
       }
       const fetched = await api.getTasks(filter);
-      setTasks(fetched);
+      const now = Date.now();
+      const merged = fetched.map((serverTask) => {
+        const recent = recentlyUpdatedTasksRef.current.get(serverTask.id);
+        if (recent && now - recent.timestamp < 5000) {
+          return {
+            ...serverTask,
+            completed: recent.task.completed,
+            completedAt: recent.task.completedAt,
+            subtasks: recent.task.subtasks || serverTask.subtasks,
+          };
+        }
+        return serverTask;
+      });
+      setTasks(merged);
     } catch (e) {
       console.error('Error fetching tasks:', e);
     }
@@ -1873,11 +1888,18 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subtasks: updatedSubtasks,
     };
 
+    recentlyUpdatedTasksRef.current.set(id, { task: updatedTask, timestamp: Date.now() });
+
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? updatedTask : t))
     );
 
-    await api.updateTask(updatedTask);
+    try {
+      await api.updateTask(updatedTask);
+    } catch (err) {
+      console.error('Failed to save task update to server:', err);
+    }
+
     broadcastSync('TASK_UPDATED', { taskId: id, projectId: task.projectId });
     refreshUsers();
     refreshProjects();
@@ -1906,8 +1928,17 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       completedAt: allCompleted ? (task.completedAt || new Date().toISOString()) : undefined,
     };
 
+    recentlyUpdatedTasksRef.current.set(taskId, { task: updatedTask, timestamp: Date.now() });
+
     setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));
-    await api.updateTask(updatedTask);
+
+    try {
+      await api.updateTask(updatedTask);
+    } catch (err) {
+      console.error('Failed to save subtask update to server:', err);
+    }
+
+    broadcastSync('TASK_UPDATED', { taskId, projectId: task.projectId });
     refreshUsers();
     refreshProjects();
   };

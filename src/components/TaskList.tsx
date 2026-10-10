@@ -16,9 +16,13 @@ export const TaskList: React.FC = () => {
 
   const [showCompletedSection, setShowCompletedSection] = useState(true);
 
+  const todayISO = new Date().toISOString().slice(0, 10);
+
   // Filter tasks based on all active criteria
   const filteredTasks = tasks.filter((task) => {
-    if (searchQuery.trim()) {
+    if (filterStatus === 'overdue') {
+      if (task.completed || task.date >= todayISO) return false;
+    } else if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       const matchTitle = task.title.toLowerCase().includes(q);
       const matchDesc = task.description?.toLowerCase().includes(q);

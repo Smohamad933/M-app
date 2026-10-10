@@ -22,14 +22,17 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({ isOpen, onClose }) =
     selectedDate,
   } = useTask();
 
+  const todayISO = new Date().toISOString().slice(0, 10);
   const dayTasks = tasks.filter((t) => t.date === selectedDate);
   const pendingCount = dayTasks.filter((t) => !t.completed).length;
   const completedCount = dayTasks.filter((t) => t.completed).length;
+  const overdueCount = tasks.filter((t) => !t.completed && t.date < todayISO).length;
 
   const filterTabs: Array<{ id: FilterStatus; label: string; count?: number }> = [
     { id: 'all', label: 'همه', count: dayTasks.length },
     { id: 'pending', label: 'در انتظار', count: pendingCount },
     { id: 'completed', label: 'انجام‌شده', count: completedCount },
+    { id: 'overdue', label: 'انجام‌نشده (گذشته)', count: overdueCount },
     { id: 'starred', label: 'سنجاق‌ها' },
     { id: 'urgent', label: 'فوری‌ها' },
   ];

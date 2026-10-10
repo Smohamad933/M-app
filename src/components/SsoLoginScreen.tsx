@@ -193,15 +193,16 @@ export const SsoLoginScreen: React.FC<SsoLoginScreenProps> = ({ onBack }) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-300">
-                ایمیل حساب کاربری در نگاه <span className="text-rose-400">*</span>
+                نام کاربری یا ایمیل سازمانی نگاه <span className="text-rose-400">*</span>
               </label>
               <div className="relative">
                 <input
-                  type="email"
+                  type="text"
                   dir="ltr"
+                  autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@negahm.ir"
+                  placeholder="مثال: mohusyn یا name@negahm.ir"
                   required
                   autoFocus
                   className="w-full text-xs font-mono pl-3.5 pr-10 py-3 rounded-2xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"

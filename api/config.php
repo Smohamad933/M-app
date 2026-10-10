@@ -254,7 +254,7 @@ function requireAdmin($dbInstance = null) {
 function requireVerifiedUser($dbInstance = null) {
     $user = requireAuth($dbInstance);
     if (($user['role'] ?? 'user') !== 'admin' && strtolower($user['username'] ?? '') !== 'mohusyn') {
-        if (empty($user['isVerified']) || ($user['status'] ?? '') === 'pending_verification') {
+        if (($user['status'] ?? '') === 'pending_verification' && empty($user['isVerified'])) {
             jsonResponse([
                 'error' => 'حساب کاربری شما محدود است. جهت استفاده از امکانات سامانه، لطفاً ابتدا حساب خود را در ربات بله تأیید فرمایید.',
                 'code' => 'UNVERIFIED_ACCOUNT',

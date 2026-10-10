@@ -36,6 +36,10 @@ import { ExtensionDownloadModal } from './ExtensionDownloadModal';
 import { FirstLoginProfileModal } from './FirstLoginProfileModal';
 import { PublicUserProfileModal } from './PublicUserProfileModal';
 import { SubscriptionBadge } from './SubscriptionBadge';
+import { ProgressNewspaperStoryModal } from './ProgressNewspaperStoryModal';
+import { DailyStoryModal } from './DailyStoryModal';
+import { DeviceNotificationSettingsModal } from './DeviceNotificationSettingsModal';
+import { checkAndFireScheduledNotifications } from '../utils/webNotifications';
 import { api } from '../services/api';
 import type { User } from '../types';
 import { BottomNav } from './BottomNav';
@@ -67,6 +71,9 @@ import {
   Type,
   Brain,
   Compass,
+  Newspaper,
+  Feather,
+  Smartphone,
   Megaphone,
   ArrowUpRight,
   SlidersHorizontal,
@@ -169,6 +176,20 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
     status?: 'online' | 'offline';
     role?: string;
   } | null>(null);
+
+  // Daily Story, Newspaper Story & Device Notification States
+  const [isNewspaperStoryOpen, setIsNewspaperStoryOpen] = useState(false);
+  const [isDailyStoryOpen, setIsDailyStoryOpen] = useState(false);
+  const [isDeviceNotifModalOpen, setIsDeviceNotifModalOpen] = useState(false);
+
+  // Background Web Push / Device Notification Checker (3 Daily Checkpoints + 15m Task Reminders)
+  useEffect(() => {
+    checkAndFireScheduledNotifications(tasks);
+    const interval = setInterval(() => {
+      checkAndFireScheduledNotifications(tasks);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [tasks]);
 
   const refreshNotifications = React.useCallback(async () => {
     if (!currentUser) return;
@@ -791,9 +812,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
       </aside>
 
       {/* 2. MAIN CONTENT AREA - STAYS SOLID & INDEPENDENT */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto overflow-x-hidden bg-[#f4f7fa]">
+      <div className="flex-1 flex flex-col min-w-0 h-screen bg-[#f4f7fa] overflow-hidden">
         {/* Top Header Bar - 100% FIXED AT TOP */}
-        <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 py-2 sm:py-3 sticky top-0 z-20 flex-shrink-0 flex flex-col gap-2 max-w-full overflow-hidden">
+        <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 py-2 sm:py-3 z-20 flex-shrink-0 flex flex-col gap-2 max-w-full shadow-2xs">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
               {/* Left/Start Actions on Mobile & Desktop Search Bar */}
               <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -903,6 +924,47 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                     <span>اسلایدهای اینستاگرام</span>
                   </button>
                 )}
+
+                {/* Progress Newspaper Story Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setIsNewspaperStoryOpen(true);
+                  }}
+                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-amber-300 bg-amber-50/80 hover:bg-amber-100 items-center gap-1.5 text-amber-900 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 flex"
+                  title="استوری پیشرفت سامانه روزنامه و مقایسه با سلبریتی‌ها"
+                >
+                  <Newspaper className="w-3.5 h-3.5 text-amber-700" />
+                  <span className="hidden xl:inline">استوری روزنامه</span>
+                </button>
+
+                {/* Daily Story / Journal Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setIsDailyStoryOpen(true);
+                  }}
+                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-slate-200 bg-white hover:bg-slate-50 items-center gap-1.5 text-slate-700 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 flex"
+                  title="داستان روز (وقایع‌نگاری و خاطرات)"
+                >
+                  <Feather className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="hidden xl:inline">داستان روز</span>
+                </button>
+
+                {/* Device 3-Time Web Notifications Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setIsDeviceNotifModalOpen(true);
+                  }}
+                  className="w-8 sm:w-9 h-8 sm:h-9 rounded-full border border-indigo-200/80 bg-indigo-50/60 hover:bg-indigo-100 flex items-center justify-center text-indigo-700 transition-colors shadow-2xs relative cursor-pointer flex-shrink-0 hidden sm:flex"
+                  title="سیستم اعلان ۳ گانه گوشی و یادآور تسک"
+                >
+                  <Smartphone className="w-4 h-4 text-indigo-600" />
+                </button>
 
                 {/* Reminders Button (desktop/tablet) */}
                 <button
@@ -1119,8 +1181,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
             </div>
           </header>
 
-          {/* Main Body */}
-          <main className="flex-1 p-3 sm:p-7 space-y-5 sm:space-y-6 max-w-7xl w-full mx-auto pb-24 lg:pb-10 min-w-0 overflow-x-hidden">
+          {/* Scrollable Container for Main Content & Footer */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
+            {/* Main Body */}
+            <main className="flex-1 p-3 sm:p-7 space-y-5 sm:space-y-6 max-w-7xl w-full mx-auto pb-24 lg:pb-10 min-w-0 overflow-x-hidden">
             {/* Unverified User Restriction Banner */}
             {currentUser && currentUser.role !== 'admin' && currentUser.username?.toLowerCase() !== 'mohusyn' && (!currentUser.isVerified || currentUser.status === 'pending_verification') && (
               <div className="p-4 rounded-3xl border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 shadow-sm animate-in slide-in-from-top-2">
@@ -1292,11 +1356,51 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                     </div>
 
                     <QuickAddBar />
-                    <DashboardTaskList />
+                    <DashboardTaskList onNavigateToTasks={() => setActiveTab('tasks')} />
                   </div>
 
                   {/* Right side helper cards */}
                   <div className="space-y-6 min-w-0 w-full">
+                    {/* Newspaper Progress Story & Daily Story Bento Card */}
+                    <div className="bg-gradient-to-br from-amber-50/90 via-amber-100/40 to-yellow-50 rounded-3xl border border-amber-200/90 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                          <Newspaper className="w-4 h-4 text-amber-700" />
+                          استوری روزنامه و وقایع روز
+                        </h3>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 font-bold">
+                          ویژه پیشرفت
+                        </span>
+                      </div>
+                      <p className="text-xs text-amber-900/80 leading-relaxed font-medium">
+                        📰 تلاش امروزتان را با مفاخر و سلبریتی‌های حوزه کاری‌تان بسنجید و «داستان امروز» را ثبت کنید.
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            sounds.playPop();
+                            setIsNewspaperStoryOpen(true);
+                          }}
+                          className="py-2.5 px-3 bg-amber-800 hover:bg-amber-900 text-white rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                        >
+                          <Newspaper className="w-3.5 h-3.5" />
+                          <span>استوری روزنامه</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            sounds.playPop();
+                            setIsDailyStoryOpen(true);
+                          }}
+                          className="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-amber-300 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                        >
+                          <Feather className="w-3.5 h-3.5 text-amber-600" />
+                          <span>داستان روز</span>
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-3 min-w-0 w-full">
                       <h3 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4 text-slate-400" />
@@ -1552,6 +1656,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
               )}
             </footer>
           )}
+          </div>
         </div>
 
       {/* Mobile Bottom Navigation (screens < 1024px) */}
@@ -1960,6 +2065,25 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
       <UpgradeToProModal
         isOpen={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
+      />
+
+      {/* Progress Newspaper Story Modal (Vintage Editorial & Celebrity Twins) */}
+      <ProgressNewspaperStoryModal
+        isOpen={isNewspaperStoryOpen}
+        onClose={() => setIsNewspaperStoryOpen(false)}
+        onOpenDailyStory={() => setIsDailyStoryOpen(true)}
+      />
+
+      {/* Daily Story / Journal Modal */}
+      <DailyStoryModal
+        isOpen={isDailyStoryOpen}
+        onClose={() => setIsDailyStoryOpen(false)}
+      />
+
+      {/* Web Push & Browser Device Notification Settings Modal */}
+      <DeviceNotificationSettingsModal
+        isOpen={isDeviceNotifModalOpen}
+        onClose={() => setIsDeviceNotifModalOpen(false)}
       />
 
       {/* Mandatory First-Login Profile Completion */}

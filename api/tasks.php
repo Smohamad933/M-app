@@ -45,28 +45,61 @@ if ($method === 'POST') {
         $id = $input['id'] ?? '';
         if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
 
-        $targetUserId = $currentUser['id'];
+        $updateData = ['id' => $id];
         if ($currentUser['role'] === 'admin' && !empty($input['userId'])) {
-            $targetUserId = $input['userId'];
+            $updateData['userId'] = $input['userId'];
         }
-
-        $updateData = [
-            'id' => $id,
-            'userId' => $targetUserId,
-            'title' => isset($input['title']) ? trim($input['title']) : null,
-            'description' => $input['description'] ?? null,
-            'date' => $input['date'] ?? null,
-            'time' => $input['time'] ?? null,
-            'durationMinutes' => isset($input['durationMinutes']) ? (int)$input['durationMinutes'] : null,
-            'priority' => $input['priority'] ?? null,
-            'categoryId' => $input['categoryId'] ?? null,
-            'projectId' => array_key_exists('projectId', $input) ? $input['projectId'] : null,
-            'isPinned' => isset($input['isPinned']) ? $input['isPinned'] : null,
-            'subtasks' => isset($input['subtasks']) ? $input['subtasks'] : null,
-            'completed' => isset($input['completed']) ? $input['completed'] : null,
-            'reasonUncompleted' => array_key_exists('reasonUncompleted', $input) ? $input['reasonUncompleted'] : ($input['reason_uncompleted'] ?? null),
-            'uncompletedCategory' => array_key_exists('uncompletedCategory', $input) ? $input['uncompletedCategory'] : ($input['uncompleted_category'] ?? null),
-        ];
+        if (array_key_exists('title', $input) && $input['title'] !== null) {
+            $updateData['title'] = trim((string)$input['title']);
+        }
+        if (array_key_exists('description', $input)) {
+            $updateData['description'] = (string)$input['description'];
+        }
+        if (array_key_exists('date', $input) && !empty($input['date'])) {
+            $updateData['date'] = $input['date'];
+        }
+        if (array_key_exists('time', $input)) {
+            $updateData['time'] = $input['time'];
+        }
+        if (array_key_exists('durationMinutes', $input)) {
+            $updateData['durationMinutes'] = (int)$input['durationMinutes'];
+        }
+        if (array_key_exists('priority', $input)) {
+            $updateData['priority'] = $input['priority'];
+        }
+        if (array_key_exists('categoryId', $input)) {
+            $updateData['categoryId'] = $input['categoryId'];
+        }
+        if (array_key_exists('projectId', $input)) {
+            $updateData['projectId'] = $input['projectId'];
+        }
+        if (array_key_exists('isPinned', $input)) {
+            $updateData['isPinned'] = !empty($input['isPinned']);
+        }
+        if (array_key_exists('subtasks', $input)) {
+            $updateData['subtasks'] = $input['subtasks'];
+        }
+        if (array_key_exists('completed', $input)) {
+            $updateData['completed'] = !empty($input['completed']);
+        }
+        if (array_key_exists('completedAt', $input)) {
+            $updateData['completedAt'] = $input['completedAt'];
+        } elseif (array_key_exists('completed_at', $input)) {
+            $updateData['completedAt'] = $input['completed_at'];
+        }
+        if (array_key_exists('focusMinutesSpent', $input)) {
+            $updateData['focusMinutesSpent'] = (int)$input['focusMinutesSpent'];
+        }
+        if (array_key_exists('reasonUncompleted', $input)) {
+            $updateData['reasonUncompleted'] = $input['reasonUncompleted'];
+        } elseif (array_key_exists('reason_uncompleted', $input)) {
+            $updateData['reasonUncompleted'] = $input['reason_uncompleted'];
+        }
+        if (array_key_exists('uncompletedCategory', $input)) {
+            $updateData['uncompletedCategory'] = $input['uncompletedCategory'];
+        } elseif (array_key_exists('uncompleted_category', $input)) {
+            $updateData['uncompletedCategory'] = $input['uncompleted_category'];
+        }
 
         $db->updateTask($updateData);
         jsonResponse(['message' => 'تسک به‌روزرسانی شد.']);
@@ -112,28 +145,61 @@ if ($method === 'PUT') {
         jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
     }
 
-    $targetUserId = $currentUser['id'];
+    $updateData = ['id' => $id];
     if ($currentUser['role'] === 'admin' && !empty($input['userId'])) {
-        $targetUserId = $input['userId'];
+        $updateData['userId'] = $input['userId'];
     }
-
-    $updateData = [
-        'id' => $id,
-        'userId' => $targetUserId,
-        'title' => isset($input['title']) ? trim($input['title']) : null,
-        'description' => $input['description'] ?? null,
-        'date' => $input['date'] ?? null,
-        'time' => $input['time'] ?? null,
-        'durationMinutes' => isset($input['durationMinutes']) ? (int)$input['durationMinutes'] : null,
-        'priority' => $input['priority'] ?? null,
-        'categoryId' => $input['categoryId'] ?? null,
-        'projectId' => array_key_exists('projectId', $input) ? $input['projectId'] : null,
-        'isPinned' => isset($input['isPinned']) ? $input['isPinned'] : null,
-        'subtasks' => isset($input['subtasks']) ? $input['subtasks'] : null,
-        'completed' => isset($input['completed']) ? $input['completed'] : null,
-        'reasonUncompleted' => array_key_exists('reasonUncompleted', $input) ? $input['reasonUncompleted'] : ($input['reason_uncompleted'] ?? null),
-        'uncompletedCategory' => array_key_exists('uncompletedCategory', $input) ? $input['uncompletedCategory'] : ($input['uncompleted_category'] ?? null),
-    ];
+    if (array_key_exists('title', $input) && $input['title'] !== null) {
+        $updateData['title'] = trim((string)$input['title']);
+    }
+    if (array_key_exists('description', $input)) {
+        $updateData['description'] = (string)$input['description'];
+    }
+    if (array_key_exists('date', $input) && !empty($input['date'])) {
+        $updateData['date'] = $input['date'];
+    }
+    if (array_key_exists('time', $input)) {
+        $updateData['time'] = $input['time'];
+    }
+    if (array_key_exists('durationMinutes', $input)) {
+        $updateData['durationMinutes'] = (int)$input['durationMinutes'];
+    }
+    if (array_key_exists('priority', $input)) {
+        $updateData['priority'] = $input['priority'];
+    }
+    if (array_key_exists('categoryId', $input)) {
+        $updateData['categoryId'] = $input['categoryId'];
+    }
+    if (array_key_exists('projectId', $input)) {
+        $updateData['projectId'] = $input['projectId'];
+    }
+    if (array_key_exists('isPinned', $input)) {
+        $updateData['isPinned'] = !empty($input['isPinned']);
+    }
+    if (array_key_exists('subtasks', $input)) {
+        $updateData['subtasks'] = $input['subtasks'];
+    }
+    if (array_key_exists('completed', $input)) {
+        $updateData['completed'] = !empty($input['completed']);
+    }
+    if (array_key_exists('completedAt', $input)) {
+        $updateData['completedAt'] = $input['completedAt'];
+    } elseif (array_key_exists('completed_at', $input)) {
+        $updateData['completedAt'] = $input['completed_at'];
+    }
+    if (array_key_exists('focusMinutesSpent', $input)) {
+        $updateData['focusMinutesSpent'] = (int)$input['focusMinutesSpent'];
+    }
+    if (array_key_exists('reasonUncompleted', $input)) {
+        $updateData['reasonUncompleted'] = $input['reasonUncompleted'];
+    } elseif (array_key_exists('reason_uncompleted', $input)) {
+        $updateData['reasonUncompleted'] = $input['reason_uncompleted'];
+    }
+    if (array_key_exists('uncompletedCategory', $input)) {
+        $updateData['uncompletedCategory'] = $input['uncompletedCategory'];
+    } elseif (array_key_exists('uncompleted_category', $input)) {
+        $updateData['uncompletedCategory'] = $input['uncompleted_category'];
+    }
 
     $db->updateTask($updateData);
     jsonResponse(['message' => 'تسک به‌روزرسانی شد.']);

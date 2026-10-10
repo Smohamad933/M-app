@@ -206,7 +206,7 @@ export type TabType =
 
 export type TaskViewMode = 'list' | 'kanban' | 'calendar';
 
-export type FilterStatus = 'all' | 'pending' | 'completed' | 'starred' | 'urgent';
+export type FilterStatus = 'all' | 'pending' | 'completed' | 'starred' | 'urgent' | 'overdue';
 
 export interface DailyStreak {
   currentStreak: number;

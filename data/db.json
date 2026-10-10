@@ -19,7 +19,8 @@
         "plan": "pro"
       },
       "isProfileCompleted": true,
-      "baleChatId": 88776655
+      "baleChatId": 671754408,
+      "baleUsername": "smosh"
     },
     {
       "id": "usr_1791227196584_nceu",
@@ -434,6 +435,22 @@
       },
       "isProfileCompleted": false,
       "createdAt": "2026-10-05T19:06:52.392Z"
+    },
+    {
+      "id": "usr_1791633997089_5v0v",
+      "numericId": 1021,
+      "username": "bale_998877",
+      "name": "S.m.sh",
+      "password": "mu8zg03o",
+      "role": "user",
+      "status": "active",
+      "isVerified": true,
+      "baleChatId": 998877,
+      "createdAt": "2026-10-10T12:06:37.089Z",
+      "isProfileCompleted": true,
+      "subscription": {
+        "plan": "free"
+      }
     }
   ],
   "tasks": [
@@ -501,14 +518,14 @@
       "timeLeft": 1500,
       "isRunning": false,
       "mode": "focus",
-      "lastUpdated": 1791548846667,
+      "lastUpdated": 1791633973485,
       "participants": [
         {
           "userId": "usr_admin_mohusyn",
           "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
           "isHost": true,
           "joinedAt": "۰۸:۳۰",
-          "lastPing": 1791548846667
+          "lastPing": 1791633973485
         }
       ],
       "messages": [
@@ -520,7 +537,7 @@
           "timestamp": "۰۸:۳۰"
         }
       ],
-      "createdAt": "2026-10-09T12:27:26.667Z"
+      "createdAt": "2026-10-10T12:06:13.485Z"
     },
     {
       "id": "room_dev",
@@ -532,7 +549,7 @@
       "timeLeft": 3000,
       "isRunning": false,
       "mode": "focus",
-      "lastUpdated": 1791548846667,
+      "lastUpdated": 1791633973485,
       "participants": [],
       "messages": [
         {
@@ -543,7 +560,7 @@
           "timestamp": "۰۹:۰۰"
         }
       ],
-      "createdAt": "2026-10-09T12:27:26.667Z"
+      "createdAt": "2026-10-10T12:06:13.485Z"
     }
   ],
   "focusRooms": [],
@@ -805,8 +822,32 @@
   "revoked_tokens": [],
   "bale_login_tickets": {
     "bale_login_1791547447261_2tipsgi4": {
-      "status": "pending",
-      "createdAt": 1791547447269
+      "status": "approved",
+      "createdAt": 1791547447269,
+      "token": "dXNyX2FkbWluX21vaHVzeW46MTc5MTYzNTEwNjE4MQ==",
+      "user": {
+        "id": "usr_admin_mohusyn",
+        "username": "Mohusyn",
+        "password": "Smosh1387",
+        "name": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+        "role": "admin",
+        "status": "active",
+        "isVerified": true,
+        "phone": "09120000000",
+        "email": "mohusyn@gmail.com",
+        "jobTitle": "مدیر ارشد و توسعه‌دهنده نرم‌افزار",
+        "city": "تهران",
+        "province": "تهران",
+        "createdAt": "2026-09-19T17:29:02.500Z",
+        "numericId": 1000,
+        "subscription": {
+          "plan": "pro"
+        },
+        "isProfileCompleted": true,
+        "baleChatId": 671754408,
+        "baleUsername": "smosh"
+      },
+      "approvedAt": 1791635106181
     },
     "bale_login_1791547489016_o3zjm14t": {
       "status": "approved",
@@ -884,6 +925,190 @@
         "baleChatId": 88776655
       },
       "approvedAt": 1791548316659
+    },
+    "bale_login_1791633832748_i37x77z4": {
+      "status": "approved",
+      "createdAt": 1791633832748,
+      "token": "dXNyX2FkbWluX21vaHVzeW46MTc5MTYzNTEwNjE4MQ==",
+      "user": {
+        "id": "usr_admin_mohusyn",
+        "username": "Mohusyn",
+        "password": "Smosh1387",
+        "name": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+        "role": "admin",
+        "status": "active",
+        "isVerified": true,
+        "phone": "09120000000",
+        "email": "mohusyn@gmail.com",
+        "jobTitle": "مدیر ارشد و توسعه‌دهنده نرم‌افزار",
+        "city": "تهران",
+        "province": "تهران",
+        "createdAt": "2026-09-19T17:29:02.500Z",
+        "numericId": 1000,
+        "subscription": {
+          "plan": "pro"
+        },
+        "isProfileCompleted": true,
+        "baleChatId": 671754408,
+        "baleUsername": "smosh"
+      },
+      "approvedAt": 1791635106181
+    },
+    "bale_login_1791633983014_nl23xy63": {
+      "status": "approved",
+      "token": "dXNyX2FkbWluX21vaHVzeW46MTc5MTYzMzk4MzAxOQ==",
+      "user": {
+        "id": "usr_admin_mohusyn",
+        "username": "Mohusyn",
+        "password": "Smosh1387",
+        "name": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+        "role": "admin",
+        "status": "active",
+        "isVerified": true,
+        "phone": "09120000000",
+        "email": "mohusyn@gmail.com",
+        "jobTitle": "مدیر ارشد و توسعه‌دهنده نرم‌افزار",
+        "city": "تهران",
+        "province": "تهران",
+        "createdAt": "2026-09-19T17:29:02.500Z",
+        "numericId": 1000,
+        "subscription": {
+          "plan": "pro"
+        },
+        "isProfileCompleted": true,
+        "baleChatId": 88776655
+      },
+      "approvedAt": 1791633983019
+    },
+    "bale_login_1791633997084_86emn9qe": {
+      "status": "approved",
+      "token": "dXNyXzE3OTE2MzM5OTcwODlfNXYwdjoxNzkxNjMzOTk3MDg5",
+      "user": {
+        "id": "usr_1791633997089_5v0v",
+        "numericId": 1021,
+        "username": "bale_998877",
+        "name": "S.m.sh",
+        "password": "mu8zg03o",
+        "role": "user",
+        "status": "active",
+        "isVerified": true,
+        "baleChatId": 998877,
+        "createdAt": "2026-10-10T12:06:37.089Z",
+        "isProfileCompleted": true
+      },
+      "approvedAt": 1791633997089
+    },
+    "bale_login_1791635002207_oyidmgzy": {
+      "status": "approved",
+      "createdAt": 1791635002207,
+      "token": "dXNyX2FkbWluX21vaHVzeW46MTc5MTYzNTEwNjE4MQ==",
+      "user": {
+        "id": "usr_admin_mohusyn",
+        "username": "Mohusyn",
+        "password": "Smosh1387",
+        "name": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+        "role": "admin",
+        "status": "active",
+        "isVerified": true,
+        "phone": "09120000000",
+        "email": "mohusyn@gmail.com",
+        "jobTitle": "مدیر ارشد و توسعه‌دهنده نرم‌افزار",
+        "city": "تهران",
+        "province": "تهران",
+        "createdAt": "2026-09-19T17:29:02.500Z",
+        "numericId": 1000,
+        "subscription": {
+          "plan": "pro"
+        },
+        "isProfileCompleted": true,
+        "baleChatId": 671754408,
+        "baleUsername": "smosh"
+      },
+      "approvedAt": 1791635106181
+    },
+    "bale_login_1791635017672_0xd5zl1h": {
+      "status": "approved",
+      "createdAt": 1791635017672,
+      "token": "dXNyX2FkbWluX21vaHVzeW46MTc5MTYzNTEwNjE4MQ==",
+      "user": {
+        "id": "usr_admin_mohusyn",
+        "username": "Mohusyn",
+        "password": "Smosh1387",
+        "name": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+        "role": "admin",
+        "status": "active",
+        "isVerified": true,
+        "phone": "09120000000",
+        "email": "mohusyn@gmail.com",
+        "jobTitle": "مدیر ارشد و توسعه‌دهنده نرم‌افزار",
+        "city": "تهران",
+        "province": "تهران",
+        "createdAt": "2026-09-19T17:29:02.500Z",
+        "numericId": 1000,
+        "subscription": {
+          "plan": "pro"
+        },
+        "isProfileCompleted": true,
+        "baleChatId": 671754408,
+        "baleUsername": "smosh"
+      },
+      "approvedAt": 1791635106181
+    },
+    "bale_login_1791635040338_vz6vcmee": {
+      "status": "approved",
+      "createdAt": 1791635040338,
+      "token": "dXNyX2FkbWluX21vaHVzeW46MTc5MTYzNTEwNjE4MQ==",
+      "user": {
+        "id": "usr_admin_mohusyn",
+        "username": "Mohusyn",
+        "password": "Smosh1387",
+        "name": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+        "role": "admin",
+        "status": "active",
+        "isVerified": true,
+        "phone": "09120000000",
+        "email": "mohusyn@gmail.com",
+        "jobTitle": "مدیر ارشد و توسعه‌دهنده نرم‌افزار",
+        "city": "تهران",
+        "province": "تهران",
+        "createdAt": "2026-09-19T17:29:02.500Z",
+        "numericId": 1000,
+        "subscription": {
+          "plan": "pro"
+        },
+        "isProfileCompleted": true,
+        "baleChatId": 671754408,
+        "baleUsername": "smosh"
+      },
+      "approvedAt": 1791635106181
+    },
+    "bale_login_1791635106175_023wq5ns": {
+      "status": "approved",
+      "createdAt": 1791635106175,
+      "token": "dXNyX2FkbWluX21vaHVzeW46MTc5MTYzNTEwNjE4MQ==",
+      "user": {
+        "id": "usr_admin_mohusyn",
+        "username": "Mohusyn",
+        "password": "Smosh1387",
+        "name": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+        "role": "admin",
+        "status": "active",
+        "isVerified": true,
+        "phone": "09120000000",
+        "email": "mohusyn@gmail.com",
+        "jobTitle": "مدیر ارشد و توسعه‌دهنده نرم‌افزار",
+        "city": "تهران",
+        "province": "تهران",
+        "createdAt": "2026-09-19T17:29:02.500Z",
+        "numericId": 1000,
+        "subscription": {
+          "plan": "pro"
+        },
+        "isProfileCompleted": true,
+        "baleChatId": 671754408,
+        "baleUsername": "smosh"
+      },
+      "approvedAt": 1791635106181
     }
   }
 }
