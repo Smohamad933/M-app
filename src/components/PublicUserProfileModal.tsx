@@ -143,8 +143,9 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
   const isPro = user.role === 'admin' || (!!user.subscription?.plan && user.subscription.plan !== 'free');
 
   const totalTasksCount = userTasks.length > 0 ? userTasks.length : (user.totalTasks || 0);
+  const completedTasks = userTasks.filter((t) => t.completed);
   const completedTasksCount = userTasks.length > 0
-    ? userTasks.filter((t) => t.completed).length
+    ? completedTasks.length
     : (user.completedTasks || 0);
   const progressPercent = totalTasksCount > 0
     ? Math.round((completedTasksCount / totalTasksCount) * 100)
@@ -341,12 +342,12 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
             </div>
           </div>
 
-          {/* User's Tasks Section */}
+          {/* Completed Tasks & Progress Section */}
           <div className="p-3.5 sm:p-4 rounded-3xl bg-zinc-900/90 border border-white/10 space-y-2.5 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CheckSquare className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-bold text-white">تسک‌ها و فعالیت‌های کاربر</span>
+                <span className="text-xs font-bold text-white">تسک‌های تکمیل‌شده کاربر</span>
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-mono font-bold border border-zinc-700">
                 {toPersianDigits(completedTasksCount)} از {toPersianDigits(totalTasksCount)} انجام‌شده ({toPersianDigits(progressPercent)}٪)
@@ -361,42 +362,28 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
               />
             </div>
 
-            {/* Tasks List */}
+            {/* Only Completed Tasks List */}
             {isLoadingTasks ? (
               <div className="py-4 text-center text-xs text-zinc-400 flex items-center justify-center gap-2">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
                 <span>در حال فراخوانی تسک‌ها...</span>
               </div>
-            ) : userTasks.length === 0 ? (
-              <div className="py-3 text-center text-xs text-zinc-500 font-medium">
-                هنوز تسکی برای این کاربر ثبت نشده است.
+            ) : completedTasks.length === 0 ? (
+              <div className="py-4 text-center text-xs text-zinc-500 font-medium">
+                هنوز تسک تکمیل‌شده‌ای برای نمایش وجود ندارد.
               </div>
             ) : (
               <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {userTasks.map((t) => (
+                {completedTasks.map((t) => (
                   <div
                     key={t.id}
-                    className={`p-2.5 rounded-2xl border text-xs flex items-center justify-between gap-2.5 transition-all ${
-                      t.completed
-                        ? 'bg-emerald-950/20 border-emerald-800/30 text-zinc-300'
-                        : 'bg-zinc-800/60 border-zinc-700/40 text-white'
-                    }`}
+                    className="p-2.5 rounded-2xl border text-xs flex items-center justify-between gap-2.5 transition-all bg-emerald-950/20 border-emerald-800/30 text-zinc-200"
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <span
-                        className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 border ${
-                          t.completed
-                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
-                            : 'bg-zinc-700/50 border-zinc-600 text-zinc-500'
-                        }`}
-                      >
-                        {t.completed ? (
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        ) : (
-                          <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
-                        )}
+                      <span className="w-5 h-5 rounded-lg flex items-center justify-center shrink-0 border bg-emerald-500/20 border-emerald-500/50 text-emerald-400">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
                       </span>
-                      <span className={`truncate font-medium ${t.completed ? 'line-through text-zinc-400' : ''}`}>
+                      <span className="truncate font-medium text-zinc-200">
                         {t.title}
                       </span>
                     </div>
