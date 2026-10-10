@@ -658,6 +658,23 @@ export const api = {
     );
   },
 
+  async sendBaleCustomMessage(params: {
+    target: 'all' | 'user' | 'chat_id';
+    userId?: string;
+    chatId?: string;
+    text: string;
+    buttons: Array<{ text: string; type: 'url' | 'callback'; value: string }>;
+    token?: string;
+  }): Promise<{ ok: boolean; sentCount?: number; failedCount?: number; message?: string; error?: string }> {
+    return await request<{ ok: boolean; sentCount?: number; failedCount?: number; message?: string; error?: string }>(
+      'api/bale.php?action=send_custom_message',
+      {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }
+    );
+  },
+
   // ---------------------------------------------------------------------------
   // Negahm Unified SSO Integration (https://sso.negahm.ir/api/v1)
   // ---------------------------------------------------------------------------

@@ -2049,6 +2049,112 @@ if ($action === 'notify' || $action === 'send_message') {
 }
 
 // -----------------------------------------------------------------------------
+// 4.3. Admin Custom Broadcast & Interactive Message with Inline Keyboard
+// -----------------------------------------------------------------------------
+if ($action === 'send_custom_message' || $action === 'broadcast_message') {
+    $input = getJsonInput();
+    $target = $input['target'] ?? ($_POST['target'] ?? 'all');
+    $userId = $input['userId'] ?? ($_POST['userId'] ?? '');
+    $customChatId = $input['chatId'] ?? ($_POST['chatId'] ?? '');
+    $text = trim((string)($input['text'] ?? ($input['message'] ?? ($_POST['text'] ?? ''))));
+    $rawButtons = $input['buttons'] ?? ($input['inlineKeyboard'] ?? ($_POST['buttons'] ?? []));
+
+    if (empty($text)) {
+        jsonResponse(['ok' => false, 'error' => 'متن پیام نمی‌تواند خالی باشد.'], 400);
+    }
+
+    $tokenToUse = trim((string)($input['token'] ?? ($_POST['token'] ?? $botToken)));
+    $cleanedToken = cleanBaleToken($tokenToUse);
+    if (empty($cleanedToken)) {
+        jsonResponse(['ok' => false, 'error' => 'توکن ربات بله تنظیم نشده است.'], 400);
+    }
+
+    // Build inline keyboard rows (array of button rows)
+    $inlineKeyboard = [];
+    if (!empty($rawButtons) && is_array($rawButtons)) {
+        $currentRow = [];
+        foreach ($rawButtons as $btn) {
+            if (empty($btn['text'])) continue;
+            $btnItem = ['text' => trim((string)$btn['text'])];
+            $type = $btn['type'] ?? 'url';
+            $val = trim((string)($btn['value'] ?? ($btn['url'] ?? ($btn['callback_data'] ?? ''))));
+            if ($type === 'url' || !empty($btn['url'])) {
+                $btnItem['url'] = $val;
+            } else {
+                $btnItem['callback_data'] = !empty($val) ? $val : 'action_btn';
+            }
+            $currentRow[] = $btnItem;
+            if (count($currentRow) >= 2) {
+                $inlineKeyboard[] = $currentRow;
+                $currentRow = [];
+            }
+        }
+        if (!empty($currentRow)) {
+            $inlineKeyboard[] = $currentRow;
+        }
+    }
+
+    $replyMarkup = !empty($inlineKeyboard) ? ['inline_keyboard' => $inlineKeyboard] : null;
+
+    // Collect recipient chat IDs
+    $recipientChatIds = [];
+    $allUsers = $dbObj->getAllUsers();
+
+    if ($target === 'chat_id' && !empty($customChatId)) {
+        $recipientChatIds[] = $customChatId;
+    } elseif ($target === 'user' && !empty($userId)) {
+        foreach ($allUsers as $u) {
+            if ($u['id'] === $userId || ($u['username'] ?? '') === $userId) {
+                if (!empty($u['baleChatId'])) {
+                    $recipientChatIds[] = $u['baleChatId'];
+                }
+                break;
+            }
+        }
+    } else {
+        // All users who have baleChatId
+        foreach ($allUsers as $u) {
+            if (!empty($u['baleChatId']) && !in_array($u['baleChatId'], $recipientChatIds)) {
+                $recipientChatIds[] = $u['baleChatId'];
+            }
+        }
+    }
+
+    if (empty($recipientChatIds)) {
+        jsonResponse([
+            'ok' => false,
+            'error' => 'هیچ کاربری با شناسه بله متصل یافت نشد. کاربران باید حداقل یک بار ربات بله را استارت کرده باشند.'
+        ], 400);
+    }
+
+    $sentCount = 0;
+    $failedCount = 0;
+    $errors = [];
+
+    foreach ($recipientChatIds as $cId) {
+        $res = sendBaleMessage($cleanedToken, $cId, $text, $replyMarkup);
+        if (!empty($res['ok'])) {
+            $sentCount++;
+        } else {
+            $failedCount++;
+            $errors[] = [
+                'chatId' => $cId,
+                'error' => $res['description'] ?? ($res['error'] ?? 'خطای نامشخص')
+            ];
+        }
+    }
+
+    jsonResponse([
+        'ok' => $sentCount > 0,
+        'sentCount' => $sentCount,
+        'failedCount' => $failedCount,
+        'totalRecipients' => count($recipientChatIds),
+        'errors' => $errors,
+        'message' => "پیام با موفقیت به {$sentCount} کاربر در بله ارسال شد." . ($failedCount > 0 ? " ({$failedCount} خطا)" : "")
+    ]);
+}
+
+// -----------------------------------------------------------------------------
 // 5. Request Pro / Card / Payment submission via Bale API endpoint
 // -----------------------------------------------------------------------------
 if (

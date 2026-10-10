@@ -7,6 +7,7 @@ import { APP_TEXTS, APP_TEXT_SECTIONS } from '../utils/appTexts';
 import { UserAvatar } from './UserAvatar';
 import { SubscriptionBadge } from './SubscriptionBadge';
 import { FontSelectorModal } from './FontSelectorModal';
+import { BaleBroadcastManager } from './BaleBroadcastManager';
 import type { User, GlobalSystemSettings, AppDeveloper } from '../types';
 import {
   Users,
@@ -188,107 +189,12 @@ export const UserManagementView: React.FC = () => {
   } = useTask();
 
   // Active view tab inside Admin Panel
-  const [adminTab, setAdminTab] = useState<'users' | 'payments' | 'settings' | 'texts' | 'developers' | 'extension' | 'bale' | 'sso'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'payments' | 'settings' | 'texts' | 'developers' | 'extension' | 'bale'>('users');
+  const [broadcastTargetUserId, setBroadcastTargetUserId] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFontModalOpen, setIsFontModalOpen] = useState(false);
   const pendingUsers = users.filter((u) => u.status === 'pending_approval');
   const [planFilter, setPlanFilter] = useState<'all' | 'pro' | 'free'>('all');
-
-  // Negahm Unified SSO State
-  const initialSso = (globalSettings as any)?.ssoSettings || {
-    enabled: true,
-    serverUrl: 'https://sso.negahm.ir',
-    apiKey: 'ak_live_negahm_taskrooz_master',
-    apiSecret: 'sk_live_sec_negahm_8872349102834',
-    appName: 'بگ تایم (کیان فناوران نگاه)',
-    autoSyncUsers: true,
-    defaultRole: 'member',
-    testMode: false,
-  };
-  const [ssoForm, setSsoForm] = useState(initialSso);
-  const [ssoTesting, setSsoTesting] = useState(false);
-  const [ssoTestResult, setSsoTestResult] = useState<{ ok: boolean; message: string } | null>(null);
-  const [ssoSaving, setSsoSaving] = useState(false);
-  const [ssoUsers, setSsoUsers] = useState<any[]>([]);
-  const [isLoadingSsoUsers, setIsLoadingSsoUsers] = useState(false);
-  const [isSyncingSso, setIsSyncingSso] = useState(false);
-
-  useEffect(() => {
-    if ((globalSettings as any)?.ssoSettings) {
-      setSsoForm((globalSettings as any).ssoSettings);
-    }
-  }, [globalSettings]);
-
-  const handleTestSsoConnection = async () => {
-    setSsoTesting(true);
-    setSsoTestResult(null);
-    sounds.playPop();
-    try {
-      const res = await api.ssoTestConnection(ssoForm);
-      if (res.ok) {
-        sounds.playComplete();
-        setSsoTestResult({
-          ok: true,
-          message: res.message || 'اتصال به سامانه SSO نگاه با موفقیت برقرار شد.',
-        });
-      } else {
-        setSsoTestResult({
-          ok: false,
-          message: res.message || 'خطا در برقراری ارتباط با سامانه SSO نگاه.',
-        });
-      }
-    } catch (e: any) {
-      setSsoTestResult({
-        ok: false,
-        message: e.message || 'خطا در تست اتصال SSO نگاه',
-      });
-    } finally {
-      setSsoTesting(false);
-    }
-  };
-
-  const handleSaveSsoConfig = async () => {
-    setSsoSaving(true);
-    sounds.playPop();
-    try {
-      await updateGlobalSettings({
-        ssoSettings: ssoForm,
-      });
-      sounds.playComplete();
-      alert('تنظیمات سامانه متمرکز نگاه با موفقیت ذخیره شد.');
-    } catch (e: any) {
-      alert(e.message || 'خطا در ذخیره تنظیمات SSO');
-    } finally {
-      setSsoSaving(false);
-    }
-  };
-
-  const handleSyncAllSsoUsers = async () => {
-    setIsSyncingSso(true);
-    sounds.playPop();
-    try {
-      const res = await api.ssoSyncAllUsers();
-      sounds.playComplete();
-      alert(res.message || 'همگام‌سازی کاربران انجام شد.');
-      await refreshUsers();
-    } catch (e: any) {
-      alert(e.message || 'خطا در همگام‌سازی کاربران از SSO');
-    } finally {
-      setIsSyncingSso(false);
-    }
-  };
-
-  const handleLoadSsoUsers = async () => {
-    setIsLoadingSsoUsers(true);
-    try {
-      const res = await api.ssoGetUsers({ per_page: 50 });
-      setSsoUsers(res.data?.items || []);
-    } catch {
-      // ignore
-    } finally {
-      setIsLoadingSsoUsers(false);
-    }
-  };
 
   // Payments management state
   const [paymentsList, setPaymentsList] = useState<any[]>([]);
@@ -1178,21 +1084,6 @@ export const UserManagementView: React.FC = () => {
         </button>
 
         <button
-          onClick={() => {
-            setAdminTab('sso');
-            handleLoadSsoUsers();
-          }}
-          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            adminTab === 'sso'
-              ? 'bg-emerald-600 text-white shadow-xs font-black'
-              : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>سامانه متمرکز نگاه (SSO)</span>
-        </button>
-
-        <button
           onClick={() => setAdminTab('extension')}
           className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'extension'
@@ -1695,6 +1586,23 @@ export const UserManagementView: React.FC = () => {
                           >
                             <Check className="w-3.5 h-3.5 stroke-[3]" />
                             <span>تأیید دمو 🚀</span>
+                          </button>
+                        )}
+
+                        {/* Direct Bale Bot Message button if user has Bale connected */}
+                        {u.baleChatId && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              sounds.playPop();
+                              setBroadcastTargetUserId(u.id);
+                              setAdminTab('bale');
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 font-bold text-xs transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                            title="ارسال پیام اختصاصی از طرف ربات بله با دکمه‌های شیشه‌ای به این کاربر"
+                          >
+                            <Bot className="w-3.5 h-3.5 text-blue-400" />
+                            <span>پیام بله 💬</span>
                           </button>
                         )}
 
@@ -3756,6 +3664,13 @@ export const UserManagementView: React.FC = () => {
             </div>
           </div>
 
+          {/* DYNAMIC BALE BROADCAST & INLINE BUTTONS BUILDER */}
+          <BaleBroadcastManager
+            users={users}
+            botToken={baleForm.token}
+            preselectedUserId={broadcastTargetUserId}
+          />
+
           {/* Bale Bot User Guide & Architecture */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Guide Card */}
@@ -3851,270 +3766,6 @@ export const UserManagementView: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 8: NEGAHM UNIFIED SSO INTEGRATION */}
-      {adminTab === 'sso' && (
-        <div className="space-y-6 animate-in fade-in">
-          {/* Main SSO Config Card */}
-          <div className="p-6 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>سامانه احراز هویت متمرکز نگاه (Negahm Unified SSO v1)</span>
-                </div>
-                <h3 className="text-base font-black text-white">
-                  مدیریت اتصال به SSO کیان فناوران نگاه
-                </h3>
-                <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
-                  پشتیبانی کامل از احراز هویت درخواست‌ها با کلید و راز اپلیکیشن (X-Api-Key و X-Api-Secret)، ثبت‌نام و ورود خودکار کاربران و هماهنگی با پایگاه داده متمرکز نگاه بر پایه مشخصات استاندارد API v1.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className={`w-3 h-3 rounded-full ${ssoForm.enabled ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`} />
-                <span className="text-xs font-bold text-zinc-300">
-                  {ssoForm.enabled ? 'فعال در سامانه' : 'غیرفعال'}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Server URL */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-zinc-300">
-                  نشانی سرور SSO (Base Server URL)
-                </label>
-                <input
-                  type="text"
-                  dir="ltr"
-                  value={ssoForm.serverUrl || 'https://sso.negahm.ir'}
-                  onChange={(e) => setSsoForm({ ...ssoForm, serverUrl: e.target.value })}
-                  placeholder="https://sso.negahm.ir"
-                  className="w-full text-xs font-mono px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 focus:border-emerald-500 outline-none"
-                />
-                <span className="text-[10px] text-zinc-500">
-                  مسیرهای API به صورت خودکار به <code className="text-emerald-400">/api/v1/...</code> متصل می‌شوند.
-                </span>
-              </div>
-
-              {/* App Name */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-zinc-300">
-                  نام اپلیکیشن در سامانه نگاه (App Name)
-                </label>
-                <input
-                  type="text"
-                  value={ssoForm.appName || 'بگ تایم'}
-                  onChange={(e) => setSsoForm({ ...ssoForm, appName: e.target.value })}
-                  placeholder="بگ تایم (کیان فناوران نگاه)"
-                  className="w-full text-xs px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 focus:border-emerald-500 outline-none"
-                />
-              </div>
-
-              {/* API Key */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-zinc-300">
-                  کلید اپلیکیشن (X-Api-Key)
-                </label>
-                <input
-                  type="text"
-                  dir="ltr"
-                  value={ssoForm.apiKey || ''}
-                  onChange={(e) => setSsoForm({ ...ssoForm, apiKey: e.target.value })}
-                  placeholder="ak_live_xxxxxxxxxxxxxxxx"
-                  className="w-full text-xs font-mono px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 focus:border-emerald-500 outline-none"
-                />
-              </div>
-
-              {/* API Secret */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-zinc-300">
-                  رمز محرمانه اپلیکیشن (X-Api-Secret)
-                </label>
-                <input
-                  type="password"
-                  dir="ltr"
-                  value={ssoForm.apiSecret || ''}
-                  onChange={(e) => setSsoForm({ ...ssoForm, apiSecret: e.target.value })}
-                  placeholder="••••••••••••••••••••••••••••••••"
-                  className="w-full text-xs font-mono px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 focus:border-emerald-500 outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Checkboxes */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-              <label className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-center gap-3 cursor-pointer hover:border-zinc-700 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={!!ssoForm.enabled}
-                  onChange={(e) => setSsoForm({ ...ssoForm, enabled: e.target.checked })}
-                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
-                />
-                <div>
-                  <div className="text-xs font-bold text-white">فعال‌سازی ماژول SSO</div>
-                  <div className="text-[10px] text-zinc-400">نمایش گزینه ورود در صفحه اول</div>
-                </div>
-              </label>
-
-              <label className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-center gap-3 cursor-pointer hover:border-zinc-700 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={!!ssoForm.autoSyncUsers}
-                  onChange={(e) => setSsoForm({ ...ssoForm, autoSyncUsers: e.target.checked })}
-                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
-                />
-                <div>
-                  <div className="text-xs font-bold text-white">اتصال و همگام‌سازی خودکار</div>
-                  <div className="text-[10px] text-zinc-400">ثبت آنی کاربر واردشده در دیتابیس</div>
-                </div>
-              </label>
-
-              <label className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-center gap-3 cursor-pointer hover:border-zinc-700 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={!!ssoForm.testMode}
-                  onChange={(e) => setSsoForm({ ...ssoForm, testMode: e.target.checked })}
-                  className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500"
-                />
-                <div>
-                  <div className="text-xs font-bold text-white">حالت تست / Sandbox</div>
-                  <div className="text-[10px] text-zinc-400">پاسخ موک در صورت قطعی شبکه</div>
-                </div>
-              </label>
-            </div>
-
-            {/* Test result banner if any */}
-            {ssoTestResult && (
-              <div
-                className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs ${
-                  ssoTestResult.ok
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  {ssoTestResult.ok ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  ) : (
-                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                  )}
-                  <span>{ssoTestResult.message}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={handleSaveSsoConfig}
-                disabled={ssoSaving}
-                className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors cursor-pointer shadow-md flex items-center gap-2"
-              >
-                <Check className="w-4 h-4" />
-                <span>{ssoSaving ? 'در حال ذخیره...' : 'ذخیره تنظیمات SSO'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleTestSsoConnection}
-                disabled={ssoTesting}
-                className="px-5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition-colors cursor-pointer border border-zinc-700 flex items-center gap-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${ssoTesting ? 'animate-spin text-emerald-400' : ''}`} />
-                <span>{ssoTesting ? 'در حال بررسی اتصال...' : 'تست اتصال (Health & Me)'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSyncAllSsoUsers}
-                disabled={isSyncingSso}
-                className="px-5 py-3 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-emerald-300 font-bold text-xs transition-colors cursor-pointer border border-emerald-500/30 flex items-center gap-2"
-              >
-                <Users className="w-4 h-4 text-emerald-400" />
-                <span>{isSyncingSso ? 'در حال همگام‌سازی...' : 'دریافت و همگام‌سازی کاربران (/v1/users)'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* SSO Users Directory */}
-          <div className="p-6 bg-zinc-900/60 rounded-3xl border border-zinc-800 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-black text-white flex items-center gap-2">
-                  <Users className="w-4 h-4 text-emerald-400" />
-                  <span>فهرست کاربران واکشی‌شده از نگاه</span>
-                </h4>
-                <p className="text-[11px] text-zinc-400">
-                  کاربران دریافت شده از مسیر <code className="text-emerald-400">GET /v1/users</code> با سطح دسترسی app
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleLoadSsoUsers}
-                disabled={isLoadingSsoUsers}
-                className="px-3.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingSsoUsers ? 'animate-spin text-emerald-400' : ''}`} />
-                <span>به‌روزرسانی فهرست</span>
-              </button>
-            </div>
-
-            {isLoadingSsoUsers ? (
-              <div className="py-8 text-center text-xs text-zinc-400 font-bold">
-                در حال بارگذاری کاربران از SSO نگاه...
-              </div>
-            ) : ssoUsers.length === 0 ? (
-              <div className="p-8 text-center bg-zinc-950/60 rounded-2xl border border-dashed border-zinc-800 text-xs text-zinc-400 space-y-1">
-                <p>هنوز فهرستی از کاربران SSO بارگذاری نشده است.</p>
-                <p className="text-[10px] text-zinc-500">برای مشاهده و همگام‌سازی، دکمه «به‌روزرسانی فهرست» را بزنید.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
-                  <thead>
-                    <tr className="border-b border-zinc-800 text-zinc-400">
-                      <th className="py-2.5 px-3">نام و نام خانوادگی</th>
-                      <th className="py-2.5 px-3">ایمیل</th>
-                      <th className="py-2.5 px-3">نقش</th>
-                      <th className="py-2.5 px-3">وضعیت</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-800/60">
-                    {ssoUsers.map((u, idx) => (
-                      <tr key={u.id || idx} className="hover:bg-zinc-800/30 transition-colors">
-                        <td className="py-2.5 px-3 font-bold text-white">
-                          {u.full_name || u.name || 'بدون نام'}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-zinc-300" dir="ltr">
-                          {u.email}
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                            u.role === 'admin' || u.role === 'owner'
-                              ? 'bg-amber-500/20 text-amber-300'
-                              : 'bg-zinc-700 text-zinc-300'
-                          }`}>
-                            {u.role || 'member'}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 font-bold">
-                            {u.status || 'active'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
         </div>
       )}

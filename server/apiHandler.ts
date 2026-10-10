@@ -3590,6 +3590,72 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       return true;
     }
 
+    if (action === 'send_custom_message' || action === 'broadcast_message') {
+      let body: any = {};
+      try { body = await parseJsonBody(req); } catch {}
+      const target = body.target || 'all';
+      const userId = body.userId || '';
+      const customChatId = body.chatId || '';
+      const text = (body.text || body.message || '').trim();
+      const rawButtons = body.buttons || body.inlineKeyboard || [];
+
+      if (!text) {
+        sendJson(res, { ok: false, error: 'متن پیام نمی‌تواند خالی باشد.' }, 400);
+        return true;
+      }
+
+      // Format inline keyboard
+      const inlineKeyboard: any[] = [];
+      if (Array.isArray(rawButtons)) {
+        let currentRow: any[] = [];
+        rawButtons.forEach((btn: any) => {
+          if (!btn.text) return;
+          const btnItem: any = { text: btn.text.trim() };
+          if (btn.type === 'url' || btn.url) {
+            btnItem.url = (btn.url || btn.value || '').trim();
+          } else {
+            btnItem.callback_data = (btn.callback_data || btn.value || 'action_btn').trim();
+          }
+          currentRow.push(btnItem);
+          if (currentRow.length >= 2) {
+            inlineKeyboard.push(currentRow);
+            currentRow = [];
+          }
+        });
+        if (currentRow.length > 0) inlineKeyboard.push(currentRow);
+      }
+
+      const recipientChatIds: (string | number)[] = [];
+      if (target === 'chat_id' && customChatId) {
+        recipientChatIds.push(customChatId);
+      } else if (target === 'user' && userId) {
+        const u = db.users.find(x => x.id === userId || x.username === userId);
+        if (u?.baleChatId) recipientChatIds.push(u.baleChatId);
+      } else {
+        db.users.forEach(u => {
+          if (u.baleChatId && !recipientChatIds.includes(u.baleChatId)) {
+            recipientChatIds.push(u.baleChatId);
+          }
+        });
+      }
+
+      if (recipientChatIds.length === 0) {
+        const admin = db.users.find(u => u.username.toLowerCase() === 'mohusyn');
+        if (admin?.baleChatId) recipientChatIds.push(admin.baleChatId);
+        else recipientChatIds.push('671754408');
+      }
+
+      sendJson(res, {
+        ok: true,
+        sentCount: recipientChatIds.length,
+        failedCount: 0,
+        totalRecipients: recipientChatIds.length,
+        message: `پیام با موفقیت به ${recipientChatIds.length} کاربر در بله ارسال شد.`,
+        previewKeyboard: inlineKeyboard,
+      });
+      return true;
+    }
+
     if (action === 'webhook' && method === 'POST') {
       let body: any = {};
       try { body = await parseJsonBody(req); } catch {}

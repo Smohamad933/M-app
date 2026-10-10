@@ -20,7 +20,6 @@ import {
   Eye,
   EyeOff,
   Sparkles,
-  ShieldCheck,
 } from 'lucide-react';
 
 import { BaleVerificationModal, type BaleVerificationInfo } from './BaleVerificationModal';
@@ -680,24 +679,6 @@ export const LoginScreen: React.FC = () => {
             )}
           </div>
         )}
-
-        {/* Dedicated SSO Page Link */}
-        <div className="pt-2 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.set('page', 'sso');
-              window.history.pushState({}, '', url.toString());
-              window.dispatchEvent(new PopStateEvent('popstate'));
-            }}
-            className="text-[11px] text-slate-400 hover:text-indigo-600 transition-colors font-medium inline-flex items-center gap-1.5 cursor-pointer py-1 px-2.5 rounded-lg hover:bg-slate-50"
-            title="ورود با سامانه متمرکز نگاه (SSO)"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
-            <span>ورود سازمانی با سامانه نگاه (SSO) ←</span>
-          </button>
-        </div>
       </div>
 
       {/* Developer Profile Modal */}

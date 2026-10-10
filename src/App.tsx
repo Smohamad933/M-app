@@ -6,7 +6,6 @@ import { AlertTriangle, RefreshCw, Database, DatabaseZap, Loader2 } from 'lucide
 import { api } from './services/api';
 import { TaskMasterHexagon } from './components/TaskMasterLogo';
 import { InstagramSlidesStudio } from './components/InstagramSlidesStudio';
-import { SsoLoginScreen } from './components/SsoLoginScreen';
 
 /**
  * Full-screen guard: if the database file (data/db.json) is missing on the
@@ -157,14 +156,6 @@ function AppContent() {
     ) {
       return 'instagram';
     }
-    if (
-      params.get('page') === 'sso' ||
-      params.get('mode') === 'sso' ||
-      window.location.hash === '#sso' ||
-      window.location.pathname === '/sso'
-    ) {
-      return 'sso';
-    }
     return 'app';
   });
 
@@ -178,13 +169,6 @@ function AppContent() {
         window.location.pathname === '/instagram'
       ) {
         setCurrentPage('instagram');
-      } else if (
-        params.get('page') === 'sso' ||
-        params.get('mode') === 'sso' ||
-        window.location.hash === '#sso' ||
-        window.location.pathname === '/sso'
-      ) {
-        setCurrentPage('sso');
       } else {
         setCurrentPage('app');
       }
@@ -196,34 +180,6 @@ function AppContent() {
       window.removeEventListener('hashchange', handlePopState);
     };
   }, []);
-
-  // When logged in, transition away from standalone SSO page
-  useEffect(() => {
-    if (currentUser && currentPage === 'sso') {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('page');
-      url.searchParams.delete('mode');
-      url.hash = '';
-      window.history.pushState({}, '', url.pathname + (url.search ? url.search : ''));
-      setCurrentPage('app');
-    }
-  }, [currentUser, currentPage]);
-
-  // Standalone Negahm Unified SSO Page
-  if (currentPage === 'sso') {
-    return (
-      <SsoLoginScreen
-        onBack={() => {
-          const url = new URL(window.location.href);
-          url.searchParams.delete('page');
-          url.searchParams.delete('mode');
-          url.hash = '';
-          window.history.pushState({}, '', url.pathname + (url.search ? url.search : ''));
-          setCurrentPage('app');
-        }}
-      />
-    );
-  }
 
   // Standalone Instagram Slides Studio Page (Strictly Super Admin Only)
   if (currentPage === 'instagram') {
