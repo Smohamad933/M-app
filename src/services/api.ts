@@ -156,7 +156,7 @@ export function removeAuthToken() {
   }
 }
 
-export const BAGTIME_SERVERS = ['https://task.mohusyn.ir', 'https://bagtime.negahm.ir'];
+export const BAGTIME_SERVERS = ['https://bagtime.ir', 'https://bagtime.negahm.ir'];
 const ACTIVE_SERVER_KEY = 'bagtime_preferred_server';
 
 export function getPreferredServer(): string | null {

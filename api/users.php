@@ -455,9 +455,9 @@ if ($method === 'GET') {
     if (!empty($_GET['sync_peer']) || $action === 'sync_peers') {
         try {
             $currHost = $_SERVER['HTTP_HOST'] ?? '';
-            $peerHost = (strpos($currHost, 'task.mohusyn.ir') !== false) 
+            $peerHost = (strpos($currHost, 'bagtime.ir') !== false) 
                 ? 'https://bagtime.negahm.ir' 
-                : 'https://task.mohusyn.ir';
+                : 'https://bagtime.ir';
 
             $peerRaw = false;
             if (function_exists('curl_init')) {
