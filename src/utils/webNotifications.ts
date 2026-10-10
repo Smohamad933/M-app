@@ -54,18 +54,55 @@ export function isNotificationSupported(): boolean {
   return typeof window !== 'undefined' && 'Notification' in window;
 }
 
+export function isSecureContextForNotifications(): boolean {
+  if (typeof window === 'undefined') return true;
+  if (typeof window.isSecureContext === 'boolean') return window.isSecureContext;
+  return (
+    window.location.protocol === 'https:' ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  );
+}
+
 export function getNotificationPermission(): NotificationPermission {
   if (!isNotificationSupported()) return 'denied';
   return Notification.permission;
 }
 
-export async function requestNotificationPermission(): Promise<boolean> {
-  if (!isNotificationSupported()) return false;
+export async function requestNotificationPermission(): Promise<{
+  granted: boolean;
+  permission: NotificationPermission;
+  reason?: 'not_supported' | 'insecure_http' | 'denied_by_user';
+}> {
+  if (!isNotificationSupported()) {
+    return { granted: false, permission: 'denied', reason: 'not_supported' };
+  }
+
+  if (!isSecureContextForNotifications()) {
+    return { granted: false, permission: Notification.permission, reason: 'insecure_http' };
+  }
+
   try {
-    const perm = await Notification.requestPermission();
-    return perm === 'granted';
+    let perm: NotificationPermission = 'default';
+    const promise = Notification.requestPermission();
+    if (promise && typeof promise.then === 'function') {
+      perm = await promise;
+    } else {
+      perm = await new Promise<NotificationPermission>((resolve) => {
+        Notification.requestPermission((p) => resolve(p));
+      });
+    }
+
+    return {
+      granted: perm === 'granted',
+      permission: perm,
+      reason: perm === 'denied' ? 'denied_by_user' : undefined,
+    };
   } catch {
-    return false;
+    return {
+      granted: Notification.permission === 'granted',
+      permission: Notification.permission,
+    };
   }
 }
 

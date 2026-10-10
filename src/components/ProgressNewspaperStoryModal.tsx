@@ -36,14 +36,14 @@ interface CelebrityTwin {
   powerWord: string;
 }
 
-// Steve Jobs Animated Character Illustration (No Apple Emojis!)
+// Steve Jobs Animated Character Illustration (Vector & Animated Glow)
 const SteveJobsCharacter: React.FC<{ size?: number; className?: string }> = ({ size = 64, className = '' }) => (
   <div
     className={`relative flex items-center justify-center shrink-0 ${className}`}
     style={{ width: size, height: size }}
   >
     {/* Subtle pulsing ambient backlight */}
-    <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-sky-500/25 via-indigo-500/20 to-amber-500/20 animate-pulse blur-sm" />
+    <div className="absolute inset-0 rounded-3xl bg-gradient-to-tr from-sky-500/25 via-indigo-500/20 to-amber-500/20 animate-pulse blur-md" />
     
     <svg
       viewBox="0 0 120 120"
@@ -71,10 +71,10 @@ const SteveJobsCharacter: React.FC<{ size?: number; className?: string }> = ({ s
       </defs>
 
       {/* Modern Badge Background */}
-      <rect width="120" height="120" rx="30" fill="url(#jobsBgGrad)" />
+      <rect width="120" height="120" rx="32" fill="url(#jobsBgGrad)" />
 
       {/* Shoulders & Iconic Black Turtleneck */}
-      <path d="M 22 120 C 22 92 38 85 48 83 L 72 83 C 82 85 98 92 98 120 Z" fill="url(#jobsTurtleneckGrad)" />
+      <path d="M 20 120 C 20 92 38 85 48 83 L 72 83 C 82 85 100 92 100 120 Z" fill="url(#jobsTurtleneckGrad)" />
       
       {/* Turtleneck Collar */}
       <rect x="46" y="73" width="28" height="15" rx="5" fill="#18181b" stroke="#3f3f46" strokeWidth="1.5" />
@@ -127,90 +127,16 @@ const SteveJobsCharacter: React.FC<{ size?: number; className?: string }> = ({ s
   </div>
 );
 
-// Einstein Animated Character Illustration
-const EinsteinCharacter: React.FC<{ size?: number; className?: string }> = ({ size = 64, className = '' }) => (
-  <div
-    className={`relative flex items-center justify-center shrink-0 ${className}`}
-    style={{ width: size, height: size }}
-  >
-    <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-amber-500/20 via-blue-500/20 to-purple-500/20 animate-pulse blur-sm" />
-    <svg
-      viewBox="0 0 120 120"
-      className="w-full h-full relative z-10 transition-transform duration-300 hover:scale-105 select-none"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <rect width="120" height="120" rx="30" fill="#1e1b4b" />
-      <circle cx="60" cy="55" r="23" fill="#fcd5b5" />
-      {/* Wild iconic white hair */}
-      <path d="M 32 40 C 26 26 42 16 60 16 C 78 16 94 26 88 40 C 96 46 95 62 86 68 C 88 56 86 44 80 40 C 76 26 44 26 40 40 C 34 44 32 56 34 68 C 25 62 24 46 32 40 Z" fill="#e2e8f0" />
-      {/* Clothes */}
-      <path d="M 28 120 C 28 94 40 86 52 84 L 68 84 C 80 86 92 94 92 120 Z" fill="#334155" />
-      {/* Mustache */}
-      <path d="M 47 64 Q 60 59 73 64 Q 60 70 47 64 Z" fill="#f1f5f9" />
-      {/* Eyes & Eyebrows */}
-      <ellipse cx="50" cy="48" rx="2" ry="2.5" fill="#0f172a" />
-      <ellipse cx="70" cy="48" rx="2" ry="2.5" fill="#0f172a" />
-      <path d="M 45 42 Q 51 39 56 42" stroke="#64748b" strokeWidth="2" strokeLinecap="round" />
-      <path d="M 64 42 Q 69 39 75 42" stroke="#64748b" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  </div>
-);
-
-// Character Avatar Switcher
-const AnimatedCelebrityAvatar: React.FC<{ twin: CelebrityTwin; size?: number; className?: string }> = ({
-  twin,
-  size = 64,
-  className = '',
-}) => {
-  if (twin.id === 'jobs' || twin.enName.toLowerCase().includes('jobs')) {
-    return <SteveJobsCharacter size={size} className={className} />;
-  }
-  if (twin.id === 'einstein' || twin.enName.toLowerCase().includes('einstein')) {
-    return <EinsteinCharacter size={size} className={className} />;
-  }
-  // Default Steve Jobs for tech/productivity flagship representation
-  return <SteveJobsCharacter size={size} className={className} />;
-};
-
-const CELEBRITY_DATABASE: Record<string, CelebrityTwin[]> = {
-  programming: [
-    {
-      id: 'jobs',
-      name: 'استیو جابز',
-      enName: 'Steve Jobs',
-      field: 'نوآوری تکنولوژی و دیزاین محصول',
-      era: 'بنیان‌گذار افسانه‌ای اپل',
-      headline: 'وسواس نسبت به بهترین نتیجه و زیبایی در جزئیات!',
-      commentary: 'تلاش امروزت ردپایی از وسواس استیو جابز را داشت؛ هیچ کاری را نیمه‌کاره رها نکردی و به کمتر از شاهکار رضایت ندادی.',
-      quote: '«تنها راه انجام کار بزرگ، عشق به کاری است که انجام می‌دهی.»',
-      powerWord: 'کمال‌گرایی سازنده',
-    },
-    {
-      id: 'einstein',
-      name: 'آلبرت اینشتین',
-      enName: 'Albert Einstein',
-      field: 'فیزیک نظری و کاوش کیهان',
-      era: 'نوبل فیزیک ۱۹۲۱',
-      headline: 'غرق در آزمایشگاه ذهنی و شکستن مرزهای ناشناخته!',
-      commentary: 'تمرکز امروز تو یادآور اینشتین در دوران تدوین نظریه نسبیت بود؛ سکوت، تمرکز عمیق و دستاوردهایی فراتر از حد انتظار.',
-      quote: '«من استعداد خاصی ندارم، فقط با کنجکاوی بسیار زیاد تسلیم نمی‌شوم.»',
-      powerWord: 'تفکر عمیق',
-    },
-  ],
-  general: [
-    {
-      id: 'jobs',
-      name: 'استیو جابز',
-      enName: 'Steve Jobs',
-      field: 'نوآوری تکنولوژی و دیزاین محصول',
-      era: 'بنیان‌گذار افسانه‌ای اپل',
-      headline: 'وسواس نسبت به بهترین نتیجه و زیبایی در جزئیات!',
-      commentary: 'تلاش امروزت ردپایی از وسواس استیو جابز را داشت؛ هیچ کاری را نیمه‌کاره رها نکردی و به کمتر از شاهکار رضایت ندادی.',
-      quote: '«تنها راه انجام کار بزرگ، عشق به کاری است که انجام می‌دهی.»',
-      powerWord: 'کمال‌گرایی سازنده',
-    },
-  ],
+const CELEBRITY_DATABASE: CelebrityTwin = {
+  id: 'jobs',
+  name: 'استیو جابز',
+  enName: 'Steve Jobs',
+  field: 'نوآوری تکنولوژی و دیزاین محصول',
+  era: 'بنیان‌گذار افسانه‌ای اپل',
+  headline: 'وسواس نسبت به بهترین نتیجه و زیبایی در جزئیات!',
+  commentary: 'تلاش امروزت ردپایی از وسواس استیو جابز را داشت؛ هیچ کاری را نیمه‌کاره رها نکردی و به کمتر از شاهکار رضایت ندادی.',
+  quote: '«تنها راه انجام کار بزرگ، عشق به کاری است که انجام می‌دهی.»',
+  powerWord: 'کمال‌گرایی سازنده',
 };
 
 export const ProgressNewspaperStoryModal: React.FC<ProgressNewspaperStoryModalProps> = ({
@@ -233,30 +159,9 @@ export const ProgressNewspaperStoryModal: React.FC<ProgressNewspaperStoryModalPr
   const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const totalFocusMins = completedTasks.reduce((acc, t) => acc + (t.focusMinutesSpent || t.durationMinutes || 0), 0);
 
-  // Determine user domain & Twin (Steve Jobs is the primary inspiring avatar)
-  const userJob = (currentUser?.jobTitle || '').toLowerCase();
-  const userSkills = (currentUser?.skills || []).map((s) => s.toLowerCase()).join(' ');
-  const combinedContext = `${userJob} ${userSkills}`;
+  const activeTwin = CELEBRITY_DATABASE;
 
-  let categoryKey = 'general';
-  if (
-    combinedContext.includes('برنامه') ||
-    combinedContext.includes('کد') ||
-    combinedContext.includes('توسعه') ||
-    combinedContext.includes('developer') ||
-    combinedContext.includes('software') ||
-    combinedContext.includes('design') ||
-    combinedContext.includes('طراح') ||
-    combinedContext.includes('مدیر')
-  ) {
-    categoryKey = 'programming';
-  }
-
-  const twinList = CELEBRITY_DATABASE[categoryKey] || CELEBRITY_DATABASE['general'];
-  // Active twin is Steve Jobs (clean, consistent and matches user request)
-  const activeTwin = twinList[0];
-
-  // Dynamic Progress message
+  // Dynamic Progress verdict
   const progressVerdict =
     percent === 100
       ? 'شاهکار کامل! تمامی تسک‌های روز با موفقیت انجام شدند 🏆'
@@ -292,37 +197,52 @@ export const ProgressNewspaperStoryModal: React.FC<ProgressNewspaperStoryModalPr
         } catch {}
       }
 
-      const baseWidth = 360;
-      const baseHeight = 640;
-      const targetWidth = 1080;
-      const scaleFactor = targetWidth / baseWidth; // 3.0 for sharp 1080x1920
-
+      // Native 1080x1920 capture:
       const canvas = await html2canvas(storyExportRef.current, {
-        scale: scaleFactor,
+        scale: 1,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#0f172a',
+        backgroundColor: '#090d16',
         logging: false,
         scrollX: 0,
         scrollY: 0,
-        width: baseWidth,
-        height: baseHeight,
-        windowWidth: baseWidth,
-        windowHeight: baseHeight,
+        width: 1080,
+        height: 1920,
+        windowWidth: 1080,
+        windowHeight: 1920,
         onclone: (clonedDoc) => {
           const el = clonedDoc.querySelector('[data-story-export="true"]') as HTMLElement;
           if (el) {
-            el.style.position = 'static';
+            // Isolate completely inside clonedDoc to prevent external flex/modal squeezing:
+            clonedDoc.body.innerHTML = '';
+            clonedDoc.body.style.margin = '0';
+            clonedDoc.body.style.padding = '0';
+            clonedDoc.body.style.width = '1080px';
+            clonedDoc.body.style.height = '1920px';
+            clonedDoc.body.style.overflow = 'hidden';
+            clonedDoc.body.style.backgroundColor = '#090d16';
+            clonedDoc.body.appendChild(el);
+
+            el.style.position = 'absolute';
+            el.style.left = '0';
+            el.style.top = '0';
+            el.style.width = '1080px';
+            el.style.height = '1920px';
+            el.style.maxWidth = '1080px';
+            el.style.minWidth = '1080px';
+            el.style.maxHeight = '1920px';
+            el.style.minHeight = '1920px';
+            el.style.boxSizing = 'border-box';
             el.style.opacity = '1';
             el.style.visibility = 'visible';
-            el.style.transform = 'none';
+            el.style.display = 'flex';
           }
         },
       });
 
       const dataUrl = canvas.toDataURL('image/png', 1.0);
       const link = document.createElement('a');
-      link.download = `bagtime-story-${currentUser?.username || 'progress'}-${targetDate}.png`;
+      link.download = `bagtime-progress-story-${targetDate}.png`;
       link.href = dataUrl;
       document.body.appendChild(link);
       link.click();
@@ -346,11 +266,11 @@ export const ProgressNewspaperStoryModal: React.FC<ProgressNewspaperStoryModalPr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md overflow-y-auto animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in"
       dir="rtl"
       onClick={onClose}
     >
-      {/* Main Minimal Modal Card */}
+      {/* 1. Main Minimal In-App Modal Card */}
       <div
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-[440px] bg-gradient-to-b from-stone-900 via-[#18181b] to-black text-white rounded-[36px] p-5 sm:p-6 shadow-2xl border border-white/10 space-y-4 relative animate-in zoom-in-95 my-auto overflow-hidden select-none"
@@ -450,8 +370,7 @@ export const ProgressNewspaperStoryModal: React.FC<ProgressNewspaperStoryModalPr
         {/* Celebrity Twin Feature Card with Animated Steve Jobs Character (NO APPLE EMOJI!) */}
         <div className="p-4 rounded-3xl bg-white/[0.05] border border-white/10 space-y-3 relative overflow-hidden">
           <div className="flex items-center gap-3.5">
-            {/* Animated Character Avatar */}
-            <AnimatedCelebrityAvatar twin={activeTwin} size={58} />
+            <SteveJobsCharacter size={58} />
 
             <div className="min-w-0 flex-1">
               <div className="text-[10px] font-bold text-amber-400/90 tracking-wide">
@@ -461,7 +380,7 @@ export const ProgressNewspaperStoryModal: React.FC<ProgressNewspaperStoryModalPr
                 {activeTwin.name}
               </h3>
               <p className="text-[11px] text-zinc-400 truncate">
-                {activeTwin.enName} • {activeTwin.era}
+                <span dir="ltr">{activeTwin.enName}</span> • {activeTwin.era}
               </p>
             </div>
           </div>
@@ -533,7 +452,7 @@ export const ProgressNewspaperStoryModal: React.FC<ProgressNewspaperStoryModalPr
                 onOpenDailyStory();
               }}
               className="py-2.5 px-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-              title="ثبت در ژورنال روزانه"
+              title="ثبت در ژورنall روزانه"
             >
               <Feather className="w-4 h-4 text-amber-400" />
               <span>داستان روز 📖</span>
@@ -542,122 +461,123 @@ export const ProgressNewspaperStoryModal: React.FC<ProgressNewspaperStoryModalPr
         </div>
       </div>
 
-      {/* OFF-SCREEN 9:16 INSTAGRAM STORY EXPORT CONTAINER (1080x1920 HD Ready) */}
+      {/* 2. DEDICATED NATIVE 1080x1920 HD INSTAGRAM STORY CONTAINER (Completely Isolated for Flawless Export) */}
       <div
         ref={storyExportRef}
         data-story-export="true"
         dir="rtl"
         style={{
           position: 'fixed',
-          left: -9999,
+          left: -99999,
           top: 0,
-          width: 360,
-          height: 640,
+          width: 1080,
+          height: 1920,
           pointerEvents: 'none',
           opacity: 1,
           visibility: 'visible',
+          boxSizing: 'border-box',
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
-        className="bg-gradient-to-b from-[#0b0f19] via-[#111827] to-[#090d16] text-white p-6 flex flex-col justify-between overflow-hidden relative select-none"
+        className="w-[1080px] h-[1920px] bg-gradient-to-b from-[#0b0f19] via-[#111827] to-[#080c14] text-white p-16 flex flex-col justify-between overflow-hidden relative select-none"
       >
-        {/* Ambient Glows for Story */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
+        {/* Ambient Lights */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-[140px] pointer-events-none" />
 
         {/* Top Story Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-white/10 relative z-10">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-mono text-[11px] font-black uppercase tracking-widest text-emerald-300">
+        <div className="flex items-center justify-between pb-8 border-b-2 border-white/10 relative z-10">
+          <div className="flex items-center gap-4">
+            <span className="w-5 h-5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-mono text-2xl font-black uppercase tracking-widest text-emerald-300">
               BAGTIME • DAILY STORY
             </span>
           </div>
-          <span className="text-[10px] text-zinc-400 font-mono">
+          <span className="text-xl text-zinc-400 font-sans font-bold">
             {formatAppDate(targetDate, calendarType, 'full')}
           </span>
         </div>
 
         {/* Main Content Body */}
-        <div className="space-y-4 my-auto relative z-10">
-          {/* Progress Verdict Badge */}
-          <div className="text-center space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[11px] font-black text-emerald-300">
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+        <div className="space-y-10 my-auto relative z-10">
+          {/* Progress Verdict Badge & User Title */}
+          <div className="text-center space-y-4">
+            <div className="inline-flex items-center gap-3 px-8 py-3 rounded-full bg-emerald-500/20 border-2 border-emerald-500/40 text-xl font-black text-emerald-300">
+              <TrendingUp className="w-6 h-6 text-emerald-400" />
               <span>{progressVerdict}</span>
             </div>
 
-            <h1 className="text-xl font-black text-white">
-              کارنامه پیشرفت {currentUser?.name || 'قهرمان امروز'}
+            <h1 className="text-5xl font-black text-white leading-tight">
+              کارنامه پیشرفت <span className="text-emerald-400">{currentUser?.name || 'قهرمان امروز'}</span>
             </h1>
-            <p className="text-[11px] text-zinc-400">
+            <p className="text-2xl text-zinc-400 font-medium">
               «{activeTwin.headline}»
             </p>
           </div>
 
           {/* Steve Jobs Animated Character Card */}
-          <div className="p-3.5 rounded-2xl bg-white/[0.06] border border-white/15 space-y-2.5 shadow-xl">
-            <div className="flex items-center gap-3">
-              <SteveJobsCharacter size={56} />
-              <div>
-                <div className="text-[9px] font-black text-amber-400 uppercase">
-                  همتای افتخار امروز:
+          <div className="p-10 rounded-[36px] bg-white/[0.06] border-2 border-white/15 space-y-6 shadow-2xl">
+            <div className="flex items-center gap-6">
+              <SteveJobsCharacter size={140} />
+              <div className="space-y-1">
+                <div className="text-lg font-black text-amber-400 uppercase tracking-wide">
+                  همتای افتخار امروز شما:
                 </div>
-                <div className="text-sm font-black text-white">
+                <div className="text-4xl font-black text-white">
                   {activeTwin.name}
                 </div>
-                <div className="text-[10px] text-zinc-400">
-                  {activeTwin.enName} • {activeTwin.era}
+                <div className="text-2xl text-zinc-400 font-sans">
+                  <span dir="ltr">{activeTwin.enName}</span> • {activeTwin.era}
                 </div>
               </div>
             </div>
 
-            <p className="text-[11px] text-zinc-300 leading-relaxed font-medium">
+            <p className="text-2xl text-zinc-200 leading-relaxed font-medium">
               {activeTwin.commentary}
             </p>
 
-            <div className="p-2 rounded-xl bg-white/[0.05] border border-white/10 text-[10px] text-amber-200 italic flex items-center gap-1.5">
-              <Quote className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <div className="p-6 rounded-2xl bg-white/[0.05] border border-white/10 text-2xl text-amber-200 italic flex items-center gap-4">
+              <Quote className="w-8 h-8 text-amber-400 shrink-0" />
               <span>{activeTwin.quote}</span>
             </div>
           </div>
 
           {/* Productivity Stats Grid */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="p-2.5 rounded-2xl bg-white/[0.06] border border-white/15 text-center space-y-0.5">
-              <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-3.5 h-3.5" />
+          <div className="grid grid-cols-3 gap-6">
+            <div className="p-8 rounded-[32px] bg-white/[0.06] border-2 border-white/15 text-center space-y-2">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-2">
+                <CheckCircle2 className="w-8 h-8" />
               </div>
-              <div className="text-base font-black text-white font-mono">
+              <div className="text-6xl font-black text-white font-mono">
                 {toPersianDigits(percent)}٪
               </div>
-              <div className="text-[9px] text-zinc-400">
+              <div className="text-xl text-zinc-400 font-bold">
                 {toPersianDigits(completedCount)} از {toPersianDigits(totalCount)} تسک
               </div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-white/[0.06] border border-white/15 text-center space-y-0.5">
-              <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
-                <Clock className="w-3.5 h-3.5" />
+            <div className="p-8 rounded-[32px] bg-white/[0.06] border-2 border-white/15 text-center space-y-2">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-2">
+                <Clock className="w-8 h-8" />
               </div>
-              <div className="text-base font-black text-white font-mono">
+              <div className="text-6xl font-black text-white font-mono">
                 {toPersianDigits(totalFocusMins)}
               </div>
-              <div className="text-[9px] text-zinc-400">دقیقه تمرکز</div>
+              <div className="text-xl text-zinc-400 font-bold">دقیقه تمرکز عمیق</div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-white/[0.06] border border-white/15 text-center space-y-0.5">
-              <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
-                <Flame className="w-3.5 h-3.5 fill-amber-400/60" />
+            <div className="p-8 rounded-[32px] bg-white/[0.06] border-2 border-white/15 text-center space-y-2">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-2">
+                <Flame className="w-8 h-8 fill-amber-400/60" />
               </div>
-              <div className="text-base font-black text-white font-mono">
-                {toPersianDigits(streak.currentStreak)} روز
+              <div className="text-6xl font-black text-white font-mono">
+                {toPersianDigits(streak.currentStreak)}
               </div>
-              <div className="text-[9px] text-zinc-400">استمرار متوالی</div>
+              <div className="text-xl text-zinc-400 font-bold">روز استمرار مداوم</div>
             </div>
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+          <div className="w-full bg-white/10 h-4 rounded-full overflow-hidden">
             <div
               className="bg-gradient-to-r from-emerald-500 via-teal-400 to-indigo-500 h-full rounded-full"
               style={{ width: `${Math.max(percent, 5)}%` }}
@@ -666,30 +586,32 @@ export const ProgressNewspaperStoryModal: React.FC<ProgressNewspaperStoryModalPr
 
           {/* Completed Tasks Showcase */}
           {completedTasks.length > 0 && (
-            <div className="space-y-1">
-              <div className="text-[9px] font-bold text-zinc-400 flex items-center gap-1">
-                <Check className="w-3 h-3 text-emerald-400" />
-                <span>دستاوردها و تسک‌های فتح‌شده:</span>
+            <div className="space-y-3">
+              <div className="text-xl font-bold text-zinc-400 flex items-center gap-2">
+                <Check className="w-6 h-6 text-emerald-400 stroke-[3]" />
+                <span>بخشی از تسک‌های فتح‌شده امروز:</span>
               </div>
-              {completedTasks.slice(0, 2).map((t) => (
-                <div
-                  key={t.id}
-                  className="p-1.5 px-2 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-[10px] text-zinc-200 flex items-center gap-1.5"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                  <span className="truncate font-medium">{t.title}</span>
-                </div>
-              ))}
+              <div className="space-y-2">
+                {completedTasks.slice(0, 3).map((t) => (
+                  <div
+                    key={t.id}
+                    className="p-4 px-6 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-xl text-zinc-100 flex items-center gap-3"
+                  >
+                    <span className="w-3 h-3 rounded-full bg-emerald-400 shrink-0" />
+                    <span className="truncate font-bold">{t.title}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
 
         {/* Minimal Footer Brand */}
-        <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[10px] text-zinc-500 relative z-10">
-          <div className="font-bold text-zinc-400">
+        <div className="pt-8 border-t-2 border-white/10 flex items-center justify-between text-2xl text-zinc-400 relative z-10">
+          <div className="font-bold">
             طراحی شده با سامانه مدیریت زمان بَگ‌تایم
           </div>
-          <div className="font-mono text-emerald-400 font-bold">
+          <div className="font-mono text-emerald-400 font-black text-3xl">
             bagtime.negahm.ir
           </div>
         </div>

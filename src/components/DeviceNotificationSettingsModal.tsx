@@ -8,12 +8,16 @@ import {
   X,
   Volume2,
   Check,
+  ShieldAlert,
+  ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 import {
   getNotificationSettings,
   saveNotificationSettings,
   requestNotificationPermission,
   getNotificationPermission,
+  isSecureContextForNotifications,
   sendDeviceNotification,
   type NotificationSettings,
 } from '../utils/webNotifications';
@@ -27,39 +31,93 @@ interface Props {
 export const DeviceNotificationSettingsModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const [settings, setSettings] = useState<NotificationSettings>(getNotificationSettings);
   const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [isSecure, setIsSecure] = useState(true);
   const [testSent, setTestSent] = useState(false);
+  const [isRequesting, setIsRequesting] = useState(false);
+
+  const checkPermissionState = () => {
+    setPermission(getNotificationPermission());
+    setIsSecure(isSecureContextForNotifications());
+  };
 
   useEffect(() => {
     if (isOpen) {
       setSettings(getNotificationSettings());
-      setPermission(getNotificationPermission());
+      checkPermissionState();
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleRequestPermission = async () => {
+    if (!isSecureContextForNotifications()) {
+      alert(
+        'مرورگرها به دلایل امنیتی فقط در آدرس دارای HTTPS اجازه فعال‌سازی نوتیفیکیشن را می‌دهند.\n\nلطفاً سایت را با https://bagtime.negahm.ir باز کنید.'
+      );
+      return;
+    }
+
     sounds.playPop();
-    const granted = await requestNotificationPermission();
-    setPermission(getNotificationPermission());
-    if (granted) {
-      sounds.playComplete();
-      sendDeviceNotification('تبریک! نوتیفیکیشن‌های بگ‌تایم فعال شدند 🎉', {
-        body: 'اکنون یادآورهای صبح، ظهر، شب و ۱۵ دقیقه قبل از تسک‌ها را دریافت خواهید کرد.',
-      });
+    setIsRequesting(true);
+
+    try {
+      const res = await requestNotificationPermission();
+      setPermission(res.permission);
+
+      if (res.granted) {
+        sounds.playComplete();
+        sendDeviceNotification('تبریک! نوتیفیکیشن‌های بگ‌تایم فعال شدند 🎉', {
+          body: 'اکنون یادآورهای روزانه و اعلان‌های ۱۵ دقیقه قبل از تسک‌ها را دریافت خواهید کرد.',
+        });
+      } else if (res.reason === 'insecure_http') {
+        alert(
+          'مرورگر شما به دلایل امنیتی فقط در پروتکل امن HTTPS اجازه نمایش کادر درخواست نوتیفیکیشن را می‌دهد.\n\nلطفاً با آدرس https://bagtime.negahm.ir وارد شوید.'
+        );
+      } else if (res.permission === 'denied') {
+        alert(
+          'دسترسی نوتیفیکیشن در مرورگر مسدود (Block) شده است.\n\nبرای فعال‌سازی:\n۱. روی آیکون تنظیمات/قفل در کنار آدرس سایت در بالای مرورگر کلیک کنید.\n۲. گزینه Notifications را روی Allow قرار دهید.\n۳. صفحه را رفرش (Refresh) کنید.'
+        );
+      }
+    } finally {
+      setIsRequesting(false);
+      checkPermissionState();
     }
   };
 
-  const handleSendTestNotification = () => {
+  const handleSendTestNotification = async () => {
     sounds.playPop();
+
+    if (permission !== 'granted') {
+      if (!isSecureContextForNotifications()) {
+        alert('برای دریافت نوتیفیکیشن باید از آدرس دارای HTTPS استفاده کنید.');
+        return;
+      }
+      if (permission === 'denied') {
+        alert(
+          'دسترسی نوتیفیکیشن در مرورگر مسدود شده است. لطفاً از طریق علامت قفل/تنظیمات کنار آدرس در نوار بالای مرورگر، Notifications را روی Allow بگذارید.'
+        );
+        return;
+      }
+      // If default, trigger permission request directly
+      await handleRequestPermission();
+      return;
+    }
+
     const success = sendDeviceNotification('تست نوتیفیکیشن بگ‌تایم 🔔', {
       body: 'این یک پیام آزمایشی برای اطمینان از دریافت نوتیفیکیشن‌ها در گوشی یا مرورگر شماست.',
     });
+
     if (success) {
       setTestSent(true);
       setTimeout(() => setTestSent(false), 3000);
     } else {
-      alert('لطفاً ابتدا با دکمه بالا، دسترسی نوتیفیکیشن را در مرورگر مجاز (Allow) کنید.');
+      alert('خطا در ارسال نوتیفیکیشن آزمایشی. لطفاً دسترسی مرورگر را بررسی کنید.');
+    }
+  };
+
+  const handleSwitchToHttps = () => {
+    if (typeof window !== 'undefined') {
+      window.location.href = `https://${window.location.host}${window.location.pathname}${window.location.search}`;
     }
   };
 
@@ -107,43 +165,93 @@ export const DeviceNotificationSettingsModal: React.FC<Props> = ({ isOpen, onClo
           </button>
         </div>
 
+        {/* Insecure HTTP Warning Banner (if user opened over HTTP) */}
+        {!isSecure && (
+          <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs space-y-2">
+            <div className="flex items-center gap-2 font-black">
+              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>نیاز به اتصال امن HTTPS در مرورگر</span>
+            </div>
+            <p className="text-[11px] leading-relaxed opacity-90">
+              مرورگر کروم و فایرفاکس به دلایل امنیتی فقط در پروتکل امن <strong>HTTPS</strong> اجازه نمایش کادر درخواست نوتیفیکیشن را صادر می‌کنند.
+            </p>
+            <button
+              type="button"
+              onClick={handleSwitchToHttps}
+              className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
+            >
+              <span>انتقال به آدرس امن HTTPS</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Permission Status Box */}
         <div
-          className={`p-4 rounded-2xl border flex items-center justify-between gap-3 ${
+          className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
             permission === 'granted'
               ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300'
+              : permission === 'denied'
+              ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-300'
               : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300'
           }`}
         >
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-start gap-2.5">
             {permission === 'granted' ? (
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             ) : (
-              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+              <AlertCircle
+                className={`w-5 h-5 shrink-0 mt-0.5 ${
+                  permission === 'denied' ? 'text-rose-600' : 'text-amber-600'
+                }`}
+              />
             )}
             <div>
               <div className="text-xs font-black">
                 {permission === 'granted'
                   ? 'مجوز نوتیفیکیشن در مرورگر فعال است ✓'
+                  : permission === 'denied'
+                  ? 'دسترسی نوتیفیکیشن در مرورگر مسدود (Block) شده است'
                   : 'دسترسی نوتیفیکیشن هنوز تأیید نشده است'}
               </div>
-              <p className="text-[11px] opacity-80 mt-0.5">
+              <p className="text-[11px] opacity-85 mt-0.5 leading-relaxed">
                 {permission === 'granted'
                   ? 'سیستم به صورت خودکار پیام‌ها را ارسال خواهد کرد.'
-                  : 'برای دریافت اعلان روی گوشی یا لپ‌تاپ، دکمه مقابل را بزنید و در اعلان مرورگر Allow را انتخاب کنید.'}
+                  : permission === 'denied'
+                  ? 'برای فعال‌سازی: روی آیکون قفل/تنظیمات کنار آدرس سایت در نوار بالا کلیک کرده و گزینه Notifications را روی Allow قرار دهید.'
+                  : 'برای دریافت اعلان روی گوشی یا لپ‌تاپ، دکمه مقابل را بزنید و در کادر مرورگر دکمه Allow را انتخاب کنید.'}
               </p>
             </div>
           </div>
 
-          {permission !== 'granted' && (
-            <button
-              type="button"
-              onClick={handleRequestPermission}
-              className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shrink-0 transition-all cursor-pointer shadow-xs"
-            >
-              فعال‌سازی دسترسی
-            </button>
-          )}
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            {permission === 'denied' && (
+              <button
+                type="button"
+                onClick={checkPermissionState}
+                className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                title="بررسی مجدد مجوز"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>بررسی مجدد</span>
+              </button>
+            )}
+
+            {permission !== 'granted' && (
+              <button
+                type="button"
+                onClick={handleRequestPermission}
+                disabled={isRequesting}
+                className={`px-3.5 py-2 rounded-xl text-white text-xs font-black transition-all cursor-pointer shadow-xs ${
+                  permission === 'denied'
+                    ? 'bg-rose-600 hover:bg-rose-700'
+                    : 'bg-amber-600 hover:bg-amber-700'
+                }`}
+              >
+                {isRequesting ? 'در حال بررسی...' : 'فعال‌سازی دسترسی'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 3 Times in Day Setup */}
