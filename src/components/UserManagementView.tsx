@@ -322,7 +322,7 @@ export const UserManagementView: React.FC = () => {
   const initialSponsored = globalSettings?.extensionSponsoredSite || {
     enabled: true,
     title: 'سامانه ابری بگ تایم',
-    url: 'https://bagtime.ir',
+    url: 'https://bagtime.negahm.ir',
     icon: '⭐',
     badge: 'اسپانسر',
   };

@@ -1,7 +1,7 @@
 <?php
 /**
  * TaskRooz - Server Health & Diagnostics (MySQL + Server Info)
- * Access at: https://bagtime.ir/api/health.php
+ * Access at: https://bagtime.negahm.ir/api/health.php
  */
 require_once __DIR__ . '/config.php';
 

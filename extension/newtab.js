@@ -1,7 +1,7 @@
 /**
  * Bag Time Assistant Extension - New Tab Engine
  * 100% Offline-capable, Multi-Search-Engine, Dynamic Persian Font Inheritance,
- * Dual-Server Automatic Failover (task.mohusyn.ir & bagtime.negahm.ir),
+ * Dual-Server Automatic Failover (bagtime.negahm.ir & bagtime.negahm.ir),
  * Bale 1-Click Login, Sponsored Shortcuts, Time-based Tasks, Quick Notes,
  * and Jalali Calendar.
  */
@@ -177,13 +177,12 @@ function getAppDateString() {
   return calendarType === 'gregorian' ? getGregorianDateString() : getJalaliDateString();
 }
 
-// ── Official Dual Servers & Automated Best Server Detection ──
+// ── Official Servers ──
 const BAGTIME_SERVERS = [
-  'https://task.mohusyn.ir',
   'https://bagtime.negahm.ir'
 ];
 
-let activeServerUrl = 'https://task.mohusyn.ir';
+let activeServerUrl = 'https://bagtime.negahm.ir';
 
 async function initServerManager() {
   const saved = await Storage.get('active_server', null);
@@ -1360,7 +1359,7 @@ async function init() {
 
   if (choiceSrv1) {
     choiceSrv1.addEventListener('click', async () => {
-      activeServerUrl = 'https://task.mohusyn.ir';
+      activeServerUrl = 'https://bagtime.negahm.ir';
       await Storage.set('active_server', activeServerUrl);
       updateServerUI();
       if (serverPickerMenu) serverPickerMenu.style.display = 'none';

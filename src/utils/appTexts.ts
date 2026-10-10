@@ -118,7 +118,7 @@ export const APP_TEXTS: AppTextDef[] = [
   {
     key: 'footerCredits',
     label: 'متن پایین سایدبار (امضا)',
-    default: 'bagtime.ir • ۲۰۲۶',
+    default: 'bagtime.negahm.ir • ۲۰۲۶',
     section: 'system',
   },
   {

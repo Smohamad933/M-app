@@ -13,6 +13,7 @@
       document.title.includes('TaskRooz') ||
       Boolean(localStorage.getItem('taskrooz_token')) ||
       Boolean(localStorage.getItem('bagtime_token')) ||
+      window.location.hostname.includes('bagtime.negahm.ir') ||
       window.location.hostname.includes('mohusyn.ir') ||
       window.location.hostname.includes('negahm.ir') ||
       window.location.hostname.includes('localhost') ||

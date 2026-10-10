@@ -52,7 +52,7 @@ export const BaleBroadcastManager: React.FC<BaleBroadcastManagerProps> = ({
       id: 'btn_1',
       text: '🌐 ورود به سایت بگ‌تایم',
       type: 'url',
-      value: typeof window !== 'undefined' ? window.location.origin : 'https://bagtime.ir',
+      value: typeof window !== 'undefined' ? window.location.origin : 'https://bagtime.negahm.ir',
     },
     {
       id: 'btn_2',
@@ -80,7 +80,7 @@ export const BaleBroadcastManager: React.FC<BaleBroadcastManagerProps> = ({
       id: `btn_${Date.now()}`,
       text: 'دکمه جدید',
       type: 'url',
-      value: 'https://bagtime.ir',
+      value: 'https://bagtime.negahm.ir',
     };
     setButtons([...buttons, newBtn]);
   };
@@ -108,7 +108,7 @@ export const BaleBroadcastManager: React.FC<BaleBroadcastManagerProps> = ({
           id: 'btn_up_1',
           text: '⚡ ورود و تجربه امکانات جدید',
           type: 'url',
-          value: typeof window !== 'undefined' ? window.location.origin : 'https://bagtime.ir',
+          value: typeof window !== 'undefined' ? window.location.origin : 'https://bagtime.negahm.ir',
         },
         {
           id: 'btn_up_2',
@@ -144,7 +144,7 @@ export const BaleBroadcastManager: React.FC<BaleBroadcastManagerProps> = ({
           id: 'btn_pro_1',
           text: '⭐ ارتقاء اشتراک ویژه Pro',
           type: 'url',
-          value: (typeof window !== 'undefined' ? window.location.origin : 'https://bagtime.ir') + '?modal=upgrade',
+          value: (typeof window !== 'undefined' ? window.location.origin : 'https://bagtime.negahm.ir') + '?modal=upgrade',
         },
         {
           id: 'btn_pro_2',
@@ -162,7 +162,7 @@ export const BaleBroadcastManager: React.FC<BaleBroadcastManagerProps> = ({
           id: 'btn_wlc_1',
           text: '🌐 ورود به پنل کاربری',
           type: 'url',
-          value: typeof window !== 'undefined' ? window.location.origin : 'https://bagtime.ir',
+          value: typeof window !== 'undefined' ? window.location.origin : 'https://bagtime.negahm.ir',
         },
       ]);
     }
@@ -449,7 +449,7 @@ export const BaleBroadcastManager: React.FC<BaleBroadcastManagerProps> = ({
                     handleAddPresetButton({
                       text: '🌐 ورود به بگ تایم',
                       type: 'url',
-                      value: typeof window !== 'undefined' ? window.location.origin : 'https://bagtime.ir',
+                      value: typeof window !== 'undefined' ? window.location.origin : 'https://bagtime.negahm.ir',
                     })
                   }
                   className="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold transition-colors cursor-pointer"
@@ -553,7 +553,7 @@ export const BaleBroadcastManager: React.FC<BaleBroadcastManagerProps> = ({
                             type: e.target.value as 'url' | 'callback',
                             value:
                               e.target.value === 'url'
-                                ? 'https://bagtime.ir'
+                                ? 'https://bagtime.negahm.ir'
                                 : 'my_tasks',
                           })
                         }

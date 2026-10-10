@@ -1184,7 +1184,7 @@ export const InstagramSlidesStudio: React.FC<{ onBack?: () => void }> = ({ onBac
 
     return (
       <div className="rounded-2xl border border-slate-700/80 overflow-hidden shadow-2xl bg-slate-950 my-1">
-        {windowHeader('بَگ‌تایم • BagTime', 'bagtime.ir')}
+        {windowHeader('بَگ‌تایم • BagTime', 'bagtime.negahm.ir')}
         {innerContent}
       </div>
     );
