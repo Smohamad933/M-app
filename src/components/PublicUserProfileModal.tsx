@@ -23,7 +23,6 @@ import {
   Edit3,
   CheckSquare,
   TrendingUp,
-  RefreshCw,
   MapPin,
 } from 'lucide-react';
 
@@ -53,7 +52,7 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
 
   // User's strictly isolated tasks state
   const [userTasks, setUserTasks] = useState<Task[]>([]);
-  const [isLoadingTasks, setIsLoadingTasks] = useState(true);
+  const [, setIsLoadingTasks] = useState(true);
 
   useEffect(() => {
     if (!user) return;
@@ -333,76 +332,6 @@ export const PublicUserProfileModal: React.FC<PublicUserProfileModalProps> = ({
                 {toPersianDigits(progressPercent)}٪
               </div>
             </div>
-          </div>
-
-          {/* Completed Tasks & Progress Section */}
-          <div className="p-3.5 sm:p-4 rounded-3xl bg-slate-900/80 border border-slate-800/90 space-y-3 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckSquare className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-bold text-white">تسک‌های تکمیل‌شده کاربر</span>
-              </div>
-              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono font-bold border border-slate-700/70">
-                {toPersianDigits(completedTasksCount)} از {toPersianDigits(totalTasksCount)} ({toPersianDigits(progressPercent)}٪)
-              </span>
-            </div>
-
-            {/* Progress bar */}
-            <div className="w-full bg-slate-800/90 h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-
-            {/* Only Completed Tasks List */}
-            {isLoadingTasks ? (
-              <div className="py-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-                <span>در حال فراخوانی تسک‌ها...</span>
-              </div>
-            ) : completedTasks.length === 0 ? (
-              <div className="py-4 text-center text-xs text-slate-500 font-medium">
-                هنوز تسک تکمیل‌شده‌ای برای نمایش وجود ندارد.
-              </div>
-            ) : (
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 no-scrollbar">
-                {completedTasks.map((t) => (
-                  <div
-                    key={t.id}
-                    className="p-2.5 rounded-2xl border text-xs flex items-center justify-between gap-2.5 transition-all bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50 text-slate-200"
-                  >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <span className="w-5 h-5 rounded-lg flex items-center justify-center shrink-0 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      </span>
-                      <span className="truncate font-medium text-slate-200">
-                        {t.title}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {t.time && (
-                        <span className="text-[10px] text-slate-400 font-mono dir-ltr">
-                          {t.time}
-                        </span>
-                      )}
-                      <span
-                        className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${
-                          t.priority === 'high'
-                            ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                            : t.priority === 'medium'
-                            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                            : 'bg-slate-700/50 text-slate-300 border border-slate-600/40'
-                        }`}
-                      >
-                        {t.priority === 'high' ? 'مهم' : t.priority === 'medium' ? 'متوسط' : 'عادی'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Details Box (Phone, Bio, Username, Location) */}
