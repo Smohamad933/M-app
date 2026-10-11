@@ -1023,17 +1023,17 @@ export const UserManagementView: React.FC = () => {
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-300">
       {/* Top Header matching mohusyn.ir */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-900/80 p-5 rounded-3xl border border-zinc-800 backdrop-blur-md shadow-lg">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-900/90 p-5 rounded-3xl border border-zinc-800/90 backdrop-blur-md shadow-xl">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300 shadow-inner">
-            <ShieldCheck className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-300 shadow-inner">
+            <ShieldCheck className="w-6 h-6 text-purple-400" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base sm:text-lg font-black text-white">
                 پنل مدیریت و فرماندهی سیستم (Mohusyn)
               </h2>
-              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold">
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold">
                 Super Admin
               </span>
             </div>
@@ -1047,16 +1047,16 @@ export const UserManagementView: React.FC = () => {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleRefresh}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/60 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700/80 text-zinc-200 border border-zinc-700/50 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
             title="به‌روزرسانی بلادرنگ فهرست کاربران"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-indigo-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-indigo-400' : 'text-zinc-400'}`} />
             <span>به‌روزرسانی</span>
           </button>
 
           <button
             onClick={handleSyncMySQL}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/60 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700/80 text-zinc-200 border border-zinc-700/50 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
             title="همگام‌سازی و ثبت تمامی کاربران در MySQL"
           >
             <Database className={`w-3.5 h-3.5 text-cyan-400 ${isSyncingMySQL ? 'animate-spin' : ''}`} />
@@ -1065,7 +1065,7 @@ export const UserManagementView: React.FC = () => {
 
           <button
             onClick={handlePurgeTests}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/25 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
             title="حذف فوری تمامی اکانت‌ها و تسک‌های آزمایشی ایجاد شده"
           >
             <Trash2 className={`w-3.5 h-3.5 text-rose-400 ${isPurgingTests ? 'animate-spin' : ''}`} />
@@ -1074,7 +1074,7 @@ export const UserManagementView: React.FC = () => {
 
           <button
             onClick={() => exportUsersCsv()}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700/80 text-zinc-200 border border-zinc-700/50 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
             title="خروجی فایل اکسل با انکودینگ UTF-8 BOM"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
@@ -1091,29 +1091,29 @@ export const UserManagementView: React.FC = () => {
         </div>
       </div>
 
-      {/* Admin Panel Tabs */}
-      <div className="flex items-center p-1.5 bg-zinc-950/80 rounded-2xl border border-zinc-800/80 max-w-2xl flex-wrap gap-1">
+      {/* Admin Panel Tabs - Modern, Unified, Crisp Segmented Bar */}
+      <div className="flex items-center p-1.5 bg-zinc-900/80 rounded-2xl border border-zinc-800/80 w-full overflow-x-auto no-scrollbar gap-1.5">
         <button
           onClick={() => setAdminTab('users')}
-          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`flex-shrink-0 py-2 px-3.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'users'
-              ? 'bg-zinc-800 text-white shadow-xs'
-              : 'text-zinc-400 hover:text-white'
+              ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/70 font-black'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800/40'
           }`}
         >
-          <Users className="w-3.5 h-3.5" />
+          <Users className="w-3.5 h-3.5 text-emerald-400" />
           <span>پایش و فهرست اعضا ({toPersianDigits(users.length)})</span>
         </button>
 
         <button
           onClick={() => setAdminTab('payments')}
-          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`flex-shrink-0 py-2 px-3.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'payments'
-              ? 'bg-amber-500 text-black shadow-xs font-black'
-              : 'text-zinc-400 hover:text-white'
+              ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/70 font-black'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800/40'
           }`}
         >
-          <CreditCard className="w-3.5 h-3.5" />
+          <CreditCard className="w-3.5 h-3.5 text-amber-400" />
           <span>مدیریت تراکنش‌ها و واریزی‌ها</span>
           {pendingPaymentsCount > 0 && (
             <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-black animate-pulse">
@@ -1124,70 +1124,70 @@ export const UserManagementView: React.FC = () => {
 
         <button
           onClick={() => setAdminTab('settings')}
-          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`flex-shrink-0 py-2 px-3.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'settings'
-              ? 'bg-purple-600 text-white shadow-xs'
-              : 'text-zinc-400 hover:text-white'
+              ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/70 font-black'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800/40'
           }`}
         >
-          <Sliders className="w-3.5 h-3.5" />
+          <Sliders className="w-3.5 h-3.5 text-purple-400" />
           <span>تنظیمات سراسری سازمان</span>
         </button>
 
         <button
           onClick={() => setAdminTab('texts')}
-          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`flex-shrink-0 py-2 px-3.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'texts'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'text-zinc-400 hover:text-white'
+              ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/70 font-black'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800/40'
           }`}
         >
-          <Type className="w-3.5 h-3.5" />
+          <Type className="w-3.5 h-3.5 text-emerald-400" />
           <span>ویرایش متن‌های سامانه</span>
         </button>
 
         <button
           onClick={() => setAdminTab('developers')}
-          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`flex-shrink-0 py-2 px-3.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'developers'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-zinc-400 hover:text-white'
+              ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/70 font-black'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800/40'
           }`}
         >
-          <Code2 className="w-3.5 h-3.5" />
+          <Code2 className="w-3.5 h-3.5 text-blue-400" />
           <span>تیم توسعه‌دهنده آپ</span>
         </button>
 
         <button
           onClick={() => setAdminTab('bale')}
-          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`flex-shrink-0 py-2 px-3.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'bale'
-              ? 'bg-blue-600 text-white shadow-xs font-black'
-              : 'text-zinc-400 hover:text-white'
+              ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/70 font-black'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800/40'
           }`}
         >
-          <Bot className="w-3.5 h-3.5 text-blue-400" />
+          <Bot className="w-3.5 h-3.5 text-sky-400" />
           <span>ربات بله (Bale Bot)</span>
         </button>
 
         <button
           onClick={() => setAdminTab('site_notifs')}
-          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`flex-shrink-0 py-2 px-3.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'site_notifs'
-              ? 'bg-rose-600 text-white shadow-xs font-black'
-              : 'text-zinc-400 hover:text-white'
+              ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/70 font-black'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800/40'
           }`}
         >
-          <Bell className="w-3.5 h-3.5 text-rose-300" />
+          <Bell className="w-3.5 h-3.5 text-rose-400" />
           <span>ارسال اعلان وب‌سایت 🔔</span>
         </button>
 
         <button
           onClick={() => setAdminTab('extension')}
-          className={`flex-1 min-w-[120px] py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`flex-shrink-0 py-2 px-3.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             adminTab === 'extension'
-              ? 'bg-indigo-600 text-white shadow-xs font-black'
-              : 'text-zinc-400 hover:text-white'
+              ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/70 font-black'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800/40'
           }`}
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-300" />
@@ -3692,29 +3692,27 @@ export const UserManagementView: React.FC = () => {
       {adminTab === 'bale' && (
         <div className="space-y-6 animate-in fade-in">
           {/* Hero Banner */}
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-950/70 via-zinc-900 to-zinc-950 border border-blue-600/30 p-6 md:p-8 shadow-2xl">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative overflow-hidden rounded-3xl bg-zinc-900/90 border border-zinc-800 p-6 md:p-8 shadow-xl backdrop-blur-md">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
             <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="space-y-3 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 text-[11px] font-bold">
-                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+              <div className="space-y-2.5 max-w-2xl">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[11px] font-bold">
+                  <span className="w-2 h-2 rounded-full bg-blue-400" />
                   اتصال رسمی پیام‌رسان بله (Bale Bot Platform • docs.bale.ai)
                 </div>
                 <h3 className="text-xl md:text-2xl font-black text-white leading-tight">
                   مدیریت و پیکربندی ربات بله (BagTime Bale Bot)
                 </h3>
-                <p className="text-xs md:text-sm text-zinc-300 leading-relaxed">
+                <p className="text-xs md:text-sm text-zinc-400 leading-relaxed">
                   با تنظیم توکن ربات بله، امکان تایید هویت شماره موبایل در ثبت‌نام، ارسال بلادرنگ نوتیفیکیشن‌ها، و ایجاد وظایف و تسک‌ها مستقیماً از طریق پیام‌رسان بله برای کاربران فعال می‌شود.
                 </p>
               </div>
 
               <div className="flex-shrink-0 flex items-center justify-center">
-                <div className="w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 p-1 shadow-2xl shadow-blue-500/20 flex items-center justify-center">
-                  <div className="w-full h-full bg-zinc-950 rounded-[22px] flex flex-col items-center justify-center p-2 text-center">
-                    <Bot className="w-9 h-9 text-blue-400 mb-1" />
-                    <span className="text-[10px] font-black text-white">ربات بله</span>
-                    <span className="text-[8px] text-zinc-400 font-mono">v1.2</span>
-                  </div>
+                <div className="w-20 h-20 md:w-22 md:h-22 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 flex flex-col items-center justify-center p-2 text-center shadow-md">
+                  <Bot className="w-8 h-8 text-blue-400 mb-1" />
+                  <span className="text-[10px] font-black text-zinc-200">ربات بله</span>
+                  <span className="text-[8px] text-zinc-500 font-mono">v1.2</span>
                 </div>
               </div>
             </div>
