@@ -19,22 +19,6 @@
         "plan": "pro"
       },
       "isProfileCompleted": true
-    },
-    {
-      "id": "usr_1791633997089_5v0v",
-      "numericId": 1021,
-      "username": "bale_998877",
-      "name": "S.m.sh",
-      "password": "mu8zg03o",
-      "role": "user",
-      "status": "active",
-      "isVerified": true,
-      "baleChatId": 998877,
-      "createdAt": "2026-10-10T12:06:37.089Z",
-      "isProfileCompleted": true,
-      "subscription": {
-        "plan": "free"
-      }
     }
   ],
   "tasks": [],

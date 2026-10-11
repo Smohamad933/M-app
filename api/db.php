@@ -1046,9 +1046,9 @@ class TaskRoozDB {
                         $uUname = strtolower(trim((string)($u['username'] ?? '')));
                         $uId = strtolower(trim((string)($u['id'] ?? '')));
                         // Filter out test runner accounts
-                        if ($uUname !== 'mohusyn' && $uUname !== 'bale_998877' && $uId !== 'usr_admin_mohusyn' && $uId !== 'usr_1791633997089_5v0v') {
+                        if ($uUname !== 'mohusyn' && $uId !== 'usr_admin_mohusyn') {
                             $isTest = false;
-                            foreach (['test_', 'regular_user_', 'user_target_', 'live_member_', 'reza_test_', 'student_', 'noadmin_', 'bale_strict_', 'bob_colleague_', 'bob_dev_', 'sarah_chat_', 'priv_user_', 'viewer_', 'reg_designer_', 'm_rezaei_', 'alice_pm_', 'eve_outsider_'] as $pfx) {
+                            foreach (['test_', 'regular_user_', 'user_target_', 'live_member_', 'reza_test_', 'student_', 'noadmin_', 'bale_strict_', 'bob_colleague_', 'bob_dev_', 'sarah_chat_', 'priv_user_', 'viewer_', 'reg_designer_', 'm_rezaei_', 'alice_pm_', 'eve_outsider_', 'bale_998877'] as $pfx) {
                                 if (strpos($uUname, $pfx) === 0 || strpos($uId, $pfx) === 0) {
                                     $isTest = true;
                                     break;
@@ -1099,9 +1099,9 @@ class TaskRoozDB {
                 $uUname = strtolower(trim((string)($u['username'] ?? '')));
                 $uId = strtolower(trim((string)($u['id'] ?? '')));
                 // Filter out test runner accounts
-                if ($uUname !== 'mohusyn' && $uUname !== 'bale_998877' && $uId !== 'usr_admin_mohusyn' && $uId !== 'usr_1791633997089_5v0v') {
+                if ($uUname !== 'mohusyn' && $uId !== 'usr_admin_mohusyn') {
                     $isTest = false;
-                    foreach (['test_', 'regular_user_', 'user_target_', 'live_member_', 'reza_test_', 'student_', 'noadmin_', 'bale_strict_', 'bob_colleague_', 'bob_dev_', 'sarah_chat_', 'priv_user_', 'viewer_', 'reg_designer_', 'm_rezaei_', 'alice_pm_', 'eve_outsider_'] as $pfx) {
+                    foreach (['test_', 'regular_user_', 'user_target_', 'live_member_', 'reza_test_', 'student_', 'noadmin_', 'bale_strict_', 'bob_colleague_', 'bob_dev_', 'sarah_chat_', 'priv_user_', 'viewer_', 'reg_designer_', 'm_rezaei_', 'alice_pm_', 'eve_outsider_', 'bale_998877'] as $pfx) {
                         if (strpos($uUname, $pfx) === 0 || strpos($uId, $pfx) === 0) {
                             $isTest = true;
                             break;
@@ -1294,7 +1294,7 @@ class TaskRoozDB {
                     'test_%', 'regular_user_%', 'user_target_%', 'live_member_%',
                     'reza_test_%', 'student_%', 'noadmin_%', 'bale_strict_%',
                     'bob_colleague_%', 'bob_dev_%', 'sarah_chat_%', 'priv_user_%',
-                    'viewer_%', 'reg_designer_%', 'm_rezaei_%', 'alice_pm_%', 'eve_outsider_%'
+                    'viewer_%', 'reg_designer_%', 'm_rezaei_%', 'alice_pm_%', 'eve_outsider_%', 'bale_998877%'
                 ];
                 $whereClauses = [];
                 $params = [];
@@ -1304,7 +1304,7 @@ class TaskRoozDB {
                 }
                 $whereSql = implode(' OR ', $whereClauses);
                 
-                $stmt = $this->pdo->prepare("SELECT id FROM users WHERE LOWER(username) != 'mohusyn' AND username != 'bale_998877' AND ({$whereSql})");
+                $stmt = $this->pdo->prepare("SELECT id FROM users WHERE LOWER(username) != 'mohusyn' AND ({$whereSql} OR id LIKE 'usr_1791%')");
                 $stmt->execute($params);
                 $delIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
@@ -1326,8 +1326,8 @@ class TaskRoozDB {
 
         // 2. JSON purge
         $this->loadJson();
-        $realUsernames = ['mohusyn', 'bale_998877'];
-        $realUserIds = ['usr_admin_mohusyn', 'usr_1791633997089_5v0v'];
+        $realUsernames = ['mohusyn'];
+        $realUserIds = ['usr_admin_mohusyn'];
 
         if (isset($this->data['users']) && is_array($this->data['users'])) {
             $before = count($this->data['users']);
