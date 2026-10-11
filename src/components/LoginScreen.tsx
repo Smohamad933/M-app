@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
-import { api } from '../services/api';
-import { sounds } from '../utils/sound';
-import { IRAN_PROVINCES, POPULAR_JOBS, SUGGESTED_SKILLS } from '../utils/iranLocations';
-import { toPersianDigits } from '../utils/persianDate';
+import { TaskMasterHexagon } from './TaskMasterLogo';
+import { api, setAuthToken, getAuthToken } from '../services/api';
+import type { AppDeveloper } from '../types';
 import {
-  CheckSquare,
   Lock,
   User,
   ArrowLeft,
@@ -14,36 +12,212 @@ import {
   Timer,
   Phone,
   Mail,
-  MapPin,
-  Briefcase,
-  Calendar,
   Check,
-  Plus,
+  X,
+  Bot,
+  RefreshCw,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Sparkles,
 } from 'lucide-react';
 
-const PERSIAN_MONTHS = [
-  { val: '01', name: 'فروردین' },
-  { val: '02', name: 'اردیبهشت' },
-  { val: '03', name: 'خرداد' },
-  { val: '04', name: 'تیر' },
-  { val: '05', name: 'مرداد' },
-  { val: '06', name: 'شهریور' },
-  { val: '07', name: 'مهر' },
-  { val: '08', name: 'آبان' },
-  { val: '09', name: 'آذر' },
-  { val: '10', name: 'دی' },
-  { val: '11', name: 'بهمن' },
-  { val: '12', name: 'اسفند' },
-];
-
-const BIRTH_YEARS = Array.from({ length: 65 }, (_, i) => String(1395 - i));
-const BIRTH_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+import { BaleVerificationModal, type BaleVerificationInfo } from './BaleVerificationModal';
 
 export const LoginScreen: React.FC = () => {
-  const { login, register, globalSettings } = useTask();
+  const { login, register, globalSettings, getText, completeBaleVerification } = useTask();
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [registerStep, setRegisterStep] = useState<1 | 2>(1);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [selectedDevForModal, setSelectedDevForModal] = useState<AppDeveloper | null>(null);
+
+  // Bale Verification Modal State
+  const [baleVerificationData, setBaleVerificationData] = useState<BaleVerificationInfo | null>(null);
+
+  // Bale Automatic Login State
+  const [isStartingBaleLogin, setIsStartingBaleLogin] = useState(false);
+  const [baleLoginModalData, setBaleLoginModalData] = useState<{
+    ticket: string;
+    baleBotUsername: string;
+    baleBotLink: string;
+    expiresIn: number;
+  } | null>(null);
+  const [balePollingActive, setBalePollingActive] = useState(false);
+
+  // Bale Onboarding State (Set custom name, username, and password)
+  const [baleOnboardingData, setBaleOnboardingData] = useState<{
+    user: any;
+    token: string;
+  } | null>(null);
+  const [onboardingName, setOnboardingName] = useState('');
+  const [onboardingUsername, setOnboardingUsername] = useState('');
+  const [onboardingPassword, setOnboardingPassword] = useState('');
+  const [onboardingConfirmPassword, setOnboardingConfirmPassword] = useState('');
+  const [showOnboardingPassword, setShowOnboardingPassword] = useState(false);
+  const [isSubmittingOnboarding, setIsSubmittingOnboarding] = useState(false);
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
+  const [balePollingStep, setBalePollingStep] = useState<'pending' | 'waiting_contact'>('pending');
+
+  // Bale Auto-Login Polling Effect
+  useEffect(() => {
+    if (!balePollingActive || !baleLoginModalData?.ticket) return;
+
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.checkBaleLoginStatus(baleLoginModalData.ticket);
+        if (!isMounted) return;
+        if (res.status === 'waiting_contact') {
+          setBalePollingStep('waiting_contact');
+        } else if (res.status === 'approved' && res.token && res.user) {
+          clearInterval(interval);
+          setBalePollingActive(false);
+          setBaleLoginModalData(null);
+          setAuthToken(res.token);
+
+          // 1. Immediately complete authentication & persist session in localStorage!
+          completeBaleVerification(res.user, res.token);
+
+          const isPlaceholderUsername = (res.user.username || '').toLowerCase().startsWith('bale_');
+          if (res.isNewUser || isPlaceholderUsername) {
+            setBaleOnboardingData({
+              user: res.user,
+              token: res.token,
+            });
+            setOnboardingName(res.user.name || '');
+            setOnboardingUsername(isPlaceholderUsername ? '' : res.user.username);
+            setOnboardingPassword('');
+            setOnboardingConfirmPassword('');
+          }
+        }
+      } catch (e) {
+        // Continue polling
+      }
+    }, 1500);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [balePollingActive, baleLoginModalData, completeBaleVerification]);
+
+  const handleCompleteBaleOnboarding = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!baleOnboardingData) return;
+
+    if (!onboardingName.trim()) {
+      setOnboardingError('لطفاً نام و نام خانوادگی خود را وارد کنید.');
+      return;
+    }
+    const cleanUname = onboardingUsername.trim().toLowerCase();
+    if (!cleanUname || cleanUname.length < 3) {
+      setOnboardingError('نام کاربری باید حداقل ۳ کاراکتر انگلیسی باشد.');
+      return;
+    }
+    if (!/^[a-z0-9_]{3,30}$/.test(cleanUname)) {
+      setOnboardingError('نام کاربری فقط می‌تواند شامل حروف کوچک انگلیسی، عدد و زیرخط (_) باشد.');
+      return;
+    }
+    if (cleanUname === 'mohusyn') {
+      setOnboardingError('این نام کاربری رزرو شده است.');
+      return;
+    }
+    if (!onboardingPassword || onboardingPassword.length < 4) {
+      setOnboardingError('رمز عبور باید حداقل ۴ کاراکتر باشد.');
+      return;
+    }
+    if (onboardingPassword !== onboardingConfirmPassword) {
+      setOnboardingError('رمز عبور و تکرار آن یکسان نیستند.');
+      return;
+    }
+
+    setIsSubmittingOnboarding(true);
+    setOnboardingError(null);
+    try {
+      setAuthToken(baleOnboardingData.token);
+      let updatedUser: any = null;
+      try {
+        const res = await api.completeBaleOnboarding({
+          userId: baleOnboardingData.user.id,
+          token: baleOnboardingData.token,
+          name: onboardingName.trim(),
+          username: cleanUname,
+          password: onboardingPassword,
+          prevUsername: baleOnboardingData.user.username,
+        });
+        if (res && res.user) {
+          updatedUser = res.user;
+          if (res.token) setAuthToken(res.token);
+        }
+      } catch {
+        // Fallback to updateMyProfile
+        updatedUser = await api.updateMyProfile({
+          id: baleOnboardingData.user.id,
+          name: onboardingName.trim(),
+          username: cleanUname,
+          password: onboardingPassword,
+        });
+      }
+
+      if (!updatedUser) {
+        throw new Error('خطا در ثبت اطلاعات در سامانه.');
+      }
+
+      setBaleOnboardingData(null);
+      const activeToken = baleOnboardingData.token || getAuthToken() || '';
+      completeBaleVerification(updatedUser, activeToken);
+    } catch (err: any) {
+      setOnboardingError(err?.message || 'خطا در ثبت نام کاربری و رمز عبور');
+    } finally {
+      setIsSubmittingOnboarding(false);
+    }
+  };
+
+  const handleSkipBaleOnboarding = () => {
+    setBaleOnboardingData(null);
+  };
+
+  const handleStartAutoBaleLogin = async () => {
+    setIsStartingBaleLogin(true);
+    setError(null);
+    setBalePollingStep('pending');
+    try {
+      const res = await api.createBaleLoginTicket();
+      if (res && res.ticket) {
+        setBaleLoginModalData(res);
+        setBalePollingActive(true);
+        // Automatically open the Bale deep-link in a new tab/window
+        if (res.baleBotLink) {
+          window.open(res.baleBotLink, '_blank');
+        }
+      } else {
+        setError('خطا در برقراری ارتباط با سرویس ورود بله. لطفاً بررسی کنید ربات بله در سرور فعال باشد.');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'خطا در ایجاد نشست ورود با بله.');
+    } finally {
+      setIsStartingBaleLogin(false);
+    }
+  };
+
+  // App branding (custom logo & appName)
+  const appBranding = globalSettings?.appBranding;
+  const appName = (appBranding?.appName || '').trim() || 'بگ تایم';
+  const appLogo = typeof appBranding?.logoDataUrl === 'string' ? appBranding.logoDataUrl : null;
+
+  // App developers configured by admin
+  const appDevelopers = useMemo(() => {
+    if (globalSettings?.appDevelopers && globalSettings.appDevelopers.length > 0) {
+      return globalSettings.appDevelopers;
+    }
+    return [
+      {
+        id: 'dev_mohusyn',
+        name: 'Mohusyn',
+        role: 'توسعه‌دهنده ارشد و معمار سیستم',
+        avatarUrl: null,
+      },
+    ];
+  }, [globalSettings?.appDevelopers]);
 
   // Detect if user is joining via room invite link
   const inviteRoom = typeof window !== 'undefined' 
@@ -53,159 +227,99 @@ export const LoginScreen: React.FC = () => {
     : null;
 
   // Basic Auth fields
-  const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-
-  // Rich Profile fields
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [province, setProvince] = useState('تهران');
-  const [city, setCity] = useState('تهران');
-  
-  // Persian Birth Date Dropdown Selectors
-  const [birthYear, setBirthYear] = useState('1380');
-  const [birthMonth, setBirthMonth] = useState('01');
-  const [birthDay, setBirthDay] = useState('01');
-
-  // Dynamic job categories loaded from global settings or default
-  const jobCategories = (globalSettings?.jobCategories && globalSettings.jobCategories.length > 0)
-    ? globalSettings.jobCategories
-    : POPULAR_JOBS;
-
-  const [jobTitle, setJobTitle] = useState(jobCategories[0] || 'برنامه‌نویس و توسعه‌دهنده نرم‌افزار');
-  const [customJob, setCustomJob] = useState('');
-  const [selectedSkills, setSelectedSkills] = useState<string[]>(['مدیریت پروژه و تایم منیجمنت']);
-  const [customSkillInput, setCustomSkillInput] = useState('');
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Available cities for selected province
-  const currentCities = IRAN_PROVINCES.find((p) => p.name === province)?.cities || ['تهران'];
-
-  const handleProvinceChange = (newProvince: string) => {
-    setProvince(newProvince);
-    const cities = IRAN_PROVINCES.find((p) => p.name === newProvince)?.cities || [];
-    setCity(cities[0] || 'مرکز استان');
-  };
-
-  const toggleSkill = (skill: string) => {
-    if (selectedSkills.includes(skill)) {
-      setSelectedSkills(selectedSkills.filter((s) => s !== skill));
-    } else {
-      setSelectedSkills([...selectedSkills, skill]);
-    }
-  };
-
-  const addCustomSkill = () => {
-    if (customSkillInput.trim() && !selectedSkills.includes(customSkillInput.trim())) {
-      setSelectedSkills([...selectedSkills, customSkillInput.trim()]);
-      setCustomSkillInput('');
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    // If registering and still on step 1, advance to step 2 first
-    if (mode === 'register' && registerStep === 1) {
-      if (!name.trim() || !username.trim() || !password.trim()) {
-        setError('لطفاً نام، نام کاربری و کلمه عبور را تکمیل کنید.');
-        return;
-      }
-      if (!phone.trim()) {
-        setError('شماره تماس (موبایل) الزامی است.');
-        return;
-      }
-      const cleanPhone = phone.trim().replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString());
-      if (!/^09\d{9}$/.test(cleanPhone)) {
-        setError('شماره موبایل باید ۱۱ رقم بوده و با ۰۹ شروع شود (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).');
-        return;
-      }
-      if (username.trim().length < 3) {
-        setError('نام کاربری باید حداقل ۳ کاراکتر باشد.');
-        return;
-      }
-      if (password.length < 4) {
-        setError('کلمه عبور باید حداقل ۴ کاراکتر باشد.');
-        return;
-      }
-      setRegisterStep(2);
-      return;
-    }
-
     setLoading(true);
 
     try {
-      if (mode === 'login') {
+      if (mode === "login") {
         if (!username.trim() || !password.trim()) {
-          setError('لطفاً نام کاربری و کلمه عبور را وارد کنید.');
+          setError("لطفاً نام کاربری و کلمه عبور را وارد کنید.");
           setLoading(false);
           return;
         }
-        await login(username.trim(), password);
+        try {
+          await login(username.trim(), password);
+        } catch (loginErr: any) {
+          if (loginErr?.requiresVerification && loginErr?.userId) {
+            setBaleVerificationData({
+              userId: loginErr.userId,
+              username: username.trim(),
+              phone: loginErr.phone || '',
+              verificationCode: loginErr.verificationCode,
+              baleBotUsername: loginErr.baleBotUsername || 'BagTime_Bot',
+              baleBotLink: loginErr.baleBotLink || `https://ble.ir/BagTime_Bot?start=verify_${loginErr.verificationCode}`,
+            });
+            setError(null);
+            setLoading(false);
+            return;
+          }
+          throw loginErr;
+        }
       } else {
-        // Register Mode with all complete details
-        const finalJob = (jobTitle === 'custom' ? customJob.trim() : jobTitle) || 'سایر / فریلنسر آزاد';
-        const finalBirthDate = `${birthYear}/${birthMonth}/${birthDay}`;
+        // Strict registration with mandatory mobile phone
+        if (!name.trim() || !username.trim() || !password.trim()) {
+          setError("لطفاً نام، نام کاربری و کلمه عبور را تکمیل کنید.");
+          setLoading(false);
+          return;
+        }
 
-        await register({
+        if (!phone.trim()) {
+          setError("شماره موبایل اجباری است. لطفاً شماره موبایل خود را وارد کنید.");
+          setLoading(false);
+          return;
+        }
+
+        const cleanPhone = phone.trim().replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString());
+        if (!/^09\d{9}$/.test(cleanPhone)) {
+          setError("شماره موبایل وارد شده باید ۱۱ رقم بوده و با ۰۹ شروع شود (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).");
+          setLoading(false);
+          return;
+        }
+
+        if (username.trim().length < 3) {
+          setError("نام کاربری باید حداقل ۳ کاراکتر باشد.");
+          setLoading(false);
+          return;
+        }
+        if (password.length < 4) {
+          setError("کلمه عبور باید حداقل ۴ کاراکتر باشد.");
+          setLoading(false);
+          return;
+        }
+
+        const regRes = await register({
           name: name.trim(),
           username: username.trim().toLowerCase(),
           password: password.trim(),
-          phone: phone.trim().replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString()),
+          phone: cleanPhone,
           email: email.trim(),
-          province,
-          city,
-          birthDate: finalBirthDate,
-          jobTitle: finalJob,
-          skills: selectedSkills,
         });
+
+        if (regRes?.requiresVerification) {
+          setBaleVerificationData({
+            userId: regRes.user.id,
+            username: regRes.user.username,
+            phone: cleanPhone,
+            verificationCode: regRes.verificationCode,
+            baleBotUsername: regRes.baleBotUsername || 'BagTime_Bot',
+            baleBotLink: regRes.baleBotLink || `https://ble.ir/BagTime_Bot?start=verify_${regRes.verificationCode}`,
+          });
+          return;
+        }
       }
     } catch (err: any) {
-      setError(err.message || (mode === 'login' ? 'نام کاربری یا رمز عبور اشتباه است.' : 'خطا در ایجاد حساب کاربری.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRegisterOnly = async () => {
-    setError(null);
-    if (!phone.trim()) {
-      setError('شماره تماس (موبایل) الزامی است.');
-      return;
-    }
-    const cleanPhone = phone.trim().replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString());
-    if (!/^09\d{9}$/.test(cleanPhone)) {
-      setError('شماره موبایل باید ۱۱ رقم بوده و با ۰۹ شروع شود (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).');
-      return;
-    }
-    setLoading(true);
-    try {
-      const finalJob = (jobTitle === 'custom' ? customJob.trim() : jobTitle) || 'سایر / فریلنسر آزاد';
-      const finalBirthDate = `${birthYear}/${birthMonth}/${birthDay}`;
-      await api.register({
-        name: name.trim(),
-        username: username.trim().toLowerCase(),
-        password: password.trim(),
-        phone: cleanPhone,
-        email: email.trim(),
-        province,
-        city,
-        birthDate: finalBirthDate,
-        jobTitle: finalJob,
-        skills: selectedSkills,
-      });
-      // Clear session token so admin or user can log in freshly
-      await api.logout();
-      setMode('login');
-      setRegisterStep(1);
-      setSuccessNotice(`✅ کاربر «${name.trim()}» با موفقیت ثبت شد! اکنون می‌توانید با اکانت مدیر (Mohusyn) وارد شوید و نام او را در پنل «مانیتورینگ کاربران» مشاهده کنید.`);
-      sounds.playComplete();
-    } catch (err: any) {
-      setError(err.message || 'خطا در ایجاد حساب کاربری.');
+      setError(err.message || (mode === "login" ? "نام کاربری یا رمز عبور اشتباه است." : "خطا در ایجاد حساب کاربری."));
     } finally {
       setLoading(false);
     }
@@ -213,108 +327,150 @@ export const LoginScreen: React.FC = () => {
 
   const switchMode = (newMode: 'login' | 'register') => {
     setMode(newMode);
-    setRegisterStep(1);
     setError(null);
     setSuccessNotice(null);
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-3 sm:p-4 selection:bg-white selection:text-zinc-950 w-full overflow-x-hidden">
-      <div className={`w-full ${mode === 'register' ? 'max-w-md' : 'max-w-sm'} bg-zinc-900/80 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-2xl border border-zinc-800 space-y-5 backdrop-blur-xl animate-in fade-in zoom-in-95 transition-all`}>
+    <div className="min-h-screen bg-[#edf0f4] flex flex-col items-center justify-center p-3 sm:p-6 selection:bg-[#121212] selection:text-white w-full overflow-x-hidden">
+      <div className={`w-full ${mode === 'register' ? 'max-w-lg' : 'max-w-md'} bg-white rounded-[32px] sm:rounded-[36px] p-6 sm:p-9 shadow-[0_20px_60px_-15px_rgba(15,23,42,0.08)] border border-slate-200/70 space-y-6 animate-in fade-in zoom-in-95 transition-all`}>
         
-        {/* Brand signature matching mohusyn.ir */}
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-white text-zinc-950 flex items-center justify-center mx-auto shadow-md">
-            <CheckSquare className="w-7 h-7 stroke-[2.5]" />
+        {/* Brand Header */}
+        <div className="text-center space-y-3">
+          <div className="flex justify-center">
+            {appLogo ? (
+              <img src={appLogo} alt={appName} className="w-14 h-14 rounded-2xl object-cover shadow-sm border border-slate-100" />
+            ) : (
+              <TaskMasterHexagon size={54} className="shadow-xs" />
+            )}
           </div>
           <div>
-            <h1 className="text-xl font-black text-white tracking-tight">
-              {mode === 'login' ? 'ورود به تسک‌روز' : 'ایجاد حساب کاربری جدید'}
+            <h1 className="text-2xl font-black text-slate-900 flex items-center justify-center gap-1">
+              <span>{appName}</span>
+              <span className="text-[#00b884]">.</span>
             </h1>
-            <p className="text-[11px] text-zinc-400 mt-1 font-mono tracking-wide">
-              BUILT BY MOHUSYN
+            <p className="text-sm font-bold text-slate-500 mt-1">
+              روزت رو شروع کن و پرانرژی باش ✌️
             </p>
           </div>
         </div>
 
         {/* Room Invite Banner if any */}
         {inviteRoom && (
-          <div className="p-3 rounded-2xl bg-indigo-950/40 text-indigo-300 text-xs border border-indigo-800/60 text-center font-bold animate-in fade-in space-y-1">
-            <div className="flex items-center justify-center gap-1.5 text-white">
-              <Timer className="w-4 h-4 text-indigo-400" />
-              <span>دعوت‌نامه اتاق تمرکز گروهی</span>
+          <div className="p-3.5 rounded-2xl bg-indigo-50 text-indigo-900 text-xs border border-indigo-200/80 text-center font-bold animate-in fade-in space-y-1">
+            <div className="flex items-center justify-center gap-1.5 text-indigo-950 font-black">
+              <Timer className="w-4 h-4 text-indigo-600" />
+              <span>{getText('inviteBannerTitle')}</span>
             </div>
-            <p className="text-[11px] font-normal text-indigo-200">
-              وارد شوید یا حساب بسازید تا مستقیماً به اتاق متصل شوید.
+            <p className="text-[11px] font-medium text-indigo-700">
+              {getText('inviteBannerText')}
             </p>
           </div>
         )}
 
-        {/* Tab switch between Login and Register */}
-        <div className="grid grid-cols-2 p-1 bg-zinc-950/70 rounded-2xl border border-zinc-800 text-xs font-bold">
+        {/* HERO: DIRECT BALE 1-CLICK LOGIN / REGISTER */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 p-4 sm:p-5 text-white shadow-xl shadow-emerald-500/20 border border-emerald-400/30 space-y-3.5">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black backdrop-blur-xs">
+                <span>⚡ سریع‌ترین روش</span>
+              </div>
+              <h3 className="text-sm sm:text-base font-black leading-tight text-white">
+                ورود یا ثبت‌نام مستقیم با پیام‌رسان بله
+              </h3>
+              <p className="text-[11px] text-emerald-100 font-medium leading-relaxed">
+                تنها با ۱ کلیک در ربات بله، بدون نیاز به کلمه عبور یا پر کردن فرم‌های طولانی!
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/20">
+              <Bot className="w-6 h-6 text-white" />
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleStartAutoBaleLogin}
+            disabled={isStartingBaleLogin}
+            className="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-50 text-emerald-800 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+          >
+            {isStartingBaleLogin ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin text-emerald-600" />
+                <span>در حال ایجاد نشست بله...</span>
+              </>
+            ) : (
+              <>
+                <Bot className="w-4 h-4 text-emerald-600" />
+                <span>ورود و ثبت‌نام آنی با بازوی بله 🚀</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* OR DIVIDER */}
+        <div className="relative my-1 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-200"></div>
+          </div>
+          <div className="relative bg-white px-3 text-[11px] font-bold text-slate-400">
+            یا با نام کاربری و کلمه عبور
+          </div>
+        </div>
+
+        {/* Tab switch between Login and Register (Dribbble pill style) */}
+        <div className="grid grid-cols-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/60 text-xs font-extrabold">
           <button
             type="button"
             onClick={() => switchMode('login')}
-            className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
               mode === 'login'
-                ? 'bg-zinc-800 text-white shadow-xs'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-[#121212] text-white shadow-sm'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            <LogIn className="w-3.5 h-3.5" />
+            <LogIn className="w-4 h-4" />
             ورود به حساب
           </button>
           <button
             type="button"
             onClick={() => switchMode('register')}
-            className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
               mode === 'register'
-                ? 'bg-zinc-800 text-white shadow-xs'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-[#121212] text-white shadow-sm'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            <UserPlus className="w-3.5 h-3.5" />
+            <UserPlus className="w-4 h-4" />
             ثبت‌نام کامل
           </button>
         </div>
 
         {/* Step indicator for Registration */}
         {mode === 'register' && (
-          <div className="flex items-center justify-between text-xs px-2 pt-1">
-            <div className={`flex items-center gap-1.5 font-bold ${registerStep === 1 ? 'text-white' : 'text-zinc-400'}`}>
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${registerStep === 1 ? 'bg-white text-zinc-950' : 'bg-zinc-800 text-zinc-300'}`}>
-                ۱
-              </span>
-              <span>اطلاعات امنیتی و تماس</span>
-            </div>
-            <div className={`flex items-center gap-1.5 font-bold ${registerStep === 2 ? 'text-white' : 'text-zinc-500'}`}>
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${registerStep === 2 ? 'bg-white text-zinc-950' : 'bg-zinc-800 text-zinc-500'}`}>
-                ۲
-              </span>
-              <span>شغل، شهر و مهارت‌ها</span>
-            </div>
+          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 text-center font-bold">
+            ثبت‌نام سریع و رایگان در تسک‌روز
           </div>
         )}
 
         {successNotice && (
-          <div className="p-3.5 rounded-2xl bg-emerald-950/50 text-emerald-300 text-xs border border-emerald-800/80 leading-relaxed font-bold animate-in fade-in flex items-center gap-2">
-            <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+          <div className="p-3.5 rounded-2xl bg-emerald-50 text-emerald-900 text-xs border border-emerald-200 leading-relaxed font-bold animate-in fade-in flex items-center gap-2">
+            <Check className="w-4 h-4 text-[#00b884] flex-shrink-0" />
             <span>{successNotice}</span>
           </div>
         )}
 
         {error && (
-          <div className="p-3 rounded-2xl bg-rose-950/40 text-rose-400 text-xs border border-rose-800/60 text-center font-bold animate-in fade-in">
+          <div className="p-3.5 rounded-2xl bg-rose-50 text-rose-700 text-xs border border-rose-200 text-center font-bold animate-in fade-in">
             {error}
           </div>
         )}
 
         {/* Authentication Form */}
-        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {mode === 'login' && (
             <>
               <div className="space-y-1.5">
-                <label className="font-bold text-zinc-300">نام کاربری</label>
+                <label className="font-extrabold text-slate-700">نام کاربری</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -322,15 +478,25 @@ export const LoginScreen: React.FC = () => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="نام کاربری شما"
-                    className="w-full pl-3 pr-9 py-2.5 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white font-mono text-xs outline-hidden focus:border-zinc-500"
+                    className="w-full pl-3 pr-10 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 text-xs font-mono outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
                     autoFocus
                   />
-                  <User className="w-4 h-4 absolute right-3 top-3 text-zinc-500" />
+                  <User className="w-4 h-4 absolute right-3.5 top-3.5 text-slate-400" />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-bold text-zinc-300">کلمه عبور</label>
+                <div className="flex items-center justify-between">
+                  <label className="font-extrabold text-slate-700">کلمه عبور</label>
+                  <a
+                    href="https://t.me/Mohusyn_ir"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-bold text-slate-500 hover:text-emerald-600 transition-colors"
+                  >
+                    فراموشی رمز عبور؟
+                  </a>
+                </div>
                 <div className="relative">
                   <input
                     type="password"
@@ -338,19 +504,19 @@ export const LoginScreen: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="کلمه عبور شما"
-                    className="w-full pl-3 pr-9 py-2.5 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white text-xs outline-hidden focus:border-zinc-500"
+                    className="w-full pl-3 pr-10 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
                   />
-                  <Lock className="w-4 h-4 absolute right-3 top-3 text-zinc-500" />
+                  <Lock className="w-4 h-4 absolute right-3.5 top-3.5 text-slate-400" />
                 </div>
               </div>
             </>
           )}
 
-          {/* REGISTER STEP 1 */}
-          {mode === 'register' && registerStep === 1 && (
-            <div className="space-y-3 animate-in fade-in">
-              <div className="space-y-1">
-                <label className="font-bold text-zinc-300">
+          {/* REGISTER QUICK FORM */}
+          {mode === "register" && (
+            <div className="space-y-3.5 animate-in fade-in">
+              <div className="space-y-1.5">
+                <label className="font-extrabold text-slate-700">
                   نام و نام خانوادگی <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -359,14 +525,14 @@ export const LoginScreen: React.FC = () => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="مثال: سید محمدحسین"
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white text-xs outline-hidden focus:border-zinc-500"
+                  className="w-full px-4 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
                   autoFocus
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="space-y-1">
-                  <label className="font-bold text-zinc-300">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-extrabold text-slate-700">
                     نام کاربری <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -375,12 +541,12 @@ export const LoginScreen: React.FC = () => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="انگلیسی (ali_m)"
-                    className="w-full px-3 py-2.5 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white font-mono text-xs outline-hidden focus:border-zinc-500"
+                    className="w-full px-4 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 font-mono text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-zinc-300">
+                <div className="space-y-1.5">
+                  <label className="font-extrabold text-slate-700">
                     کلمه عبور <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -389,17 +555,18 @@ export const LoginScreen: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="حداقل ۴ کاراکتر"
-                    className="w-full px-3 py-2.5 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white text-xs outline-hidden focus:border-zinc-500"
+                    className="w-full px-4 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-zinc-300 flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>
-                    شماره تماس (موبایل) <span className="text-rose-500">*</span>
+              <div className="space-y-1.5">
+                <label className="font-extrabold text-slate-700 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                    <span>شماره موبایل (اجباری)</span>
                   </span>
+                  <span className="text-[10px] text-rose-500 font-bold">* الزامی</span>
                 </label>
                 <input
                   type="tel"
@@ -407,286 +574,410 @@ export const LoginScreen: React.FC = () => {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="مثال: ۰۹۱۲۳۴۵۶۷۸۹ (الزامی)"
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white font-mono text-xs outline-hidden focus:border-zinc-500"
+                  className="w-full px-4 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 font-mono text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-zinc-300 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>ایمیل معتبر (Gmail)</span>
+              <div className="space-y-1.5">
+                <label className="font-extrabold text-slate-700 flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-slate-400" />
+                  <span>ایمیل معتبر (اختیاری)</span>
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="yourname@gmail.com"
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-white font-mono text-xs outline-hidden focus:border-zinc-500"
+                  className="w-full px-4 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 font-mono text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
                 />
               </div>
-            </div>
-          )}
 
-          {/* REGISTER STEP 2: PROFILE & SKILLS */}
-          {mode === 'register' && registerStep === 2 && (
-            <div className="space-y-3.5 animate-in fade-in max-h-[380px] overflow-y-auto pr-1">
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="space-y-1">
-                  <label className="font-bold text-zinc-300 flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-zinc-400" />
-                    <span>استان</span>
-                  </label>
-                  <select
-                    value={province}
-                    onChange={(e) => handleProvinceChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-2xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden"
-                  >
-                    {IRAN_PROVINCES.map((p) => (
-                      <option key={p.name} value={p.name}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-bold text-zinc-300">شهر</label>
-                  <select
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="w-full px-3 py-2 rounded-2xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden"
-                  >
-                    {currentCities.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* JALALI BIRTH DATE 3-DROPDOWN SELECTOR */}
-              <div className="space-y-1">
-                <label className="font-bold text-zinc-300 flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>تاریخ تولد (شمسی)</span>
-                  </span>
-                  <span className="text-[11px] font-mono text-zinc-400">
-                    {toPersianDigits(birthYear)}/{toPersianDigits(birthMonth)}/{toPersianDigits(birthDay)}
-                  </span>
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <span className="block text-[10px] text-zinc-400 mb-0.5">روز</span>
-                    <select
-                      value={birthDay}
-                      onChange={(e) => setBirthDay(e.target.value)}
-                      className="w-full px-2 py-2 rounded-2xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden"
-                    >
-                      {BIRTH_DAYS.map((d) => (
-                        <option key={d} value={d}>
-                          {toPersianDigits(parseInt(d, 10))}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <span className="block text-[10px] text-zinc-400 mb-0.5">ماه</span>
-                    <select
-                      value={birthMonth}
-                      onChange={(e) => setBirthMonth(e.target.value)}
-                      className="w-full px-2 py-2 rounded-2xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden"
-                    >
-                      {PERSIAN_MONTHS.map((m) => (
-                        <option key={m.val} value={m.val}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <span className="block text-[10px] text-zinc-400 mb-0.5">سال</span>
-                    <select
-                      value={birthYear}
-                      onChange={(e) => setBirthYear(e.target.value)}
-                      className="w-full px-2 py-2 rounded-2xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden font-mono"
-                    >
-                      {BIRTH_YEARS.map((y) => (
-                        <option key={y} value={y}>
-                          {toPersianDigits(y)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* DYNAMIC JOB CATEGORIES & CUSTOM INPUT */}
-              <div className="space-y-1">
-                <label className="font-bold text-zinc-300 flex items-center gap-1.5">
-                  <Briefcase className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>حوزه کاری و نوع تخصص</span>
-                </label>
-                <select
-                  value={jobTitle}
-                  onChange={(e) => setJobTitle(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-2xl bg-zinc-800 border border-zinc-700/60 text-white text-xs outline-hidden mb-1.5"
-                >
-                  {jobCategories.map((j) => (
-                    <option key={j} value={j}>
-                      {j}
-                    </option>
-                  ))}
-                  <option value="custom">+ عنوان یا حوزه کاری دیگر (تایپ دستی)...</option>
-                </select>
-                {jobTitle === 'custom' && (
-                  <input
-                    type="text"
-                    required
-                    value={customJob}
-                    onChange={(e) => setCustomJob(e.target.value)}
-                    placeholder="عنوان شغلی یا حوزه تخصصی خود را بنویسید..."
-                    className="w-full px-3 py-2 rounded-2xl bg-zinc-800/90 border border-indigo-500/60 text-white text-xs outline-hidden placeholder:text-zinc-500 animate-in fade-in"
-                    autoFocus
-                  />
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-zinc-300">
-                  مهارت‌های کلیدی (جهت تحلیل هوش مصنوعی)
-                </label>
-                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1.5 bg-zinc-950/60 rounded-2xl border border-zinc-800">
-                  {SUGGESTED_SKILLS.map((s) => {
-                    const isSelected = selectedSkills.includes(s);
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => toggleSkill(s)}
-                        className={`text-[10px] px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-white text-zinc-950 font-bold shadow-xs'
-                            : 'bg-zinc-800/80 text-zinc-400 hover:text-white'
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="flex items-center gap-1.5 pt-1">
-                  <input
-                    type="text"
-                    value={customSkillInput}
-                    onChange={(e) => setCustomSkillInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill(); } }}
-                    placeholder="مهارت دیگر (تایپ کنید و + را بزنید)..."
-                    className="flex-1 px-3 py-1.5 rounded-xl bg-zinc-800/60 border border-zinc-700/50 text-white text-[11px] outline-hidden placeholder:text-zinc-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={addCustomSkill}
-                    className="p-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+              <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-[11px] text-indigo-700 leading-relaxed font-medium">
+                💡 ساخت حساب رایگان است. پس از ورود، اطلاعات تکمیلی در اولین ورود تکمیل می‌شود.
               </div>
             </div>
           )}
 
           {/* Form Actions */}
           <div className="pt-2">
-            {mode === 'register' && registerStep === 2 ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRegisterStep(1)}
-                    className="px-4 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold transition-all text-xs cursor-pointer"
-                  >
-                    بازگشت
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="flex-1 py-3 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {loading ? 'در حال ایجاد حساب...' : 'تکمیل ثبت‌نام و ورود مستقیم'}
-                    <Check className="w-4 h-4 stroke-[3]" />
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleRegisterOnly}
-                  disabled={loading}
-                  className="w-full py-2.5 rounded-2xl bg-zinc-850 hover:bg-zinc-800 text-indigo-300 border border-indigo-500/30 font-bold text-[11px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>ثبت‌نام و بازگشت به صفحه ورود (جهت ورود با ادمین Mohusyn)</span>
-                </button>
-              </div>
-            ) : (
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                {loading ? (
-                  'در حال پردازش...'
-                ) : mode === 'login' ? (
-                  <>
-                    <span>ورود به حساب کاربری</span>
-                    <ArrowLeft className="w-4 h-4" />
-                  </>
-                ) : (
-                  <>
-                    <span>مرحله بعدی (اطلاعات تکمیلی)</span>
-                    <ArrowLeft className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-2xl bg-[#121212] hover:bg-black text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
+            >
+              {loading
+                ? "لطفاً شکیبا باشید..."
+                : mode === "login"
+                ? "ورود به داشبورد"
+                : "ثبت‌نام و ایجاد حساب کاربری 🚀"}
+              {mode === "login" ? (
+                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+              ) : (
+                <Check className="w-4 h-4 stroke-[2.5]" />
+              )}
+            </button>
           </div>
         </form>
 
-        {/* Mode switch helper text */}
-        <div className="text-center pt-2 border-t border-zinc-800/80 text-[11px] text-zinc-400">
-          {mode === 'login' ? (
-            <p>
-              حساب کاربری ندارید؟{' '}
+        {/* App Developers Footer - Configured by Admin in Panel */}
+        <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+          <div className="flex items-center -space-x-2 space-x-reverse">
+            {appDevelopers.map((dev: AppDeveloper) => (
               <button
+                key={dev.id}
                 type="button"
-                onClick={() => switchMode('register')}
-                className="text-white font-bold hover:underline cursor-pointer"
+                onClick={() => setSelectedDevForModal(dev)}
+                title={`${dev.name} (${dev.role}) - کلیک برای مشاهده پروفایل کامل`}
+                className="relative group cursor-pointer transition-transform hover:scale-110 active:scale-95 focus:outline-none"
               >
-                ثبت نام رایگان با اطلاعات کامل
+                {dev.avatarUrl ? (
+                  <img
+                    src={dev.avatarUrl}
+                    alt={dev.name}
+                    className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-xs"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-black text-xs flex items-center justify-center border-2 border-white shadow-xs">
+                    {dev.name.charAt(0)}
+                  </div>
+                )}
+                {/* Tooltip on hover */}
+                <div className="absolute bottom-full mb-1.5 right-0 hidden group-hover:flex flex-col bg-slate-900 text-white text-[10px] py-1 px-2.5 rounded-xl whitespace-nowrap shadow-lg z-30 pointer-events-none">
+                  <span className="font-black">{dev.name}</span>
+                  <span className="text-[9px] text-slate-300">{dev.role}</span>
+                </div>
               </button>
-            </p>
-          ) : (
-            <p>
-              قبلاً ثبت نام کرده‌اید؟{' '}
-              <button
-                type="button"
-                onClick={() => switchMode('login')}
-                className="text-white font-bold hover:underline cursor-pointer"
-              >
-                وارد شوید
-              </button>
-            </p>
-          )}
+            ))}
+          </div>
+          <div className="text-right">
+            <span className="text-[11px] font-extrabold text-slate-700 block">
+              اعضای توسعه‌دهنده این آپ
+            </span>
+            <span className="text-[9px] text-slate-400 block font-medium">
+              جهت مشاهده پروفایل کلیک کنید
+            </span>
+          </div>
         </div>
+
+        {/* Micro Footer: "بَگ‌تایم، از خانوادهٔ کیان فناوران نگاه" */}
+        {globalSettings?.footerBranding?.enabled !== false && (
+          <div className="pt-3 border-t border-slate-100/70 text-center text-[10px] text-slate-400 select-none">
+            <span>{globalSettings?.footerBranding?.prefixText || 'بَگ‌تایم، از خانوادهٔ'}{' '}</span>
+            {globalSettings?.footerBranding?.isLinkEnabled && globalSettings?.footerBranding?.companyUrl ? (
+              <a
+                href={globalSettings.footerBranding.companyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-black text-slate-600 hover:text-indigo-600 transition-colors underline decoration-slate-300 underline-offset-2"
+              >
+                {globalSettings?.footerBranding?.companyName || 'کیان فناوران نگاه'}
+              </a>
+            ) : (
+              <strong className="font-black text-slate-600">
+                {globalSettings?.footerBranding?.companyName || 'کیان فناوران نگاه'}
+              </strong>
+            )}
+          </div>
+        )}
       </div>
 
-      <div className="mt-4 text-[11px] text-zinc-400 font-mono tracking-wider">
-        mohusyn.ir • ۲۰۲۶
-      </div>
+      {/* Developer Profile Modal */}
+      {selectedDevForModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+          onClick={() => setSelectedDevForModal(null)}
+          dir="rtl"
+        >
+          <div
+            className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 text-center relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setSelectedDevForModal(null)}
+              className="absolute top-4 left-4 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Large Avatar */}
+            <div className="flex justify-center pt-2">
+              <div className="relative">
+                {selectedDevForModal.avatarUrl ? (
+                  <img
+                    src={selectedDevForModal.avatarUrl}
+                    alt={selectedDevForModal.name}
+                    className="w-24 h-24 rounded-3xl object-cover shadow-xl border-4 border-slate-100"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-3xl bg-slate-900 text-white font-black text-3xl flex items-center justify-center shadow-xl border-4 border-slate-100">
+                    {selectedDevForModal.name.charAt(0)}
+                  </div>
+                )}
+                <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-bold border-2 border-white shadow-xs">
+                  توسعه‌دهنده 💻
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-slate-900">{selectedDevForModal.name}</h3>
+              <p className="text-xs font-bold text-indigo-600">{selectedDevForModal.role}</p>
+            </div>
+
+            {selectedDevForModal.bio && (
+              <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100 leading-relaxed font-medium">
+                {selectedDevForModal.bio}
+              </p>
+            )}
+
+            {selectedDevForModal.link && (
+              <a
+                href={selectedDevForModal.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:underline pt-1"
+              >
+                <span>مشاهده وبسایت یا رزومه</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </a>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setSelectedDevForModal(null)}
+              className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+            >
+              بستن
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* AUTO BALE LOGIN MODAL */}
+      {baleLoginModalData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+          dir="rtl"
+        >
+          <div
+            className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 text-center relative border border-emerald-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setBaleLoginModalData(null);
+                setBalePollingActive(false);
+              }}
+              className="absolute top-4 left-4 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Glowing Bot Icon */}
+            <div className="flex justify-center pt-2">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border-2 border-emerald-200 shadow-inner animate-pulse">
+                  <Bot className="w-9 h-9" />
+                </div>
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="font-black text-slate-900 text-base">ورود سریع با پیام‌رسان بله</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                لطفاً روی دکمه زیر کلیک کرده و در صفحه باز شده در بله دکمه <span className="font-bold text-emerald-700">«شروع / Start»</span> را بزنید.
+              </p>
+            </div>
+
+            {/* Status indicator */}
+            {balePollingStep === 'waiting_contact' ? (
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center gap-2 text-xs text-amber-900 font-bold animate-pulse">
+                <Phone className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>لطفاً در بله دکمه «📱 ارسال شماره تماس» را لمس کنید</span>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/60 flex items-center justify-center gap-2.5 text-xs text-emerald-800 font-bold">
+                <RefreshCw className="w-4 h-4 animate-spin text-emerald-600 shrink-0" />
+                <span>در انتظار تأیید ورود شما در بله...</span>
+              </div>
+            )}
+
+            <div className="space-y-2 pt-1">
+              <a
+                href={baleLoginModalData.baleBotLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
+              >
+                <span>باز کردن پیام‌رسان بله</span>
+                <ExternalLink className="w-4 h-4 stroke-[2.5]" />
+              </a>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setBaleLoginModalData(null);
+                  setBalePollingActive(false);
+                }}
+                className="w-full py-2.5 rounded-xl text-slate-500 hover:text-slate-800 text-xs font-bold transition-colors cursor-pointer"
+              >
+                انصراف و ورود با رمز عبور
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BALE BOT VERIFICATION MODAL */}
+      {baleVerificationData && (
+        <BaleVerificationModal
+          data={baleVerificationData}
+          onClose={() => setBaleVerificationData(null)}
+        />
+      )}
+
+      {/* BALE POST-LOGIN ONBOARDING MODAL */}
+      {baleOnboardingData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+          dir="rtl"
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 relative border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <Sparkles className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-black text-slate-900">
+                تنظیم مشخصات ورود به بگ تایم
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                ورود شما با بله انجام شد. لطفاً نام کاربری و رمز دلخواهتان را تعیین کنید تا در دفعات بعدی نیز بتوانید بدون نیاز به بله به سامانه وارد شوید.
+              </p>
+            </div>
+
+            {onboardingError && (
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold leading-relaxed">
+                {onboardingError}
+              </div>
+            )}
+
+            <form onSubmit={handleCompleteBaleOnboarding} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-700">
+                  نام و نام خانوادگی <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={onboardingName}
+                  onChange={(e) => setOnboardingName(e.target.value)}
+                  placeholder="مثال: علیرضا احمدی"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#f8fafc] border border-slate-200 text-slate-800 text-xs outline-none focus:border-slate-800 focus:bg-white transition-all"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700">
+                    نام کاربری انگلیسی (Username) <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-mono">حداقل ۳ حرف</span>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs font-bold">@</span>
+                  <input
+                    type="text"
+                    required
+                    dir="ltr"
+                    value={onboardingUsername}
+                    onChange={(e) => setOnboardingUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                    placeholder="alireza_ahmadi"
+                    className="w-full px-3.5 pl-8 py-2.5 rounded-xl bg-[#f8fafc] border border-slate-200 text-slate-800 font-mono text-xs text-left outline-none focus:border-slate-800 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    رمز عبور <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showOnboardingPassword ? 'text' : 'password'}
+                      required
+                      dir="ltr"
+                      value={onboardingPassword}
+                      onChange={(e) => setOnboardingPassword(e.target.value)}
+                      placeholder="حداقل ۴ کاراکتر"
+                      className="w-full px-3.5 pr-8 py-2.5 rounded-xl bg-[#f8fafc] border border-slate-200 text-slate-800 text-xs outline-none focus:border-slate-800 focus:bg-white transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowOnboardingPassword(!showOnboardingPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showOnboardingPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    تکرار رمز عبور <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type={showOnboardingPassword ? 'text' : 'password'}
+                    required
+                    dir="ltr"
+                    value={onboardingConfirmPassword}
+                    onChange={(e) => setOnboardingConfirmPassword(e.target.value)}
+                    placeholder="تکرار رمز عبور"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#f8fafc] border border-slate-200 text-slate-800 text-xs outline-none focus:border-slate-800 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 space-y-2">
+                <button
+                  type="submit"
+                  disabled={isSubmittingOnboarding}
+                  className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-black text-white text-xs font-black transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
+                >
+                  {isSubmittingOnboarding ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>در حال ذخیره اطلاعات...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>ثبت اطلاعات و ورود به برنامه 🚀</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSkipBaleOnboarding}
+                  className="w-full py-2 text-slate-400 hover:text-slate-700 text-[11px] font-bold transition-colors cursor-pointer text-center block"
+                >
+                  فعلاً رد کردن و ورود مستقیم
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

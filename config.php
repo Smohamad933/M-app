@@ -10,6 +10,8 @@
 @ini_set('display_errors', '0');
 
 if (session_status() === PHP_SESSION_NONE) {
+    @ini_set('session.cookie_httponly', '1');
+    @ini_set('session.use_only_cookies', '1');
     @session_start();
 }
 
@@ -29,29 +31,66 @@ if (!defined('DB_NAME')) define('DB_NAME', getenv('DB_NAME') ?: 'taskrooz_db');
 if (!defined('DB_USER')) define('DB_USER', getenv('DB_USER') ?: 'root');
 if (!defined('DB_PASS')) define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
 
+// تنظیمات اختصاصی پایگاه داده برای بخش تسک‌ها و ثبت تیک (می‌تواند دیتابیس یا هاست جداگانه باشد)
+if (!defined('DB_HOST_TASKS')) define('DB_HOST_TASKS', getenv('DB_HOST_TASKS') ?: DB_HOST);
+if (!defined('DB_PORT_TASKS')) define('DB_PORT_TASKS', getenv('DB_PORT_TASKS') ?: DB_PORT);
+if (!defined('DB_NAME_TASKS')) define('DB_NAME_TASKS', getenv('DB_NAME_TASKS') ?: DB_NAME);
+if (!defined('DB_USER_TASKS')) define('DB_USER_TASKS', getenv('DB_USER_TASKS') ?: DB_USER);
+if (!defined('DB_PASS_TASKS')) define('DB_PASS_TASKS', getenv('DB_PASS_TASKS') !== false ? getenv('DB_PASS_TASKS') : DB_PASS);
+
+if (!defined('DB_NAME_USERS')) define('DB_NAME_USERS', getenv('DB_NAME_USERS') ?: DB_NAME);
+if (!defined('DB_NAME_MESSAGES')) define('DB_NAME_MESSAGES', getenv('DB_NAME_MESSAGES') ?: DB_NAME);
+if (!defined('DB_NAME_NOTIFICATIONS')) define('DB_NAME_NOTIFICATIONS', getenv('DB_NAME_NOTIFICATIONS') ?: DB_NAME);
+
 $GLOBALS['taskrooz_db_error'] = null;
 
-function getMySQLPDO() {
-    static $mysqlPdo = null;
-    if ($mysqlPdo !== null) return $mysqlPdo;
+function getMySQLPDO($module = null) {
+    static $connections = [];
+    static $failed = [];
+
+    $host = DB_HOST;
+    $port = DB_PORT;
+    $dbName = DB_NAME;
+    $user = DB_USER;
+    $pass = DB_PASS;
+
+    if ($module === 'tasks') {
+        $host = DB_HOST_TASKS;
+        $port = DB_PORT_TASKS;
+        $dbName = DB_NAME_TASKS;
+        $user = DB_USER_TASKS;
+        $pass = DB_PASS_TASKS;
+    } elseif ($module === 'users') {
+        $dbName = DB_NAME_USERS;
+    } elseif ($module === 'messages') {
+        $dbName = DB_NAME_MESSAGES;
+    } elseif ($module === 'notifications') {
+        $dbName = DB_NAME_NOTIFICATIONS;
+    }
+
+    $connKey = "{$host}:{$port}/{$dbName}";
+    if (isset($connections[$connKey])) return $connections[$connKey];
+    if (!empty($failed[$connKey])) return null;
 
     if (!extension_loaded('pdo_mysql') || !class_exists('PDO')) {
+        $failed[$connKey] = true;
         $GLOBALS['taskrooz_db_error'] = 'اکستنشن pdo_mysql در PHP سرور فعال نیست.';
         return null;
     }
 
     try {
-        $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+        $dsn = "mysql:host=" . $host . ";port=" . $port . ";dbname=" . $dbName . ";charset=utf8mb4";
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_TIMEOUT => 4,
+            PDO::ATTR_TIMEOUT => 3,
         ];
-        $mysqlPdo = new PDO($dsn, DB_USER, DB_PASS, $options);
-        // Execute UTF-8 collation directly (100% compatible across PHP 7.0 - 8.5+ without deprecated constants)
-        $mysqlPdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
-        return $mysqlPdo;
+        $pdo = new PDO($dsn, $user, $pass, $options);
+        $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+        $connections[$connKey] = $pdo;
+        return $pdo;
     } catch (Exception $e) {
+        $failed[$connKey] = true;
         $GLOBALS['taskrooz_db_error'] = $e->getMessage();
         return null;
     }

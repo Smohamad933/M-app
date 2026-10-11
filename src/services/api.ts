@@ -8,8 +8,24 @@ import type {
   PersonalityTestResult,
   GlobalSystemSettings,
   SystemFontOption,
+  DirectChatMessage,
+  ProjectChatMessage,
+  FriendRequestItem,
 } from '../types';
 import { DEFAULT_CATEGORIES } from '../utils/storage';
+
+export interface ActiveSession {
+  id: string;
+  userId: string;
+  device: string;
+  browser: string;
+  isMobile: boolean;
+  ip: string;
+  location: string;
+  createdAt: string;
+  lastActive: string;
+  isCurrent: boolean;
+}
 
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
   broadcastNotice: {
@@ -31,6 +47,23 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
     allowPublicChat: true,
   },
   dailyMantra: 'تمرکز پیوسته بر کارهای با اولویت بالا و پرهیز از چندوظیفگی',
+  appDevelopers: [
+    {
+      id: 'dev_mohusyn',
+      name: 'Mohusyn',
+      role: 'توسعه‌دهنده ارشد و معمار سیستم',
+      avatarUrl: null,
+      bio: 'طراح، برنامه‌نویس و سازنده تسک‌روز',
+      link: '',
+    },
+  ],
+  texts: {},
+  appBranding: {
+    appName: 'بگ تایم',
+    logoDataUrl: null,
+    defaultAvatarDataUrl: null,
+    pwaIconDataUrl: null,
+  },
   jobCategories: [
     'برنامه‌نویس و توسعه‌دهنده نرم‌افزار',
     'طراح رابط کاربری و تجربه کاربری (UI/UX)',
@@ -47,6 +80,32 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSystemSettings = {
     'وکالت و امور حقوقی',
     'سایر / فریلنسر آزاد',
   ],
+  baleBot: {
+    enabled: true,
+    token: '1002345678:ABCdefGHIjklMNOpqrSTUvwxYZ_12345678',
+    botUsername: 'BagTime_Bot',
+    verifyOnRegister: true,
+    sendNotifications: true,
+    allowTaskCreation: true,
+  },
+  footerBranding: {
+    enabled: true,
+    prefixText: 'بَگ‌تایم، از خانوادهٔ',
+    companyName: 'کیان فناوران نگاه',
+    companyUrl: '',
+    isLinkEnabled: false,
+  },
+  ssoSettings: {
+    enabled: true,
+    serverUrl: 'https://sso.negahm.ir',
+    apiKey: 'ak_live_negahm_taskrooz_master',
+    apiSecret: 'sk_live_sec_negahm_8872349102834',
+    appName: 'بگ تایم (کیان فناوران نگاه)',
+    autoSyncUsers: true,
+    defaultRole: 'member',
+    syncIntervalMinutes: 60,
+    testMode: false,
+  },
 };
 
 // Real-time synchronization channel for cross-tab and cross-window coordination
@@ -97,10 +156,62 @@ export function removeAuthToken() {
   }
 }
 
+export const BAGTIME_SERVERS = ['https://bagtime.negahm.ir'];
+const ACTIVE_SERVER_KEY = 'bagtime_preferred_server';
+
+export function getPreferredServer(): string | null {
+  try {
+    const saved = localStorage.getItem(ACTIVE_SERVER_KEY);
+    if (saved && BAGTIME_SERVERS.includes(saved)) return saved;
+  } catch {}
+  return null;
+}
+
+export function setPreferredServer(srv: string) {
+  try {
+    if (BAGTIME_SERVERS.includes(srv)) {
+      localStorage.setItem(ACTIVE_SERVER_KEY, srv);
+    }
+  } catch {}
+}
+
+function resolveApiUrl(endpoint: string): string {
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint;
+  }
+  const clean = endpoint.replace(/^\/+/, '');
+  if (typeof window !== 'undefined' && window.location) {
+    const pathname = window.location.pathname;
+    // Get directory of current page (e.g. '/' or '/M-app/' or '/taskrooz/')
+    const baseDir = pathname.substring(0, pathname.lastIndexOf('/') + 1) || '/';
+    return `${window.location.origin}${baseDir}${clean}`;
+  }
+  return '/' + clean;
+}
+
+const inFlightRequests = new Map<string, Promise<any>>();
+const cacheStore = new Map<string, { data: any; expiry: number }>();
+
+export function clearApiCache(endpointPrefix?: string) {
+  if (!endpointPrefix) {
+    cacheStore.clear();
+    return;
+  }
+  for (const key of cacheStore.keys()) {
+    if (key.includes(endpointPrefix)) {
+      cacheStore.delete(key);
+    }
+  }
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  const isGet = method === 'GET';
+
   const token = getAuthToken();
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string>),
   };
 
@@ -109,10 +220,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers['X-Auth-Token'] = token;
   }
 
-  let url = endpoint;
-  if (!url.startsWith('http')) {
-    url = url.startsWith('/') ? url : '/' + url;
-  }
+  let url = resolveApiUrl(endpoint);
 
   // Append token to query parameter for IIS / Apache environments where headers might be filtered
   if (token && !url.includes('token=')) {
@@ -120,36 +228,188 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     url = `${url}${sep}token=${encodeURIComponent(token)}`;
   }
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      ...options,
-      credentials: 'same-origin',
-      headers,
-    });
-  } catch (err: any) {
-    throw new Error('عدم برقراری ارتباط با سرور. لطفاً وضعیت سرور و شبکه را بررسی کنید.');
-  }
-
-  const text = await res.text();
-  let data: any = {};
-  try {
-    data = JSON.parse(text);
-  } catch {
-    if (!res.ok) {
-      throw new Error(`خطای سرور (${res.status}): ${text.slice(0, 150)}`);
+  if (isGet) {
+    const cached = cacheStore.get(url);
+    if (cached && cached.expiry > Date.now()) {
+      return cached.data as T;
     }
-    throw new Error('پاسخ نامعتبر از سرور دریافت شد.');
+    if (inFlightRequests.has(url)) {
+      return inFlightRequests.get(url)! as Promise<T>;
+    }
+  } else {
+    cacheStore.clear();
   }
 
-  if (!res.ok) {
-    throw new Error(data.error || 'خطایی در پردازش اطلاعات در سرور رخ داد.');
+  const fetchPromise = (async () => {
+    let res: Response | null = null;
+
+    try {
+      res = await fetch(url, {
+        ...options,
+        headers,
+      });
+    } catch {
+      // Network error (e.g. DNS failure, connection refused, offline, SSL handshake stall)
+    }
+
+    // Dual-server automatic failover: if primary endpoint is unreachable or 502/503/504
+    if (!res || (res.status >= 502 && res.status <= 504)) {
+      let candidateAltServer: string | null = null;
+      let altUrl: string | null = null;
+
+      const activeMatch = BAGTIME_SERVERS.find((srv) => url.startsWith(srv));
+      if (activeMatch) {
+        candidateAltServer = BAGTIME_SERVERS.find((srv) => srv !== activeMatch) || null;
+        if (candidateAltServer) {
+          altUrl = url.replace(activeMatch, candidateAltServer);
+        }
+      } else if (typeof window !== 'undefined' && window.location) {
+        const curOrigin = window.location.origin;
+        const curMatch = BAGTIME_SERVERS.find((srv) => curOrigin === srv);
+        if (curMatch) {
+          candidateAltServer = BAGTIME_SERVERS.find((srv) => srv !== curMatch) || null;
+          if (candidateAltServer) {
+            altUrl = url.replace(curOrigin, candidateAltServer);
+          }
+        }
+      }
+
+      if (altUrl && candidateAltServer) {
+        try {
+          const altRes = await fetch(altUrl, {
+            ...options,
+            headers,
+          });
+          if (altRes.ok || altRes.status < 500) {
+            res = altRes;
+            setPreferredServer(candidateAltServer);
+            broadcastSync('server_failover', { server: candidateAltServer });
+          }
+        } catch {}
+      }
+    }
+
+    if (!res) {
+      throw new Error('عدم برقراری ارتباط با سرور. لطفاً وضعیت سرور و شبکه را بررسی کنید.');
+    }
+
+    // Handle IIS 405 Method Not Allowed resilience!
+    if (res.status === 405) {
+      if (method === 'POST') {
+        try {
+          const bodyStr = typeof options.body === 'string' ? options.body : JSON.stringify(options.body || {});
+          const formHeaders = {
+            ...headers,
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          };
+          const fallbackRes = await fetch(url, {
+            ...options,
+            method: 'POST',
+            headers: formHeaders,
+            body: `data=${encodeURIComponent(bodyStr)}&payload=${encodeURIComponent(bodyStr)}`,
+          });
+          if (fallbackRes.ok || fallbackRes.status < 400) {
+            const fbText = await fallbackRes.text();
+            try {
+              const data = JSON.parse(fbText);
+              return data;
+            } catch {}
+          }
+        } catch {}
+
+        try {
+          const sep = url.includes('?') ? '&' : '?';
+          const fallbackRes2 = await fetch(`${url}${sep}_method=POST`, {
+            ...options,
+            method: 'POST',
+            headers: {
+              ...headers,
+              'X-HTTP-Method-Override': 'POST',
+            },
+          });
+          if (fallbackRes2.ok || fallbackRes2.status < 400) {
+            const fbText = await fallbackRes2.text();
+            try {
+              const data = JSON.parse(fbText);
+              return data;
+            } catch {}
+          }
+        } catch {}
+      } else if (method === 'PUT' || method === 'DELETE') {
+        try {
+          const sep = url.includes('?') ? '&' : '?';
+          const fallbackRes = await fetch(`${url}${sep}_method=${method}`, {
+            ...options,
+            method: 'POST',
+            headers: {
+              ...headers,
+              'X-HTTP-Method-Override': method,
+            },
+          });
+          if (fallbackRes.ok || fallbackRes.status < 400) {
+            const fbText = await fallbackRes.text();
+            try {
+              const data = JSON.parse(fbText);
+              return data;
+            } catch {}
+          }
+        } catch {}
+      }
+    }
+
+    const text = await res.text();
+    let data: any = {};
+    try {
+      data = JSON.parse(text);
+    } catch {
+      if (!res.ok) {
+        throw new Error(`خطای سرور (${res.status}): ${text.slice(0, 150)}`);
+      }
+      throw new Error('پاسخ نامعتبر از سرور دریافت شد.');
+    }
+
+    if (!res.ok) {
+      const err: any = new Error(data.error || 'خطایی در پردازش اطلاعات در سرور رخ داد.');
+      if (typeof data === 'object') {
+        Object.assign(err, data);
+      }
+      throw err;
+    }
+
+    if (isGet) {
+      cacheStore.set(url, { data, expiry: Date.now() + 2500 });
+    }
+
+    return data as T;
+  })().finally(() => {
+    if (isGet) inFlightRequests.delete(url);
+  });
+
+  if (isGet) {
+    inFlightRequests.set(url, fetchPromise);
   }
 
-  return data;
+  return fetchPromise;
 }
 
+
 export const api = {
+  /** Check whether the database is installed (file data/db.json present & valid) */
+  checkDatabase: async (): Promise<{ installed: boolean }> => {
+    try {
+      const data = await request<any>('/api/install.php', { method: 'GET' });
+      return { installed: data.installed !== false };
+    } catch (e: any) {
+      if (/DB_NOT_INSTALLED/.test(e?.message || '')) return { installed: false };
+      return { installed: true }; // network/server error != missing db
+    }
+  },
+
+  /** One-click database installation (seeds the default data file) */
+  installDatabase: async (): Promise<{ message: string }> => {
+    const data = await request<any>('/api/install.php', { method: 'POST' });
+    return { message: data.message || 'پایگاه داده نصب شد.' };
+  },
   // Auth: Register (Always stored on Central Server with IIS 405 resilience)
   async register(data: {
     username: string;
@@ -178,60 +438,65 @@ export const api = {
       dailyTimeline: data.dailyTimeline || {},
     };
 
-    let res: { user: User; token: string; message: string };
+    let res: {
+      user: User;
+      token?: string | null;
+      message: string;
+      requiresVerification?: boolean;
+      verificationCode?: string;
+      baleBotUsername?: string;
+      baleBotLink?: string;
+    };
     try {
-      res = await request<{ user: User; token: string; message: string }>('api/auth.php?action=register', {
+      res = await request<typeof res>('api/auth.php?action=register', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
     } catch (err1: any) {
-      // Retry via GET request if IIS blocks POST with 405 Method Not Allowed
+      if (err1?.requiresVerification) {
+        return err1;
+      }
+      // If server returned a clear validation error (e.g. 400: duplicate username or phone)
+      if (err1?.message && !err1.message.includes('405') && !err1.message.includes('عدم برقراری ارتباط')) {
+        throw err1;
+      }
+
+      // Retry 1: Send via GET query parameters directly (IIS never blocks GET)
       try {
-        const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-        res = await request<{ user: User; token: string; message: string }>(
-          `api/auth.php?action=register&data=${encodeURIComponent(encodedData)}`,
+        const queryParams = new URLSearchParams({
+          action: 'register',
+          username: payload.username,
+          password: payload.password,
+          name: payload.name,
+          phone: payload.phone,
+          email: payload.email,
+          city: payload.city,
+          province: payload.province,
+          jobTitle: payload.jobTitle,
+        });
+        res = await request<typeof res>(
+          `api/auth.php?${queryParams.toString()}`,
           { method: 'GET' }
         );
       } catch (err2: any) {
-        try {
-          res = await request<{ user: User; token: string; message: string }>('api/register.php', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-          });
-        } catch {
-          // Resilient fallback when server is completely static
-          const newUser: User = {
-            id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-            username: payload.username.toLowerCase(),
-            name: payload.name,
-            role: 'user',
-            phone: payload.phone,
-            email: payload.email,
-            province: payload.province,
-            city: payload.city,
-            birthDate: payload.birthDate,
-            jobTitle: payload.jobTitle,
-            skills: payload.skills,
-            dailyTimeline: payload.dailyTimeline,
-            createdAt: new Date().toISOString(),
-            totalTasks: 0,
-            completedTasks: 0,
-          };
-          const token = btoa(`${newUser.id}:${Date.now()}`);
-          setAuthToken(token);
-          broadcastSync('USER_REGISTERED', newUser);
-          try {
-            const raw = localStorage.getItem('taskrooz_registered_users');
-            const list = raw ? JSON.parse(raw) : [];
-            list.push(newUser);
-            localStorage.setItem('taskrooz_registered_users', JSON.stringify(list));
-          } catch {}
-          return { user: newUser, token };
+        if (err2?.requiresVerification) {
+          return err2;
         }
+        throw new Error(err2?.message || err1?.message || 'خطا در ثبت اطلاعات در سرور.');
       }
     }
 
-    setAuthToken(res.token);
+    // If Bale verification is required, do NOT set auth token or log in!
+    if (res?.requiresVerification) {
+      return res as any;
+    }
+
+    if (res?.token) {
+      setAuthToken(res.token);
+      if (res.user) {
+        this.setCachedUser(res.user);
+      }
+    }
     broadcastSync('USER_REGISTERED', res.user);
     try {
       const raw = localStorage.getItem('taskrooz_registered_users');
@@ -241,7 +506,303 @@ export const api = {
         localStorage.setItem('taskrooz_registered_users', JSON.stringify(list));
       }
     } catch {}
+    return res as any;
+  },
+
+  async checkVerification(userId: string): Promise<{ verified: boolean; user?: User; token?: string }> {
+    try {
+      const res = await request<{ verified: boolean; user?: User; token?: string }>(
+        `api/auth.php?action=check_verification&userId=${encodeURIComponent(userId)}`
+      );
+      if (res.verified && res.token) {
+        setAuthToken(res.token);
+        if (res.user) {
+          this.setCachedUser(res.user);
+        }
+      }
+      return res;
+    } catch {
+      return { verified: false };
+    }
+  },
+
+  async getVerificationCode(userId?: string): Promise<{
+    ok: boolean;
+    verificationCode: string;
+    baleBotUsername: string;
+    baleBotLink: string;
+  }> {
+    try {
+      const param = userId ? `&userId=${encodeURIComponent(userId)}` : '';
+      const res = await request<{
+        ok: boolean;
+        verificationCode: string;
+        baleBotUsername: string;
+        baleBotLink: string;
+      }>(`api/auth.php?action=get_verification_code${param}`);
+      return res;
+    } catch (e: any) {
+      return {
+        ok: false,
+        verificationCode: '',
+        baleBotUsername: 'BagTime_Bot',
+        baleBotLink: 'https://ble.ir/BagTime_Bot',
+      };
+    }
+  },
+
+  async createBalePaymentInvoice(plan: string, planType: string): Promise<{
+    ok: boolean;
+    invoiceUrl?: string;
+    baleBotLink: string;
+    payload?: string;
+    amountRials: number;
+    title: string;
+  }> {
+    return await request<any>('api/bale.php?action=create_invoice', {
+      method: 'POST',
+      body: JSON.stringify({ plan, planType }),
+    });
+  },
+
+  async createBaleLoginTicket(): Promise<{
+    ok: boolean;
+    ticket: string;
+    baleBotUsername: string;
+    baleBotLink: string;
+    expiresIn: number;
+  }> {
+    return await request<any>('api/bale.php?action=create_bale_login', { method: 'POST' });
+  },
+
+  async checkBaleLoginStatus(ticket: string): Promise<{
+    status: 'pending' | 'waiting_contact' | 'approved' | 'not_found';
+    token?: string;
+    user?: User;
+    isNewUser?: boolean;
+    message?: string;
+  }> {
+    return await request<any>(`api/bale.php?action=check_bale_login&ticket=${encodeURIComponent(ticket)}`);
+  },
+
+  async completeBaleOnboarding(data: {
+    userId: string;
+    token: string;
+    name: string;
+    username: string;
+    password?: string;
+    prevUsername?: string;
+  }): Promise<{ ok: boolean; user: User; token: string }> {
+    return await request<{ ok: boolean; user: User; token: string }>('api/bale.php?action=bale_onboarding', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'bale_onboarding', ...data }),
+    });
+  },
+
+  async manualVerify(userId: string): Promise<{ verified: boolean; user?: User; token?: string }> {
+    return await request<{ verified: boolean; user?: User; token?: string }>(
+      `api/auth.php?action=manual_verify&userId=${encodeURIComponent(userId)}`,
+      { method: 'POST' }
+    );
+  },
+
+  async testBaleToken(token?: string): Promise<{ ok: boolean; status: string; message: string; bot?: any }> {
+    return await request<{ ok: boolean; status: string; message: string; bot?: any }>(
+      'api/bale.php?action=test',
+      { method: 'POST', body: JSON.stringify({ token }) }
+    );
+  },
+
+  async setBaleWebhook(token?: string, url?: string): Promise<{ ok: boolean; webhookUrl: string; error?: string; message?: string }> {
+    const defaultUrl = (typeof window !== 'undefined' && window.location.origin)
+      ? `${window.location.origin.replace(/^http:\/\//, 'https://')}/api/bale.php?action=webhook`
+      : undefined;
+    const webhookUrl = url || defaultUrl;
+    return await request<{ ok: boolean; webhookUrl: string; error?: string; message?: string }>(
+      'api/bale.php?action=set_webhook',
+      { method: 'POST', body: JSON.stringify({ token, url: webhookUrl }) }
+    );
+  },
+
+  async testBaleNotification(params?: {
+    userId?: string;
+    chatId?: string;
+    title?: string;
+    message?: string;
+    token?: string;
+  }): Promise<{ ok: boolean; message?: string; error?: string; baleResponse?: any }> {
+    return await request<{ ok: boolean; message?: string; error?: string; baleResponse?: any }>(
+      'api/bale.php?action=notify',
+      {
+        method: 'POST',
+        body: JSON.stringify(params || {}),
+      }
+    );
+  },
+
+  async getBaleWebhookInfo(token?: string): Promise<{ ok: boolean; result?: any; description?: string }> {
+    return await request<{ ok: boolean; result?: any; description?: string }>(
+      'api/bale.php?action=get_webhook_info',
+      { method: 'POST', body: JSON.stringify({ token }) }
+    );
+  },
+
+  async testBaleInvoice(params: {
+    token?: string;
+    providerToken?: string;
+    chatId: string;
+  }): Promise<{ ok: boolean; result?: any; error?: string }> {
+    return await request<{ ok: boolean; result?: any; error?: string }>(
+      'api/bale.php?action=test_invoice',
+      { method: 'POST', body: JSON.stringify(params) }
+    );
+  },
+
+  async sendBaleCustomMessage(params: {
+    target: 'all' | 'user' | 'chat_id';
+    userId?: string;
+    chatId?: string;
+    text: string;
+    buttons: Array<{ text: string; type: 'url' | 'callback'; value: string }>;
+    token?: string;
+  }): Promise<{ ok: boolean; sentCount?: number; failedCount?: number; message?: string; error?: string }> {
+    return await request<{ ok: boolean; sentCount?: number; failedCount?: number; message?: string; error?: string }>(
+      'api/bale.php?action=send_custom_message',
+      {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }
+    );
+  },
+
+  // ---------------------------------------------------------------------------
+  // Negahm Unified SSO Integration (https://sso.negahm.ir/api/v1)
+  // ---------------------------------------------------------------------------
+  async ssoCheckStatus(): Promise<{ ok: boolean; config?: any; remote?: any; isHealthy?: boolean }> {
+    return await request<{ ok: boolean; config?: any; remote?: any; isHealthy?: boolean }>(
+      'api/sso.php?action=status',
+      { method: 'GET' }
+    );
+  },
+
+  async ssoTestConnection(cfg?: { serverUrl?: string; apiKey?: string; apiSecret?: string }): Promise<{
+    ok: boolean;
+    authorized?: boolean;
+    message?: string;
+    health?: any;
+    app?: any;
+  }> {
+    return await request<{ ok: boolean; authorized?: boolean; message?: string; health?: any; app?: any }>(
+      'api/sso.php?action=test_connection',
+      {
+        method: 'POST',
+        body: JSON.stringify(cfg || {}),
+      }
+    );
+  },
+
+  async ssoLogin(email: string, password: string): Promise<{
+    ok: boolean;
+    user: User;
+    token: string;
+    sso?: { user: any; tokens: any };
+    message?: string;
+  }> {
+    const res = await request<{
+      ok: boolean;
+      user: User;
+      token: string;
+      sso?: { user: any; tokens: any };
+      message?: string;
+    }>('api/sso.php?action=login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (res.token) {
+      setAuthToken(res.token);
+    }
+    if (res.user) {
+      this.setCachedUser(res.user);
+    }
     return res;
+  },
+
+  async ssoRegister(data: {
+    email: string;
+    password: string;
+    full_name?: string;
+    phone?: string;
+    role?: string;
+  }): Promise<{ ok: boolean; data?: any; message?: string }> {
+    return await request<{ ok: boolean; data?: any; message?: string }>(
+      'api/sso.php?action=register',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  },
+
+  async ssoGetUsers(params?: { page?: number; per_page?: number; q?: string }): Promise<{
+    ok: boolean;
+    data?: { items: any[]; total: number; page: number; per_page: number };
+  }> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.per_page) query.set('per_page', String(params.per_page));
+    if (params?.q) query.set('q', params.q);
+
+    return await request<{
+      ok: boolean;
+      data?: { items: any[]; total: number; page: number; per_page: number };
+    }>(`api/sso.php?action=users&${query.toString()}`, { method: 'GET' });
+  },
+
+  async ssoSyncAllUsers(): Promise<{ ok: boolean; syncedCount?: number; totalSSO?: number; message?: string }> {
+    return await request<{ ok: boolean; syncedCount?: number; totalSSO?: number; message?: string }>(
+      'api/sso.php?action=sync_all_users',
+      { method: 'POST' }
+    );
+  },
+
+  async adminSelfVerify(): Promise<{ ok?: boolean; message?: string; verified?: boolean; error?: string }> {
+    return await request<{ ok?: boolean; message?: string; verified?: boolean; error?: string }>(
+      'api/auth.php?action=admin_self_verify',
+      { method: 'POST' }
+    );
+  },
+
+  getCachedUser(): User | null {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem('taskrooz_current_user');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  },
+
+  getAuthToken(): string | null {
+    return getAuthToken();
+  },
+
+  setCachedUser(user: User | null): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      if (user) {
+        localStorage.setItem('taskrooz_current_user', JSON.stringify(user));
+        if (typeof window !== 'undefined') {
+          window.postMessage({
+            type: 'BAGTIME_SSO_LOGIN',
+            token: getAuthToken(),
+            user,
+            server: window.location.origin,
+          }, '*');
+        }
+      } else {
+        localStorage.removeItem('taskrooz_current_user');
+      }
+    } catch {}
   },
 
   // Auth: Login (Verified against Central Server with IIS 405 Resilience)
@@ -256,8 +817,12 @@ export const api = {
         body: JSON.stringify({ username: cleanUser, password: cleanPass }),
       });
       setAuthToken(data.token);
+      this.setCachedUser(data.user);
       return data;
     } catch (err: any) {
+      if (err?.requiresVerification) {
+        throw err;
+      }
       // If IIS returned 405 Method Not Allowed or blocked POST, retry via GET request
       try {
         const data = await request<{ user: User; token: string; message: string }>(
@@ -265,8 +830,12 @@ export const api = {
           { method: 'GET' }
         );
         setAuthToken(data.token);
+        this.setCachedUser(data.user);
         return data;
       } catch (retryErr: any) {
+        if (retryErr?.requiresVerification) {
+          throw retryErr;
+        }
         // Fallback for Super Admin Mohusyn so the owner is NEVER locked out of their app
         if (isMohusyn) {
           const adminUser: User = {
@@ -278,6 +847,7 @@ export const api = {
           };
           const token = btoa('usr_admin_mohusyn:' + Date.now());
           setAuthToken(token);
+          this.setCachedUser(adminUser);
           return { user: adminUser, token };
         }
         throw new Error(err.message || 'نام کاربری یا کلمه عبور نادرست است.');
@@ -287,15 +857,34 @@ export const api = {
 
   async getCurrentUser(): Promise<User | null> {
     const token = getAuthToken();
-    if (!token) return null;
+    const cached = this.getCachedUser();
+    if (!token && !cached) {
+      this.setCachedUser(null);
+      return null;
+    }
 
     try {
-      const data = await request<{ authenticated: boolean; user?: User }>('api/auth.php?action=me');
-      if (data.authenticated && data.user) return data.user;
+      // 3.5-second timeout controller so app NEVER hangs on loading, but gives ample time on mobile networks
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 3500) : null;
+      const data = await request<{ authenticated: boolean; user?: User }>('api/auth.php?action=me', {
+        signal: controller?.signal,
+      });
+      if (timeoutId) clearTimeout(timeoutId);
+      if (data && data.authenticated && data.user) {
+        this.setCachedUser(data.user);
+        return data.user;
+      }
+      // If server returned unauthenticated, check if cached user is admin/Mohusyn or valid session
+      if (cached) {
+        return cached;
+      }
       removeAuthToken();
+      this.setCachedUser(null);
       return null;
     } catch {
-      removeAuthToken();
+      // If network fails or times out, fallback to local cached user immediately
+      if (cached) return cached;
       return null;
     }
   },
@@ -307,6 +896,54 @@ export const api = {
       // ignore
     }
     removeAuthToken();
+    this.setCachedUser(null);
+    if (typeof window !== 'undefined') {
+      window.postMessage({ type: 'BAGTIME_SSO_LOGOUT' }, '*');
+    }
+  },
+
+  // Active Sessions & Device Management ("نشست‌های فعال و انداختن بیرون دستگاه")
+  async getActiveSessions(): Promise<ActiveSession[]> {
+    try {
+      const res = await request<{ sessions: ActiveSession[] }>('api/auth.php?action=sessions');
+      return res?.sessions || [];
+    } catch {
+      return [
+        {
+          id: 'sess_current',
+          userId: 'me',
+          device: typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent) ? 'دستگاه همراه' : 'رایانه شخصی',
+          browser: 'مرورگر وب',
+          isMobile: typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent),
+          ip: '127.0.0.1',
+          location: 'ایران',
+          createdAt: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          isCurrent: true,
+        }
+      ];
+    }
+  },
+
+  async terminateSession(sessionId: string): Promise<ActiveSession[]> {
+    const res = await request<{ success: boolean; message: string; sessions: ActiveSession[] }>(
+      'api/auth.php?action=terminate_session',
+      {
+        method: 'POST',
+        body: JSON.stringify({ sessionId }),
+      }
+    );
+    return res?.sessions || [];
+  },
+
+  async terminateAllOtherSessions(): Promise<ActiveSession[]> {
+    const res = await request<{ success: boolean; message: string; sessions: ActiveSession[] }>(
+      'api/auth.php?action=terminate_all_sessions',
+      {
+        method: 'POST',
+      }
+    );
+    return res?.sessions || [];
   },
 
   // Users (Admin only - fetched directly from Central Server Database with local mirror)
@@ -340,36 +977,100 @@ export const api = {
     };
 
     let serverUsers: User[] = [];
+    let serverReachable = false;
     try {
       const data = await request<{ users: User[] }>('api/users.php');
       if (Array.isArray(data.users) && data.users.length > 0) {
         serverUsers = data.users;
+        serverReachable = true;
       }
     } catch {
-      // ignore
+      try {
+        const publicData = await request<{ users: User[] }>('api/users.php?action=public');
+        if (Array.isArray(publicData.users) && publicData.users.length > 0) {
+          serverUsers = publicData.users;
+          serverReachable = true;
+        }
+      } catch {
+        // ignore
+      }
     }
 
     try {
       const raw = localStorage.getItem('taskrooz_registered_users');
       const localList: User[] = raw ? JSON.parse(raw) : [];
 
+      // Self-healing: when the server is reachable it is the source of truth.
+      // Local leftovers of DELETED users are pruned here so deleted users never
+      // "resurrect" in the admin panel on the next refresh/poll.
+      if (serverReachable) {
+        const serverIds = new Set(serverUsers.map((u) => u.id).filter(Boolean));
+        const serverUsernames = new Set(serverUsers.map((u) => (u.username || '').toLowerCase()).filter(Boolean));
+        const before = localList.length;
+        const cleaned = localList.filter(
+          (u) =>
+            serverIds.has(u.id) ||
+            serverUsernames.has((u.username || '').toLowerCase()) ||
+            (u.username || '').toLowerCase() === 'mohusyn'
+        );
+        if (cleaned.length !== before) {
+          try {
+            localStorage.setItem('taskrooz_registered_users', JSON.stringify(cleaned));
+          } catch {
+            // ignore
+          }
+        }
+      }
+
       // Merge server users and local registered users, eliminating duplicates
       const map = new Map<string, User>();
       map.set('mohusyn', baseAdmin);
 
+      const rawDel = localStorage.getItem('taskrooz_deleted_user_keys');
+      const tombKeys = new Set<string>(rawDel ? JSON.parse(rawDel) : []);
+
       serverUsers.forEach((u) => {
+        const uId = String(u.id || '').trim().toLowerCase();
+        const uName = String(u.username || '').trim().toLowerCase();
+        if (uName !== 'mohusyn' && (tombKeys.has(uId) || tombKeys.has(uName))) return;
         if (u.username) map.set(u.username.toLowerCase(), u);
       });
       localList.forEach((u) => {
+        const uId = String(u.id || '').trim().toLowerCase();
+        const uName = String(u.username || '').trim().toLowerCase();
+        if (uName !== 'mohusyn' && (tombKeys.has(uId) || tombKeys.has(uName))) return;
         if (u.username && !map.has(u.username.toLowerCase())) {
           map.set(u.username.toLowerCase(), u);
         }
       });
 
-      return Array.from(map.values());
+      return Array.from(map.values()).map((u) => {
+        if (!u.avatar) {
+          try {
+            const localAv = localStorage.getItem('taskrooz_user_avatar_' + u.id);
+            if (localAv) return { ...u, avatar: localAv };
+          } catch {}
+        }
+        return u;
+      });
     } catch {
       return serverUsers.length > 0 ? serverUsers : [baseAdmin];
     }
+  },
+
+  async searchUsers(query: string): Promise<User[]> {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    try {
+      const res = await request<{ users: User[] }>(`api/users.php?action=search&q=${encodeURIComponent(q)}`);
+      if (Array.isArray(res.users)) return res.users;
+    } catch {}
+    // Fallback to local filter
+    const all = await this.getUsers();
+    return all.filter((u) =>
+      (u.name && u.name.toLowerCase().includes(q)) ||
+      (u.username && u.username.toLowerCase().includes(q))
+    );
   },
 
   async createUser(user: {
@@ -388,23 +1089,215 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(user),
     });
+    try {
+      const raw = localStorage.getItem('taskrooz_registered_users');
+      const list: User[] = raw ? JSON.parse(raw) : [];
+      const cleanList = list.filter((u) => u.id !== data.user.id && u.username?.toLowerCase() !== data.user.username?.toLowerCase());
+      cleanList.push(data.user);
+      localStorage.setItem('taskrooz_registered_users', JSON.stringify(cleanList));
+    } catch {}
     broadcastSync('USER_REGISTERED', data.user);
     return data.user;
   },
 
   async updateUser(user: { id: string; name: string; role: 'admin' | 'user'; password?: string }): Promise<void> {
-    await request('api/users.php', {
-      method: 'PUT',
-      body: JSON.stringify(user),
-    });
+    try {
+      await request('api/users.php', {
+        method: 'PUT',
+        body: JSON.stringify(user),
+      });
+    } catch (err: any) {
+      // IIS 405 resilience: some servers block PUT, retry via POST ?action=update_user
+      await request('api/users.php', {
+        method: 'POST',
+        body: JSON.stringify({ ...user, action: 'update_user' }),
+      });
+    }
     broadcastSync('USER_UPDATED', user);
   },
 
-  async deleteUser(id: string): Promise<void> {
-    await request(`api/users.php?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
-    broadcastSync('USER_DELETED', { id });
+  /**
+   * Self-service profile update (any logged-in user, own profile only).
+   * Includes avatar (data URL), contact info, routine and optional password change.
+   * POST first (universally allowed, even on IIS), with PUT fallback.
+   */
+  async updateMyProfile(data: {
+    id: string;
+    name?: string;
+    username?: string;
+    phone?: string;
+    email?: string;
+    province?: string;
+    city?: string;
+    birthDate?: string;
+    jobTitle?: string;
+    skills?: string[];
+    bio?: string;
+    coverImage?: string;
+    isProfileCompleted?: boolean;
+    dailyTimeline?: Record<string, string>;
+    avatar?: string | null;
+    password?: string;
+    baleChatId?: string | number;
+    baleUsername?: string;
+    baleNotifToken?: string;
+    baleNotificationsEnabled?: boolean;
+  }): Promise<User> {
+    const tok = getAuthToken();
+    const payload = { action: 'update_profile', token: tok, ...data };
+    let data_: { user: User } | undefined;
+    try {
+      data_ = await request<{ user: User }>('api/users.php?action=update_profile', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (err: any) {
+      try {
+        data_ = await request<{ user: User }>('api/users.php', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      } catch (err2: any) {
+        try {
+          data_ = await request<{ user: User }>('api/users.php', {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          });
+        } catch (err3: any) {
+          // If server blocks POST/PUT with 405 on IIS: save update locally so user is never blocked!
+          const existingUsers = await this.getUsers();
+          const existingUser = existingUsers.find((u) => u.id === data.id);
+          const updatedUser: User = {
+            id: data.id,
+            username: data.username || existingUser?.username || 'user',
+            name: data.name || existingUser?.name || '',
+            role: existingUser?.role || 'user',
+            phone: data.phone ?? existingUser?.phone,
+            email: data.email ?? existingUser?.email,
+            province: data.province ?? existingUser?.province,
+            city: data.city ?? existingUser?.city,
+            birthDate: data.birthDate ?? existingUser?.birthDate,
+            jobTitle: data.jobTitle ?? existingUser?.jobTitle,
+            skills: data.skills ?? existingUser?.skills,
+            bio: data.bio ?? existingUser?.bio,
+            coverImage: data.coverImage ?? existingUser?.coverImage,
+            dailyTimeline: data.dailyTimeline ?? existingUser?.dailyTimeline,
+            avatar: data.avatar !== undefined ? (data.avatar || undefined) : existingUser?.avatar,
+            isProfileCompleted: true,
+            createdAt: existingUser?.createdAt || new Date().toISOString(),
+          };
+          data_ = { user: updatedUser };
+          try {
+            localStorage.setItem('taskrooz_user_profile_completed_' + data.id, 'true');
+            if (data.avatar) {
+              localStorage.setItem('taskrooz_user_avatar_' + data.id, data.avatar);
+            }
+          } catch {}
+        }
+      }
+    }
+    broadcastSync('USER_UPDATED', { id: data.id });
+    return data_.user;
+  },
+
+  /**
+   * Remove a deleted user from the local registered-users mirror in this browser.
+   * Without this, the deleted user "resurrects" in the admin panel because
+   * getUsers() merges the server list with localStorage.
+   */
+  removeLocalUserMirror(id: string, username?: string): void {
+    const cleanId = String(id || '').trim().toLowerCase();
+    const cleanUname = String(username || '').trim().toLowerCase();
+    try {
+      const raw = localStorage.getItem('taskrooz_registered_users');
+      const list: User[] = raw ? JSON.parse(raw) : [];
+      const cleaned = list.filter((u) => {
+        const uId = String(u.id || '').trim().toLowerCase();
+        const uName = String(u.username || '').trim().toLowerCase();
+        if (cleanId && (uId === cleanId || uName === cleanId)) return false;
+        if (cleanUname && (uName === cleanUname || uId === cleanUname)) return false;
+        return true;
+      });
+      localStorage.setItem('taskrooz_registered_users', JSON.stringify(cleaned));
+
+      const rawDel = localStorage.getItem('taskrooz_deleted_user_keys');
+      const delKeys: string[] = rawDel ? JSON.parse(rawDel) : [];
+      if (cleanId && !delKeys.includes(cleanId)) delKeys.push(cleanId);
+      if (cleanUname && !delKeys.includes(cleanUname)) delKeys.push(cleanUname);
+      localStorage.setItem('taskrooz_deleted_user_keys', JSON.stringify(delKeys));
+    } catch {
+      // ignore
+    }
+    try {
+      localStorage.setItem('taskrooz_sync_signal', String(Date.now()));
+    } catch {
+      // ignore
+    }
+  },
+
+  async deleteUser(id: string, username?: string): Promise<void> {
+    const cleanId = encodeURIComponent(id);
+    const cleanUname = username ? `&username=${encodeURIComponent(username)}` : '';
+    let success = false;
+    let lastError: any = null;
+
+    // 1. Standard DELETE verb
+    try {
+      await request(`api/users.php?id=${cleanId}${cleanUname}`, { method: 'DELETE' });
+      success = true;
+    } catch (err: any) {
+      lastError = err;
+    }
+
+    // 2. Fallback: POST ?action=delete with JSON body (primary IIS-safe fallback)
+    if (!success) {
+      try {
+        await request(`api/users.php?action=delete&id=${cleanId}${cleanUname}`, {
+          method: 'POST',
+          body: JSON.stringify({ id, username, action: 'delete' }),
+        });
+        success = true;
+      } catch (err2: any) {
+        lastError = err2;
+      }
+    }
+
+    // 3. Fallback: GET ?action=delete (secondary IIS-safe fallback)
+    if (!success) {
+      try {
+        await request(`api/users.php?action=delete&id=${cleanId}${cleanUname}`, { method: 'GET' });
+        success = true;
+      } catch (err3: any) {
+        lastError = err3;
+      }
+    }
+
+    if (!success && lastError) {
+      throw lastError;
+    }
+
+    // Deletion succeeded: purge local mirror so the user can never resurrect
+    this.removeLocalUserMirror(id, username);
+    broadcastSync('USER_DELETED', { id, username });
+  },
+
+  /**
+   * Bulk user deletion (admin only): many users + all their data in one POST.
+   * Mohusyn and the calling admin's own account are skipped on the server side.
+   */
+  async deleteUsersBulk(ids: string[]): Promise<{
+    deletedCount: number;
+    deleted: string[];
+    skipped: { id: string; reason: string }[];
+  }> {
+    const data = await request<{ deletedCount: number; deleted: string[]; skipped: { id: string; reason: string }[] }>(
+      'api/users.php?action=delete_many',
+      {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete_many', ids }),
+      }
+    );
+    return data;
   },
 
   // Global System Settings (Enforced by Admin on Server)
@@ -420,7 +1313,7 @@ export const api = {
     return DEFAULT_GLOBAL_SETTINGS;
   },
 
-  async saveGlobalSettings(settings: GlobalSystemSettings): Promise<void> {
+  async saveGlobalSettings(settings: Partial<GlobalSystemSettings>): Promise<void> {
     await request('api/settings.php?action=global', {
       method: 'POST',
       body: JSON.stringify(settings),
@@ -455,17 +1348,59 @@ export const api = {
     }
   },
 
+  async deleteCustomFont(fontId: string): Promise<void> {
+    try {
+      await request(`api/fonts.php?action=delete&id=${encodeURIComponent(fontId)}`, {
+        method: 'POST',
+        body: JSON.stringify({ id: fontId, action: 'delete' }),
+      });
+    } catch {}
+  },
+
   async uploadCustomFont(file: File, name: string, family?: string, description?: string): Promise<SystemFontOption> {
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
     const cleanName = name.trim() || file.name.replace(/\.[^/.]+$/, '');
-    const cleanFamily = (family?.trim() || cleanName).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const asciiSlug = (family?.trim() || cleanName).replace(/[^a-zA-Z0-9_-]/g, '');
+    const cleanFamily = asciiSlug.length >= 2 ? asciiSlug : ('CustomFont_' + Math.random().toString(36).substring(2, 6));
 
+    let dataUrl = '';
+    try {
+      dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    } catch {}
+
+    // 1. Try uploading with FormData first (supports large font files, streaming directly to server)
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('name', cleanName);
+      formData.append('family', cleanFamily);
+      formData.append('filename', file.name);
+      formData.append('description', description?.trim() || 'فونت سفارشی آپلود شده از سیستم');
+      if (dataUrl && dataUrl.length < 500000) {
+        formData.append('dataUrl', dataUrl);
+      }
+
+      const res = await request<{ message: string; font: SystemFontOption }>('api/fonts.php?action=upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res && res.font) {
+        if (!res.font.dataUrl && dataUrl) {
+          res.font.dataUrl = dataUrl;
+        }
+        broadcastSync('FONT_UPLOADED', res.font);
+        return res.font;
+      }
+    } catch (formErr) {
+      console.warn('FormData font upload failed, falling back to JSON payload:', formErr);
+    }
+
+    // 2. Fallback to JSON payload if FormData was blocked
     const res = await request<{ message: string; font: SystemFontOption }>('api/fonts.php?action=upload', {
       method: 'POST',
       body: JSON.stringify({
@@ -477,6 +1412,9 @@ export const api = {
       }),
     });
 
+    if (!res.font.dataUrl && dataUrl) {
+      res.font.dataUrl = dataUrl;
+    }
     broadcastSync('FONT_UPLOADED', res.font);
     return res.font;
   },
@@ -502,22 +1440,64 @@ export const api = {
   },
 
   async updateTask(task: Task): Promise<void> {
-    await request('api/tasks.php', {
-      method: 'PUT',
-      body: JSON.stringify(task),
-    });
+    try {
+      await request('api/tasks.php', {
+        method: 'PUT',
+        body: JSON.stringify(task),
+      });
+    } catch {
+      // Automatic fallback for IIS FastCGI where HTTP PUT is blocked (405 Method Not Allowed)
+      await request('api/tasks.php', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'update',
+          ...task,
+        }),
+      });
+    }
   },
 
   async deleteTask(id: string): Promise<void> {
-    await request(`api/tasks.php?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
+    try {
+      await request(`api/tasks.php?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    } catch {
+      // Automatic fallback for IIS FastCGI where HTTP DELETE is blocked (405 Method Not Allowed)
+      await request('api/tasks.php', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete', id }),
+      });
+    }
   },
 
-  async toggleTask(id: string): Promise<{ completed: boolean; completedAt?: string }> {
-    return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-    });
+  async toggleTask(id: string, completed?: boolean): Promise<{ completed: boolean; completedAt?: string }> {
+    try {
+      return await request('api/tasks.php', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'toggle',
+          id,
+          completed,
+        }),
+      });
+    } catch {
+      try {
+        return await request('api/toggle-task.php', {
+          method: 'POST',
+          body: JSON.stringify({ id, completed }),
+        });
+      } catch {
+        return await request(
+          `api/tasks.php?action=toggle&id=${encodeURIComponent(id)}${
+            completed !== undefined ? `&completed=${completed ? 1 : 0}` : ''
+          }`,
+          {
+            method: 'POST',
+          }
+        );
+      }
+    }
   },
 
   async addFocusMinutes(id: string, minutes: number): Promise<void> {
@@ -725,6 +1705,22 @@ export const api = {
     broadcastSync('ROOM_SYNC', { roomId });
   },
 
+  // Admin only: delete ALL focus rooms (soft delete with 10-min message retention)
+  async deleteAllFocusRooms(): Promise<number> {
+    try {
+      const data = await request<{ message?: string; deletedCount?: number }>('api/rooms.php?action=delete_all', {
+        method: 'POST',
+      });
+      broadcastSync('ROOM_SYNC', { roomId: '__all__' });
+      return data.deletedCount ?? 0;
+    } catch (err: any) {
+      // IIS 405 resilience fallback via GET
+      const data = await request<{ message?: string; deletedCount?: number }>('api/rooms.php?action=delete_all');
+      broadcastSync('ROOM_SYNC', { roomId: '__all__' });
+      return data.deletedCount ?? 0;
+    }
+  },
+
   async getActiveFocusRooms(): Promise<Array<{ id: string; name: string; hostName: string; participantCount: number; isRunning: boolean }>> {
     try {
       const data = await request<{ rooms: any[] }>('api/rooms.php?action=list');
@@ -766,9 +1762,16 @@ export const api = {
   },
 
   async deleteTeamProject(id: string): Promise<void> {
-    await request(`api/projects.php?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
+    try {
+      await request(`api/projects.php?id=${encodeURIComponent(id)}&action=delete`, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete', id }),
+      });
+    } catch {
+      await request(`api/projects.php?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    }
   },
 
   // Career Goals (Stored on Central Server)
@@ -882,5 +1885,321 @@ export const api = {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  },
+
+  // ── Subscription Management ──
+  async setUserSubscription(
+    userId: string,
+    plan: 'free' | 'plus' | 'pro' | 'ultra',
+    planType?: '1_month' | '3_months' | '6_months',
+    expiresAt?: string
+  ): Promise<void> {
+    try {
+      const raw = localStorage.getItem('taskrooz_registered_users');
+      if (raw) {
+        const list = JSON.parse(raw);
+        const updated = list.map((u: any) => {
+          if (u.id === userId || (u.username && u.username.toLowerCase() === userId.toLowerCase())) {
+            return {
+              ...u,
+              subscription: {
+                plan,
+                planType: planType || (plan === 'ultra' ? '6_months' : plan === 'plus' ? '1_month' : '3_months'),
+                activatedAt: new Date().toISOString(),
+                expiresAt,
+              },
+            };
+          }
+          return u;
+        });
+        localStorage.setItem('taskrooz_registered_users', JSON.stringify(updated));
+      }
+    } catch {}
+
+    await request('api/users.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'set_subscription', userId, plan, planType, expiresAt }),
+    });
+    broadcastSync('USER_UPDATED', { id: userId, subscription: { plan, planType, expiresAt } });
+  },
+
+  // ── Mandatory Profile Completion on First Login ──
+  async completeProfile(data: {
+    birthDate: string;
+    province: string;
+    city: string;
+    jobTitle: string;
+    email?: string;
+    dailyTimeline?: any;
+  }): Promise<User> {
+    const res = await request<{ user: User; message: string }>('api/auth.php?action=complete_profile', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return res.user;
+  },
+
+  // ── Friends & Colleague Network ──
+  async getFriends(): Promise<User[]> {
+    try {
+      const res = await request<{ friends: User[] }>('api/friends.php');
+      return Array.isArray(res.friends) ? res.friends : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async getFriendRequests(): Promise<{ incoming: FriendRequestItem[]; outgoing: FriendRequestItem[] }> {
+    try {
+      const res = await request<{ incoming: FriendRequestItem[]; outgoing: FriendRequestItem[] }>('api/friends.php?action=requests');
+      return {
+        incoming: Array.isArray(res.incoming) ? res.incoming : [],
+        outgoing: Array.isArray(res.outgoing) ? res.outgoing : [],
+      };
+    } catch {
+      return { incoming: [], outgoing: [] };
+    }
+  },
+
+  async sendFriendRequest(toUserId: string, projectId?: string, projectName?: string): Promise<any> {
+    return await request('api/friends.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'request', toUserId, projectId, projectName }),
+    });
+  },
+
+  async acceptFriendRequest(requestId: string): Promise<any> {
+    return await request('api/friends.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'accept', requestId }),
+    });
+  },
+
+  async rejectFriendRequest(requestId: string): Promise<any> {
+    return await request('api/friends.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'reject', requestId }),
+    });
+  },
+
+  async removeFriend(friendId: string): Promise<any> {
+    try {
+      return await request(`api/friends.php?id=${encodeURIComponent(friendId)}&action=delete`, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete', friendId, id: friendId }),
+      });
+    } catch {
+      return await request(`api/friends.php?id=${encodeURIComponent(friendId)}`, {
+        method: 'DELETE',
+      });
+    }
+  },
+
+  // ── Direct P2P Messaging ──
+  async getDirectMessages(withUserId: string): Promise<DirectChatMessage[]> {
+    try {
+      const res = await request<{ messages: DirectChatMessage[] }>(`api/messages.php?with=${encodeURIComponent(withUserId)}`);
+      return Array.isArray(res.messages) ? res.messages : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async sendDirectMessage(receiverId: string, text: string): Promise<DirectChatMessage> {
+    const res = await request<any>('api/messages.php', {
+      method: 'POST',
+      body: JSON.stringify({ receiverId, text }),
+    });
+    const messageObj = res?.data || (res?.id && res?.senderId ? res : null);
+    if (!messageObj) {
+      throw new Error(res?.error || res?.message || 'خطا در ارسال پیام به سرور.');
+    }
+    return messageObj;
+  },
+
+  async getConversations(): Promise<any[]> {
+    try {
+      const res = await request<{ conversations: any[] }>('api/messages.php?action=conversations');
+      return Array.isArray(res.conversations) ? res.conversations : [];
+    } catch {
+      return [];
+    }
+  },
+
+  // ── Team Project Group Chat ──
+  async getProjectMessages(projectId: string): Promise<ProjectChatMessage[]> {
+    try {
+      const res = await request<{ messages: ProjectChatMessage[] }>(`api/projects.php?action=messages&project_id=${encodeURIComponent(projectId)}`);
+      return Array.isArray(res.messages) ? res.messages : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async sendProjectMessage(projectId: string, text: string): Promise<ProjectChatMessage> {
+    const res = await request<{ data: ProjectChatMessage; message: string }>('api/projects.php?action=messages', {
+      method: 'POST',
+      body: JSON.stringify({ projectId, text }),
+    });
+    return res.data;
+  },
+
+  // ── User Notifications ──
+  async getNotifications(): Promise<any[]> {
+    try {
+      const res = await request<{ notifications: any[] }>('api/notifications.php');
+      return Array.isArray(res.notifications) ? res.notifications : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async markNotificationsRead(id?: string): Promise<void> {
+    try {
+      await request('api/notifications.php', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'read', id }),
+      });
+    } catch {}
+  },
+
+  async clearNotifications(): Promise<void> {
+    try {
+      await request('api/notifications.php', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'clear' }),
+      });
+    } catch {}
+  },
+
+  async broadcastNotification(payload: {
+    title: string;
+    message: string;
+    targetUserId?: string;
+    type?: string;
+    url?: string;
+  }): Promise<{ ok: boolean; sentCount: number; message: string }> {
+    return await request('api/notifications.php', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'broadcast',
+        ...payload,
+      }),
+    });
+  },
+
+  // ── Subscription Payments & Receipts ──
+  async submitPayment(data: {
+    plan: 'plus' | 'pro' | 'ultra';
+    planType: '1_month' | '3_months' | '6_months';
+    amount?: string;
+    trackingCode: string;
+    paymentMethod?: 'card_to_card' | 'online_gateway' | 'request_card';
+    note?: string;
+  }): Promise<any> {
+    const res = await request<{ payment: any; message: string }>('api/payments.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'submit', ...data }),
+    });
+    return res.payment;
+  },
+
+  async getPayments(all = false): Promise<any[]> {
+    try {
+      const res = await request<{ payments: any[] }>(`api/payments.php${all ? '?action=all' : ''}`);
+      return Array.isArray(res.payments) ? res.payments : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async approvePayment(paymentId: string): Promise<any> {
+    return await request('api/payments.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'approve', paymentId }),
+    });
+  },
+
+  async rejectPayment(paymentId: string, reason?: string): Promise<any> {
+    return await request('api/payments.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'reject', paymentId, reason }),
+    });
+  },
+
+  // ── 12-Hour Offline-First Sync Engine ──
+  getLastSyncTime(): number {
+    try {
+      const stored = localStorage.getItem('taskrooz_last_server_sync');
+      if (stored) return parseInt(stored, 10);
+    } catch {}
+    const now = Date.now();
+    try { localStorage.setItem('taskrooz_last_server_sync', String(now)); } catch {}
+    return now;
+  },
+
+  setLastSyncTime(ts: number = Date.now()): void {
+    try {
+      localStorage.setItem('taskrooz_last_server_sync', String(ts));
+    } catch {}
+  },
+
+  isMandatorySyncDue(): boolean {
+    const lastSync = this.getLastSyncTime();
+    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+    return (Date.now() - lastSync) > TWELVE_HOURS_MS;
+  },
+
+  getRemainingHoursUntilMandatorySync(): number {
+    const lastSync = this.getLastSyncTime();
+    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+    const elapsed = Date.now() - lastSync;
+    const remaining = TWELVE_HOURS_MS - elapsed;
+    if (remaining <= 0) return 0;
+    return Math.round((remaining / (60 * 60 * 1000)) * 10) / 10;
+  },
+
+  enqueueOfflineAction(type: string, data: any): void {
+    try {
+      const raw = localStorage.getItem('taskrooz_offline_queue');
+      const queue = raw ? JSON.parse(raw) : [];
+      queue.push({ type, data, timestamp: Date.now() });
+      localStorage.setItem('taskrooz_offline_queue', JSON.stringify(queue));
+    } catch {}
+  },
+
+  getOfflineQueue(): any[] {
+    try {
+      const raw = localStorage.getItem('taskrooz_offline_queue');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  clearOfflineQueue(): void {
+    try {
+      localStorage.removeItem('taskrooz_offline_queue');
+    } catch {}
+  },
+
+  async syncDataWithServer(): Promise<{ success: boolean; tasks?: any[]; syncedAt?: string; message?: string }> {
+    const pendingActions = this.getOfflineQueue();
+    try {
+      const res = await request<{ status: string; syncedAt: string; tasks?: any[] }>('api/sync.php', {
+        method: 'POST',
+        body: JSON.stringify({ pendingActions }),
+      });
+      this.clearOfflineQueue();
+      this.setLastSyncTime(Date.now());
+      if (res.tasks && Array.isArray(res.tasks)) {
+        try {
+          localStorage.setItem('taskrooz_cached_tasks', JSON.stringify(res.tasks));
+        } catch {}
+      }
+      return { success: true, tasks: res.tasks, syncedAt: res.syncedAt };
+    } catch (err: any) {
+      throw new Error(err.message || 'خطا در ارتباط با سرور جهت همگام‌سازی اطلاعات');
+    }
   },
 };
