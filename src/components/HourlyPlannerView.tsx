@@ -4,8 +4,7 @@ import {
   toPersianDigits,
   getTodayISO,
   formatAppDate,
-  isoToJalali,
-  jalaliToISO,
+  parseISODate,
 } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import {
@@ -28,6 +27,7 @@ export const HourlyPlannerView: React.FC = () => {
     toggleTaskComplete,
     openCreateModal,
     calendarType,
+    toggleCalendarType,
   } = useTask();
 
   const todayISO = getTodayISO();
@@ -51,12 +51,15 @@ export const HourlyPlannerView: React.FC = () => {
     return tasks.filter((t) => t.date === activeDate);
   }, [tasks, activeDate]);
 
-  // Navigate date
+  // Navigate date safely across months and calendars
   const changeDate = (days: number) => {
     sounds.playPop();
-    const [y, m, d] = isoToJalali(activeDate);
-    const newISO = jalaliToISO(y, m, d + days);
-    setSelectedDate(newISO);
+    const cur = parseISODate(activeDate);
+    cur.setDate(cur.getDate() + days);
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, '0');
+    const d = String(cur.getDate()).padStart(2, '0');
+    setSelectedDate(`${y}-${m}-${d}`);
   };
 
   // Full day planning hours: 06:00 to 24:00 (18 hours)
@@ -162,6 +165,16 @@ export const HourlyPlannerView: React.FC = () => {
               <ChevronLeft className="w-4 h-4" />
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={toggleCalendarType}
+            className="text-xs font-bold px-2.5 py-1.5 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+            title="تغییر سیستم تقویم (شمسی / میلادی)"
+          >
+            <CalendarDays className="w-3.5 h-3.5" />
+            <span>{calendarType === 'jalali' ? 'شمسی' : 'میلادی'}</span>
+          </button>
 
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
             <button

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTask } from '../context/TaskContext';
 import { parseTasksFromPersianText, type ParsedTaskDraft } from '../utils/persianTaskParser';
-import { toPersianDigits, formatPersianDate, getTodayISO } from '../utils/persianDate';
+import { toPersianDigits, formatAppDate, getTodayISO } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import {
   Sparkles,
@@ -31,7 +31,7 @@ export const AiTaskAgentModal: React.FC<AiTaskAgentModalProps> = ({
   onOpenManualModal,
 }) => {
   const handleManual = onSwitchToManual || onOpenManualModal;
-  const { addTask, selectedDate, categories } = useTask();
+  const { addTask, selectedDate, categories, calendarType } = useTask();
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
@@ -283,7 +283,7 @@ export const AiTaskAgentModal: React.FC<AiTaskAgentModalProps> = ({
               </label>
 
               <span className="text-[11px] font-bold text-slate-400">
-                تاریخ هدف: {formatPersianDate(activeDate, 'dayMonth')}
+                تاریخ هدف: {formatAppDate(activeDate, calendarType, 'dayMonth')}
               </span>
             </div>
 

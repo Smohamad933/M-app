@@ -55,6 +55,7 @@ export const TaskModal: React.FC = () => {
     users,
     setIsUpgradeModalOpen,
     calendarType,
+    toggleCalendarType,
   } = useTask();
 
   const [title, setTitle] = useState('');
@@ -327,21 +328,30 @@ export const TaskModal: React.FC = () => {
 
           {/* Persian Date & 24-Hour Time Picker */}
           <div className="space-y-3 p-4 bg-[#f8fafc] rounded-2xl border border-slate-200">
-            {/* Persian Date Selector */}
+            {/* Persian / Gregorian Date Selector */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="font-extrabold text-slate-700 flex items-center gap-1.5 text-xs">
                   <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>تاریخ شمسی تسک</span>
+                  <span>{calendarType === 'gregorian' ? 'تاریخ میلادی تسک' : 'تاریخ شمسی تسک'}</span>
                 </label>
-                <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200">
-                  {formatAppDate(date || todayISO, calendarType, 'full')}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={toggleCalendarType}
+                    className="text-[10px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-lg border border-indigo-200 cursor-pointer transition-colors"
+                    title="تغییر تقویم به شمسی / میلادی"
+                  >
+                    {calendarType === 'jalali' ? 'تغییر به میلادی 🌐' : 'تغییر به شمسی 📅'}
+                  </button>
+                  <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200">
+                    {formatAppDate(date || todayISO, calendarType, 'full')}
+                  </span>
+                </div>
               </div>
 
               {calendarType === 'gregorian' ? (
                 <div className="space-y-1">
-                  <span className="text-[10px] text-slate-500 font-bold block">تاریخ میلادی</span>
                   <input
                     type="date"
                     value={date || todayISO}
@@ -389,7 +399,7 @@ export const TaskModal: React.FC = () => {
                     onChange={(e) => onJalaliChange(Number(e.target.value), jm, jd)}
                     className="w-full px-2 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs outline-none font-mono cursor-pointer"
                   >
-                    {[1404, 1405, 1406].map((y) => (
+                    {[1402, 1403, 1404, 1405, 1406, 1407].map((y) => (
                       <option key={y} value={y}>
                         {toPersianDigits(y)}
                       </option>

@@ -493,7 +493,13 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setInterfaceMode = (mode: 'simple' | 'advanced') => {
     setInterfaceModeState(mode);
-    setSettings((prev) => ({ ...prev, interfaceMode: mode }));
+    setSettings((prev) => {
+      const updated = { ...prev, interfaceMode: mode };
+      try {
+        localStorage.setItem('taskrooz_settings', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     try {
       localStorage.setItem('taskrooz_ui_mode', mode);
     } catch {}
@@ -520,10 +526,15 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setThemeMode = (mode: 'light' | 'dark') => {
     setThemeModeState(mode);
-    setSettings((prev) => ({ ...prev, theme: mode }));
+    setSettings((prev) => {
+      const updated = { ...prev, theme: mode };
+      try {
+        localStorage.setItem('taskrooz_settings', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     try {
       localStorage.setItem('taskrooz_theme', mode);
-      localStorage.setItem('taskrooz_settings', JSON.stringify({ ...settings, theme: mode }));
     } catch {}
     sounds.playPop();
   };
@@ -548,10 +559,15 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setCalendarType = (type: 'jalali' | 'gregorian') => {
     setCalendarTypeState(type);
-    setSettings((prev) => ({ ...prev, calendarType: type }));
+    setSettings((prev) => {
+      const updated = { ...prev, calendarType: type };
+      try {
+        localStorage.setItem('taskrooz_settings', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     try {
       localStorage.setItem('taskrooz_calendar_type', type);
-      localStorage.setItem('taskrooz_settings', JSON.stringify({ ...settings, calendarType: type }));
     } catch {}
     sounds.playPop();
   };

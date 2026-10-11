@@ -7,13 +7,15 @@ import {
   toPersianDigits,
   PERSIAN_MONTHS,
   GREGORIAN_MONTHS,
+  GREGORIAN_MONTHS_FA,
   getTodayISO,
+  parseISODate,
 } from '../utils/persianDate';
 import { TaskCard } from './TaskCard';
-import { ChevronRight, ChevronLeft, Plus, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Plus, Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
 
 export const CalendarView: React.FC = () => {
-  const { tasks, selectedDate, setSelectedDate, openCreateModal, calendarType } = useTask();
+  const { tasks, selectedDate, setSelectedDate, openCreateModal, calendarType, toggleCalendarType } = useTask();
 
   const isGregorian = calendarType === 'gregorian';
   const today = new Date();
@@ -24,12 +26,14 @@ export const CalendarView: React.FC = () => {
 
   // Sync year and month view when calendar system switches
   useEffect(() => {
-    if (isGregorian) {
-      setViewYear(today.getFullYear());
-      setViewMonth(today.getMonth() + 1);
+    const sel = parseISODate(selectedDate || getTodayISO());
+    if (calendarType === 'gregorian') {
+      setViewYear(sel.getFullYear());
+      setViewMonth(sel.getMonth() + 1);
     } else {
-      setViewYear(currentJy);
-      setViewMonth(currentJm);
+      const [jy, jm] = gregorianToJalali(sel.getFullYear(), sel.getMonth() + 1, sel.getDate());
+      setViewYear(jy);
+      setViewMonth(jm);
     }
   }, [calendarType]);
 
@@ -93,42 +97,57 @@ export const CalendarView: React.FC = () => {
   return (
     <div className="space-y-5 animate-in fade-in pb-16">
       {/* Month Selector Bar */}
-      <div className="flex items-center justify-between bg-white p-4 rounded-3xl border border-slate-200/90 shadow-sm">
-        <button
-          onClick={handlePrevMonth}
-          className="w-9 h-9 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
-          title="ماه قبل"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-slate-200/90 shadow-sm">
         <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrevMonth}
+            className="w-9 h-9 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+            title="ماه قبل"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={handleNextMonth}
+            className="w-9 h-9 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+            title="ماه بعد"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
           <CalendarIcon className="w-4 h-4 text-[#00b884]" />
           <span className="text-sm sm:text-base font-black text-slate-900">
             {isGregorian
-              ? `${GREGORIAN_MONTHS[viewMonth - 1]} ${viewYear}`
+              ? `${GREGORIAN_MONTHS[viewMonth - 1]} (${GREGORIAN_MONTHS_FA[viewMonth - 1]}) ${viewYear}`
               : `${PERSIAN_MONTHS[viewMonth - 1]} ${toPersianDigits(viewYear)}`}
           </span>
           <button
             type="button"
             onClick={() => setSelectedDate(todayISO)}
-            className="text-[10px] font-black px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors mr-2 cursor-pointer"
+            className="text-[10px] font-black px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
           >
             {isGregorian ? 'Today' : 'امروز'}
           </button>
+          {/* Direct Calendar Switcher Button inside Calendar View */}
+          <button
+            type="button"
+            onClick={toggleCalendarType}
+            className="text-xs font-bold px-3 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+            title="تغییر بین تقویم شمسی و میلادی"
+          >
+            <RefreshCw className="w-3 h-3 text-indigo-500" />
+            <span>{isGregorian ? 'میلادی 🌐 (تغییر به شمسی)' : 'شمسی 📅 (تغییر به میلادی)'}</span>
+          </button>
         </div>
-
-        <button
-          onClick={handleNextMonth}
-          className="w-9 h-9 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
-          title="ماه بعد"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
       </div>
 
       {/* Calendar Grid */}
-      <div className="bg-white p-5 sm:p-6 rounded-[28px] border border-slate-200/90 shadow-sm">
+      <div
+        dir={isGregorian ? 'ltr' : 'rtl'}
+        className="bg-white p-5 sm:p-6 rounded-[28px] border border-slate-200/90 shadow-sm transition-all"
+      >
         {/* Weekday headers */}
         <div className="grid grid-cols-7 gap-1 text-center mb-3">
           {weekdayHeaders.map((wd, i) => (

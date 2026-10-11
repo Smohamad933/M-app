@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTask } from '../context/TaskContext';
-import { toPersianDigits, getTodayISO, formatPersianDate } from '../utils/persianDate';
+import { toPersianDigits, getTodayISO, formatAppDate } from '../utils/persianDate';
 import { greetingKeySet } from '../utils/appTexts';
 import { UserAvatar } from './UserAvatar';
 import { ProfileModal } from './ProfileModal';
@@ -1068,11 +1068,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   {themeMode === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
                 </button>
 
-                {/* Calendar Type Switcher (hidden on mobile, set via profile/settings) */}
+                {/* Calendar Type Switcher (visible on all screens) */}
                 <button
                   type="button"
                   onClick={toggleCalendarType}
-                  className="h-8 sm:h-9 px-2.5 rounded-full border border-slate-200/80 bg-white hover:bg-slate-100 text-slate-700 items-center gap-1 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 hidden md:flex"
+                  className="h-8 sm:h-9 px-2.5 rounded-full border border-slate-200/80 bg-white hover:bg-slate-100 text-slate-700 flex items-center gap-1 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0"
                   title={calendarType === 'jalali' ? 'تقویم خورشیدی (شمسی) فعال است — کلیک برای تغییر به میلادی' : 'تقویم میلادی فعال است — کلیک برای تغییر به شمسی'}
                 >
                   <Calendar className="w-3.5 h-3.5 text-indigo-500" />
@@ -1204,10 +1204,18 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   </span>
                 </button>
 
-                <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200/60">
-                  <CalendarDays className="w-3 h-3 text-slate-400" />
-                  <span>{formatPersianDate(new Date(), 'full')}</span>
-                </span>
+                <button
+                  type="button"
+                  onClick={toggleCalendarType}
+                  className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 rounded-full bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 font-bold border border-slate-200/60 cursor-pointer transition-colors"
+                  title="کلیک برای تغییر بین تقویم شمسی و میلادی"
+                >
+                  <CalendarDays className="w-3 h-3 text-indigo-500" />
+                  <span>{formatAppDate(new Date(), calendarType, 'full')}</span>
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-100 text-indigo-700 font-black">
+                    {calendarType === 'jalali' ? 'شمسی' : 'میلادی'}
+                  </span>
+                </button>
                 <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 font-mono font-bold border border-slate-200/60 hidden sm:inline-flex">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00b884] animate-pulse" />
                   {liveClock}

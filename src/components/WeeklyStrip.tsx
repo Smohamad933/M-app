@@ -4,7 +4,7 @@ import { getDaysAround, getTodayISO, toPersianDigits, formatAppDate } from '../u
 import { Calendar as CalendarIcon } from 'lucide-react';
 
 export const WeeklyStrip: React.FC = () => {
-  const { selectedDate, setSelectedDate, tasks, calendarType } = useTask();
+  const { selectedDate, setSelectedDate, tasks, calendarType, toggleCalendarType } = useTask();
   const scrollRef = useRef<HTMLDivElement>(null);
   const todayISO = getTodayISO();
 
@@ -30,14 +30,24 @@ export const WeeklyStrip: React.FC = () => {
             ({formatAppDate(selectedDate, calendarType, 'weekday')})
           </span>
         </span>
-        {selectedDate !== todayISO && (
+        <div className="flex items-center gap-1.5">
           <button
-            onClick={() => setSelectedDate(todayISO)}
-            className="text-[11px] font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1 cursor-pointer transition-colors bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200"
+            type="button"
+            onClick={toggleCalendarType}
+            className="text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-xl border border-indigo-200 flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+            title="تغییر سیستم تقویم (شمسی / میلادی)"
           >
-            <span>برو به امروز</span>
+            <span>{calendarType === 'jalali' ? '📅 شمسی' : '🌐 میلادی'}</span>
           </button>
-        )}
+          {selectedDate !== todayISO && (
+            <button
+              onClick={() => setSelectedDate(todayISO)}
+              className="text-[11px] font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1 cursor-pointer transition-colors bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200"
+            >
+              <span>برو به امروز</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div
