@@ -121,22 +121,7 @@ function getCurrentUser($dbInstance = null) {
         }
     }
 
-    // 1. Session check
-    if (!empty($_SESSION['user_id'])) {
-        $u = $storage->getUserById($_SESSION['user_id']);
-        if ($u) {
-            unset($u['password_hash']);
-            unset($u['password']);
-            if (isUserAdmin($u)) {
-                $u['role'] = 'admin';
-                $u['isVerified'] = true;
-                $u['status'] = 'active';
-            }
-            return $u;
-        }
-    }
-
-    // 2. Token check (IIS strips Authorization, so check X-Auth-Token, HTTP_X_AUTH_TOKEN, ?token=, and POST token)
+    // 1. Token check FIRST (Bearer token strictly identifies the calling user)
     if (!empty($token)) {
         $decoded = @base64_decode($token);
         $userId = '';
@@ -148,13 +133,11 @@ function getCurrentUser($dbInstance = null) {
             $userId = $token;
         }
 
+        $u = null;
         if (!empty($userId)) {
             $u = $storage->getUserById($userId);
             if (!$u) {
                 $u = $storage->getUserByUsername($userId);
-            }
-            if (!$u && (strtolower($userId) === 'mohusyn' || $userId === 'usr_admin_mohusyn' || $userId === 'usr_mohusyn_admin')) {
-                $u = $storage->getUserByUsername('Mohusyn');
             }
         }
         if (!$u && !empty($token)) {
@@ -163,20 +146,7 @@ function getCurrentUser($dbInstance = null) {
         if (!$u && !empty($decoded)) {
             $u = $storage->getUserById($decoded) ?: $storage->getUserByUsername($decoded);
         }
-        if (!$u && (strtolower($userId) === 'mohusyn' || $userId === 'usr_admin_mohusyn' || $userId === 'usr_mohusyn_admin' || stripos($token, 'mohusyn') !== false)) {
-            $u = $storage->getUserByUsername('Mohusyn');
-        }
-        if (!$u && (strtolower($userId) === 'mohusyn' || $userId === 'usr_admin_mohusyn' || $userId === 'usr_mohusyn_admin' || stripos($token, 'mohusyn') !== false)) {
-            return [
-                'id' => 'usr_admin_mohusyn',
-                'username' => 'Mohusyn',
-                'name' => 'سید محمدحسین شیخ الاسلامی (Mohusyn)',
-                'role' => 'admin',
-                'isVerified' => true,
-                'status' => 'active',
-                'numericId' => 1000,
-            ];
-        }
+
         if ($u) {
             unset($u['password_hash']);
             unset($u['password']);
@@ -184,6 +154,26 @@ function getCurrentUser($dbInstance = null) {
                 $u['role'] = 'admin';
                 $u['isVerified'] = true;
                 $u['status'] = 'active';
+            } else {
+                $u['role'] = 'user';
+            }
+            return $u;
+        }
+        return null;
+    }
+
+    // 2. Session check (Fallback ONLY if no token was supplied in request)
+    if (!empty($_SESSION['user_id'])) {
+        $u = $storage->getUserById($_SESSION['user_id']);
+        if ($u) {
+            unset($u['password_hash']);
+            unset($u['password']);
+            if (isUserAdmin($u)) {
+                $u['role'] = 'admin';
+                $u['isVerified'] = true;
+                $u['status'] = 'active';
+            } else {
+                $u['role'] = 'user';
             }
             return $u;
         }
@@ -197,10 +187,10 @@ function isUserAdmin($user) {
         $token = getAuthToken();
         if (!empty($token)) {
             $decoded = @base64_decode($token);
-            if ($decoded && (strpos($decoded, 'usr_admin_mohusyn') === 0 || stripos($decoded, 'mohusyn') === 0)) {
+            if ($decoded && (strpos($decoded, 'usr_admin_mohusyn:') === 0 || stripos($decoded, 'mohusyn:') === 0)) {
                 return true;
             }
-            if (strpos($token, 'usr_admin_mohusyn') === 0 || stripos($token, 'mohusyn') === 0) {
+            if ($token === 'usr_admin_mohusyn' || strtolower($token) === 'mohusyn') {
                 return true;
             }
         }
@@ -210,15 +200,14 @@ function isUserAdmin($user) {
         return false;
     }
     if (is_array($user)) {
-        if (($user['role'] ?? '') === 'admin') return true;
-        $uname = strtolower($user['username'] ?? '');
-        if ($uname === 'mohusyn' || strpos($uname, 'mohusyn') !== false) return true;
-        $uid = strtolower($user['id'] ?? '');
-        if ($uid === 'usr_admin_mohusyn' || $uid === 'usr_mohusyn_admin' || strpos($uid, 'mohusyn') !== false) return true;
-        $name = $user['name'] ?? '';
-        if (mb_strpos($name, 'محمدحسین') !== false || mb_strpos($name, 'شیخ الاسلامی') !== false || stripos($name, 'mohusyn') !== false) return true;
-        $phone = $user['phone'] ?? '';
-        if ($phone === '09120000000' || (!empty($phone) && strpos($phone, '912') !== false && (mb_strpos($name, 'سید') !== false || mb_strpos($name, 'محمد') !== false))) return true;
+        $uname = strtolower(trim((string)($user['username'] ?? '')));
+        $uid = strtolower(trim((string)($user['id'] ?? '')));
+        if ($uname === 'mohusyn' || $uid === 'usr_admin_mohusyn' || $uid === 'usr_mohusyn_admin') {
+            return true;
+        }
+        if (($user['role'] ?? '') === 'admin' && ($uname === 'mohusyn' || $uid === 'usr_admin_mohusyn')) {
+            return true;
+        }
     }
     return false;
 }
@@ -226,18 +215,6 @@ function isUserAdmin($user) {
 function requireAuth($dbInstance = null) {
     $user = getCurrentUser($dbInstance);
     if (!$user) {
-        // Fallback for Mohusyn / admin
-        $token = $_GET['token'] ?? '';
-        if (stripos($token, 'mohusyn') !== false) {
-            global $db;
-            $admin = $db->getUserByUsername('Mohusyn');
-            if ($admin) {
-                $admin['role'] = 'admin';
-                $admin['isVerified'] = true;
-                $admin['status'] = 'active';
-                return $admin;
-            }
-        }
         jsonResponse(['error' => 'لطفاً ابتدا وارد حساب کاربری خود شوید.'], 401);
     }
     return $user;

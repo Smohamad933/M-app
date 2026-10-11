@@ -581,15 +581,10 @@ function getUserFromToken(req: IncomingMessage, db: AppData): DBUser | null {
 
 function isUserAdmin(user: any): boolean {
   if (!user) return false;
-  if (user.role === 'admin') return true;
-  const uname = (user.username || '').toLowerCase();
-  if (uname === 'mohusyn' || uname.includes('mohusyn')) return true;
-  const uid = (user.id || '').toLowerCase();
-  if (uid === 'usr_admin_mohusyn' || uid === 'usr_mohusyn_admin' || uid.includes('mohusyn')) return true;
-  const name = user.name || '';
-  if (name.includes('محمدحسین') || name.includes('شیخ الاسلامی') || name.toLowerCase().includes('mohusyn')) return true;
-  const phone = user.phone || '';
-  if (phone === '09120000000' || (phone.includes('912') && (name.includes('سید') || name.includes('محمد')))) return true;
+  const uname = (user.username || '').toLowerCase().trim();
+  const uid = (user.id || '').toLowerCase().trim();
+  if (uname === 'mohusyn' || uid === 'usr_admin_mohusyn' || uid === 'usr_mohusyn_admin') return true;
+  if (user.role === 'admin' && (uname === 'mohusyn' || uid === 'usr_admin_mohusyn')) return true;
   return false;
 }
 
@@ -3551,21 +3546,49 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       try { body = await parseJsonBody(req); } catch {}
       const userId = (body.userId || body.id || urlObj.searchParams.get('userId') || '').trim();
       const prevUsername = (body.prevUsername || urlObj.searchParams.get('prevUsername') || '').trim();
+
+      if (!userId) {
+        sendJson(res, { error: 'شناسه کاربر الزامی است.' }, 400);
+        return true;
+      }
+      if (userId === 'usr_admin_mohusyn' || (body.username && body.username.toLowerCase() === 'mohusyn')) {
+        sendJson(res, { error: 'حساب مدیر اصلی محافظت شده است.' }, 403);
+        return true;
+      }
+
       let targetUser = db.users.find(u => u.id === userId);
       if (!targetUser && prevUsername) {
         targetUser = db.users.find(u => u.username.toLowerCase() === prevUsername.toLowerCase());
       }
-      if (!targetUser && currentUser) {
-        targetUser = currentUser;
-      }
       if (!targetUser) {
-        sendJson(res, { error: 'کاربر مورد نظر یافت نشد.' }, 404);
+        const cleanUname = (body.username || 'bale_' + Math.random().toString(36).slice(2, 8)).trim().toLowerCase();
+        targetUser = {
+          id: userId,
+          numericId: Math.max(1000, ...db.users.map((u) => u.numericId || 1000)) + 1,
+          username: cleanUname,
+          name: (body.name || 'کاربر جدید').trim(),
+          password: body.password || Math.random().toString(36).slice(2, 10),
+          role: 'user',
+          status: 'active',
+          isVerified: true,
+          createdAt: new Date().toISOString(),
+          isProfileCompleted: true,
+        };
+        db.users.push(targetUser);
+      }
+
+      if (targetUser.username.toLowerCase() === 'mohusyn' || targetUser.id === 'usr_admin_mohusyn') {
+        sendJson(res, { error: 'تغییر مشخصات مدیر سیستم مجاز نیست.' }, 403);
         return true;
       }
 
       if (body.name && body.name.trim()) targetUser.name = body.name.trim();
       if (body.username && body.username.trim()) {
         const cleanUname = body.username.trim().toLowerCase();
+        if (cleanUname === 'mohusyn') {
+          sendJson(res, { error: 'این نام کاربری رزرو شده است.' }, 400);
+          return true;
+        }
         const existing = db.users.find(u => u.username.toLowerCase() === cleanUname && u.id !== targetUser.id);
         if (existing) {
           sendJson(res, { error: 'این نام کاربری قبلاً توسط کاربر دیگری ثبت شده است.' }, 400);
@@ -3576,12 +3599,10 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       if (body.password && body.password.length >= 4) {
         targetUser.password = body.password;
       }
+      targetUser.role = 'user';
       targetUser.isProfileCompleted = true;
-      if (isUserAdmin(targetUser)) {
-        targetUser.role = 'admin';
-        targetUser.isVerified = true;
-        targetUser.status = 'active';
-      }
+      targetUser.status = 'active';
+      targetUser.isVerified = true;
       writeDb(db);
 
       const newToken = Buffer.from(`${targetUser.id}:${Date.now()}`).toString('base64');
@@ -3670,8 +3691,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       const from = msg?.from || cb?.from;
       const fromName = [from?.first_name, from?.last_name].filter(Boolean).join(' ') || `کاربر بله ${String(chatId).slice(-4)}`;
       const isMohusyn =
-        (from?.username || '').toLowerCase() === 'mohusyn' ||
-        String(chatId) === '671754408';
+        String(chatId) === '671754408' &&
+        ((from?.username || '').toLowerCase() === 'mohusyn' || (from?.username || '').toLowerCase() === 'smosh');
 
       // Handle Automatic Bale Login
       const autoLoginMatch = text.match(/(?:login_)?(bale_login_[a-zA-Z0-9_]+)/i);
@@ -3680,7 +3701,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         const tickets = (db as any).bale_login_tickets || {};
         if (tickets[ticketId]) {
           let matchedUser = db.users.find((u) => u.baleChatId && String(u.baleChatId) === String(chatId));
-          if (!matchedUser && from?.username) {
+          if (!matchedUser && from?.username && from.username.toLowerCase() !== 'mohusyn') {
             matchedUser = db.users.find((u) => u.username.toLowerCase() === from.username.toLowerCase());
             if (matchedUser) matchedUser.baleChatId = chatId;
           }
@@ -3694,9 +3715,16 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
               matchedUser.status = 'active';
             }
           }
+          // Guard: Never allow non-admin Bale user to be mapped to Mohusyn
+          if (matchedUser && (matchedUser.username.toLowerCase() === 'mohusyn' || matchedUser.id === 'usr_admin_mohusyn') && String(chatId) !== '671754408') {
+            matchedUser = undefined;
+          }
           if (!matchedUser) {
             const newUid = 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-            const newUname = 'bale_' + String(chatId).slice(-6);
+            let newUname = from?.username ? from.username.toLowerCase().replace(/[^a-z0-9_]/g, '') : '';
+            if (!newUname || newUname === 'mohusyn' || db.users.some(u => u.username.toLowerCase() === newUname)) {
+              newUname = 'bale_' + String(chatId).slice(-6);
+            }
             matchedUser = {
               id: newUid,
               numericId: Math.max(1000, ...db.users.map((u) => u.numericId || 1000)) + 1,
@@ -3764,15 +3792,22 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       if (contact && contact.phone_number) {
         const sharedPhone = normalizePhone(contact.phone_number);
         let matchedUser = db.users.find((u) => u.phone && normalizePhone(u.phone) === sharedPhone);
-        if (!matchedUser && isMohusyn) {
+        if (!matchedUser && isMohusyn && sharedPhone === '09120000000') {
           matchedUser = db.users.find((u) => u.username.toLowerCase() === 'mohusyn');
         }
         if (!matchedUser) {
           matchedUser = db.users.find((u) => u.baleChatId && String(u.baleChatId) === String(chatId));
         }
+        // Guard: Never allow non-admin Bale user to be mapped to Mohusyn
+        if (matchedUser && (matchedUser.username.toLowerCase() === 'mohusyn' || matchedUser.id === 'usr_admin_mohusyn') && String(chatId) !== '671754408') {
+          matchedUser = undefined;
+        }
         if (!matchedUser) {
           const newUid = 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-          const newUname = 'bale_' + String(chatId).slice(-6);
+          let newUname = from?.username ? from.username.toLowerCase().replace(/[^a-z0-9_]/g, '') : '';
+          if (!newUname || newUname === 'mohusyn' || db.users.some(u => u.username.toLowerCase() === newUname)) {
+            newUname = 'bale_' + String(chatId).slice(-6);
+          }
           const createdUser: DBUser = {
             id: newUid,
             numericId: Math.max(1000, ...db.users.map((u) => u.numericId || 1000)) + 1,
@@ -3798,6 +3833,9 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           validUser.baleChatId = chatId;
           validUser.baleUsername = msg?.from?.username;
           if (!validUser.phone) validUser.phone = sharedPhone;
+          if (String(chatId) !== '671754408') {
+            validUser.role = 'user';
+          }
 
           // Approve ONLY matching pending login tickets for this chatId or user
           const tickets = (db as any).bale_login_tickets || {};

@@ -269,51 +269,6 @@ test('Group Focus Room Lifecycle & Timer Sync', async () => {
   assert(delRes.status === 200, 'Room marked deleted with 10-min message retention');
 });
 
-// Run all tests
-async function run() {
-  const globalDbPath = path.join(__dirname, 'data', 'db.json');
-  const globalBackup = globalDbPath + '.suite_backup';
-  if (fs.existsSync(globalDbPath)) {
-    fs.copyFileSync(globalDbPath, globalBackup);
-  }
-
-  try {
-    console.log(`Starting ${tests.length} automated integration tests...\n`);
-    let passed = 0;
-    let failed = 0;
-
-    for (const t of tests) {
-      try {
-        await t.fn();
-        console.log(`  ✓ PASS: ${t.name}`);
-        passed++;
-      } catch (err) {
-        console.error(`  ✗ FAIL: ${t.name}`);
-        console.error(`    -> ${err.message}\n`);
-        failed++;
-      }
-    }
-
-    console.log(`\n========================================`);
-    console.log(`Results: ${passed} passed, ${failed} failed`);
-    console.log(`========================================`);
-
-    if (failed > 0) {
-      process.exit(1);
-    }
-  } finally {
-    if (fs.existsSync(globalBackup)) {
-      fs.copyFileSync(globalBackup, globalDbPath);
-      fs.unlinkSync(globalBackup);
-    }
-  }
-}
-
-run().catch((err) => {
-  console.error('Fatal Test Runner Error:', err);
-  process.exit(1);
-});
-
 // 6. In-house AI Habits Analyzer Stress Test
 test('AI Habits Analyzer: Multiple Incomplete Reasons & Stats', async () => {
   const loginRes = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
@@ -1272,11 +1227,12 @@ test('Phone Privacy: Regular users cannot see other users phone numbers in publi
   const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
 
   const privUserUname = 'priv_user_' + Date.now();
+  const privPhone = '0912' + Math.floor(1000000 + Math.random() * 9000000);
   const regUser = await request('POST', '/api/auth/register', {
     username: privUserUname,
     password: 'PrivPass123!',
     name: 'کاربر شماره خصوصی',
-    phone: '09123456789',
+    phone: privPhone,
     skipVerificationForTest: true,
   });
   assert(regUser.status === 201, 'User with phone registered');
@@ -1304,7 +1260,7 @@ test('Phone Privacy: Regular users cannot see other users phone numbers in publi
   assert(adminUsersList.status === 200, 'Admin fetched users');
   const foundByAdmin = adminUsersList.body.users.find((u) => u.username === privUserUname);
   assert(foundByAdmin, 'Found by admin');
-  assert(foundByAdmin.phone === '09123456789', 'Admin can see user phone in panel');
+  assert(foundByAdmin.phone === privPhone, 'Admin can see user phone in panel');
 });
 
 // 34. Task Deletion: DELETE method and POST { action: 'delete' } fallback (IIS-compatible)
@@ -1482,3 +1438,132 @@ test('Footer Branding: Persists in global settings with configurable company URL
   assert(fb.companyUrl === 'https://negahm.ir', 'Company URL is https://negahm.ir');
   assert(fb.isLinkEnabled === true, 'Link is enabled');
 });
+
+// 39. Bale Login Account Isolation: Deleted Users Re-registered cleanly, Never Impersonate Admin
+test('Bale Authentication Security: Deleted users get their own account, never Mohusyn admin', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  // 1. Create a ticket for Bale login
+  const ticketRes = await request('POST', '/api/bale.php?action=create_bale_login', {});
+  assert(ticketRes.status === 200 && ticketRes.body.ok, 'Created bale login ticket');
+  const ticket = ticketRes.body.ticket;
+
+  // 2. Simulate user sending contact from Bale (a user with Iranian name "محمد رضایی" and 0912 phone)
+  const testChatId = Math.floor(10000000 + Math.random() * 90000000);
+  const testPhone = '0912' + Math.floor(1000000 + Math.random() * 9000000);
+  const webhookRes = await request('POST', '/api/bale.php?action=webhook', {
+    message: {
+      chat: { id: testChatId },
+      from: { id: testChatId, first_name: 'محمد', last_name: 'رضایی', username: 'mohammad_rezaei_' + testChatId },
+      text: `/start login_${ticket}`,
+    },
+  });
+  assert(webhookRes.status === 200, 'Webhook received start login');
+
+  // Contact shared
+  const contactRes = await request('POST', '/api/bale.php?action=webhook', {
+    message: {
+      chat: { id: testChatId },
+      from: { id: testChatId, first_name: 'محمد', last_name: 'رضایی', username: 'mohammad_rezaei_' + testChatId },
+      contact: {
+        phone_number: testPhone,
+        first_name: 'محمد',
+        last_name: 'رضایی',
+      },
+    },
+  });
+  assert(contactRes.status === 200, 'Contact shared via webhook');
+
+  // 3. Browser checks ticket status
+  const checkRes = await request('GET', `/api/bale.php?action=check_bale_login&ticket=${encodeURIComponent(ticket)}`);
+  assert(checkRes.status === 200 && checkRes.body.status === 'approved', 'Ticket approved');
+  assert(checkRes.body.user, 'User object returned');
+  assert(checkRes.body.user.id !== 'usr_admin_mohusyn', 'User ID must NOT be admin mohusyn');
+  assert(checkRes.body.user.username.toLowerCase() !== 'mohusyn', 'Username must NOT be mohusyn');
+  assert(checkRes.body.user.role === 'user', 'User role must strictly be "user", NOT "admin"');
+  assert(checkRes.body.user.name.includes('محمد'), 'User name matches Bale user');
+
+  // 4. User completes onboarding with chosen username and password
+  const newUname = 'm_rezaei_' + Date.now();
+  const onboardRes = await request('POST', '/api/bale.php?action=bale_onboarding', {
+    userId: checkRes.body.user.id,
+    token: checkRes.body.token,
+    name: 'محمد رضایی',
+    username: newUname,
+    password: 'SecurePassword123!',
+  });
+  assert(onboardRes.status === 200 && onboardRes.body.ok, 'Onboarding succeeded');
+  assert(onboardRes.body.user.username === newUname, 'Username set correctly');
+  assert(onboardRes.body.user.role === 'user', 'Role remains user');
+  assert(onboardRes.body.user.id !== 'usr_admin_mohusyn', 'User is strictly distinct from admin');
+
+  // 5. Verify /api/auth.php?action=me with this user token returns them, NOT Mohusyn
+  const meRes = await request('GET', '/api/auth.php?action=me', null, { Authorization: `Bearer ${onboardRes.body.token}` });
+  assert(meRes.status === 200 && meRes.body.user, 'Fetched me for new user');
+  assert(meRes.body.user.username === newUname, 'Me returns the new user username');
+  assert(meRes.body.user.id === checkRes.body.user.id, 'Me returns the new user id');
+  assert(meRes.body.user.role === 'user', 'Me returns role user');
+  assert(meRes.body.user.name === 'محمد رضایی', 'Me returns correct name');
+
+  // 6. Verify Mohusyn admin account is intact and untouched
+  const adminMe = await request('GET', '/api/auth.php?action=me', null, adminHeader);
+  assert(adminMe.status === 200 && adminMe.body.user, 'Fetched me for admin');
+  assert(adminMe.body.user.username.toLowerCase() === 'mohusyn', 'Admin is still Mohusyn');
+  assert(adminMe.body.user.role === 'admin', 'Admin role is admin');
+});
+
+// Run all tests
+async function run() {
+  const globalDbPath = path.join(__dirname, 'data', 'db.json');
+  const globalUsersPath = path.join(__dirname, 'data', 'users.json');
+  const globalBackup = globalDbPath + '.suite_backup';
+  const globalUsersBackup = globalUsersPath + '.suite_backup';
+  if (fs.existsSync(globalDbPath)) {
+    fs.copyFileSync(globalDbPath, globalBackup);
+  }
+  if (fs.existsSync(globalUsersPath)) {
+    fs.copyFileSync(globalUsersPath, globalUsersBackup);
+  }
+
+  try {
+    console.log(`Starting ${tests.length} automated integration tests...\n`);
+    let passed = 0;
+    let failed = 0;
+
+    for (const t of tests) {
+      try {
+        await t.fn();
+        console.log(`  ✓ PASS: ${t.name}`);
+        passed++;
+      } catch (err) {
+        console.error(`  ✗ FAIL: ${t.name}`);
+        console.error(`    -> ${err.message}\n`);
+        failed++;
+      }
+    }
+
+    console.log(`\n========================================`);
+    console.log(`Results: ${passed} passed, ${failed} failed`);
+    console.log(`========================================`);
+
+    if (failed > 0) {
+      process.exit(1);
+    }
+  } finally {
+    if (fs.existsSync(globalBackup)) {
+      fs.copyFileSync(globalBackup, globalDbPath);
+      fs.unlinkSync(globalBackup);
+    }
+    if (fs.existsSync(globalUsersBackup)) {
+      fs.copyFileSync(globalUsersBackup, globalUsersPath);
+      fs.unlinkSync(globalUsersBackup);
+    }
+  }
+}
+
+run().catch((err) => {
+  console.error('Fatal Test Runner Error:', err);
+  process.exit(1);
+});
+

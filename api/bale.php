@@ -520,19 +520,40 @@ if ($action === 'check_bale_login') {
         jsonResponse(['status' => 'not_found', 'error' => 'تیکت ورود معتبر نیست یا منقضی شده است.'], 404);
     }
 
+    if (($foundTicket['status'] ?? '') === 'waiting_contact') {
+        jsonResponse(['status' => 'waiting_contact']);
+    }
+
     if (($foundTicket['status'] ?? '') === 'approved' && !empty($foundTicket['user'])) {
         $uData = $foundTicket['user'];
-        $existing = $dbObj->getUserById($uData['id'] ?? '');
-        if (!$existing && !empty($uData['username'])) {
+        $existing = null;
+        if (!empty($uData['id']) && $uData['id'] !== 'usr_admin_mohusyn') {
+            $existing = $dbObj->getUserById($uData['id']);
+        }
+        if (!$existing && !empty($uData['username']) && strtolower($uData['username']) !== 'mohusyn') {
             $existing = $dbObj->getUserByUsername($uData['username']);
         }
         if (!$existing && !empty($uData['baleChatId'])) {
             $existing = $dbObj->getUserByBaleChatId($uData['baleChatId']);
         }
 
+        // Only allow Mohusyn if ticket user is genuinely Mohusyn (matching chatId 671754408)
+        if (
+            (strtolower($uData['username'] ?? '') === 'mohusyn' || ($uData['id'] ?? '') === 'usr_admin_mohusyn') &&
+            strval($foundTicket['chatId'] ?? ($uData['baleChatId'] ?? '')) !== '671754408'
+        ) {
+            // Prevent illegal admin impersonation: reset to regular user
+            $uData['username'] = 'bale_' . substr(strval($uData['baleChatId'] ?? time()), -6);
+            $uData['role'] = 'user';
+            $existing = null;
+        }
+
         if (!$existing && is_array($uData)) {
-            $initialRole = isUserAdmin($uData) ? 'admin' : ($uData['role'] ?? 'user');
-            $existing = $dbObj->createUser($uData['username'], bin2hex(random_bytes(5)), $uData['name'] ?? $uData['username'], $initialRole, $uData);
+            $uname = !empty($uData['username']) ? $uData['username'] : ('bale_' . substr(strval($uData['baleChatId'] ?? time()), -6));
+            if (strtolower($uname) === 'mohusyn') {
+                $uname = 'bale_' . substr(strval($uData['baleChatId'] ?? time()), -6);
+            }
+            $existing = $dbObj->createUser($uname, bin2hex(random_bytes(5)), $uData['name'] ?? $uname, 'user', $uData);
         }
 
         $targetUser = $existing ?: $uData;
@@ -540,13 +561,8 @@ if ($action === 'check_bale_login') {
             $targetUser['role'] = 'admin';
             $targetUser['isVerified'] = true;
             $targetUser['status'] = 'active';
-            if ($existing) {
-                $dbObj->updateUserProfile($existing['id'], [
-                    'role' => 'admin',
-                    'isVerified' => true,
-                    'status' => 'active',
-                ]);
-            }
+        } else {
+            $targetUser['role'] = 'user';
         }
         $_SESSION['user_id'] = $targetUser['id'];
 
@@ -567,6 +583,9 @@ if ($action === 'check_bale_login') {
             'message' => 'ورود با بله با موفقیت تأیید شد.',
         ]);
     }
+
+    jsonResponse(['status' => 'pending']);
+}
 
     if (($foundTicket['status'] ?? '') === 'waiting_contact') {
         jsonResponse([
@@ -652,12 +671,28 @@ if ($action === 'bale_onboarding') {
     if (empty($userId)) {
         jsonResponse(['error' => 'شناسه کاربر الزامی است.'], 400);
     }
+
+    // STRICT CHECK: Never allow onboarding to modify Mohusyn's admin account!
+    if ($userId === 'usr_admin_mohusyn' || $username === 'mohusyn') {
+        jsonResponse(['error' => 'حساب مدیر اصلی محافظت شده است.'], 403);
+    }
+
     $targetUser = $dbObj->getUserById($userId);
     if (!$targetUser && !empty($input['prevUsername'])) {
         $targetUser = $dbObj->getUserByUsername($input['prevUsername']);
     }
     if (!$targetUser) {
-        jsonResponse(['error' => 'کاربر مورد نظر یافت نشد.'], 404);
+        // If user was deleted or pending, create them fresh
+        $cleanUname = !empty($username) ? $username : ('bale_' . substr($userId, -6));
+        $targetUser = $dbObj->createUser($cleanUname, $password ?: bin2hex(random_bytes(5)), $name ?: 'کاربر جدید', 'user', [
+            'id' => $userId,
+            'isVerified' => true,
+            'status' => 'active',
+        ]);
+    }
+
+    if (strtolower($targetUser['username'] ?? '') === 'mohusyn' || ($targetUser['id'] ?? '') === 'usr_admin_mohusyn') {
+        jsonResponse(['error' => 'تغییر مشخصات مدیر سیستم مجاز نیست.'], 403);
     }
 
     if (!empty($username) && $username !== strtolower($targetUser['username'] ?? '')) {
@@ -673,7 +708,12 @@ if ($action === 'bale_onboarding') {
         }
     }
 
-    $updateFields = [];
+    $updateFields = [
+        'role' => 'user', // Strictly user!
+        'isProfileCompleted' => true,
+        'status' => 'active',
+        'isVerified' => true,
+    ];
     if (!empty($name)) $updateFields['name'] = $name;
     if (!empty($username)) $updateFields['username'] = $username;
     $pwdToSet = (!empty($password) && strlen($password) >= 4) ? $password : null;
@@ -1204,20 +1244,32 @@ if ($isWebhook) {
             $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
             if (empty($fromName)) $fromName = $sharedFullName ?: ('کاربر بله ' . substr(strval($chatId), -4));
 
-            // Only exact verified Mohusyn admin match
+            // Only exact verified Mohusyn admin match (strictly chat ID 671754408 AND verified phone)
             if (
-                strtolower($fromUser['username'] ?? '') === 'mohusyn' ||
-                strval($chatId) === '671754408'
+                strval($chatId) === '671754408' &&
+                (strtolower($fromUser['username'] ?? '') === 'mohusyn' || strtolower($fromUser['username'] ?? '') === 'smosh') &&
+                $sharedPhoneNorm === '09120000000'
             ) {
                 $targetUser = $dbObj->getUserByUsername('Mohusyn');
             }
+        }
+
+        // GUARD: Never allow non-admin Bale user to be mapped to Mohusyn
+        if (
+            $targetUser &&
+            (strtolower($targetUser['username'] ?? '') === 'mohusyn' || ($targetUser['id'] ?? '') === 'usr_admin_mohusyn') &&
+            strval($chatId) !== '671754408'
+        ) {
+            $targetUser = null;
         }
 
         if (!$targetUser) {
             $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
             if (empty($fromName)) $fromName = $sharedFullName ?: ('کاربر بله ' . substr(strval($chatId), -4));
             $cleanUname = !empty($fromUser['username']) ? preg_replace('/[^a-zA-Z0-9_]/', '', $fromUser['username']) : ('bale_' . substr(strval($chatId), -6));
-            if (empty($cleanUname)) $cleanUname = 'bale_' . substr(strval($chatId), -6);
+            if (empty($cleanUname) || strtolower($cleanUname) === 'mohusyn') {
+                $cleanUname = 'bale_' . substr(strval($chatId), -6);
+            }
 
             $testUname = $cleanUname;
             $counter = 1;
@@ -1226,8 +1278,9 @@ if ($isWebhook) {
             }
 
             $isAdminContact = (
-                strtolower($fromUser['username'] ?? '') === 'mohusyn' ||
-                strval($chatId) === '671754408'
+                strval($chatId) === '671754408' &&
+                (strtolower($fromUser['username'] ?? '') === 'mohusyn' || strtolower($fromUser['username'] ?? '') === 'smosh') &&
+                $sharedPhoneNorm === '09120000000'
             );
 
             $targetUser = $dbObj->createUser($testUname, bin2hex(random_bytes(5)), $fromName, $isAdminContact ? 'admin' : 'user', [
@@ -1243,9 +1296,7 @@ if ($isWebhook) {
         }
 
         if ($targetUser) {
-            $isAdminUser = isUserAdmin($targetUser) ||
-                strtolower($targetUser['username'] ?? '') === 'mohusyn' ||
-                strval($chatId) === '671754408';
+            $isAdminUser = isUserAdmin($targetUser) && strval($chatId) === '671754408';
 
             $updateFields = [
                 'phone' => $sharedPhoneNorm,
@@ -1258,6 +1309,9 @@ if ($isWebhook) {
             if ($isAdminUser) {
                 $updateFields['role'] = 'admin';
                 $targetUser['role'] = 'admin';
+            } else {
+                $updateFields['role'] = 'user';
+                $targetUser['role'] = 'user';
             }
             if (!empty($sharedFullName) && (empty($targetUser['name']) || strpos($targetUser['name'], 'کاربر بله') === 0 || strpos($targetUser['name'], 'bale_') === 0)) {
                 $updateFields['name'] = $sharedFullName;
@@ -1273,8 +1327,10 @@ if ($isWebhook) {
             $tickets = getBaleTicketsData();
             $ticketsModified = false;
             foreach ($tickets as $tKey => &$tVal) {
+                $tChatId = strval($tVal['chatId'] ?? '');
+                $tUserId = strval($tVal['userId'] ?? '');
                 if (
-                    (strval($tVal['chatId'] ?? '') === strval($chatId) || ($tVal['userId'] ?? '') === $targetUser['id']) &&
+                    ($tChatId === strval($chatId) || $tUserId === $targetUser['id']) &&
                     ($tVal['status'] ?? '') !== 'approved'
                 ) {
                     $token = base64_encode($targetUser['id'] . ':' . time());
@@ -1541,24 +1597,30 @@ if ($isWebhook) {
             }
         }
 
-        // 3. Fallback: Check if Mohusyn by username or fixed chat ID
+        // 3. Fallback: Check if Mohusyn by username or fixed chat ID (strictly chat ID 671754408)
         $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
-        if (!$matchedUser && (
-            strtolower($fromUser['username'] ?? '') === 'mohusyn' ||
-            strval($chatId) === '671754408'
-        )) {
+        if (!$matchedUser && strval($chatId) === '671754408') {
             $matchedUser = $dbObj->getUserByUsername('Mohusyn');
             if ($matchedUser) {
                 $dbObj->updateUserProfile($matchedUser['id'], [
-                    'baleChatId' => $chatId,
-                    'baleUsername' => $fromUser['username'] ?? ($matchedUser['baleUsername'] ?? ''),
+                    'baleChatId' => '671754408',
+                    'baleUsername' => $fromUser['username'] ?? ($matchedUser['baleUsername'] ?? 'smosh'),
                     'role' => 'admin',
                     'isVerified' => true,
                     'status' => 'active',
                 ]);
-                $matchedUser['baleChatId'] = $chatId;
+                $matchedUser['baleChatId'] = '671754408';
                 $matchedUser['role'] = 'admin';
             }
+        }
+
+        // GUARD: Never allow non-admin Bale user to be mapped to Mohusyn
+        if (
+            $matchedUser &&
+            (strtolower($matchedUser['username'] ?? '') === 'mohusyn' || ($matchedUser['id'] ?? '') === 'usr_admin_mohusyn') &&
+            strval($chatId) !== '671754408'
+        ) {
+            $matchedUser = null;
         }
 
         // 4. Auto-register user if brand new!
@@ -1566,7 +1628,9 @@ if ($isWebhook) {
             $isNewUser = true;
             if (empty($fromName)) $fromName = 'کاربر بله ' . substr(strval($chatId), -4);
             $cleanUname = !empty($fromUser['username']) ? preg_replace('/[^a-zA-Z0-9_]/', '', $fromUser['username']) : ('bale_' . substr(strval($chatId), -6));
-            if (empty($cleanUname)) $cleanUname = 'bale_' . substr(strval($chatId), -6);
+            if (empty($cleanUname) || strtolower($cleanUname) === 'mohusyn') {
+                $cleanUname = 'bale_' . substr(strval($chatId), -6);
+            }
 
             $testUname = $cleanUname;
             $counter = 1;
@@ -1575,8 +1639,8 @@ if ($isWebhook) {
             }
 
             $isAdminRole = (
-                strtolower($cleanUname) === 'mohusyn' ||
-                strval($chatId) === '671754408'
+                strval($chatId) === '671754408' &&
+                (strtolower($cleanUname) === 'mohusyn' || strtolower($cleanUname) === 'smosh')
             );
 
             $randomPass = substr(bin2hex(random_bytes(5)), 0, 10);
@@ -1718,61 +1782,7 @@ if ($isWebhook) {
             ]);
         }
 
-        // Check if there is an unapproved pending ticket created in the last 180s from this user's browser
-        $recentTicketKey = null;
-        $tickets = getBaleTicketsData();
-        $now = time();
-        foreach ($tickets as $k => $v) {
-            if (($v['status'] ?? '') === 'pending' && ($now - ($v['createdAt'] ?? 0)) < 180) {
-                $recentTicketKey = $k;
-                break;
-            }
-        }
-
-        if ($recentTicketKey) {
-            if (isUserAdmin($matchedUser)) {
-                $matchedUser['role'] = 'admin';
-                $matchedUser['isVerified'] = true;
-                $matchedUser['status'] = 'active';
-                $dbObj->updateUserProfile($matchedUser['id'], ['role' => 'admin', 'isVerified' => true, 'status' => 'active']);
-            }
-            $token = base64_encode($matchedUser['id'] . ':' . time());
-            $cleanUser = $matchedUser;
-            unset($cleanUser['password_hash']);
-            unset($cleanUser['password']);
-
-            $tickets[$recentTicketKey] = [
-                'status' => 'approved',
-                'token' => $token,
-                'user' => $cleanUser,
-                'approvedAt' => time(),
-            ];
-            saveBaleTicketsData($tickets);
-
-            $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
-            $webAppUrl = 'https://' . $host . '/index.html';
-            $displayName = $matchedUser['name'] ?: $matchedUser['username'];
-
-            $confirmMsg = "🎉 **ورود شما به «بگ تایم» با موفقیت انجام شد!** ✅\n\n" .
-                "👤 کاربر گرامی: **{$displayName}** (@{$matchedUser['username']})\n" .
-                "⚡ حساب کاربری شما با موفقیت به بازو متصل شد و ورود شما به برنامه تأیید گردید.\n\n" .
-                "🔓 هم‌اکنون افزونه نیوتَب و سامانه برنامه‌ریزی شما فعال شد.\n" .
-                "می‌توانید به مرورگر خود بازگردید تا به برنامه‌ریزی و کارهایتان ادامه دهید ✨";
-
-            $loginKb = [
-                'inline_keyboard' => [
-                    [['text' => '🌐 بازگشت به سامانه بگ تایم', 'url' => $webAppUrl]],
-                    [
-                        ['text' => '📋 کارهای امروز من', 'callback_data' => 'my_tasks'],
-                        ['text' => '➕ ثبت تسک جدید', 'callback_data' => 'new_task'],
-                    ],
-                ]
-            ];
-            sendBaleMessage($botToken, $chatId, $confirmMsg, $loginKb);
-            echo json_encode(['ok' => true]);
-            exit;
-        }
-
+        // Plain /start command simply greets the user and displays bot menu
         $host = $_SERVER['HTTP_HOST'] ?? 'bagtime.negahm.ir';
         $webAppUrl = 'https://' . $host . '/index.html';
         $displayName = $matchedUser['name'] ?: $matchedUser['username'];

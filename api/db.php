@@ -921,8 +921,12 @@ class TaskRoozDB {
         $this->loadJson();
         $existingIdx = -1;
         foreach ($this->data['users'] as $idx => $u) {
+            $uName = strtolower(trim((string)($u['username'] ?? '')));
+            if ($uName === 'mohusyn' && $usernameLower !== 'mohusyn') {
+                continue; // Protected admin account can NEVER be merged with a regular user
+            }
             if (
-                (isset($u['username']) && strtolower($u['username']) === $usernameLower) ||
+                ($uName === $usernameLower) ||
                 ($u['id'] === $id) ||
                 (!empty($u['baleChatId']) && !empty($extra['baleChatId']) && strval($u['baleChatId']) === strval($extra['baleChatId']))
             ) {
@@ -943,6 +947,20 @@ class TaskRoozDB {
         } else {
             $this->data['users'][] = $userObj;
         }
+
+        // Clean any tombstone for this user
+        if (!empty($this->data['deleted_users']) && is_array($this->data['deleted_users'])) {
+            $this->data['deleted_users'] = array_values(array_filter($this->data['deleted_users'], function($du) use ($id, $usernameLower) {
+                $duLower = strtolower(trim((string)$du));
+                return $duLower !== strtolower($id) && $duLower !== $usernameLower;
+            }));
+        }
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $this->pdo->prepare("DELETE FROM deleted_users WHERE id = ? OR LOWER(username) = ?")->execute([$id, $usernameLower]);
+            } catch (Exception $eDu) {}
+        }
+
         $this->saveJson();
 
         return $userObj;

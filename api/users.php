@@ -131,9 +131,9 @@ if ($action === 'update_profile' || ($input['action'] ?? '') === 'update_profile
 // Ensure admin access
 $isAdmin = isUserAdmin($currentUser);
 if (!$isAdmin) {
-    // Check if token matches admin
-    $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['HTTP_X_AUTH_TOKEN'] ?? $_GET['token'] ?? '';
-    if (stripos($authHeader, 'usr_admin_mohusyn') !== false || stripos($authHeader, 'mohusyn') !== false) {
+    // Check if token strictly matches admin
+    $authHeader = trim((string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['HTTP_X_AUTH_TOKEN'] ?? $_GET['token'] ?? ''));
+    if ($authHeader === 'usr_admin_mohusyn' || strtolower($authHeader) === 'mohusyn') {
         $isAdmin = true;
     }
 }

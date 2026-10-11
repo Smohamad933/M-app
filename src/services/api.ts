@@ -875,16 +875,13 @@ export const api = {
         this.setCachedUser(data.user);
         return data.user;
       }
-      // If server returned unauthenticated, check if cached user is admin/Mohusyn or valid session
-      if (cached) {
-        return cached;
-      }
+      // If server returned unauthenticated, the session is invalidated/deleted! Never fallback to stale cached admin!
       removeAuthToken();
       this.setCachedUser(null);
       return null;
     } catch {
-      // If network fails or times out, fallback to local cached user immediately
-      if (cached) return cached;
+      // If network fails or times out, fallback to local cached user ONLY if a valid token is present
+      if (cached && token) return cached;
       return null;
     }
   },
@@ -897,6 +894,13 @@ export const api = {
     }
     removeAuthToken();
     this.setCachedUser(null);
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.removeItem('taskrooz_current_user');
+        localStorage.removeItem('taskrooz_token');
+        localStorage.removeItem('taskrooz_session_id');
+      } catch {}
+    }
     if (typeof window !== 'undefined') {
       window.postMessage({ type: 'BAGTIME_SSO_LOGOUT' }, '*');
     }
