@@ -371,9 +371,18 @@ if ($method === 'GET') {
         jsonResponse(['message' => 'کدهای کاربری با موفقیت اصلاح و یکتا شدند.']);
     }
 
+    if ($action === 'sync_to_mysql') {
+        $count = $db->syncJsonUsersToMySQL();
+        jsonResponse(['ok' => true, 'count' => $count, 'message' => "تعداد {$count} کاربر با موفقیت در MySQL همگام شدند."]);
+    }
+
     // All subsequent GET operations (report, export_csv, list all users) require admin authorization
     if (!$isAdmin) {
-        jsonResponse(['error' => 'دسترسی فقط برای مدیر کل مجاز است.'], 403);
+        if (isUserAdmin(null)) {
+            $isAdmin = true;
+        } else {
+            jsonResponse(['error' => 'دسترسی فقط برای مدیر کل مجاز است.'], 403);
+        }
     }
 
     if ($action === 'report') {

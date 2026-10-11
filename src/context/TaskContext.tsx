@@ -340,7 +340,16 @@ function injectFontLink(font: SystemFontOption) {
 
 export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(() => api.getCachedUser());
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<User[]>(() => {
+    try {
+      const cached = localStorage.getItem('taskrooz_users_local');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [projects, setProjects] = useState<TeamProject[]>([]);
@@ -1270,56 +1279,39 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        const cats = await api.getCategories();
-        setCategories(cats);
-        await refreshProjects();
-        const gList = await api.getGoals();
-        setGoals(gList);
-        const pRes = await api.getPersonalityResult();
-        setPersonalityResult(pRes);
-        const notes = await api.getDailyNotes();
-        setDailyNotes(notes);
-        const gSettings = await api.getGlobalSettings();
-        setGlobalSettings(gSettings);
-        if (gSettings.enforcedFont) {
-          setSystemFontState(gSettings.enforcedFont);
-        }
-        if (user) {
-          try {
-            const uList = await api.getUsers();
-            setUsers(uList);
-          } catch {}
-        }
-        try {
-          const remoteFonts = await api.fetchCustomFonts();
-          setCustomFonts(remoteFonts);
-          remoteFonts.forEach(injectFontLink);
-        } catch {}
+        // Parallel non-blocking data loading: no single endpoint failure can ever stall other data
+        await Promise.allSettled([
+          api.getCategories().then((cats) => setCategories(cats)).catch(() => {}),
+          refreshProjects().catch(() => {}),
+          api.getGoals().then((gList) => setGoals(gList)).catch(() => {}),
+          api.getPersonalityResult().then((pRes) => setPersonalityResult(pRes)).catch(() => {}),
+          api.getDailyNotes().then((notes) => setDailyNotes(notes)).catch(() => {}),
+          api.getGlobalSettings().then((gSettings) => {
+            setGlobalSettings(gSettings);
+            if (gSettings.enforcedFont) {
+              setSystemFontState(gSettings.enforcedFont);
+            }
+          }).catch(() => {}),
+          (async () => {
+            if (user) {
+              const uList = await api.getUsers();
+              setUsers(uList);
+              try {
+                localStorage.setItem('taskrooz_users_local', JSON.stringify(uList));
+              } catch {}
+            }
+          })().catch(() => {}),
+          api.fetchCustomFonts().then((remoteFonts) => {
+            setCustomFonts(remoteFonts);
+            remoteFonts.forEach(injectFontLink);
+          }).catch(() => {})
+        ]);
       } catch (e) {
         console.error('Initialization user check error:', e);
       } finally {
         // Drop the loading screen immediately so the app is accessible instantly!
         setIsLoading(false);
       }
-
-      // Concurrently load all other data in PARALLEL in background
-      Promise.allSettled([
-        api.getCategories().then((cats) => setCategories(cats)),
-        refreshProjects(),
-        api.getGoals().then((gList) => setGoals(gList)),
-        api.getPersonalityResult().then((pRes) => setPersonalityResult(pRes)),
-        api.getDailyNotes().then((notes) => setDailyNotes(notes)),
-        api.getGlobalSettings().then((gSettings) => {
-          setGlobalSettings(gSettings);
-          if (gSettings.enforcedFont) {
-            setSystemFontState(gSettings.enforcedFont);
-          }
-        }),
-        api.fetchCustomFonts().then((remoteFonts) => {
-          setCustomFonts(remoteFonts);
-          remoteFonts.forEach(injectFontLink);
-        }),
-      ]);
     }
     init();
   }, []);

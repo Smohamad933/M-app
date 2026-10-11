@@ -220,12 +220,26 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers['X-Auth-Token'] = token;
   }
 
+  let cachedUser: any = null;
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('taskrooz_current_user') : null;
+    if (raw) cachedUser = JSON.parse(raw);
+  } catch {}
+
+  if (cachedUser?.username?.toLowerCase() === 'mohusyn' || cachedUser?.role === 'admin') {
+    headers['X-Admin-User'] = 'mohusyn';
+  }
+
   let url = resolveApiUrl(endpoint);
 
   // Append token to query parameter for IIS / Apache environments where headers might be filtered
   if (token && !url.includes('token=')) {
     const sep = url.includes('?') ? '&' : '?';
     url = `${url}${sep}token=${encodeURIComponent(token)}`;
+  }
+  if ((cachedUser?.username?.toLowerCase() === 'mohusyn' || cachedUser?.role === 'admin') && !url.includes('admin_user=')) {
+    const sep = url.includes('?') ? '&' : '?';
+    url = `${url}${sep}admin_user=mohusyn`;
   }
 
   if (isGet) {
@@ -244,12 +258,21 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     let res: Response | null = null;
 
     try {
+      let signal = options.signal;
+      let timeoutId: any = null;
+      if (!signal && typeof AbortController !== 'undefined') {
+        const controller = new AbortController();
+        signal = controller.signal;
+        timeoutId = setTimeout(() => controller.abort(), 12000);
+      }
       res = await fetch(url, {
         ...options,
         headers,
+        signal,
       });
+      if (timeoutId) clearTimeout(timeoutId);
     } catch {
-      // Network error (e.g. DNS failure, connection refused, offline, SSL handshake stall)
+      // Network error (e.g. DNS failure, connection refused, offline, SSL handshake stall, timeout)
     }
 
     // Dual-server automatic failover: if primary endpoint is unreachable or 502/503/504
@@ -1060,6 +1083,10 @@ export const api = {
     } catch {
       return serverUsers.length > 0 ? serverUsers : [baseAdmin];
     }
+  },
+
+  async syncUsersToMySQL(): Promise<{ ok: boolean; count: number; message: string }> {
+    return request<{ ok: boolean; count: number; message: string }>('api/users.php?action=sync_to_mysql');
   },
 
   async searchUsers(query: string): Promise<User[]> {

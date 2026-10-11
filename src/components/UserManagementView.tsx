@@ -222,6 +222,7 @@ export const UserManagementView: React.FC = () => {
   const [adminTab, setAdminTab] = useState<'users' | 'payments' | 'settings' | 'texts' | 'developers' | 'extension' | 'bale' | 'site_notifs'>('users');
   const [broadcastTargetUserId, setBroadcastTargetUserId] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSyncingMySQL, setIsSyncingMySQL] = useState(false);
   const [isFontModalOpen, setIsFontModalOpen] = useState(false);
   const pendingUsers = users.filter((u) => u.status === 'pending_approval');
   const [planFilter, setPlanFilter] = useState<'all' | 'pro' | 'free'>('all');
@@ -885,6 +886,21 @@ export const UserManagementView: React.FC = () => {
     }
   };
 
+  const handleSyncMySQL = async () => {
+    setIsSyncingMySQL(true);
+    sounds.playPop();
+    try {
+      const res = await api.syncUsersToMySQL();
+      sounds.playComplete();
+      alert(res.message || 'همگام‌سازی اطلاعات با MySQL انجام شد.');
+      await refreshUsers();
+    } catch (e: any) {
+      alert(e.message || 'خطا در همگام‌سازی پایگاه داده MySQL');
+    } finally {
+      setIsSyncingMySQL(false);
+    }
+  };
+
   const handleOpenAdd = () => {
     setName('');
     setUsername('');
@@ -1017,6 +1033,15 @@ export const UserManagementView: React.FC = () => {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-indigo-400' : ''}`} />
             <span>به‌روزرسانی</span>
+          </button>
+
+          <button
+            onClick={handleSyncMySQL}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/60 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
+            title="همگام‌سازی و ثبت تمامی کاربران در MySQL"
+          >
+            <Database className={`w-3.5 h-3.5 text-cyan-400 ${isSyncingMySQL ? 'animate-spin' : ''}`} />
+            <span>همگام‌سازی MySQL</span>
           </button>
 
           <button
@@ -1840,6 +1865,27 @@ export const UserManagementView: React.FC = () => {
                   </div>
                 );
               })}
+
+              {users.length === 0 && (
+                <div className="p-12 text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-3xl bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center text-zinc-400 shadow-inner">
+                    <Users className="w-8 h-8 text-indigo-400" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-black text-white">در حال دریافت و همگام‌سازی فهرست اعضا...</h3>
+                    <p className="text-xs text-zinc-400">در صورت کندی ارتباط سرور، دکمه بارگذاری مجدد را لمس کنید.</p>
+                  </div>
+                  <div className="flex items-center justify-center gap-3">
+                    <button
+                      onClick={handleRefresh}
+                      className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 cursor-pointer shadow-md active:scale-95 transition-all"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      <span>تلاش مجدد و بارگذاری اطلاعات</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

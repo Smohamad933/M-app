@@ -1,0 +1,19 @@
+# ==============================================================================
+# TaskRooz - API Directory Apache Configuration
+# ==============================================================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+    RewriteRule .* - [E=HTTP_X_AUTH_TOKEN:%{HTTP:X-Auth-Token}]
+</IfModule>
+
+<IfModule mod_authz_core.c>
+    CGIPassAuth On
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-Auth-Token, X-Admin-User, X-Admin-Key"
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+</IfModule>

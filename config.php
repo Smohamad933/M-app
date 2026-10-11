@@ -17,8 +17,11 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // 1. Load local configuration if exists (so extracting new zip files NEVER overwrites your database credentials)
-if (file_exists(__DIR__ . '/config.local.php')) {
-    @include_once __DIR__ . '/config.local.php';
+foreach ([__DIR__ . '/config.local.php', __DIR__ . '/api/config.local.php', __DIR__ . '/data/config.local.php'] as $cfgCandidate) {
+    if (file_exists($cfgCandidate)) {
+        @include_once $cfgCandidate;
+        break;
+    }
 }
 
 // ==============================================================================
