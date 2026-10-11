@@ -44,42 +44,7 @@
   ],
   "focus_rooms": [],
   "focusRooms": [],
-  "projects": [
-    {
-      "id": "proj_1791712936936_ufwr",
-      "name": "پروژه مشترک آلفا",
-      "description": "توسعه ماژول جدید تیم",
-      "color": "#6366f1",
-      "icon": "FolderKanban",
-      "creatorId": "usr_1791712936909_9173",
-      "creatorName": "آلیس مدیر پروژه",
-      "memberIds": [
-        "usr_1791712936917_icxy",
-        "usr_1791712936909_9173"
-      ],
-      "createdAt": "۱۴۰۵/۷/۱۹",
-      "totalTasks": 0,
-      "completedTasks": 0,
-      "progressPercent": 0
-    },
-    {
-      "id": "proj_1791712919226_w5dh",
-      "name": "پروژه مشترک آلفا",
-      "description": "توسعه ماژول جدید تیم",
-      "color": "#6366f1",
-      "icon": "FolderKanban",
-      "creatorId": "usr_1791712919199_3j28",
-      "creatorName": "آلیس مدیر پروژه",
-      "memberIds": [
-        "usr_1791712919208_el7e",
-        "usr_1791712919199_3j28"
-      ],
-      "createdAt": "۱۴۰۵/۷/۱۹",
-      "totalTasks": 0,
-      "completedTasks": 0,
-      "progressPercent": 0
-    }
-  ],
+  "projects": [],
   "goals": [],
   "dailyNotes": [
     {
@@ -260,109 +225,9 @@
   ],
   "friendships": [],
   "friend_requests": [],
-  "messages": [
-    {
-      "id": "msg_1791227217553_3pll",
-      "senderId": "usr_admin_mohusyn",
-      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "senderAvatar": null,
-      "receiverId": "usr_admin_mohusyn",
-      "text": "سلام تست",
-      "createdAt": "2026-10-05T19:06:57.553Z",
-      "read": false
-    }
-  ],
+  "messages": [],
   "project_messages": [],
-  "notifications": [
-    {
-      "id": "notif_msg_1791712936741_wkie",
-      "userId": "usr_admin_mohusyn",
-      "title": "پیام جدید از سارا چت 💬",
-      "message": "خیلی ممنون از شما مهندس!",
-      "type": "message",
-      "timestamp": "2026-10-11T10:02:16.741Z",
-      "read": false,
-      "senderId": "usr_1791712936722_xefw",
-      "senderName": "سارا چت"
-    },
-    {
-      "id": "notif_msg_1791712919038_t5mn",
-      "userId": "usr_admin_mohusyn",
-      "title": "پیام جدید از سارا چت 💬",
-      "message": "خیلی ممنون از شما مهندس!",
-      "type": "message",
-      "timestamp": "2026-10-11T10:01:59.038Z",
-      "read": false,
-      "senderId": "usr_1791712919019_soki",
-      "senderName": "سارا چت"
-    },
-    {
-      "id": "notif_msg_1791710134109_xy0z",
-      "userId": "usr_admin_mohusyn",
-      "title": "پیام جدید از سارا چت 💬",
-      "message": "خیلی ممنون از شما مهندس!",
-      "type": "message",
-      "timestamp": "2026-10-11T09:15:34.109Z",
-      "read": false,
-      "senderId": "usr_1791710134088_3owr",
-      "senderName": "سارا چت"
-    },
-    {
-      "id": "notif_msg_1791710067727_n4i9",
-      "userId": "usr_admin_mohusyn",
-      "title": "پیام جدید از سارا چت 💬",
-      "message": "خیلی ممنون از شما مهندس!",
-      "type": "message",
-      "timestamp": "2026-10-11T09:14:27.727Z",
-      "read": false,
-      "senderId": "usr_1791710067711_9yag",
-      "senderName": "سارا چت"
-    },
-    {
-      "id": "notif_msg_1791710043268_s4e6",
-      "userId": "usr_admin_mohusyn",
-      "title": "پیام جدید از سارا چت 💬",
-      "message": "خیلی ممنون از شما مهندس!",
-      "type": "message",
-      "timestamp": "2026-10-11T09:14:03.268Z",
-      "read": false,
-      "senderId": "usr_1791710043250_ad3p",
-      "senderName": "سارا چت"
-    },
-    {
-      "id": "notif_msg_1791709969476_mkqr",
-      "userId": "usr_admin_mohusyn",
-      "title": "پیام جدید از سارا چت 💬",
-      "message": "خیلی ممنون از شما مهندس!",
-      "type": "message",
-      "timestamp": "2026-10-11T09:12:49.476Z",
-      "read": false,
-      "senderId": "usr_1791709969462_42cf",
-      "senderName": "سارا چت"
-    },
-    {
-      "id": "notif_msg_1791709902457_vesz",
-      "userId": "usr_admin_mohusyn",
-      "title": "پیام جدید از سارا چت 💬",
-      "message": "خیلی ممنون از شما مهندس!",
-      "type": "message",
-      "timestamp": "2026-10-11T09:11:42.457Z",
-      "read": false,
-      "senderId": "usr_1791709902444_ajbc",
-      "senderName": "سارا چت"
-    },
-    {
-      "id": "notif_msg_1791227217553_5y1w",
-      "userId": "usr_admin_mohusyn",
-      "title": "پیام جدید از سید محمدحسین شیخ الاسلامی (Mohusyn) 💬",
-      "message": "سلام تست",
-      "type": "message",
-      "timestamp": "2026-10-05T19:06:57.553Z",
-      "read": false,
-      "senderId": "usr_admin_mohusyn",
-      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)"
-    }
-  ],
+  "notifications": [],
   "payments": [],
   "sessions": [
     {
@@ -376,33 +241,8 @@
       "location": "تهران",
       "createdAt": "2026-10-05T19:06:36.575Z",
       "lastActive": "2026-10-11T10:02:16.875Z"
-    },
-    {
-      "id": "sess_7573725f3137",
-      "userId": "usr_1791227196776_104a",
-      "token": "dXNyXzE3OTEyMjcxOTY3NzZfMTA0YToxNzkxMjI3MTk2Nzg3",
-      "device": "رایانه شخصی (PC)",
-      "browser": "مرورگر وب",
-      "isMobile": false,
-      "ip": "127.0.0.1",
-      "location": "اصفهان",
-      "createdAt": "2026-10-05T19:06:36.787Z",
-      "lastActive": "2026-10-11T10:02:16.932Z"
     }
   ],
   "revoked_tokens": [],
-  "bale_login_tickets": {
-    "bale_login_1791709912485_wcdqyog0": {
-      "status": "pending",
-      "createdAt": 1791709912485
-    },
-    "bale_login_1791709918057_2egjcdao": {
-      "status": "pending",
-      "createdAt": 1791709918057
-    },
-    "bale_login_1791709923606_dl6n68t6": {
-      "status": "pending",
-      "createdAt": 1791709923606
-    }
-  }
+  "bale_login_tickets": {}
 }

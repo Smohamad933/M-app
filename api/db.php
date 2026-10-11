@@ -1335,6 +1335,20 @@ class TaskRoozDB {
                             $tDel->execute($delIds);
                         } catch (Exception $eT) {}
                     }
+                    foreach (['career_goals', 'daily_notes', 'personality_results', 'sessions'] as $tbl) {
+                        try {
+                            $this->pdo->prepare("DELETE FROM {$tbl} WHERE user_id IN ({$inSql})")->execute($delIds);
+                        } catch (Exception $eClean) {}
+                    }
+                    try {
+                        $this->pdo->prepare("DELETE FROM projects WHERE creator_id IN ({$inSql})")->execute($delIds);
+                    } catch (Exception $eClean) {}
+                    try {
+                        $this->pdo->prepare("DELETE FROM notifications WHERE user_id IN ({$inSql}) OR sender_id IN ({$inSql})")->execute(array_merge($delIds, $delIds));
+                    } catch (Exception $eClean) {}
+                    try {
+                        $this->pdo->prepare("DELETE FROM messages WHERE sender_id IN ({$inSql}) OR receiver_id IN ({$inSql})")->execute(array_merge($delIds, $delIds));
+                    } catch (Exception $eClean) {}
                     $uDel = $this->pdo->prepare("DELETE FROM users WHERE id IN ({$inSql})");
                     $uDel->execute($delIds);
                 }
@@ -1356,13 +1370,49 @@ class TaskRoozDB {
             $deletedCount += max(0, $before - count($this->data['users']));
         }
 
+        $validIds = array_map(function($u) { return $u['id']; }, $this->data['users'] ?? []);
+        $validIds[] = 'usr_admin_mohusyn';
+
         if (isset($this->data['tasks']) && is_array($this->data['tasks'])) {
-            $this->data['tasks'] = array_values(array_filter($this->data['tasks'], function($t) use ($realUsernames, $realUserIds) {
+            $this->data['tasks'] = array_values(array_filter($this->data['tasks'], function($t) use ($validIds) {
                 $uid = $t['userId'] ?? $t['user_id'] ?? '';
-                return in_array(strtolower($uid), $realUsernames) || in_array($uid, $realUserIds);
+                return in_array($uid, $validIds);
             }));
         }
 
+        if (isset($this->data['projects']) && is_array($this->data['projects'])) {
+            $this->data['projects'] = array_values(array_filter($this->data['projects'], function($p) use ($validIds) {
+                return in_array($p['creatorId'] ?? '', $validIds);
+            }));
+        }
+
+        if (isset($this->data['goals']) && is_array($this->data['goals'])) {
+            $this->data['goals'] = array_values(array_filter($this->data['goals'], function($g) use ($validIds) {
+                return in_array($g['userId'] ?? '', $validIds);
+            }));
+        }
+
+        if (isset($this->data['notifications']) && is_array($this->data['notifications'])) {
+            $this->data['notifications'] = array_values(array_filter($this->data['notifications'], function($n) use ($validIds) {
+                $uid = $n['userId'] ?? '';
+                $sid = $n['senderId'] ?? '';
+                return in_array($uid, $validIds) && (empty($sid) || in_array($sid, $validIds));
+            }));
+        }
+
+        if (isset($this->data['messages']) && is_array($this->data['messages'])) {
+            $this->data['messages'] = array_values(array_filter($this->data['messages'], function($m) use ($validIds) {
+                return in_array($m['senderId'] ?? '', $validIds) && in_array($m['receiverId'] ?? '', $validIds);
+            }));
+        }
+
+        if (isset($this->data['sessions']) && is_array($this->data['sessions'])) {
+            $this->data['sessions'] = array_values(array_filter($this->data['sessions'], function($s) use ($validIds) {
+                return in_array($s['userId'] ?? '', $validIds);
+            }));
+        }
+
+        $this->data['bale_login_tickets'] = [];
         $this->saveUsers();
         $this->saveTasks();
         $this->saveJson();

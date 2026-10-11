@@ -197,6 +197,8 @@ export const UserManagementView: React.FC = () => {
     createUser,
     deleteUser,
     refreshUsers,
+    refreshTasks,
+    refreshProjects,
     setSelectedFilterUserId,
     setActiveTab,
     openCreateModal,
@@ -913,6 +915,8 @@ export const UserManagementView: React.FC = () => {
       sounds.playComplete();
       alert(res.message || 'اکانت‌های تستی با موفقیت حذف شدند.');
       await refreshUsers();
+      await refreshTasks();
+      await refreshProjects();
     } catch (e: any) {
       alert(e.message || 'خطا در پاکسازی اکانت‌های آزمایشی');
     } finally {

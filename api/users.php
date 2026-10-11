@@ -376,9 +376,9 @@ if ($method === 'GET') {
         jsonResponse(['ok' => true, 'count' => $count, 'message' => "تعداد {$count} کاربر با موفقیت در MySQL همگام شدند."]);
     }
 
-    if ($action === 'purge_test_users') {
+    if ($action === 'purge_test_users' || $action === 'purge_orphans') {
         $count = $db->purgeTestUsers();
-        jsonResponse(['ok' => true, 'count' => $count, 'message' => "تعداد {$count} اکانت آزمایشی با موفقیت حذف شدند."]);
+        jsonResponse(['ok' => true, 'count' => $count, 'message' => "تعداد {$count} اکانت آزمایشی و داده‌های بلااستفاده با موفقیت پاکسازی شدند."]);
     }
 
     // All subsequent GET operations (report, export_csv, list all users) require admin authorization
