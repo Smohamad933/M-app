@@ -176,6 +176,7 @@ export const TeamProjectsView: React.FC = () => {
             prev ? { ...prev, name: name.trim(), description: description.trim(), color, icon, memberIds: selectedMembers } : null
           );
         }
+        setEditingProject(null);
       } else {
         const created = await createTeamProject({
           name: name.trim(),
@@ -746,7 +747,10 @@ export const TeamProjectsView: React.FC = () => {
                 {editingProject ? 'ویرایش پروژه تیمی' : 'ایجاد پروژه تیمی جدید'}
               </h3>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingProject(null);
+                }}
                 className="p-1 rounded-xl text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer"
               >
                 <X className="w-4 h-4" />

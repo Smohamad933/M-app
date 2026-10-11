@@ -3340,26 +3340,36 @@ class TaskRoozDB {
     }
 
     public function updateTeamProject($id, $name, $description, $color, $icon, $memberIds) {
+        $updated = false;
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
                 $stmt = $this->pdo->prepare("UPDATE projects SET name = ?, description = ?, color = ?, icon = ?, member_ids_json = ? WHERE id = ?");
                 $stmt->execute([$name, $description, $color, $icon, json_encode($memberIds), $id]);
+                $updated = true;
             } catch (Exception $e) {}
         }
 
         $this->loadJson();
-        foreach ($this->data['projects'] as &$p) {
-            if ($p['id'] === $id) {
-                if ($name !== null) $p['name'] = trim($name);
-                if ($description !== null) $p['description'] = trim($description);
-                if ($color !== null) $p['color'] = $color;
-                if ($icon !== null) $p['icon'] = $icon;
-                if (is_array($memberIds)) $p['memberIds'] = $memberIds;
+        $foundInJson = false;
+        if (!empty($this->data['projects']) && is_array($this->data['projects'])) {
+            foreach ($this->data['projects'] as &$p) {
+                if ($p['id'] === $id) {
+                    if ($name !== null) $p['name'] = trim($name);
+                    if ($description !== null) $p['description'] = trim($description);
+                    if ($color !== null) $p['color'] = $color;
+                    if ($icon !== null) $p['icon'] = $icon;
+                    if (is_array($memberIds)) $p['memberIds'] = $memberIds;
+                    $foundInJson = true;
+                    $updated = true;
+                    break;
+                }
+            }
+            unset($p);
+            if ($foundInJson) {
                 $this->saveJson();
-                return true;
             }
         }
-        return false;
+        return $updated || ($this->getTeamProject($id) !== null);
     }
 
     public function deleteTeamProject($id) {

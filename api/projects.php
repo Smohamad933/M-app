@@ -5,9 +5,21 @@
 require_once __DIR__ . '/config.php';
 
 $currentUser = requireAuth();
+
 $method = $_SERVER['REQUEST_METHOD'];
+if (!empty($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'])) {
+    $method = strtoupper($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE']);
+} elseif (!empty($_GET['_method'])) {
+    $method = strtoupper($_GET['_method']);
+} elseif (!empty($_POST['_method'])) {
+    $method = strtoupper($_POST['_method']);
+}
+
 $action = $_GET['action'] ?? '';
 $input = in_array($method, ['POST', 'PUT']) ? getJsonInput() : [];
+if (!empty($input['action']) && empty($action)) {
+    $action = $input['action'];
+}
 
 // Project Team Chat Messages (GET /api/projects.php?action=messages&project_id=...)
 if ($method === 'GET' && ($action === 'messages' || isset($_GET['messages']))) {
@@ -35,7 +47,7 @@ if ($method === 'GET') {
     jsonResponse(['projects' => $projects]);
 }
 
-// DELETE /api/projects.php?id=... (also handles POST with action=delete for IIS compatibility)
+// DELETE /api/projects.php?id=... (also handles POST with action=delete for IIS/Cloudflare compatibility)
 $isDeleteAction = ($method === 'DELETE') ||
     ($method === 'POST' && (
         $action === 'delete' ||
@@ -59,8 +71,9 @@ if ($isDeleteAction) {
     }
 
     $isAdmin = ($currentUser['role'] === 'admin' || strtolower($currentUser['username'] ?? '') === 'mohusyn' || ($currentUser['id'] ?? '') === 'usr_admin_mohusyn');
+    $isCreator = ($existing['creatorId'] === $currentUser['id'] || $existing['creatorId'] === ($currentUser['username'] ?? ''));
 
-    if ($existing['creatorId'] !== $currentUser['id'] && !$isAdmin) {
+    if (!$isCreator && !$isAdmin) {
         jsonResponse(['error' => 'فقط ایجادکننده پروژه یا مدیر مجاز به حذف پروژه هستند.'], 403);
     }
 
@@ -68,27 +81,18 @@ if ($isDeleteAction) {
     jsonResponse(['message' => 'پروژه با موفقیت حذف شد.']);
 }
 
-// POST /api/projects.php -> Create team project
-if ($method === 'POST') {
-    $input = getJsonInput();
-    $name = trim($input['name'] ?? '');
-    $description = trim($input['description'] ?? '');
-    $color = $input['color'] ?? '#6366f1';
-    $icon = $input['icon'] ?? 'Folder';
-    $memberIds = is_array($input['memberIds'] ?? null) ? $input['memberIds'] : [];
+// UPDATE /api/projects.php (PUT or POST with action=update or POST with existing id)
+$isUpdateAction = ($method === 'PUT') ||
+    ($method === 'POST' && (
+        $action === 'update' ||
+        $action === 'edit' ||
+        ($input['action'] ?? '') === 'update' ||
+        ($input['action'] ?? '') === 'edit' ||
+        (!empty($input['id']) && $action !== 'create' && ($input['action'] ?? '') !== 'create')
+    ));
 
-    if (empty($name)) {
-        jsonResponse(['error' => 'نام پروژه تیمی الزامی است.'], 400);
-    }
-
-    $project = $db->createTeamProject($name, $description, $color, $icon, $currentUser, $memberIds);
-    jsonResponse(['message' => 'پروژه تیمی با موفقیت ایجاد شد.', 'project' => $project], 201);
-}
-
-// PUT /api/projects.php -> Update team project
-if ($method === 'PUT') {
-    $input = getJsonInput();
-    $id = $input['id'] ?? '';
+if ($isUpdateAction) {
+    $id = $input['id'] ?? $_GET['id'] ?? '';
     $name = $input['name'] ?? null;
     $description = $input['description'] ?? null;
     $color = $input['color'] ?? null;
@@ -104,16 +108,36 @@ if ($method === 'PUT') {
         jsonResponse(['error' => 'پروژه یافت نشد.'], 404);
     }
 
-    if ($existing['creatorId'] !== $currentUser['id'] && $currentUser['role'] !== 'admin') {
+    $isAdmin = ($currentUser['role'] === 'admin' || strtolower($currentUser['username'] ?? '') === 'mohusyn' || ($currentUser['id'] ?? '') === 'usr_admin_mohusyn');
+    $isCreator = ($existing['creatorId'] === $currentUser['id'] || $existing['creatorId'] === ($currentUser['username'] ?? ''));
+
+    if (!$isCreator && !$isAdmin) {
         jsonResponse(['error' => 'فقط ایجادکننده پروژه یا مدیر مجاز به ویرایش هستند.'], 403);
     }
 
     $ok = $db->updateTeamProject($id, $name, $description, $color, $icon, $memberIds);
     if ($ok) {
-        jsonResponse(['message' => 'پروژه به‌روزرسانی شد.']);
+        $updated = $db->getTeamProject($id);
+        jsonResponse(['message' => 'پروژه به‌روزرسانی شد.', 'project' => $updated]);
     } else {
         jsonResponse(['error' => 'خطا در ویرایش پروژه.'], 400);
     }
+}
+
+// POST /api/projects.php -> Create new team project
+if ($method === 'POST') {
+    $name = trim($input['name'] ?? '');
+    $description = trim($input['description'] ?? '');
+    $color = $input['color'] ?? '#6366f1';
+    $icon = $input['icon'] ?? 'Folder';
+    $memberIds = is_array($input['memberIds'] ?? null) ? $input['memberIds'] : [];
+
+    if (empty($name)) {
+        jsonResponse(['error' => 'نام پروژه تیمی الزامی است.'], 400);
+    }
+
+    $project = $db->createTeamProject($name, $description, $color, $icon, $currentUser, $memberIds);
+    jsonResponse(['message' => 'پروژه تیمی با موفقیت ایجاد شد.', 'project' => $project], 201);
 }
 
 jsonResponse(['error' => 'درخواست نامعتبر است.'], 405);

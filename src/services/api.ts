@@ -1799,10 +1799,18 @@ export const api = {
   },
 
   async updateTeamProject(id: string, updates: Partial<TeamProject>): Promise<void> {
-    await request('api/projects.php', {
-      method: 'PUT',
-      body: JSON.stringify({ id, ...updates }),
-    });
+    try {
+      await request('api/projects.php', {
+        method: 'PUT',
+        body: JSON.stringify({ id, ...updates }),
+      });
+    } catch {
+      // Fallback for hosting environments where HTTP PUT is blocked or converted
+      await request('api/projects.php?action=update', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'update', id, ...updates }),
+      });
+    }
   },
 
   async deleteTeamProject(id: string): Promise<void> {
