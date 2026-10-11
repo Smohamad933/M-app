@@ -584,9 +584,6 @@ if ($action === 'check_bale_login') {
         ]);
     }
 
-    jsonResponse(['status' => 'pending']);
-}
-
     if (($foundTicket['status'] ?? '') === 'waiting_contact') {
         jsonResponse([
             'status' => 'waiting_contact',
