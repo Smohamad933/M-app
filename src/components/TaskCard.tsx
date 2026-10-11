@@ -25,7 +25,6 @@ import {
   FolderKanban,
   AlertTriangle,
   Repeat,
-  UserCheck,
 } from 'lucide-react';
 
 interface TaskCardProps {
@@ -50,10 +49,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     deleteTask,
     categories,
     projects,
+    users,
     setActiveFocusTaskId,
     setActiveTab,
     currentUser,
-    users,
     openIncompleteModal,
     calendarType,
     updateTask,
@@ -65,6 +64,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
   const category = categories.find((c) => c.id === task.categoryId);
   const CategoryIcon = category?.icon && CATEGORY_ICONS[category.icon] ? CATEGORY_ICONS[category.icon] : Folder;
   const project = task.projectId ? projects.find((p) => p.id === task.projectId) : null;
+  const assignedUser = task.userId ? users.find((u) => u.id === task.userId || u.username === task.userId) : null;
+  const assignedName = task.userName || assignedUser?.name || (task.userId === currentUser?.id ? 'شما' : undefined);
 
   const totalSubtasks = task.subtasks?.length || 0;
   const completedSubtasks = task.subtasks?.filter((s) => s.completed).length || 0;
@@ -351,11 +352,18 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       {/* Bottom row: Badges, Category, Time, Focus Trigger */}
       <div className="mt-3 mr-8 flex items-center justify-between flex-wrap gap-2 pt-2.5 border-t border-slate-100">
         <div className="flex items-center gap-1.5 flex-wrap">
-          {/* User badge for admin only */}
-          {currentUser?.role === 'admin' && task.userName && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+          {/* User badge for admin or for team project tasks */}
+          {(currentUser?.role === 'admin' || task.projectId) && assignedName && (
+            <span
+              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                task.userId === currentUser?.id
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/60'
+                  : 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200/60'
+              }`}
+              title={`مسئول تسک: ${assignedName}`}
+            >
               <UserIcon className="w-3 h-3" />
-              {task.userName}
+              <span>{task.userId === currentUser?.id ? 'تخصیص به شما' : assignedName}</span>
             </span>
           )}
 
@@ -391,29 +399,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
             >
               <FolderKanban className="w-3 h-3" />
               {project?.name || task.projectName}
-            </span>
-          )}
-
-          {/* Assigned Teammate Badge */}
-          {task.projectId && (
-            <span
-              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                (task.assignedTo === currentUser?.id || task.userId === currentUser?.id)
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                  : 'bg-indigo-50 text-indigo-700 border-indigo-200/80'
-              }`}
-              title={
-                task.assignedTo === currentUser?.id || task.userId === currentUser?.id
-                  ? 'این تسک به شما محول شده است'
-                  : `محول شده به ${task.assignedToName || 'هم‌تیمی'}`
-              }
-            >
-              <UserCheck className="w-3 h-3" />
-              <span>
-                {task.assignedTo === currentUser?.id || task.userId === currentUser?.id
-                  ? 'محول شده به شما'
-                  : (task.assignedToName || users.find((u) => u.id === (task.assignedTo || task.userId))?.name || 'هم‌تیمی')}
-              </span>
             </span>
           )}
 

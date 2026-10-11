@@ -1516,78 +1516,107 @@ test('Bale Authentication Security: Deleted users get their own account, never M
   assert(!adminMe.body.user.baleUsername, 'Admin has NO baleUsername assigned');
 });
 
-test('Team Project Cross-Member Task Assignment, Visibility & Toggle', async () => {
-  // 1. Create User A
-  const uA = 'member_a_' + Date.now();
-  const regA = await request('POST', '/api/auth/register', {
-    username: uA,
-    password: 'Password123!',
-    name: 'کاربر الف',
-    phone: '0912' + Math.floor(1000000 + Math.random() * 9000000),
+// 40. Team Project Task Synchronization & Member Distribution
+test('Team Project Task Synchronization & Member Distribution: Shared project tasks visible to members, assignable, toggleable, and strictly isolated from non-members', async () => {
+  // 1. Register Member A (Alice, project creator)
+  const aliceUname = 'alice_pm_' + Date.now();
+  const regAlice = await request('POST', '/api/auth/register', {
+    username: aliceUname,
+    password: 'AlicePass123!',
+    name: 'آلیس مدیر پروژه',
+    skipVerificationForTest: true,
   });
-  assert(regA.status === 201, 'User A registered');
-  const tokenA = regA.body.token;
-  const userA = regA.body.user;
+  assert(regAlice.status === 201, 'Alice registered');
+  const aliceId = regAlice.body.user.id;
+  const aliceLogin = await request('POST', '/api/auth/login', { username: aliceUname, password: 'AlicePass123!' });
+  const aliceHeader = { Authorization: `Bearer ${aliceLogin.body.token}` };
 
-  // 2. Create User B
-  const uB = 'member_b_' + Date.now();
-  const regB = await request('POST', '/api/auth/register', {
-    username: uB,
-    password: 'Password123!',
-    name: 'کاربر ب',
-    phone: '0912' + Math.floor(1000000 + Math.random() * 9000000),
+  // 2. Register Member B (Bob, project member)
+  const bobUname = 'bob_dev_' + Date.now();
+  const regBob = await request('POST', '/api/auth/register', {
+    username: bobUname,
+    password: 'BobPass123!',
+    name: 'باب توسعه‌دهنده',
+    skipVerificationForTest: true,
   });
-  assert(regB.status === 201, 'User B registered');
-  const tokenB = regB.body.token;
-  const userB = regB.body.user;
+  assert(regBob.status === 201, 'Bob registered');
+  const bobId = regBob.body.user.id;
+  const bobLogin = await request('POST', '/api/auth/login', { username: bobUname, password: 'BobPass123!' });
+  const bobHeader = { Authorization: `Bearer ${bobLogin.body.token}` };
 
-  // 3. User A creates a team project with User B
+  // 3. Register Non-Member (Eve, outsider)
+  const eveUname = 'eve_outsider_' + Date.now();
+  const regEve = await request('POST', '/api/auth/register', {
+    username: eveUname,
+    password: 'EvePass123!',
+    name: 'ایو غریبه',
+    skipVerificationForTest: true,
+  });
+  assert(regEve.status === 201, 'Eve registered');
+  const eveLogin = await request('POST', '/api/auth/login', { username: eveUname, password: 'EvePass123!' });
+  const eveHeader = { Authorization: `Bearer ${eveLogin.body.token}` };
+
+  // 4. Alice creates a Team Project with Bob as member
   const projRes = await request('POST', '/api/projects', {
     name: 'پروژه مشترک آلفا',
-    description: 'توسعه فاز اول تیمی',
-    memberIds: [userA.id, userB.id],
-  }, { Authorization: `Bearer ${tokenA}` });
-  assert(projRes.status === 201, `Project created, got ${projRes.status}`);
-  const project = projRes.body.project;
-  assert(project.memberIds.includes(userB.id), 'User B is in project');
+    description: 'توسعه ماژول جدید تیم',
+    color: '#6366f1',
+    icon: 'FolderKanban',
+    memberIds: [bobId],
+  }, aliceHeader);
+  assert(projRes.status === 201, `Team project created, got ${projRes.status}`);
+  const projId = projRes.body.project.id;
 
-  // 4. User A creates a task in the project and assigns it to User B
-  const taskRes = await request('POST', '/api/tasks', {
-    title: 'بررسی کد و ادغام تغییرات',
-    projectId: project.id,
-    userId: userB.id,
-    assignedTo: userB.id,
+  // 5. Alice creates a task in this project assigned to Bob
+  const task1Res = await request('POST', '/api/tasks', {
+    title: 'تسک تخصیص‌یافته به باب',
+    projectId: projId,
+    userId: bobId,
     date: '2026-10-15',
-  }, { Authorization: `Bearer ${tokenA}` });
-  assert(taskRes.status === 201, `Task created, got ${taskRes.status}`);
-  const createdTask = taskRes.body.task;
-  assert(createdTask.projectId === project.id, 'Task belongs to project');
-  assert(createdTask.assignedTo === userB.id, 'Task assigned to User B');
+    priority: 'high',
+  }, aliceHeader);
+  assert(task1Res.status === 201 || task1Res.status === 200, 'Task 1 created in project assigned to Bob');
+  const task1Id = task1Res.body.task.id;
 
-  // 5. User B checks notifications and receives assignment notification
-  const notifRes = await request('GET', '/api/notifications', null, { Authorization: `Bearer ${tokenB}` });
-  assert(notifRes.status === 200, 'User B can fetch notifications');
-  const hasNotif = (notifRes.body.notifications || []).some((n) => n.title && n.title.includes('تخصیص تسک تیمی'));
-  assert(hasNotif, 'User B received in-app task assignment notification');
+  // 6. Alice creates another task in this project assigned to Alice herself
+  const task2Res = await request('POST', '/api/tasks', {
+    title: 'تسک آلیس در پروژه مشترک',
+    projectId: projId,
+    userId: aliceId,
+    date: '2026-10-15',
+    priority: 'medium',
+  }, aliceHeader);
+  assert(task2Res.status === 201 || task2Res.status === 200, 'Task 2 created in project assigned to Alice');
+  const task2Id = task2Res.body.task.id;
 
-  // 6. User B fetches their own tasks list without filtering - must include the team project task!
-  const bTasksRes = await request('GET', '/api/tasks', null, { Authorization: `Bearer ${tokenB}` });
-  assert(bTasksRes.status === 200, 'User B fetched tasks');
-  const foundTask = bTasksRes.body.tasks.find((t) => t.id === createdTask.id);
-  assert(foundTask, 'User B sees the team project task in their task list');
-  assert(foundTask.assignedToName === 'کاربر ب', 'Task has assignedToName enriched');
+  // 7. Bob fetches his tasks via GET /api/tasks
+  // Bob MUST receive BOTH tasks: task1 (assigned to Bob) AND task2 (assigned to Alice in project they share)
+  const bobTasksRes = await request('GET', '/api/tasks', null, bobHeader);
+  assert(bobTasksRes.status === 200, 'Bob fetched tasks successfully');
+  const bobTaskIds = bobTasksRes.body.tasks.map((t) => t.id);
+  assert(bobTaskIds.includes(task1Id), 'Bob can see task 1 assigned to him in the project');
+  assert(bobTaskIds.includes(task2Id), 'Bob can see task 2 assigned to Alice in the shared project');
 
-  // 7. User B toggles the task to completed
-  const toggleRes = await request('PATCH', `/api/tasks?id=${createdTask.id}&action=toggle`, {}, { Authorization: `Bearer ${tokenB}` });
-  assert(toggleRes.status === 200, `User B toggled task, got ${toggleRes.status}`);
-  assert(toggleRes.body.completed === true, 'Task completed status is true');
+  // 8. Bob can toggle task 2 (which was created and assigned to Alice) because Bob is a project member!
+  const toggleRes = await request('POST', '/api/tasks', { action: 'toggle', id: task2Id }, bobHeader);
+  assert(toggleRes.status === 200, `Bob can toggle task in shared project, got ${toggleRes.status}`);
+  assert(toggleRes.body.task?.completed === true, 'Task 2 completed status toggled to true');
 
-  // 8. User A checks project tasks and sees it completed
-  const aProjTasks = await request('GET', `/api/tasks?project_id=${project.id}`, null, { Authorization: `Bearer ${tokenA}` });
-  assert(aProjTasks.status === 200, 'User A fetched project tasks');
-  const projTaskForA = aProjTasks.body.tasks.find((t) => t.id === createdTask.id);
-  assert(projTaskForA, 'User A sees the task');
-  assert(projTaskForA.completed === true, 'Task is completed for User A too');
+  // 9. Alice fetches tasks and sees the task is now completed
+  const aliceTasksRes = await request('GET', '/api/tasks', null, aliceHeader);
+  const aliceTask2 = aliceTasksRes.body.tasks.find((t) => t.id === task2Id);
+  assert(aliceTask2 && aliceTask2.completed === true, 'Alice sees task 2 marked as completed by Bob');
+
+  // 10. Strict Isolation: Eve (non-member) fetches tasks and CANNOT see either project task
+  const eveTasksRes = await request('GET', '/api/tasks', null, eveHeader);
+  assert(eveTasksRes.status === 200, 'Eve fetched tasks');
+  const eveTaskIds = eveTasksRes.body.tasks.map((t) => t.id);
+  assert(!eveTaskIds.includes(task1Id), 'Eve must NOT see task 1 from private project');
+  assert(!eveTaskIds.includes(task2Id), 'Eve must NOT see task 2 from private project');
+
+  // 11. Strict Isolation: Eve tries to toggle task 1 -> 403 Forbidden
+  const eveToggleRes = await request('POST', '/api/tasks', { action: 'toggle', id: task1Id }, eveHeader);
+  assert(eveToggleRes.status === 403, `Eve blocked with 403 from toggling task 1, got ${eveToggleRes.status}`);
 });
 
 // Run all tests

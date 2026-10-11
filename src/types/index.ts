@@ -117,9 +117,6 @@ export interface Task {
   repeat?: 'none' | 'daily' | 'weekly';
   isRoutine?: boolean;
   routineType?: 'none' | 'week' | 'month' | 'workdays';
-  assignedTo?: string;
-  assignedToName?: string;
-  createdBy?: string;
   createdAt: string;
 }
 

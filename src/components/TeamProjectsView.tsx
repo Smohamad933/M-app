@@ -405,37 +405,47 @@ export const TeamProjectsView: React.FC = () => {
               </div>
             </div>
 
-            {/* Filter Pills */}
-            <div className="flex items-center gap-2">
+            {/* Filter Pills & Add Task Action */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => setProjectFilter('all')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                    projectFilter === 'all'
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-800'
+                  }`}
+                >
+                  همه ({toPersianDigits(projectTasks.length)})
+                </button>
+                <button
+                  onClick={() => setProjectFilter('pending')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                    projectFilter === 'pending'
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-800'
+                  }`}
+                >
+                  در حال انجام ({toPersianDigits(pendingTasks.length)})
+                </button>
+                <button
+                  onClick={() => setProjectFilter('completed')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                    projectFilter === 'completed'
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-800'
+                  }`}
+                >
+                  تکمیل شده ({toPersianDigits(completedTasks.length)})
+                </button>
+              </div>
+
               <button
-                onClick={() => setProjectFilter('all')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                  projectFilter === 'all'
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-800'
-                }`}
+                onClick={() => openCreateModal(undefined, undefined, selectedProject.id)}
+                className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold inline-flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
               >
-                همه ({toPersianDigits(projectTasks.length)})
-              </button>
-              <button
-                onClick={() => setProjectFilter('pending')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                  projectFilter === 'pending'
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-800'
-                }`}
-              >
-                در حال انجام ({toPersianDigits(pendingTasks.length)})
-              </button>
-              <button
-                onClick={() => setProjectFilter('completed')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                  projectFilter === 'completed'
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-800'
-                }`}
-              >
-                تکمیل شده ({toPersianDigits(completedTasks.length)})
+                <Plus className="w-4 h-4" />
+                <span>افزودن تسک جدید به این پروژه</span>
               </button>
             </div>
 

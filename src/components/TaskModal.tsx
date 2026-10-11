@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTask } from '../context/TaskContext';
-import type { Priority, SubTask } from '../types';
+import type { Priority, SubTask, User } from '../types';
 import {
   getTodayISO,
   formatAppDate,
@@ -72,12 +72,41 @@ export const TaskModal: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Admin user assignment
+  // User assignment: Admin or Team Project Member
   const [assignToOtherUser, setAssignToOtherUser] = useState(false);
   const [assignedUserId, setAssignedUserId] = useState<string>(currentUser?.id || '');
   const [routineRepeat, setRoutineRepeat] = useState<'none' | 'week' | 'month' | 'workdays'>('none');
 
+  const selectedProject = useMemo(() => projects.find((p) => p.id === projectId), [projects, projectId]);
+  const isTeamProjectTask = Boolean(selectedProject);
+  const isProjectMember = selectedProject
+    ? (selectedProject.creatorId === currentUser?.id || (selectedProject.memberIds && selectedProject.memberIds.includes(currentUser?.id || '')))
+    : false;
+  const canAssign = currentUser?.role === 'admin' || (isTeamProjectTask && isProjectMember);
+
+  const eligibleAssignees = useMemo(() => {
+    if (selectedProject) {
+      const pMemberSet = new Set([selectedProject.creatorId, ...(selectedProject.memberIds || [])]);
+      return users.filter((u: User) => pMemberSet.has(u.id) || (currentUser?.role === 'admin' && u.role === 'admin'));
+    }
+    if (currentUser?.role === 'admin') {
+      return users;
+    }
+    return [];
+  }, [selectedProject, users, currentUser]);
+
   const todayISO = getTodayISO();
+
+  useEffect(() => {
+    if (canAssign && assignToOtherUser && eligibleAssignees.length > 0) {
+      if (!eligibleAssignees.some((u: User) => u.id === assignedUserId)) {
+        const nextTarget = eligibleAssignees.find((u: User) => u.id !== currentUser?.id) || eligibleAssignees[0];
+        if (nextTarget) {
+          setAssignedUserId(nextTarget.id);
+        }
+      }
+    }
+  }, [projectId, eligibleAssignees, canAssign, assignToOtherUser, assignedUserId, currentUser?.id]);
 
   useEffect(() => {
     if (!isTaskModalOpen) return;
@@ -91,10 +120,9 @@ export const TaskModal: React.FC = () => {
       setProjectId(editingTask.projectId || null);
       setIsPinned(editingTask.isPinned || false);
       setSubtasks(editingTask.subtasks || []);
-      const effectiveAssigned = editingTask.assignedTo || editingTask.userId;
-      const isAssignedElsewhere = Boolean(effectiveAssigned && effectiveAssigned !== currentUser?.id);
+      const isAssignedElsewhere = Boolean(editingTask.userId && editingTask.userId !== currentUser?.id);
       setAssignToOtherUser(isAssignedElsewhere);
-      setAssignedUserId(effectiveAssigned || currentUser?.id || '');
+      setAssignedUserId(editingTask.userId || currentUser?.id || '');
       setReasonUncompleted(editingTask.reasonUncompleted);
     } else {
       setRoutineRepeat('none');
@@ -140,13 +168,9 @@ export const TaskModal: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const selectedProj = projects.find((p) => p.id === projectId);
-      const isMember = selectedProj && (selectedProj.creatorId === currentUser?.id || selectedProj.memberIds?.includes(currentUser?.id || ''));
-      const canAssign = currentUser?.role === 'admin' || (Boolean(projectId) && isMember);
-
       const assignedTarget = (canAssign && assignToOtherUser && assignedUserId)
         ? assignedUserId
-        : (editingTask ? (editingTask.userId || currentUser?.id || 'usr_admin_mohusyn') : (currentUser?.id || 'usr_admin_mohusyn'));
+        : (currentUser?.id || 'usr_admin_mohusyn');
 
       if (editingTask) {
         await updateTask({
@@ -163,7 +187,6 @@ export const TaskModal: React.FC = () => {
           reasonUncompleted: reasonUncompleted || undefined,
           uncompletedCategory: reasonUncompleted ? editingTask.uncompletedCategory : undefined,
           userId: assignedTarget,
-          assignedTo: assignedTarget,
         });
       } else {
         await addTask({
@@ -180,7 +203,6 @@ export const TaskModal: React.FC = () => {
           isRoutine: routineRepeat !== 'none',
           routineType: routineRepeat,
           userId: assignedTarget,
-          assignedTo: assignedTarget,
         }, routineRepeat);
       }
       closeTaskModal();
@@ -199,13 +221,6 @@ export const TaskModal: React.FC = () => {
     const safeD = Math.min(newJd, maxD);
     setDate(jalaliToISO(newJy, newJm, safeD));
   };
-
-  const selectedProj = projects.find((p) => p.id === projectId);
-  const eligibleMemberIds = selectedProj ? Array.from(new Set([selectedProj.creatorId, ...(selectedProj.memberIds || [])])) : [];
-  const eligibleUsers = currentUser?.role === 'admin'
-    ? users
-    : users.filter((u) => eligibleMemberIds.includes(u.id));
-  const showAssignmentOption = (currentUser?.role === 'admin' && users.length > 1) || (Boolean(projectId) && eligibleUsers.length > 1);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in">
@@ -266,8 +281,8 @@ export const TaskModal: React.FC = () => {
             </div>
           )}
 
-          {/* Teammate or Admin User Assignment Selector */}
-          {showAssignmentOption && (
+          {/* User Assignment Selector (Admin or Team Project Members) */}
+          {canAssign && eligibleAssignees.length > 1 && (
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
@@ -279,7 +294,7 @@ export const TaskModal: React.FC = () => {
                     if (!checked) {
                       setAssignedUserId(currentUser?.id || '');
                     } else if (!assignedUserId || assignedUserId === currentUser?.id) {
-                      const firstOther = eligibleUsers.find((u) => u.id !== currentUser?.id);
+                      const firstOther = eligibleAssignees.find((u: User) => u.id !== currentUser?.id);
                       if (firstOther) setAssignedUserId(firstOther.id);
                     }
                   }}
@@ -287,21 +302,23 @@ export const TaskModal: React.FC = () => {
                 />
                 <span className="font-extrabold text-xs text-slate-700 flex items-center gap-1.5">
                   <UserCheck className="w-3.5 h-3.5 text-slate-500" />
-                  {projectId ? 'تخصیص تسک به یکی از اعضای پروژه تیمی' : 'تخصیص تسک به عضو دیگر تیم (سازمانی)'}
+                  {selectedProject ? 'تخصیص تسک به یکی از اعضای پروژه' : 'تخصیص تسک به عضو دیگر تیم (سازمانی)'}
                 </span>
               </label>
 
               {assignToOtherUser && (
                 <div className="pt-1 space-y-1">
-                  <div className="text-[11px] font-bold text-slate-500">انتخاب هم‌تیمی مقصد:</div>
+                  <div className="text-[11px] font-bold text-slate-500">
+                    {selectedProject ? 'انتخاب عضو مسئول تسک:' : 'انتخاب کاربر مقصد:'}
+                  </div>
                   <select
                     value={assignedUserId}
                     onChange={(e) => setAssignedUserId(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 outline-none"
                   >
-                    {eligibleUsers.map((u) => (
+                    {eligibleAssignees.map((u: User) => (
                       <option key={u.id} value={u.id}>
-                        {u.name} (@{u.username}) {u.id === currentUser?.id ? '(خودم)' : ''} {u.role === 'admin' ? '- مدیر' : ''}
+                        {u.name} (@{u.username}) {u.id === selectedProject?.creatorId ? ' (سازنده پروژه)' : ''} {u.role === 'admin' ? ' [مدیر]' : ''}
                       </option>
                     ))}
                   </select>
