@@ -11,7 +11,7 @@
 class TaskRoozDB {
     private static $instance = null;
     public $mode = 'json'; // 'mysql' or 'json'
-    private $pdo = null;
+    public $pdo = null;
     public $tasksPdo = null; // Dedicated MySQL connection for tasks and completion ticks
     private $jsonFile = null;
     public $data = [];
@@ -33,7 +33,7 @@ class TaskRoozDB {
 
     private function ensureMySQLSchema() {
         if (!$this->pdo) return;
-        $marker = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.mysql_schema_ready_v5';
+        $marker = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.mysql_schema_ready_v6';
         if (file_exists($marker)) {
             return;
         }
@@ -245,20 +245,22 @@ class TaskRoozDB {
             } catch (Exception $eU) {}
 
             // Dedicated projects table
-            $this->pdo->exec("
-                CREATE TABLE IF NOT EXISTS `projects` (
-                  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-                  `name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-                  `description` text COLLATE utf8mb4_unicode_ci,
-                  `color` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#6366f1',
-                  `icon` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Folder',
-                  `creator_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-                  `creator_name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-                  `member_ids_json` text COLLATE utf8mb4_unicode_ci,
-                  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                  PRIMARY KEY (`id`)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            ");
+            try {
+                $this->pdo->exec("
+                    CREATE TABLE IF NOT EXISTS `projects` (
+                      `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                      `name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+                      `description` text COLLATE utf8mb4_unicode_ci,
+                      `color` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#6366f1',
+                      `icon` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Folder',
+                      `creator_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                      `creator_name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+                      `member_ids_json` text COLLATE utf8mb4_unicode_ci,
+                      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                      PRIMARY KEY (`id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                ");
+            } catch (Exception $eProj) {}
 
             // Dedicated task completions table for persistent MySQL tick tracking
             if ($tasksDb) {
@@ -1054,7 +1056,6 @@ class TaskRoozDB {
                         $key = strtolower(trim((string)($u['username'] ?? $u['id'])));
                         $userMap[$key] = $u;
                     }
-                    return array_values($userMap);
                 }
             } catch (Exception $e) {}
         }
@@ -1983,7 +1984,43 @@ class TaskRoozDB {
                         return $r;
                     }, $rows);
                 }
-            } catch (Exception $e) {}
+            } catch (Exception $e) {
+                try {
+                    $u = !empty($userId) ? ($this->getUserById($userId) ?: $this->getUserByUsername($userId)) : null;
+                    $uId = $u ? $u['id'] : $userId;
+                    $uName = $u ? ($u['username'] ?? '') : $userId;
+                    $sqlFb = "SELECT * FROM tasks WHERE 1=1";
+                    $fbParams = [];
+                    if (!empty($userId)) {
+                        $sqlFb .= " AND (user_id = ? OR user_id = ?)";
+                        $fbParams[] = $uId;
+                        $fbParams[] = $uName;
+                    }
+                    if (!empty($date)) { $sqlFb .= " AND date = ?"; $fbParams[] = $date; }
+                    if (!empty($categoryId)) { $sqlFb .= " AND category_id = ?"; $fbParams[] = $categoryId; }
+                    if ($completed !== null) { $sqlFb .= " AND completed = ?"; $fbParams[] = $completed ? 1 : 0; }
+                    $sqlFb .= " ORDER BY is_pinned DESC, time ASC";
+                    $fbStmt = $tasksDb->prepare($sqlFb);
+                    $fbStmt->execute($fbParams);
+                    $rows = $fbStmt->fetchAll();
+                    if ($rows !== false) {
+                        return array_map(function($r) {
+                            $r['userId'] = $r['user_id'];
+                            $r['projectId'] = $r['project_id'] ?? null;
+                            $r['categoryId'] = $r['category_id'] ?? 'cat-work';
+                            $r['durationMinutes'] = (int)($r['duration_minutes'] ?? 30);
+                            $r['completed'] = !empty($r['completed']);
+                            $r['completedAt'] = $r['completed_at'] ?? null;
+                            $r['isPinned'] = !empty($r['is_pinned']);
+                            $r['focusMinutesSpent'] = (int)($r['focus_minutes_spent'] ?? 0);
+                            $r['reasonUncompleted'] = $r['reason_uncompleted'] ?? null;
+                            $r['uncompletedCategory'] = $r['uncompleted_category'] ?? null;
+                            $r['subtasks'] = !empty($r['subtasks_json']) ? json_decode($r['subtasks_json'], true) : [];
+                            return $r;
+                        }, $rows);
+                    }
+                } catch (Exception $eFb) {}
+            }
         }
 
         $this->loadJson();
