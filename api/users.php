@@ -532,6 +532,8 @@ if ($method === 'POST') {
         'birthDate' => trim($input['birthDate'] ?? ''),
         'jobTitle' => trim($input['jobTitle'] ?? ''),
         'skills' => is_array($input['skills'] ?? null) ? $input['skills'] : [],
+        'isVerified' => true,
+        'status' => 'active',
     ];
 
     $user = $db->createUser($username, $password, $name, $role, $extra);
@@ -543,7 +545,8 @@ if ($method === 'POST') {
             'username' => $user['username'],
             'name' => $user['name'],
             'role' => $user['role'],
-            'status' => $user['status'] ?? 'active',
+            'status' => 'active',
+            'isVerified' => true,
             'phone' => $user['phone'] ?? '',
             'email' => $user['email'] ?? '',
             'province' => $user['province'] ?? '',

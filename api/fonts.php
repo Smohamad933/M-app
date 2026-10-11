@@ -22,19 +22,24 @@ if ($method === 'OPTIONS') {
     exit;
 }
 
-// 1. Direct Font File Streaming (bypasses IIS static file MIME type blocks)
-if ($method === 'GET' && !empty($_GET['file'])) {
-    $file = basename(urldecode($_GET['file']));
-    $searchPaths = [
-        dirname(__DIR__) . '/fonts/' . $file,
-        dirname(__DIR__) . '/public/fonts/' . $file,
-        dirname(__DIR__) . '/uploads/fonts/' . $file,
-    ];
+// 1. Direct Font File Streaming (bypasses IIS static file MIME type blocks & Windows disk permission blocks)
+if ($method === 'GET' && (!empty($_GET['file']) || !empty($_GET['id']))) {
+    $file = !empty($_GET['file']) ? basename(urldecode($_GET['file'])) : '';
+    $id = trim($_GET['id'] ?? '');
+
     $targetPath = null;
-    foreach ($searchPaths as $sp) {
-        if (file_exists($sp) && is_file($sp)) {
-            $targetPath = $sp;
-            break;
+    if ($file) {
+        $searchPaths = [
+            dirname(__DIR__) . '/fonts/' . $file,
+            dirname(__DIR__) . '/public/fonts/' . $file,
+            dirname(__DIR__) . '/uploads/fonts/' . $file,
+            dirname(__DIR__) . '/data/fonts/' . $file,
+        ];
+        foreach ($searchPaths as $sp) {
+            if (file_exists($sp) && is_file($sp)) {
+                $targetPath = $sp;
+                break;
+            }
         }
     }
 
@@ -57,6 +62,45 @@ if ($method === 'GET' && !empty($_GET['file'])) {
         readfile($targetPath);
         exit;
     }
+
+    // FALLBACK: If disk file is missing (e.g. Windows IIS write permission block), stream directly from Database!
+    $fontRow = null;
+    if ($id && method_exists($db, 'getCustomFontById')) {
+        $fontRow = $db->getCustomFontById($id);
+    }
+    if (!$fontRow && $file && method_exists($db, 'getCustomFontByFile')) {
+        $fontRow = $db->getCustomFontByFile($file);
+    }
+
+    if ($fontRow && !empty($fontRow['dataUrl']) && strpos($fontRow['dataUrl'], 'base64,') !== false) {
+        $parts = explode('base64,', $fontRow['dataUrl']);
+        $binary = base64_decode($parts[1]);
+        if ($binary !== false) {
+            // Attempt to heal disk file
+            if ($file) {
+                @file_put_contents(dirname(__DIR__) . '/fonts/' . $file, $binary);
+                @file_put_contents(dirname(__DIR__) . '/public/fonts/' . $file, $binary);
+            }
+            $ext = strtolower(pathinfo($file ?: 'font.ttf', PATHINFO_EXTENSION)) ?: 'ttf';
+            $mimes = [
+                'woff2' => 'font/woff2',
+                'woff' => 'font/woff',
+                'ttf' => 'font/ttf',
+                'otf' => 'font/otf',
+                'eot' => 'application/vnd.ms-fontobject',
+            ];
+            $contentType = $mimes[$ext] ?? 'font/ttf';
+            header('Content-Type: ' . $contentType);
+            header('Content-Length: ' . strlen($binary));
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Allow-Methods: GET, OPTIONS');
+            header('Access-Control-Allow-Headers: *');
+            header('Cache-Control: public, max-age=31536000, immutable');
+            echo $binary;
+            exit;
+        }
+    }
+
     jsonResponse(['error' => 'فایل فونت در سرور یافت نشد.'], 404);
 }
 
@@ -134,10 +178,19 @@ if ($method === 'POST' && ($action === 'upload' || empty($action))) {
 
     // 1. If uploaded via FormData / $_FILES
     if ($hasUploadedFile) {
+        $fileBytes = @file_get_contents($_FILES['file']['tmp_name']);
+        if (empty($dataUrl) && $fileBytes !== false) {
+            $dataUrl = 'data:font/' . $ext . ';base64,' . base64_encode($fileBytes);
+        }
         $targetFile = $fontsDir . '/' . $diskFileName;
         if (@move_uploaded_file($_FILES['file']['tmp_name'], $targetFile)) {
             @copy($targetFile, $publicFontsDir . '/' . $diskFileName);
             $savedToDisk = true;
+        } else if ($fileBytes !== false) {
+            if (@file_put_contents($targetFile, $fileBytes) !== false) {
+                @copy($targetFile, $publicFontsDir . '/' . $diskFileName);
+                $savedToDisk = true;
+            }
         }
     }
 
@@ -165,7 +218,7 @@ if ($method === 'POST' && ($action === 'upload' || empty($action))) {
         'name' => $name,
         'family' => $family,
         'fontUrl' => $fontUrl,
-        'dataUrl' => (strlen((string)$dataUrl) < 400000) ? $dataUrl : null,
+        'dataUrl' => $dataUrl,
         'description' => $description,
     ];
 

@@ -267,7 +267,13 @@ function requireAdmin($dbInstance = null) {
 function requireVerifiedUser($dbInstance = null) {
     $user = requireAuth($dbInstance);
     if (($user['role'] ?? 'user') !== 'admin' && strtolower($user['username'] ?? '') !== 'mohusyn') {
-        if (($user['status'] ?? '') === 'pending_verification' && empty($user['isVerified'])) {
+        global $db;
+        $storage = $dbInstance ?: $db;
+        $gs = $storage ? $storage->getGlobalSettings() : [];
+        $baleBot = $gs['baleBot'] ?? [];
+        $botActive = !empty($baleBot['enabled']) && !empty($baleBot['botToken']) && !empty($baleBot['verifyOnRegister']);
+
+        if ($botActive && ($user['status'] ?? '') === 'pending_verification' && empty($user['isVerified'])) {
             jsonResponse([
                 'error' => 'حساب کاربری شما محدود است. جهت استفاده از امکانات سامانه، لطفاً ابتدا حساب خود را در ربات بله تأیید فرمایید.',
                 'code' => 'UNVERIFIED_ACCOUNT',

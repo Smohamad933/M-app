@@ -358,6 +358,9 @@ function injectFontLink(font: SystemFontOption) {
       const style = document.createElement('style');
       style.id = elementId;
       const cleanFamily = (font.family || font.name || 'CustomFont').replace(/['"]/g, '').split(',')[0].trim();
+      const rawName = (font.name || '').replace(/['"]/g, '').trim();
+
+      const aliases = Array.from(new Set([cleanFamily, rawName])).filter(Boolean);
 
       let formatHint = '';
       const lower = fontSource.toLowerCase();
@@ -371,16 +374,37 @@ function injectFontLink(font: SystemFontOption) {
         formatHint = " format('opentype')";
       }
 
-      style.textContent = `
-        @font-face {
-          font-family: '${cleanFamily}';
-          src: url('${fontSource}')${formatHint};
-          font-weight: 100 900;
-          font-style: normal;
-          font-display: swap;
-        }
-      `;
+      let fontFaceRules = '';
+      for (const alias of aliases) {
+        fontFaceRules += `
+          @font-face {
+            font-family: '${alias}';
+            src: url('${fontSource}')${formatHint};
+            font-style: normal;
+            font-display: swap;
+          }
+          @font-face {
+            font-family: '${alias}';
+            src: url('${fontSource}')${formatHint};
+            font-weight: 100 900;
+            font-style: normal;
+            font-display: swap;
+          }
+        `;
+      }
+
+      style.textContent = fontFaceRules;
       document.head.appendChild(style);
+
+      // Programmatic FontFace registration for instant loading in modern browsers
+      if (typeof FontFace !== 'undefined' && document.fonts) {
+        try {
+          const ff = new FontFace(cleanFamily, `url('${fontSource}')`);
+          ff.load().then((loaded) => {
+            document.fonts.add(loaded);
+          }).catch(() => {});
+        } catch {}
+      }
     }
   } catch (e) {
     console.warn('Could not inject font link:', e);
@@ -1944,7 +1968,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...taskData,
       isRoutine,
       routineType: routineType || 'none',
-      userId: taskData.userId || currentUser?.id || 'usr_admin_1',
+      userId: taskData.userId || currentUser?.id || 'usr_admin_mohusyn',
     };
 
     const created = await api.createTask(primaryTaskInput);
@@ -1973,7 +1997,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           date: dateStr,
           isRoutine: true,
           routineType,
-          userId: taskData.userId || currentUser?.id || 'usr_admin_1',
+          userId: taskData.userId || currentUser?.id || 'usr_admin_mohusyn',
         });
       }
 
@@ -1984,7 +2008,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const extra = await api.createTask({
               ...item,
-              userId: item.userId || currentUser?.id || 'usr_admin_1',
+              userId: item.userId || currentUser?.id || 'usr_admin_mohusyn',
             });
             batchCreated.push(extra);
           } catch {}

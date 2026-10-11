@@ -6,6 +6,22 @@ require_once __DIR__ . '/config.php';
 
 $currentUser = requireAuth();
 $method = $_SERVER['REQUEST_METHOD'];
+if (!empty($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'])) {
+    $method = strtoupper($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE']);
+} elseif (!empty($_GET['_method'])) {
+    $method = strtoupper($_GET['_method']);
+} elseif (!empty($_POST['_method'])) {
+    $method = strtoupper($_POST['_method']);
+}
+
+// Preflight CORS
+if ($method === 'OPTIONS') {
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: *');
+    http_response_code(200);
+    exit;
+}
 
 function isUserAllowedTaskAccess($currentUser, $task, $db) {
     if (!$task) return false;
@@ -193,6 +209,9 @@ if ($method === 'POST') {
                 $targetUserId = $input['userId'];
             }
         }
+    }
+    if (strtolower((string)$targetUserId) === 'mohusyn' || $targetUserId === 'usr_admin_1' || $targetUserId === 'usr_mohusyn_admin') {
+        $targetUserId = 'usr_admin_mohusyn';
     }
 
     $taskData = [
