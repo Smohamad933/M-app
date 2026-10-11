@@ -6,15 +6,6 @@ require_once __DIR__ . '/config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Preflight CORS
-if ($method === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-    header('Access-Control-Allow-Headers: *');
-    http_response_code(200);
-    exit;
-}
-
 if ($method === 'GET' || $method === 'HEAD') {
     $settings = $db->getGlobalSettings();
     jsonResponse(['settings' => $settings]);

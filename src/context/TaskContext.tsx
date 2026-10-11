@@ -358,9 +358,6 @@ function injectFontLink(font: SystemFontOption) {
       const style = document.createElement('style');
       style.id = elementId;
       const cleanFamily = (font.family || font.name || 'CustomFont').replace(/['"]/g, '').split(',')[0].trim();
-      const rawName = (font.name || '').replace(/['"]/g, '').trim();
-
-      const aliases = Array.from(new Set([cleanFamily, rawName])).filter(Boolean);
 
       let formatHint = '';
       const lower = fontSource.toLowerCase();
@@ -374,26 +371,29 @@ function injectFontLink(font: SystemFontOption) {
         formatHint = " format('opentype')";
       }
 
-      let fontFaceRules = '';
-      for (const alias of aliases) {
-        fontFaceRules += `
-          @font-face {
-            font-family: '${alias}';
-            src: url('${fontSource}')${formatHint};
-            font-style: normal;
-            font-display: swap;
-          }
-          @font-face {
-            font-family: '${alias}';
-            src: url('${fontSource}')${formatHint};
-            font-weight: 100 900;
-            font-style: normal;
-            font-display: swap;
-          }
-        `;
-      }
-
-      style.textContent = fontFaceRules;
+      style.textContent = `
+        @font-face {
+          font-family: '${cleanFamily}';
+          src: url('${fontSource}')${formatHint};
+          font-weight: normal;
+          font-style: normal;
+          font-display: swap;
+        }
+        @font-face {
+          font-family: '${cleanFamily}';
+          src: url('${fontSource}')${formatHint};
+          font-weight: bold;
+          font-style: normal;
+          font-display: swap;
+        }
+        @font-face {
+          font-family: '${cleanFamily}';
+          src: url('${fontSource}')${formatHint};
+          font-weight: 100 900;
+          font-style: normal;
+          font-display: swap;
+        }
+      `;
       document.head.appendChild(style);
 
       // Programmatic FontFace registration for instant loading in modern browsers
@@ -1418,14 +1418,17 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
             try {
               localStorage.setItem('taskrooz_global_settings', JSON.stringify(gSettings));
             } catch {}
+            if (gSettings.enforcedFont) {
+              setSystemFontState(gSettings.enforcedFont);
+              try {
+                localStorage.setItem('taskrooz_system_font', gSettings.enforcedFont);
+              } catch {}
+            }
             if (gSettings.enforcedFontOption) {
               injectFontLink(gSettings.enforcedFontOption);
               if (gSettings.enforcedFontOption.family) {
                 applyFontToDom(gSettings.enforcedFontOption.family);
               }
-            }
-            if (gSettings.enforcedFont) {
-              setSystemFontState(gSettings.enforcedFont);
             }
           }).catch(() => {}),
           (async () => {
@@ -1440,7 +1443,13 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           api.fetchCustomFonts().then((remoteFonts) => {
             setCustomFonts(remoteFonts);
             remoteFonts.forEach(injectFontLink);
-            const activeId = globalSettings?.enforcedFont || systemFont;
+            const savedGlobal = (() => {
+              try {
+                const raw = localStorage.getItem('taskrooz_global_settings');
+                return raw ? JSON.parse(raw) : null;
+              } catch { return null; }
+            })();
+            const activeId = savedGlobal?.enforcedFont || localStorage.getItem('taskrooz_system_font') || systemFont;
             const match = remoteFonts.find((f) => f.id === activeId);
             if (match?.family) {
               applyFontToDom(match.family);
@@ -1968,7 +1977,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...taskData,
       isRoutine,
       routineType: routineType || 'none',
-      userId: taskData.userId || currentUser?.id || 'usr_admin_mohusyn',
+      userId: taskData.userId || currentUser?.id || 'usr_admin_1',
     };
 
     const created = await api.createTask(primaryTaskInput);
@@ -1997,7 +2006,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           date: dateStr,
           isRoutine: true,
           routineType,
-          userId: taskData.userId || currentUser?.id || 'usr_admin_mohusyn',
+          userId: taskData.userId || currentUser?.id || 'usr_admin_1',
         });
       }
 
@@ -2008,7 +2017,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const extra = await api.createTask({
               ...item,
-              userId: item.userId || currentUser?.id || 'usr_admin_mohusyn',
+              userId: item.userId || currentUser?.id || 'usr_admin_1',
             });
             batchCreated.push(extra);
           } catch {}

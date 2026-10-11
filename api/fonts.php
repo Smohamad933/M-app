@@ -53,6 +53,9 @@ if ($method === 'GET' && (!empty($_GET['file']) || !empty($_GET['id']))) {
             'eot' => 'application/vnd.ms-fontobject',
         ];
         $contentType = $mimes[$ext] ?? 'application/octet-stream';
+        while (ob_get_level()) {
+            @ob_end_clean();
+        }
         header('Content-Type: ' . $contentType);
         header('Content-Length: ' . filesize($targetPath));
         header('Access-Control-Allow-Origin: *');
@@ -90,6 +93,9 @@ if ($method === 'GET' && (!empty($_GET['file']) || !empty($_GET['id']))) {
                 'eot' => 'application/vnd.ms-fontobject',
             ];
             $contentType = $mimes[$ext] ?? 'font/ttf';
+            while (ob_get_level()) {
+                @ob_end_clean();
+            }
             header('Content-Type: ' . $contentType);
             header('Content-Length: ' . strlen($binary));
             header('Access-Control-Allow-Origin: *');

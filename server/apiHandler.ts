@@ -2854,12 +2854,11 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
     // Direct font file streaming (GET ?file=...)
     const fileParam = urlObj.searchParams.get('file');
-    const idParam = urlObj.searchParams.get('id');
-    if (method === 'GET' && (fileParam || idParam)) {
-      const clean = fileParam ? path.basename(fileParam) : '';
-      const filePath = clean ? path.resolve(process.cwd(), 'fonts', clean) : '';
-      const publicPath = clean ? path.resolve(process.cwd(), 'public/fonts', clean) : '';
-      const actualPath = (filePath && fs.existsSync(filePath)) ? filePath : ((publicPath && fs.existsSync(publicPath)) ? publicPath : null);
+    if (method === 'GET' && fileParam) {
+      const clean = path.basename(fileParam);
+      const filePath = path.resolve(process.cwd(), 'fonts', clean);
+      const publicPath = path.resolve(process.cwd(), 'public/fonts', clean);
+      const actualPath = fs.existsSync(filePath) ? filePath : (fs.existsSync(publicPath) ? publicPath : null);
       if (actualPath) {
         const ext = path.extname(actualPath).toLowerCase();
         const mimes: Record<string, string> = {
@@ -2876,31 +2875,6 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         res.end(fs.readFileSync(actualPath));
         return true;
       }
-
-      // Memory/DB dataUrl streaming fallback
-      const matchedFont = (db.custom_fonts || []).find(
-        (f: any) => (idParam && f.id === idParam) || (clean && (f.fontUrl?.includes(clean) || f.dataUrl))
-      );
-      if (matchedFont?.dataUrl && matchedFont.dataUrl.includes('base64,')) {
-        const base64Data = matchedFont.dataUrl.split('base64,')[1];
-        const buffer = Buffer.from(base64Data, 'base64');
-        const ext = clean ? path.extname(clean).toLowerCase() : '.ttf';
-        const mimes: Record<string, string> = {
-          '.woff2': 'font/woff2',
-          '.woff': 'font/woff',
-          '.ttf': 'font/ttf',
-          '.otf': 'font/otf',
-        };
-        res.writeHead(200, {
-          'Content-Type': mimes[ext] || 'font/ttf',
-          'Content-Length': buffer.length,
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'public, max-age=31536000, immutable',
-        });
-        res.end(buffer);
-        return true;
-      }
-
       sendJson(res, { error: 'فایل فونت یافت نشد.' }, 404);
       return true;
     }

@@ -525,6 +525,8 @@ if ($method === 'POST') {
     }
 
     $extra = [
+        'status' => 'active',
+        'isVerified' => true,
         'phone' => trim($input['phone'] ?? ''),
         'email' => trim($input['email'] ?? $input['gmail'] ?? ''),
         'province' => trim($input['province'] ?? ''),
@@ -545,8 +547,7 @@ if ($method === 'POST') {
             'username' => $user['username'],
             'name' => $user['name'],
             'role' => $user['role'],
-            'status' => 'active',
-            'isVerified' => true,
+            'status' => $user['status'] ?? 'active',
             'phone' => $user['phone'] ?? '',
             'email' => $user['email'] ?? '',
             'province' => $user['province'] ?? '',

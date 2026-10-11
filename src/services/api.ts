@@ -1071,12 +1071,14 @@ export const api = {
       serverUsers.forEach((u) => {
         const uId = String(u.id || '').trim().toLowerCase();
         const uName = String(u.username || '').trim().toLowerCase();
+        if (isTestUsername(uName) || isTestUsername(uId)) return;
         if (uName !== 'mohusyn' && (tombKeys.has(uId) || tombKeys.has(uName))) return;
         if (u.username) map.set(u.username.toLowerCase(), u);
       });
       localList.forEach((u) => {
         const uId = String(u.id || '').trim().toLowerCase();
         const uName = String(u.username || '').trim().toLowerCase();
+        if (isTestUsername(uName) || isTestUsername(uId)) return;
         if (uName !== 'mohusyn' && (tombKeys.has(uId) || tombKeys.has(uName))) return;
         if (u.username && !map.has(u.username.toLowerCase())) {
           map.set(u.username.toLowerCase(), u);
@@ -1146,33 +1148,16 @@ export const api = {
     jobTitle?: string;
     skills?: string[];
   }): Promise<User> {
-    let data: { user: User; message: string };
-    try {
-      data = await request<{ user: User; message: string }>('api/users.php', {
-        method: 'POST',
-        body: JSON.stringify(user),
-      });
-    } catch (err: any) {
-      data = await request<{ user: User; message: string }>('api/users.php?action=create_user', {
-        method: 'POST',
-        body: JSON.stringify(user),
-      });
-    }
-
+    const data = await request<{ user: User; message: string }>('api/users.php', {
+      method: 'POST',
+      body: JSON.stringify(user),
+    });
     try {
       const raw = localStorage.getItem('taskrooz_registered_users');
       const list: User[] = raw ? JSON.parse(raw) : [];
       const cleanList = list.filter((u) => u.id !== data.user.id && u.username?.toLowerCase() !== data.user.username?.toLowerCase());
       cleanList.push(data.user);
       localStorage.setItem('taskrooz_registered_users', JSON.stringify(cleanList));
-
-      // Clear any tombstone so re-created user immediately shows up
-      const rawDel = localStorage.getItem('taskrooz_deleted_user_keys');
-      if (rawDel) {
-        const delKeys: string[] = JSON.parse(rawDel);
-        const filteredDel = delKeys.filter((k) => k !== data.user.id.toLowerCase() && k !== data.user.username.toLowerCase());
-        localStorage.setItem('taskrooz_deleted_user_keys', JSON.stringify(filteredDel));
-      }
     } catch {}
     broadcastSync('USER_REGISTERED', data.user);
     return data.user;

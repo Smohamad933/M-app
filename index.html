@@ -15,8 +15,30 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Rubik:wght@400;500;600;700;800&family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          var gs = localStorage.getItem('taskrooz_global_settings');
+          var fontOpt = null;
+          if (gs) {
+            try { var parsed = JSON.parse(gs); fontOpt = parsed.enforcedFontOption; } catch(e){}
+          }
+          if (fontOpt && fontOpt.family) {
+            var rawFirst = fontOpt.family.replace(/['"]/g, '').split(',')[0].trim();
+            if (rawFirst) {
+              var comp = "'" + rawFirst + "', 'Vazirmatn', -apple-system, sans-serif";
+              document.documentElement.style.setProperty('--font-sans', comp);
+              var st = document.createElement('style');
+              st.id = 'taskrooz-early-font';
+              st.textContent = ":root { --font-sans: " + comp + " !important; } *, body { font-family: " + comp + " !important; }";
+              document.head.appendChild(st);
+            }
+          }
+        } catch(e){}
+      })();
+    </script>
     <title>بگ تایم (Bag Time) | سامانه هوشمند مدیریت زمان و کارها</title>
-    <script type="module" crossorigin src="./assets/index-C_sFWEBy.js"></script>
+    <script type="module" crossorigin src="./assets/index-zoTmYrbn.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-BL9s7TkQ.css">
   </head>
   <body class="bg-[#edf0f4] text-slate-900 antialiased selection:bg-slate-900 selection:text-white" style="background-color: #edf0f4; color: #0f172a; min-height: 100vh;">

@@ -380,6 +380,15 @@ class TaskRoozDB {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
 
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS `global_settings` (
+                  `id` int(11) NOT NULL DEFAULT 1,
+                  `settings_json` longtext COLLATE utf8mb4_unicode_ci,
+                  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
             @touch($marker);
         } catch (Exception $e) {}
     }
@@ -912,7 +921,7 @@ class TaskRoozDB {
         // 1. Save to MySQL
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
-                $isVer = (!empty($extra['isVerified']) || $status === 'active' || $role === 'admin') ? 1 : 0;
+                $isVer = !empty($extra['isVerified']) ? 1 : 0;
                 $verCode = $extra['verificationCode'] ?? null;
                 $baleChatId = !empty($extra['baleChatId']) ? strval($extra['baleChatId']) : null;
                 $baleUsername = !empty($extra['baleUsername']) ? strval($extra['baleUsername']) : null;
@@ -948,7 +957,7 @@ class TaskRoozDB {
                         INSERT INTO users (id, numeric_id, username, password_hash, name, role, status, is_verified, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ");
-                    $stmtFallback->execute([$id, $numericId, $usernameClean, $hash, $name, $role, $status, $isVer, $now]);
+                    $stmtFallback->execute([$id, $numericId, $usernameClean, $hash, $name, $role, $status, !empty($extra['isVerified']) ? 1 : 0, $now]);
                 } catch (Exception $e2) {}
             }
         }
@@ -997,6 +1006,14 @@ class TaskRoozDB {
             } catch (Exception $eDu) {}
         }
 
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'users.json', json_encode([
+            'users' => $this->data['users'] ?? [],
+            'friendships' => $this->data['friendships'] ?? [],
+            'friend_requests' => $this->data['friend_requests'] ?? [],
+        ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+
         $this->saveJson();
 
         return $userObj;
@@ -1043,6 +1060,20 @@ class TaskRoozDB {
 
                 if ($users && count($users) > 0) {
                     foreach ($users as $u) {
+                        $uUname = strtolower(trim((string)($u['username'] ?? '')));
+                        $uId = strtolower(trim((string)($u['id'] ?? '')));
+                        // Filter out test runner accounts
+                        if ($uUname !== 'mohusyn' && $uId !== 'usr_admin_mohusyn') {
+                            $isTest = false;
+                            foreach (['test_', 'regular_user_', 'user_target_', 'live_member_', 'reza_test_', 'student_', 'noadmin_', 'bale_strict_', 'bob_colleague_', 'bob_dev_', 'sarah_chat_', 'priv_user_', 'viewer_', 'reg_designer_', 'm_rezaei_', 'alice_pm_', 'eve_outsider_', 'bale_998877'] as $pfx) {
+                                if (strpos($uUname, $pfx) === 0 || strpos($uId, $pfx) === 0) {
+                                    $isTest = true;
+                                    break;
+                                }
+                            }
+                            if ($isTest) continue;
+                        }
+
                         $uKey = strtolower(trim((string)($u['username'] ?? $u['id'])));
                         $uIdKey = strtolower(trim((string)($u['id'] ?? '')));
                         $tc = $taskCounts[$uIdKey] ?? ($taskCounts[$uKey] ?? null);
@@ -1084,6 +1115,17 @@ class TaskRoozDB {
             foreach ($this->data['users'] as $u) {
                 $uUname = strtolower(trim((string)($u['username'] ?? '')));
                 $uId = strtolower(trim((string)($u['id'] ?? '')));
+                // Filter out test runner accounts
+                if ($uUname !== 'mohusyn' && $uId !== 'usr_admin_mohusyn') {
+                    $isTest = false;
+                    foreach (['test_', 'regular_user_', 'user_target_', 'live_member_', 'reza_test_', 'student_', 'noadmin_', 'bale_strict_', 'bob_colleague_', 'bob_dev_', 'sarah_chat_', 'priv_user_', 'viewer_', 'reg_designer_', 'm_rezaei_', 'alice_pm_', 'eve_outsider_', 'bale_998877'] as $pfx) {
+                        if (strpos($uUname, $pfx) === 0 || strpos($uId, $pfx) === 0) {
+                            $isTest = true;
+                            break;
+                        }
+                    }
+                    if ($isTest) continue;
+                }
 
                 $key = strtolower(trim((string)($u['username'] ?? $u['id'])));
                 if (isset($userMap[$key]) || ($uId !== '' && isset($userMap[$uId]))) {
@@ -2091,7 +2133,7 @@ class TaskRoozDB {
                 $stmt = $tasksDb->prepare($sql);
                 $stmt->execute($params);
                 $rows = $stmt->fetchAll();
-                if ($rows !== false) {
+                if ($rows !== false && count($rows) > 0) {
                     $mTasks = array_map(function($r) {
                         $r['userId'] = $r['user_id'];
                         $r['projectId'] = $r['project_id'];
@@ -2128,7 +2170,6 @@ class TaskRoozDB {
                         $userAliases[] = 'mohusyn';
                         $userAliases[] = 'usr_admin_mohusyn';
                         $userAliases[] = 'usr_mohusyn_admin';
-                        $userAliases[] = 'usr_admin_1';
                         $userAliases[] = '1000';
                     }
                     $userAliases = array_values(array_unique(array_filter($userAliases)));
@@ -2147,7 +2188,7 @@ class TaskRoozDB {
                     $fbStmt = $tasksDb->prepare($sqlFb);
                     $fbStmt->execute($fbParams);
                     $rows = $fbStmt->fetchAll();
-                    if ($rows !== false) {
+                    if ($rows !== false && count($rows) > 0) {
                         return array_map(function($r) {
                             $r['userId'] = $r['user_id'];
                             $r['projectId'] = $r['project_id'] ?? null;
@@ -2248,9 +2289,6 @@ class TaskRoozDB {
 
     public function createTask($data) {
         $userId = $data['userId'] ?? $data['user_id'] ?? 'usr_admin_mohusyn';
-        if (strtolower((string)$userId) === 'mohusyn' || $userId === 'usr_admin_1' || $userId === 'usr_mohusyn_admin') {
-            $userId = 'usr_admin_mohusyn';
-        }
         $title = trim($data['title']);
         $date = $data['date'] ?? date('Y-m-d');
         $id = !empty($data['id']) ? trim($data['id']) : ('task_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4));
@@ -2331,11 +2369,33 @@ class TaskRoozDB {
                     $task['priority'], $task['categoryId'], $task['isPinned'] ? 1 : 0, $task['focusMinutesSpent'],
                     $task['reasonUncompleted'], $task['uncompletedCategory'], json_encode($task['subtasks']), $task['createdAt']
                 ]);
-            } catch (Exception $e) {}
+            } catch (Exception $e) {
+                try {
+                    $fbStmt = $tasksDb->prepare("
+                        INSERT INTO tasks (id, user_id, title, description, date, time, duration_minutes, completed, priority, category_id, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $fbStmt->execute([
+                        $id, $task['userId'], $task['title'], $task['description'],
+                        $task['date'], $task['time'], $task['durationMinutes'],
+                        $task['completed'] ? 1 : 0, $task['priority'], $task['categoryId'], $task['createdAt']
+                    ]);
+                } catch (Exception $eFb) {}
+            }
         }
 
         $this->loadJson();
         $this->data['tasks'][] = $task;
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'tasks.json', json_encode([
+            'tasks' => $this->data['tasks'] ?? [],
+            'categories' => $this->data['categories'] ?? [],
+            'projects' => $this->data['projects'] ?? [],
+            'goals' => $this->data['goals'] ?? [],
+            'dailyNotes' => $this->data['dailyNotes'] ?? [],
+            'personalityResults' => $this->data['personalityResults'] ?? [],
+        ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
         $this->saveJson();
         return $task;
     }
@@ -3445,9 +3505,12 @@ class TaskRoozDB {
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
                 $stmt = $this->pdo->query("SELECT settings_json FROM global_settings ORDER BY id DESC LIMIT 1");
-                $r = $stmt->fetch();
+                $r = $stmt ? $stmt->fetch() : null;
                 if ($r && !empty($r['settings_json'])) {
-                    return json_decode($r['settings_json'], true);
+                    $parsed = json_decode($r['settings_json'], true);
+                    if (is_array($parsed) && !empty($parsed)) {
+                        return $parsed;
+                    }
                 }
             } catch (Exception $e) {}
         }
@@ -3464,6 +3527,14 @@ class TaskRoozDB {
 
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
+                $this->pdo->exec("
+                    CREATE TABLE IF NOT EXISTS `global_settings` (
+                      `id` int(11) NOT NULL DEFAULT 1,
+                      `settings_json` longtext COLLATE utf8mb4_unicode_ci,
+                      `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                      PRIMARY KEY (`id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                ");
                 $stmt = $this->pdo->prepare("
                     INSERT INTO global_settings (id, settings_json, updated_at)
                     VALUES (1, ?, NOW())
@@ -3475,7 +3546,10 @@ class TaskRoozDB {
 
         $this->loadJson();
         $this->data['globalSettings'] = $merged;
-        $this->saveJson();
+        // Direct backup write to disk so settings are persistent across all environments
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'settings.json', json_encode(['globalSettings' => $merged, 'custom_fonts' => $this->data['custom_fonts'] ?? []], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
         return $this->data['globalSettings'];
     }
 
@@ -3485,7 +3559,7 @@ class TaskRoozDB {
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
                 $stmt = $this->pdo->query("SELECT id, name, family, font_url as fontUrl, data_url as dataUrl, description, created_at as createdAt FROM custom_fonts ORDER BY created_at DESC");
-                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : null;
                 if ($rows) {
                     $fonts = array_map(function($f) {
                         $f['isCustom'] = true;
@@ -3520,6 +3594,46 @@ class TaskRoozDB {
         } catch (Exception $eGs) {}
 
         return $fonts;
+    }
+
+    public function getCustomFontById($id) {
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("SELECT id, name, family, font_url as fontUrl, data_url as dataUrl, description, created_at as createdAt FROM custom_fonts WHERE id = ? LIMIT 1");
+                $stmt->execute([$id]);
+                $r = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($r) {
+                    $r['isCustom'] = true;
+                    return $r;
+                }
+            } catch (Exception $e) {}
+        }
+        $this->loadJson();
+        foreach ($this->data['custom_fonts'] ?? [] as $f) {
+            if (($f['id'] ?? '') === $id) return $f;
+        }
+        return null;
+    }
+
+    public function getCustomFontByFile($filename) {
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $stmt = $this->pdo->prepare("SELECT id, name, family, font_url as fontUrl, data_url as dataUrl, description, created_at as createdAt FROM custom_fonts WHERE font_url LIKE ? OR id LIKE ? LIMIT 1");
+                $stmt->execute(['%' . $filename . '%', '%' . $filename . '%']);
+                $r = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($r) {
+                    $r['isCustom'] = true;
+                    return $r;
+                }
+            } catch (Exception $e) {}
+        }
+        $this->loadJson();
+        foreach ($this->data['custom_fonts'] ?? [] as $f) {
+            if (strpos($f['fontUrl'] ?? '', $filename) !== false || ($f['id'] ?? '') === $filename) {
+                return $f;
+            }
+        }
+        return null;
     }
 
     public function getCustomFontById($id) {
@@ -3621,6 +3735,12 @@ class TaskRoozDB {
         } else {
             $this->data['custom_fonts'][] = $font;
         }
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'settings.json', json_encode([
+            'globalSettings' => $this->data['globalSettings'] ?? [],
+            'custom_fonts' => $this->data['custom_fonts'] ?? []
+        ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
         $this->saveJson();
         return $font;
     }
