@@ -1,13 +1,14 @@
 import React from 'react';
 import { useTask } from '../context/TaskContext';
-import { getGreeting, formatPersianDate, toPersianDigits, getTodayISO } from '../utils/persianDate';
+import { getGreeting, formatAppDate, toPersianDigits, getTodayISO } from '../utils/persianDate';
 import {
   Flame,
   Share2,
-  Sun,
-  Moon,
   CheckCircle2,
   Search,
+  Sun,
+  Moon,
+  Calendar,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -16,7 +17,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }) => {
-  const { tasks, streak, selectedDate, settings, updateSettings, setIsShareModalOpen } = useTask();
+  const { tasks, streak, selectedDate, setIsShareModalOpen, calendarType, toggleCalendarType, themeMode, toggleThemeMode } = useTask();
 
   const greeting = getGreeting();
   const todayTasks = tasks.filter((t) => t.date === selectedDate);
@@ -25,19 +26,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }
   const progressPercent = totalToday > 0 ? Math.round((completedToday / totalToday) * 100) : 0;
   const isViewingToday = selectedDate === getTodayISO();
 
-  const toggleTheme = () => {
-    updateSettings({
-      theme: settings.theme === 'dark' ? 'light' : 'dark',
-    });
-  };
-
   return (
-    <header className="px-5 pt-4 pb-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/80 sticky top-0 z-20">
+    <header className="px-5 pt-4 pb-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 sticky top-0 z-20">
       {/* Top row: Status, streak, and quick tool actions */}
       <div className="flex items-center justify-between mb-3">
         {/* Streak badge */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shadow-xs">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20 shadow-xs">
             <Flame className="w-4 h-4 fill-amber-500 text-amber-500 animate-pulse" />
             <span className="text-xs font-bold font-sans">
               {toPersianDigits(streak.currentStreak)} روز استریک
@@ -47,13 +42,34 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }
 
         {/* Quick action buttons */}
         <div className="flex items-center gap-1.5">
+          {/* Dark / Light Toggle */}
+          <button
+            type="button"
+            onClick={toggleThemeMode}
+            className="p-2 rounded-xl text-slate-600 dark:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer hidden md:flex items-center justify-center"
+            title={themeMode === 'dark' ? 'تغییر به تم روشن' : 'تغییر به تم دارک'}
+          >
+            {themeMode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          {/* Calendar Type Toggle */}
+          <button
+            type="button"
+            onClick={toggleCalendarType}
+            className="px-2.5 py-1 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer items-center gap-1 border border-slate-200 dark:border-slate-700 hidden md:flex"
+            title={calendarType === 'jalali' ? 'تغییر به تقویم میلادی' : 'تغییر به تقویم شمسی'}
+          >
+            <Calendar className="w-3 h-3 text-indigo-500" />
+            <span>{calendarType === 'jalali' ? 'شمسی' : 'میلادی'}</span>
+          </button>
+
           <button
             onClick={onToggleSearch}
             aria-label="جستجو"
             className={`p-2 rounded-xl transition-all ${
               isSearchActive
                 ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                : 'text-slate-600 hover:bg-slate-100'
             }`}
             title="جستجو در تسک‌ها"
           >
@@ -63,23 +79,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }
           <button
             onClick={() => setIsShareModalOpen(true)}
             aria-label="اشتراک‌گذاری گزارش روزانه"
-            className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+            className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
             title="اشتراک‌گذاری و خروجی"
           >
             <Share2 className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={toggleTheme}
-            aria-label="تغییر تم"
-            className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
-            title={settings.theme === 'dark' ? 'تم روشن' : 'تم تاریک'}
-          >
-            {settings.theme === 'dark' ? (
-              <Sun className="w-4 h-4 text-amber-400" />
-            ) : (
-              <Moon className="w-4 h-4 text-indigo-600" />
-            )}
           </button>
         </div>
       </div>
@@ -87,11 +90,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }
       {/* Greeting and selected date */}
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
+          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
             {greeting.text}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {formatPersianDate(selectedDate, 'full')}
+            {formatAppDate(selectedDate, calendarType, 'full')}
             {!isViewingToday && (
               <span className="mr-1.5 inline-block text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-medium">
                 مشاهده روز دیگر

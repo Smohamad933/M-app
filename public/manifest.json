@@ -1,17 +1,40 @@
 {
-  "name": "تسک‌روز - مدیریت کارهای روزانه",
-  "short_name": "تسک‌روز",
-  "description": "اپلیکیشن پیشرفته برنامه‌ریزی و مدیریت تسک‌های روزانه با تقویم شمسی",
-  "start_url": "/",
+  "name": "بگ تایم (Bag Time) - مدیریت کارهای روزانه",
+  "short_name": "بگ تایم",
+  "description": "اپلیکیشن پیشرفته بگ تایم (Bag Time) - برنامه‌ریزی و مدیریت زمان، تسک‌ها و پومودورو",
+  "id": "bagtime",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#4f46e5",
   "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "fa",
   "icons": [
     {
-      "src": "/app-icon.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml"
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }

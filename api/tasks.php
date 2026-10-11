@@ -9,13 +9,25 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 // GET /api/tasks
 if ($method === 'GET') {
-    $targetUserId = null;
-    if ($currentUser['role'] === 'admin') {
-        if (!empty($_GET['user_id'])) {
-            $targetUserId = $_GET['user_id'];
+    $targetUserId = $currentUser['id'];
+
+    if (!empty($_GET['user_id'])) {
+        $requestedUserId = trim((string)$_GET['user_id']);
+        $isAdmin = ($currentUser['role'] === 'admin');
+        $isSelf = ($requestedUserId === $currentUser['id'] || $requestedUserId === ($currentUser['username'] ?? ''));
+
+        if ($isAdmin || $isSelf) {
+            $targetUserId = $requestedUserId;
+        } else {
+            // Strict isolation: non-admins can NEVER view active/private tasks of other users!
+            // Only completed tasks can be viewed for public profile stats.
+            $isExplicitCompleted = (isset($_GET['completed']) && ((int)$_GET['completed'] === 1 || $_GET['completed'] === 'true' || $_GET['completed'] === '1'));
+            if ($isExplicitCompleted) {
+                $targetUserId = $requestedUserId;
+            } else {
+                jsonResponse(['tasks' => []]);
+            }
         }
-    } else {
-        $targetUserId = $currentUser['id'];
     }
 
     $date = !empty($_GET['date']) ? $_GET['date'] : null;
@@ -27,9 +39,111 @@ if ($method === 'GET') {
     jsonResponse(['tasks' => $tasks]);
 }
 
-// POST /api/tasks -> Create task
+// POST /api/tasks -> Create task or quick toggle/delete/update
 if ($method === 'POST') {
     $input = getJsonInput();
+    $action = $input['action'] ?? $_GET['action'] ?? '';
+
+    // 1. Quick Task Completion Toggle (Dedicated MySQL & database save - NEVER BLOCKED BY VERIFICATION)
+    if ($action === 'toggle') {
+        $id = $input['id'] ?? $_GET['id'] ?? '';
+        if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
+        $explicitStatus = array_key_exists('completed', $input) ? (bool)$input['completed'] : (isset($_GET['completed']) ? (bool)$_GET['completed'] : null);
+        $res = $db->toggleTask($id, $currentUser['id'], $explicitStatus);
+        if ($res) jsonResponse($res);
+        jsonResponse(['error' => 'تسک پیدا نشد.'], 404);
+    }
+
+    // 2. Task Update (NEVER BLOCKED BY VERIFICATION)
+    if ($action === 'update' || $action === 'edit' || ($input['_method'] ?? '') === 'PUT') {
+        $id = $input['id'] ?? '';
+        if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
+
+        if ($currentUser['role'] !== 'admin') {
+            $existing = $db->getTaskById($id);
+            if ($existing && ($existing['userId'] ?? $existing['user_id'] ?? '') !== $currentUser['id'] && ($existing['userId'] ?? $existing['user_id'] ?? '') !== ($currentUser['username'] ?? '')) {
+                jsonResponse(['error' => 'شما مجاز به ویرایش تسک کاربران دیگر نیستید.'], 403);
+            }
+        }
+
+        $updateData = ['id' => $id];
+        if ($currentUser['role'] === 'admin' && !empty($input['userId'])) {
+            $updateData['userId'] = $input['userId'];
+        }
+        if (array_key_exists('title', $input) && $input['title'] !== null) {
+            $updateData['title'] = trim((string)$input['title']);
+        }
+        if (array_key_exists('description', $input)) {
+            $updateData['description'] = (string)$input['description'];
+        }
+        if (array_key_exists('date', $input) && !empty($input['date'])) {
+            $updateData['date'] = $input['date'];
+        }
+        if (array_key_exists('time', $input)) {
+            $updateData['time'] = $input['time'];
+        }
+        if (array_key_exists('durationMinutes', $input)) {
+            $updateData['durationMinutes'] = (int)$input['durationMinutes'];
+        }
+        if (array_key_exists('priority', $input)) {
+            $updateData['priority'] = $input['priority'];
+        }
+        if (array_key_exists('categoryId', $input)) {
+            $updateData['categoryId'] = $input['categoryId'];
+        }
+        if (array_key_exists('projectId', $input)) {
+            $updateData['projectId'] = $input['projectId'];
+        }
+        if (array_key_exists('isPinned', $input)) {
+            $updateData['isPinned'] = !empty($input['isPinned']);
+        }
+        if (array_key_exists('subtasks', $input)) {
+            $updateData['subtasks'] = $input['subtasks'];
+        }
+        if (array_key_exists('completed', $input)) {
+            $updateData['completed'] = !empty($input['completed']);
+        }
+        if (array_key_exists('completedAt', $input)) {
+            $updateData['completedAt'] = $input['completedAt'];
+        } elseif (array_key_exists('completed_at', $input)) {
+            $updateData['completedAt'] = $input['completed_at'];
+        }
+        if (array_key_exists('focusMinutesSpent', $input)) {
+            $updateData['focusMinutesSpent'] = (int)$input['focusMinutesSpent'];
+        }
+        if (array_key_exists('reasonUncompleted', $input)) {
+            $updateData['reasonUncompleted'] = $input['reasonUncompleted'];
+        } elseif (array_key_exists('reason_uncompleted', $input)) {
+            $updateData['reasonUncompleted'] = $input['reason_uncompleted'];
+        }
+        if (array_key_exists('uncompletedCategory', $input)) {
+            $updateData['uncompletedCategory'] = $input['uncompletedCategory'];
+        } elseif (array_key_exists('uncompleted_category', $input)) {
+            $updateData['uncompletedCategory'] = $input['uncompleted_category'];
+        }
+
+        $db->updateTask($updateData);
+        jsonResponse(['message' => 'تسک به‌روزرسانی شد.']);
+    }
+
+    if ($action === 'delete' || $action === 'remove' || ($input['_method'] ?? '') === 'DELETE' || ($_GET['_method'] ?? '') === 'DELETE') {
+        $id = $input['id'] ?? $_GET['id'] ?? '';
+        if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
+
+        if ($currentUser['role'] !== 'admin') {
+            $existing = $db->getTaskById($id);
+            if ($existing && ($existing['userId'] ?? $existing['user_id'] ?? '') !== $currentUser['id'] && ($existing['userId'] ?? $existing['user_id'] ?? '') !== ($currentUser['username'] ?? '')) {
+                jsonResponse(['error' => 'شما مجاز به حذف تسک کاربران دیگر نیستید.'], 403);
+            }
+        }
+
+        $db->deleteTask($id);
+        jsonResponse(['message' => 'تسک با موفقیت حذف شد.']);
+    }
+
+    // Creating NEW tasks requires verified user
+    requireVerifiedUser();
+
     $title = trim($input['title'] ?? '');
     $date = trim($input['date'] ?? date('Y-m-d'));
 
@@ -43,6 +157,7 @@ if ($method === 'POST') {
     }
 
     $taskData = [
+        'id' => !empty($input['id']) ? trim($input['id']) : null,
         'userId' => $targetUserId,
         'title' => $title,
         'description' => $input['description'] ?? '',
@@ -69,28 +184,68 @@ if ($method === 'PUT') {
         jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
     }
 
-    $targetUserId = $currentUser['id'];
-    if ($currentUser['role'] === 'admin' && !empty($input['userId'])) {
-        $targetUserId = $input['userId'];
+    if ($currentUser['role'] !== 'admin') {
+        $existing = $db->getTaskById($id);
+        if ($existing && ($existing['userId'] ?? $existing['user_id'] ?? '') !== $currentUser['id'] && ($existing['userId'] ?? $existing['user_id'] ?? '') !== ($currentUser['username'] ?? '')) {
+            jsonResponse(['error' => 'شما مجاز به ویرایش تسک کاربران دیگر نیستید.'], 403);
+        }
     }
 
-    $updateData = [
-        'id' => $id,
-        'userId' => $targetUserId,
-        'title' => isset($input['title']) ? trim($input['title']) : null,
-        'description' => $input['description'] ?? null,
-        'date' => $input['date'] ?? null,
-        'time' => $input['time'] ?? null,
-        'durationMinutes' => isset($input['durationMinutes']) ? (int)$input['durationMinutes'] : null,
-        'priority' => $input['priority'] ?? null,
-        'categoryId' => $input['categoryId'] ?? null,
-        'projectId' => array_key_exists('projectId', $input) ? $input['projectId'] : null,
-        'isPinned' => isset($input['isPinned']) ? $input['isPinned'] : null,
-        'subtasks' => isset($input['subtasks']) ? $input['subtasks'] : null,
-        'completed' => isset($input['completed']) ? $input['completed'] : null,
-        'reasonUncompleted' => array_key_exists('reasonUncompleted', $input) ? $input['reasonUncompleted'] : null,
-        'uncompletedCategory' => array_key_exists('uncompletedCategory', $input) ? $input['uncompletedCategory'] : null,
-    ];
+    $updateData = ['id' => $id];
+    if ($currentUser['role'] === 'admin' && !empty($input['userId'])) {
+        $updateData['userId'] = $input['userId'];
+    }
+    if (array_key_exists('title', $input) && $input['title'] !== null) {
+        $updateData['title'] = trim((string)$input['title']);
+    }
+    if (array_key_exists('description', $input)) {
+        $updateData['description'] = (string)$input['description'];
+    }
+    if (array_key_exists('date', $input) && !empty($input['date'])) {
+        $updateData['date'] = $input['date'];
+    }
+    if (array_key_exists('time', $input)) {
+        $updateData['time'] = $input['time'];
+    }
+    if (array_key_exists('durationMinutes', $input)) {
+        $updateData['durationMinutes'] = (int)$input['durationMinutes'];
+    }
+    if (array_key_exists('priority', $input)) {
+        $updateData['priority'] = $input['priority'];
+    }
+    if (array_key_exists('categoryId', $input)) {
+        $updateData['categoryId'] = $input['categoryId'];
+    }
+    if (array_key_exists('projectId', $input)) {
+        $updateData['projectId'] = $input['projectId'];
+    }
+    if (array_key_exists('isPinned', $input)) {
+        $updateData['isPinned'] = !empty($input['isPinned']);
+    }
+    if (array_key_exists('subtasks', $input)) {
+        $updateData['subtasks'] = $input['subtasks'];
+    }
+    if (array_key_exists('completed', $input)) {
+        $updateData['completed'] = !empty($input['completed']);
+    }
+    if (array_key_exists('completedAt', $input)) {
+        $updateData['completedAt'] = $input['completedAt'];
+    } elseif (array_key_exists('completed_at', $input)) {
+        $updateData['completedAt'] = $input['completed_at'];
+    }
+    if (array_key_exists('focusMinutesSpent', $input)) {
+        $updateData['focusMinutesSpent'] = (int)$input['focusMinutesSpent'];
+    }
+    if (array_key_exists('reasonUncompleted', $input)) {
+        $updateData['reasonUncompleted'] = $input['reasonUncompleted'];
+    } elseif (array_key_exists('reason_uncompleted', $input)) {
+        $updateData['reasonUncompleted'] = $input['reason_uncompleted'];
+    }
+    if (array_key_exists('uncompletedCategory', $input)) {
+        $updateData['uncompletedCategory'] = $input['uncompletedCategory'];
+    } elseif (array_key_exists('uncompleted_category', $input)) {
+        $updateData['uncompletedCategory'] = $input['uncompleted_category'];
+    }
 
     $db->updateTask($updateData);
     jsonResponse(['message' => 'تسک به‌روزرسانی شد.']);
@@ -124,9 +279,17 @@ if ($method === 'PATCH') {
 
 // DELETE /api/tasks
 if ($method === 'DELETE') {
-    $id = $_GET['id'] ?? '';
+    $input = getJsonInput();
+    $id = $_GET['id'] ?? $input['id'] ?? '';
     if (empty($id)) {
         jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
+    }
+
+    if ($currentUser['role'] !== 'admin') {
+        $existing = $db->getTaskById($id);
+        if ($existing && ($existing['userId'] ?? $existing['user_id'] ?? '') !== $currentUser['id'] && ($existing['userId'] ?? $existing['user_id'] ?? '') !== ($currentUser['username'] ?? '')) {
+            jsonResponse(['error' => 'شما مجاز به حذف تسک کاربران دیگر نیستید.'], 403);
+        }
     }
 
     $db->deleteTask($id);

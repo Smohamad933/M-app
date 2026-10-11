@@ -27,11 +27,17 @@ $isConfigWritable = is_writable($configFile) || is_writable(__DIR__);
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['install_mysql'])) {
     $host = trim($_POST['db_host'] ?? '127.0.0.1');
     $port = trim($_POST['db_port'] ?? '3306');
-    $dbname = trim($_POST['db_name'] ?? 'taskrooz_db');
     $user = trim($_POST['db_user'] ?? 'root');
     $pass = $_POST['db_pass'] ?? '';
+    $isModular = !empty($_POST['is_modular']);
 
-    if (empty($host) || empty($dbname) || empty($user)) {
+    $dbUsers = trim($_POST['db_name_users'] ?? 'bagtime_users');
+    $dbTasks = trim($_POST['db_name_tasks'] ?? 'bagtime_tasks');
+    $dbMessages = trim($_POST['db_name_messages'] ?? 'bagtime_messages');
+    $dbNotifs = trim($_POST['db_name_notifs'] ?? 'bagtime_notifs');
+    $singleDb = trim($_POST['db_name'] ?? 'taskrooz_db');
+
+    if (empty($host) || empty($user) || (!$isModular && empty($singleDb))) {
         $error = 'لطفاً تمامی فیلدهای الزامی (آدرس سرور، نام دیتابیس و نام کاربری) را وارد کنید.';
     } else {
         try {
@@ -42,9 +48,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['install_mysql'])) {
             ]);
             $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
 
-            // 2. Create database if not exists
-            $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbname}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            $pdo->exec("USE `{$dbname}`");
+            if ($isModular) {
+                // 2. Create separate modular databases for ultra performance
+                $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbUsers}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbTasks}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbMessages}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbNotifs}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                $primaryDb = $dbTasks;
+            } else {
+                // Single unified database
+                $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$singleDb}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                $dbUsers = $singleDb;
+                $dbTasks = $singleDb;
+                $dbMessages = $singleDb;
+                $dbNotifs = $singleDb;
+                $primaryDb = $singleDb;
+            }
+
+            $pdo->exec("USE `{$primaryDb}`");
 
             // 3. Import taskrooz.sql schema
             $sqlFile = __DIR__ . '/taskrooz.sql';
@@ -55,44 +77,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['install_mysql'])) {
                     if (!empty($q)) {
                         try {
                             $pdo->exec($q);
-                        } catch (Exception $qe) {
-                            // ignore non-critical minor query errors
-                        }
+                        } catch (Exception $qe) {}
                     }
                 }
             }
 
-            // 4. Ensure Super Admin Mohusyn exists with Smosh1387
-            $adminPassHash = password_hash('Smosh1387', PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("
-                INSERT INTO `users` (`id`, `username`, `password_hash`, `name`, `role`, `created_at`)
-                VALUES ('usr_admin_mohusyn', 'Mohusyn', ?, 'سید محمدحسین شیخ الاسلامی (Mohusyn)', 'admin', NOW())
-                ON DUPLICATE KEY UPDATE 
-                    `password_hash` = VALUES(`password_hash`),
-                    `role` = 'admin',
-                    `name` = VALUES(`name`)
-            ");
-            $stmt->execute([$adminPassHash]);
+            // 4. Ensure Super Admin Mohusyn exists with Smosh1387 in users DB
+            $pdo->exec("USE `{$dbUsers}`");
+            try {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS `users` (
+                        `id` varchar(64) NOT NULL,
+                        `username` varchar(64) NOT NULL UNIQUE,
+                        `password_hash` varchar(255) NOT NULL,
+                        `name` varchar(128) NOT NULL,
+                        `role` varchar(32) NOT NULL DEFAULT 'user',
+                        `status` varchar(32) NOT NULL DEFAULT 'active',
+                        `phone` varchar(32) DEFAULT NULL,
+                        `email` varchar(128) DEFAULT NULL,
+                        `province` varchar(64) DEFAULT NULL,
+                        `city` varchar(64) DEFAULT NULL,
+                        `birthDate` varchar(32) DEFAULT NULL,
+                        `jobTitle` varchar(128) DEFAULT NULL,
+                        `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (`id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                ");
+                $adminPassHash = password_hash('Smosh1387', PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("
+                    INSERT INTO `users` (`id`, `username`, `password_hash`, `name`, `role`, `created_at`)
+                    VALUES ('usr_admin_mohusyn', 'Mohusyn', ?, 'سید محمدحسین شیخ الاسلامی (Mohusyn)', 'admin', NOW())
+                    ON DUPLICATE KEY UPDATE 
+                        `password_hash` = VALUES(`password_hash`),
+                        `role` = 'admin',
+                        `name` = VALUES(`name`)
+                ");
+                $stmt->execute([$adminPassHash]);
+            } catch (Exception $e) {}
 
-            // 5. Update config.php with the new MySQL settings
-            if (file_exists($configFile) && is_writable($configFile)) {
-                $conf = file_get_contents($configFile);
-                $conf = preg_replace("/define\('DB_HOST',\s*getenv\('DB_HOST'\)\s*\?:\s*'[^']*'\);/", "define('DB_HOST', getenv('DB_HOST') ?: '{$host}');", $conf);
-                $conf = preg_replace("/define\('DB_PORT',\s*getenv\('DB_PORT'\)\s*\?:\s*'[^']*'\);/", "define('DB_PORT', getenv('DB_PORT') ?: '{$port}');", $conf);
-                $conf = preg_replace("/define\('DB_NAME',\s*getenv\('DB_NAME'\)\s*\?:\s*'[^']*'\);/", "define('DB_NAME', getenv('DB_NAME') ?: '{$dbname}');", $conf);
-                $conf = preg_replace("/define\('DB_USER',\s*getenv\('DB_USER'\)\s*\?:\s*'[^']*'\);/", "define('DB_USER', getenv('DB_USER') ?: '{$user}');", $conf);
-                $escapedPass = addcslashes($pass, "'\\");
-                $conf = preg_replace("/define\('DB_PASS',\s*getenv\('DB_PASS'\)\s*!==\s*false\s*\?\s*getenv\('DB_PASS'\)\s*:\s*'[^']*'\);/", "define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '{$escapedPass}');", $conf);
-                @file_put_contents($configFile, $conf, LOCK_EX);
-            }
-
-            // Also save persistent config.local.php (so future zip updates never wipe out DB credentials)
-            $localConfPath = __DIR__ . '/config.local.php';
+            // 5. Update config.php and config.local.php
             $escapedPass = addcslashes($pass, "'\\");
-            $localContent = "<?php\n// TaskRooz Persistent MySQL Configuration\ndefine('DB_HOST', '{$host}');\ndefine('DB_PORT', '{$port}');\ndefine('DB_NAME', '{$dbname}');\ndefine('DB_USER', '{$user}');\ndefine('DB_PASS', '{$escapedPass}');\n";
+            $localConfPath = __DIR__ . '/config.local.php';
+            $localContent = "<?php\n// TaskRooz Modular High-Speed MySQL Configuration\n" .
+                "define('DB_HOST', '{$host}');\n" .
+                "define('DB_PORT', '{$port}');\n" .
+                "define('DB_NAME', '{$primaryDb}');\n" .
+                "define('DB_NAME_USERS', '{$dbUsers}');\n" .
+                "define('DB_NAME_TASKS', '{$dbTasks}');\n" .
+                "define('DB_NAME_MESSAGES', '{$dbMessages}');\n" .
+                "define('DB_NAME_NOTIFICATIONS', '{$dbNotifs}');\n" .
+                "define('DB_USER', '{$user}');\n" .
+                "define('DB_PASS', '{$escapedPass}');\n";
             @file_put_contents($localConfPath, $localContent, LOCK_EX);
 
-            $success = "پایگاه داده MySQL با موفقیت نصب و متصل شد! تمامی جدول‌ها ساخته شدند و حساب مدیر کل (Mohusyn) فعال گردید.";
+            $success = $isModular
+                ? "پایگاه‌داده‌های تفکیک‌شده ({$dbUsers}, {$dbTasks}, {$dbMessages}, {$dbNotifs}) با موفقیت نصب و فعال شدند! سرعت آپ به بالاترین سطح ارتقا یافت."
+                : "پایگاه داده MySQL با موفقیت نصب و متصل شد! تمامی جدول‌ها ساخته شدند و حساب مدیر کل (Mohusyn) فعال گردید.";
             $step = 'done';
         } catch (Exception $e) {
             $error = 'خطا در اتصال یا نصب پایگاه داده MySQL: ' . $e->getMessage();
@@ -274,10 +314,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['install_mysql'])) {
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>نام پایگاه داده (Database Name)</label>
-                    <input type="text" name="db_name" value="taskrooz_db" placeholder="نام دیتابیس ساخته شده در هاست" required>
+                <div class="form-group" style="background: rgba(99,102,241,0.08); padding: 12px; border-radius: 12px; border: 1px solid rgba(99,102,241,0.2);">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:0;">
+                        <input type="checkbox" name="is_modular" id="is_modular" value="1" style="width:16px; height:16px; cursor:pointer;" onchange="toggleModularFields(this.checked)">
+                        <span>فعال‌سازی تفکیک پایگاه داده‌ها (Modular Multi-Database) جهت افزایش چشمگیر سرعت و پردازش همزمان</span>
+                    </label>
                 </div>
+
+                <div id="singleDbGroup" class="form-group">
+                    <label>نام پایگاه داده یکپارچه (Single Database Name)</label>
+                    <input type="text" name="db_name" value="taskrooz_db" placeholder="نام دیتابیس ساخته شده در هاست">
+                </div>
+
+                <div id="modularDbGroup" style="display:none; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label>دیتابیس کاربران (Users DB)</label>
+                        <input type="text" name="db_name_users" value="bagtime_users">
+                    </div>
+                    <div class="form-group">
+                        <label>دیتابیس وظایف و پروژه‌ها (Tasks DB)</label>
+                        <input type="text" name="db_name_tasks" value="bagtime_tasks">
+                    </div>
+                    <div class="form-group">
+                        <label>دیتابیس چت و پیام‌ها (Messages DB)</label>
+                        <input type="text" name="db_name_messages" value="bagtime_messages">
+                    </div>
+                    <div class="form-group">
+                        <label>دیتابیس اعلانات و تراکنش‌ها (Notifs DB)</label>
+                        <input type="text" name="db_name_notifs" value="bagtime_notifs">
+                    </div>
+                </div>
+
+                <script>
+                    function toggleModularFields(isModular) {
+                        document.getElementById('singleDbGroup').style.display = isModular ? 'none' : 'block';
+                        document.getElementById('modularDbGroup').style.display = isModular ? 'grid' : 'none';
+                    }
+                </script>
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                     <div class="form-group">

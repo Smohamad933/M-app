@@ -1,24 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import {
   gregorianToJalali,
   jalaliToGregorian,
-  formatPersianDate,
+  formatAppDate,
   toPersianDigits,
   PERSIAN_MONTHS,
+  GREGORIAN_MONTHS,
+  GREGORIAN_MONTHS_FA,
   getTodayISO,
+  parseISODate,
 } from '../utils/persianDate';
 import { TaskCard } from './TaskCard';
-import { ChevronRight, ChevronLeft, Plus, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Plus, Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
 
 export const CalendarView: React.FC = () => {
-  const { tasks, selectedDate, setSelectedDate, openCreateModal } = useTask();
+  const { tasks, selectedDate, setSelectedDate, openCreateModal, calendarType, toggleCalendarType } = useTask();
 
+  const isGregorian = calendarType === 'gregorian';
   const today = new Date();
   const [currentJy, currentJm] = gregorianToJalali(today.getFullYear(), today.getMonth() + 1, today.getDate());
 
-  const [viewYear, setViewYear] = useState(currentJy);
-  const [viewMonth, setViewMonth] = useState(currentJm);
+  const [viewYear, setViewYear] = useState(() => (isGregorian ? today.getFullYear() : currentJy));
+  const [viewMonth, setViewMonth] = useState(() => (isGregorian ? today.getMonth() + 1 : currentJm));
+
+  // Sync year and month view when calendar system switches
+  useEffect(() => {
+    const sel = parseISODate(selectedDate || getTodayISO());
+    if (calendarType === 'gregorian') {
+      setViewYear(sel.getFullYear());
+      setViewMonth(sel.getMonth() + 1);
+    } else {
+      const [jy, jm] = gregorianToJalali(sel.getFullYear(), sel.getMonth() + 1, sel.getDate());
+      setViewYear(jy);
+      setViewMonth(jm);
+    }
+  }, [calendarType]);
 
   const handlePrevMonth = () => {
     if (viewMonth === 1) {
@@ -38,22 +55,37 @@ export const CalendarView: React.FC = () => {
     }
   };
 
-  const daysInMonth = viewMonth <= 6 ? 31 : viewMonth <= 11 ? 30 : 29;
-  const [gYear, gMonth, gDay] = jalaliToGregorian(viewYear, viewMonth, 1);
-  const firstDayDate = new Date(gYear, gMonth - 1, gDay);
-  const jsDay = firstDayDate.getDay();
-  const persianFirstDayOffset = (jsDay + 1) % 7;
+  const daysInMonth = isGregorian
+    ? new Date(viewYear, viewMonth, 0).getDate()
+    : (viewMonth <= 6 ? 31 : viewMonth <= 11 ? 30 : 29);
+
+  const firstDayOffset = isGregorian
+    ? new Date(viewYear, viewMonth - 1, 1).getDay()
+    : (() => {
+        const [gy, gm, gd] = jalaliToGregorian(viewYear, viewMonth, 1);
+        const jsDay = new Date(gy, gm - 1, gd).getDay();
+        return (jsDay + 1) % 7;
+      })();
+
+  const weekdayHeaders = isGregorian
+    ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    : ['ش', '۱ش', '۲ش', '۳ش', '۴ش', '۵ش', 'ج'];
 
   const selectedDayTasks = tasks.filter((t) => t.date === selectedDate);
   const todayISO = getTodayISO();
 
   const monthDays = [];
   for (let d = 1; d <= daysInMonth; d++) {
-    const [gy, gm, gd] = jalaliToGregorian(viewYear, viewMonth, d);
-    const iso = `${gy}-${String(gm).padStart(2, '0')}-${String(gd).padStart(2, '0')}`;
+    const iso = isGregorian
+      ? `${viewYear}-${String(viewMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      : (() => {
+          const [gy, gm, gd] = jalaliToGregorian(viewYear, viewMonth, d);
+          return `${gy}-${String(gm).padStart(2, '0')}-${String(gd).padStart(2, '0')}`;
+        })();
     const dayTasks = tasks.filter((t) => t.date === iso);
     monthDays.push({
       day: d,
+      displayDay: isGregorian ? String(d) : toPersianDigits(d),
       iso,
       tasksCount: dayTasks.length,
       allDone: dayTasks.length > 0 && dayTasks.every((t) => t.completed),
@@ -63,41 +95,66 @@ export const CalendarView: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 animate-in fade-in pb-16">
       {/* Month Selector Bar */}
-      <div className="flex items-center justify-between bg-zinc-900/70 p-3.5 rounded-2xl border border-zinc-800">
-        <button
-          onClick={handlePrevMonth}
-          className="p-1.5 rounded-xl hover:bg-zinc-800 text-zinc-300 transition-colors cursor-pointer"
-          title="ماه قبل"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-slate-200/90 shadow-sm">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrevMonth}
+            className="w-9 h-9 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+            title="ماه قبل"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
 
-        <div className="text-center">
-          <span className="text-sm font-extrabold text-white">
-            {PERSIAN_MONTHS[viewMonth - 1]} {toPersianDigits(viewYear)}
-          </span>
+          <button
+            onClick={handleNextMonth}
+            className="w-9 h-9 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+            title="ماه بعد"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
         </div>
 
-        <button
-          onClick={handleNextMonth}
-          className="p-1.5 rounded-xl hover:bg-zinc-800 text-zinc-300 transition-colors cursor-pointer"
-          title="ماه بعد"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <CalendarIcon className="w-4 h-4 text-[#00b884]" />
+          <span className="text-sm sm:text-base font-black text-slate-900">
+            {isGregorian
+              ? `${GREGORIAN_MONTHS[viewMonth - 1]} (${GREGORIAN_MONTHS_FA[viewMonth - 1]}) ${viewYear}`
+              : `${PERSIAN_MONTHS[viewMonth - 1]} ${toPersianDigits(viewYear)}`}
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedDate(todayISO)}
+            className="text-[10px] font-black px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+          >
+            {isGregorian ? 'Today' : 'امروز'}
+          </button>
+          {/* Direct Calendar Switcher Button inside Calendar View */}
+          <button
+            type="button"
+            onClick={toggleCalendarType}
+            className="text-xs font-bold px-3 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+            title="تغییر بین تقویم شمسی و میلادی"
+          >
+            <RefreshCw className="w-3 h-3 text-indigo-500" />
+            <span>{isGregorian ? 'میلادی 🌐 (تغییر به شمسی)' : 'شمسی 📅 (تغییر به میلادی)'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Persian Calendar Grid */}
-      <div className="bg-zinc-900/50 p-4 rounded-3xl border border-zinc-800">
+      {/* Calendar Grid */}
+      <div
+        dir={isGregorian ? 'ltr' : 'rtl'}
+        className="bg-white p-5 sm:p-6 rounded-[28px] border border-slate-200/90 shadow-sm transition-all"
+      >
         {/* Weekday headers */}
-        <div className="grid grid-cols-7 gap-1 text-center mb-2">
-          {['ش', '۱ش', '۲ش', '۳ش', '۴ش', '۵ش', 'ج'].map((wd, i) => (
+        <div className="grid grid-cols-7 gap-1 text-center mb-3">
+          {weekdayHeaders.map((wd, i) => (
             <span
               key={i}
-              className={`text-[11px] font-bold ${
-                i === 6 ? 'text-rose-400' : 'text-zinc-500'
+              className={`text-xs font-black ${
+                (isGregorian ? i === 0 : i === 6) ? 'text-[#f95738]' : 'text-slate-400'
               }`}
             >
               {wd}
@@ -106,35 +163,46 @@ export const CalendarView: React.FC = () => {
         </div>
 
         {/* Days cells */}
-        <div className="grid grid-cols-7 gap-1.5">
-          {Array.from({ length: persianFirstDayOffset }).map((_, i) => (
-            <div key={`empty-${i}`} className="h-10" />
+        <div className="grid grid-cols-7 gap-2">
+          {Array.from({ length: firstDayOffset }).map((_, i) => (
+            <div key={`empty-${i}`} className="h-12" />
           ))}
 
           {monthDays.map((item) => (
             <button
               key={item.iso}
               onClick={() => setSelectedDate(item.iso)}
-              className={`h-11 rounded-xl flex flex-col items-center justify-center relative transition-all cursor-pointer ${
+              className={`h-12 sm:h-14 rounded-2xl flex flex-col items-center justify-center relative transition-all cursor-pointer ${
                 item.isSelected
-                  ? 'bg-white text-zinc-950 font-black shadow-md scale-105 z-10'
+                  ? 'bg-[#121212] text-white font-black shadow-md scale-105 z-10'
                   : item.isToday
-                  ? 'bg-zinc-800 text-white font-bold border border-zinc-700'
-                  : 'hover:bg-zinc-800 text-zinc-300 font-medium'
+                  ? 'bg-[#00b884]/10 text-slate-900 font-black border-2 border-[#00b884]'
+                  : 'hover:bg-slate-100 text-slate-700 font-bold bg-[#f8fafc] border border-slate-200/60'
               }`}
             >
-              <span className="text-xs">{toPersianDigits(item.day)}</span>
+              <span className="text-xs sm:text-sm font-extrabold">{item.displayDay}</span>
 
               {item.tasksCount > 0 && (
-                <span
-                  className={`w-1.5 h-1.5 rounded-full mt-0.5 ${
-                    item.isSelected
-                      ? 'bg-zinc-950'
-                      : item.allDone
-                      ? 'bg-emerald-500'
-                      : 'bg-zinc-400'
-                  }`}
-                />
+                <div className="flex items-center gap-0.5 mt-1">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      item.isSelected
+                        ? 'bg-white'
+                        : item.allDone
+                        ? 'bg-[#00b884]'
+                        : 'bg-[#f95738]'
+                    }`}
+                  />
+                  {item.tasksCount > 1 && (
+                    <span
+                      className={`text-[8px] font-mono leading-none ${
+                        item.isSelected ? 'text-slate-300' : 'text-slate-400'
+                      }`}
+                    >
+                      {isGregorian ? String(item.tasksCount) : toPersianDigits(item.tasksCount)}
+                    </span>
+                  )}
+                </div>
               )}
             </button>
           ))}
@@ -144,26 +212,27 @@ export const CalendarView: React.FC = () => {
       {/* Selected Day Agenda */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-            <CalendarIcon className="w-3.5 h-3.5 text-zinc-400" />
-            تسک‌های {formatPersianDate(selectedDate, 'full')}
+          <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-2">
+            <CalendarIcon className="w-4 h-4 text-slate-500" />
+            <span>تسک‌های {formatAppDate(selectedDate, calendarType, 'full')}</span>
           </h3>
 
           <button
             onClick={() => openCreateModal(selectedDate)}
-            className="flex items-center gap-1 text-[11px] font-bold text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-black text-white bg-[#121212] hover:bg-black px-4 py-2 rounded-2xl transition-all shadow-xs cursor-pointer active:scale-95"
           >
-            <Plus className="w-3.5 h-3.5" />
-            تسک جدید برای این روز
+            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+            <span>تسک جدید برای این روز</span>
           </button>
         </div>
 
         {selectedDayTasks.length === 0 ? (
-          <div className="p-6 text-center bg-zinc-900/40 rounded-2xl border border-zinc-800/80 text-xs text-zinc-500">
-            هیچ تسکی برای این روز برنامه‌ریزی نشده است.
+          <div className="p-8 text-center bg-white rounded-3xl border border-dashed border-slate-200 text-xs text-slate-400 font-bold space-y-1">
+            <p>هیچ تسکی برای این روز تعریف نشده است.</p>
+            <p className="text-[11px] text-slate-400">با دکمه بالا می‌توانید اولین تسک این روز را برنامه‌ریزی کنید.</p>
           </div>
         ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {selectedDayTasks.map((t) => (
               <TaskCard key={t.id} task={t} />
             ))}

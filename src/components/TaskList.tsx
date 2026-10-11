@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTask } from '../context/TaskContext';
 import { TaskCard } from './TaskCard';
 import { toPersianDigits } from '../utils/persianDate';
-import { CheckCircle, Plus, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { CheckCircle, Plus, ChevronDown, ChevronUp, Sparkles, AlertTriangle } from 'lucide-react';
 
 export const TaskList: React.FC = () => {
   const {
@@ -15,10 +15,15 @@ export const TaskList: React.FC = () => {
   } = useTask();
 
   const [showCompletedSection, setShowCompletedSection] = useState(true);
+  const [showUncompletedSection, setShowUncompletedSection] = useState(true);
+
+  const todayISO = new Date().toISOString().slice(0, 10);
 
   // Filter tasks based on all active criteria
   const filteredTasks = tasks.filter((task) => {
-    if (searchQuery.trim()) {
+    if (filterStatus === 'overdue') {
+      if (task.completed || task.date >= todayISO) return false;
+    } else if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       const matchTitle = task.title.toLowerCase().includes(q);
       const matchDesc = task.description?.toLowerCase().includes(q);
@@ -30,7 +35,7 @@ export const TaskList: React.FC = () => {
 
     if (filterCategory && task.categoryId !== filterCategory) return false;
 
-    if (filterStatus === 'pending' && task.completed) return false;
+    if (filterStatus === 'pending' && (task.completed || task.reasonUncompleted)) return false;
     if (filterStatus === 'completed' && !task.completed) return false;
     if (filterStatus === 'starred' && !task.isPinned) return false;
     if (filterStatus === 'urgent' && task.priority !== 'high') return false;
@@ -40,7 +45,7 @@ export const TaskList: React.FC = () => {
 
   // Sort
   const sortedPending = filteredTasks
-    .filter((t) => !t.completed)
+    .filter((t) => !t.completed && !t.reasonUncompleted)
     .sort((a, b) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
@@ -55,6 +60,14 @@ export const TaskList: React.FC = () => {
       if (b.time) return 1;
 
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+  const sortedUncompleted = filteredTasks
+    .filter((t) => !t.completed && Boolean(t.reasonUncompleted))
+    .sort((a, b) => {
+      const aTime = a.uncompletedAt ? new Date(a.uncompletedAt).getTime() : 0;
+      const bTime = b.uncompletedAt ? new Date(b.uncompletedAt).getTime() : 0;
+      return bTime - aTime;
     });
 
   const sortedCompleted = filteredTasks
@@ -137,6 +150,38 @@ export const TaskList: React.FC = () => {
               <TaskCard key={task.id} task={task} />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Uncompleted with reason tasks section */}
+      {sortedUncompleted.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <button
+            type="button"
+            onClick={() => setShowUncompletedSection(!showUncompletedSection)}
+            className="w-full flex items-center justify-between px-2 py-1 text-xs font-semibold text-zinc-400 hover:text-white transition-colors cursor-pointer select-none"
+          >
+            <div className="flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+              <span>کارهای انجام‌نشده (با ذکر دلیل)</span>
+              <span className="text-[10px] px-2 py-0.2 rounded-full bg-amber-500/10 text-amber-400 font-bold border border-amber-500/20">
+                {toPersianDigits(sortedUncompleted.length)}
+              </span>
+            </div>
+            {showUncompletedSection ? (
+              <ChevronUp className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" />
+            )}
+          </button>
+
+          {showUncompletedSection && (
+            <div className="space-y-2.5 pt-1">
+              {sortedUncompleted.map((task) => (
+                <TaskCard key={task.id} task={task} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

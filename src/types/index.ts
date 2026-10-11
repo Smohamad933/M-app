@@ -1,27 +1,66 @@
+export interface ReminderItem {
+  id: string;
+  userId: string;
+  title: string;
+  time: string; // HH:mm (e.g. "09:00")
+  duration: 'month' | 'week' | 'always' | 'once'; // e.g. 'month' = daily for 1 month
+  startDate: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
+  active: boolean;
+  lastNotifiedDate?: string; // YYYY-MM-DD
+  createdAt: string;
+}
+
 export type Priority = 'high' | 'medium' | 'low';
 export type UserRole = 'admin' | 'user';
 
 export interface UserTimeline {
   wakeUp?: string;
   workStart?: string;
+  workEnd?: string;
   lunch?: string;
   gym?: string;
   sleep?: string;
 }
 
+export interface UserDeviceSession {
+  id: string;
+  deviceName: string;
+  browser: string;
+  os: string;
+  ip?: string;
+  lastActive: string;
+  isCurrent: boolean;
+}
+
 export interface User {
   id: string;
+  numericId?: number; // Unique system-assigned numeric ID (e.g. 1000, 1001...)
   username: string;
   name: string;
   role: UserRole;
+  status?: 'active' | 'pending_approval' | 'pending_verification' | 'suspended';
+  isDemo?: boolean;
+  avatar?: string; // data URL (base64) — uploaded profile photo
   phone?: string;
   email?: string;
   province?: string;
   city?: string;
   birthDate?: string;
   jobTitle?: string;
+  bio?: string;
+  coverImage?: string;
   skills?: string[];
   dailyTimeline?: UserTimeline;
+  subscription?: UserSubscription;
+  deviceSessions?: UserDeviceSession[];
+  isProfileCompleted?: boolean;
+  baleChatId?: string | number;
+  baleUsername?: string;
+  baleNotifToken?: string;
+  baleNotificationsEnabled?: boolean;
+  verificationCode?: string;
+  isVerified?: boolean;
   createdAt: string;
   totalTasks?: number;
   completedTasks?: number;
@@ -42,6 +81,14 @@ export type UncompletedCategory =
   | 'distraction'
   | 'external'
   | 'other';
+
+export interface TaskWorkLog {
+  userId: string;
+  userName: string;
+  userAvatar?: string | null;
+  minutes: number;
+  loggedAt: string;
+}
 
 export interface Task {
   id: string;
@@ -65,8 +112,11 @@ export interface Task {
   subtasks: SubTask[];
   isPinned?: boolean;
   focusMinutesSpent?: number;
+  workLogs?: TaskWorkLog[];
   reminder?: boolean;
   repeat?: 'none' | 'daily' | 'weekly';
+  isRoutine?: boolean;
+  routineType?: 'none' | 'week' | 'month' | 'workdays';
   createdAt: string;
 }
 
@@ -130,6 +180,15 @@ export interface DailyNote {
   updatedAt: string;
 }
 
+export type ProDurationPlan = '1_month' | '3_months' | '6_months';
+
+export interface UserSubscription {
+  plan: 'free' | 'plus' | 'pro' | 'ultra';
+  planType?: ProDurationPlan;
+  activatedAt?: string;
+  expiresAt?: string | null;
+}
+
 export type TabType =
   | 'dashboard'
   | 'tasks'
@@ -141,11 +200,13 @@ export type TabType =
   | 'projects'
   | 'categories'
   | 'stats'
-  | 'users';
+  | 'users'
+  | 'friends'
+  | 'messages';
 
 export type TaskViewMode = 'list' | 'kanban' | 'calendar';
 
-export type FilterStatus = 'all' | 'pending' | 'completed' | 'starred' | 'urgent';
+export type FilterStatus = 'all' | 'pending' | 'completed' | 'starred' | 'urgent' | 'overdue';
 
 export interface DailyStreak {
   currentStreak: number;
@@ -160,6 +221,8 @@ export interface AppSettings {
   hapticEnabled: boolean;
   theme: 'dark' | 'light' | 'system';
   systemFont?: string;
+  interfaceMode?: 'simple' | 'advanced';
+  calendarType?: 'jalali' | 'gregorian';
 }
 
 export interface RoomParticipant {
@@ -180,6 +243,40 @@ export interface RoomMessage {
   userName: string;
   text: string;
   timestamp: string;
+}
+
+export interface DirectChatMessage {
+  id: string;
+  senderId: string;
+  senderName?: string;
+  senderAvatar?: string | null;
+  receiverId: string;
+  text: string;
+  createdAt: string;
+  read?: boolean;
+}
+
+export interface ProjectChatMessage {
+  id: string;
+  projectId: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar?: string | null;
+  text: string;
+  createdAt: string;
+}
+
+export interface FriendRequestItem {
+  id: string;
+  fromUserId: string;
+  fromUserName: string;
+  fromUserUsername?: string;
+  fromUserAvatar?: string | null;
+  toUserId: string;
+  projectId?: string;
+  projectName?: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
 }
 
 export interface FocusRoom {
@@ -210,6 +307,17 @@ export interface SystemFontOption {
   dataUrl?: string;
 }
 
+export interface AppDeveloper {
+  id: string;
+  name: string;
+  role: string;
+  avatarUrl?: string | null;
+  bio?: string;
+  link?: string;
+}
+
+export type AppOperatingMode = 'commercial' | 'community_demo';
+
 export interface GlobalSystemSettings {
   broadcastNotice: {
     enabled: boolean;
@@ -231,4 +339,87 @@ export interface GlobalSystemSettings {
   };
   dailyMantra: string;
   jobCategories?: string[];
+  /** Operating Mode: 'commercial' (Free vs Pro) or 'community_demo' (Community testing beta with approval) */
+  appOperatingMode?: 'commercial' | 'community_demo';
+  /** Admin-configured developers of this app (displayed on login/register screen) */
+  appDevelopers?: AppDeveloper[];
+  /** Admin-editable app texts (UI labels & messages). Missing keys fall back to defaults. */
+  texts?: Record<string, string>;
+  /** Admin-editable app identity: name, logo, default profile photo, PWA icon (data URLs) */
+  appBranding?: {
+    appName?: string;
+    logoDataUrl?: string | null;
+    defaultAvatarDataUrl?: string | null;
+    pwaIconDataUrl?: string | null;
+  };
+  /** Subscription details & Card-to-Card payment info */
+  subscriptionInfo?: {
+    cardNumber?: string;
+    bankName?: string;
+    ownerName?: string;
+    cardHolder?: string;
+    monthlyPrice?: string;
+    supportContact?: string;
+  };
+  focusPlaylist?: any[];
+  /** Bale Messenger Bot Integration (docs.bale.ai) */
+  baleBot?: {
+    enabled: boolean;
+    token: string;
+    botUsername: string;
+    verifyOnRegister: boolean;
+    sendNotifications: boolean;
+    allowTaskCreation: boolean;
+    providerToken?: string;
+  };
+  /** Extension Sponsored Website / First shortcut in New Tab */
+  extensionSponsoredSite?: {
+    enabled?: boolean;
+    title: string;
+    url: string;
+    icon?: string;
+    badge?: string;
+  };
+  /** Footer Branding: "بَگ‌تایم، از خانوادهٔ کیان فناوران نگاه" with optional URL link */
+  footerBranding?: {
+    enabled?: boolean;
+    prefixText?: string;
+    companyName?: string;
+    companyUrl?: string;
+    isLinkEnabled?: boolean;
+  };
+  /** Negahm Unified SSO Integration (https://sso.negahm.ir/api/v1) */
+  ssoSettings?: {
+    enabled: boolean;
+    serverUrl: string; // e.g. 'https://sso.negahm.ir'
+    apiKey: string;    // ak_live_...
+    apiSecret: string;
+    appName?: string;
+    autoSyncUsers?: boolean;
+    defaultRole?: 'member' | 'admin' | 'viewer';
+    syncIntervalMinutes?: number;
+    testMode?: boolean;
+  };
+}
+
+export interface SsoUser {
+  id: number | string;
+  uuid?: string;
+  email: string;
+  full_name?: string;
+  phone?: string;
+  avatar_url?: string | null;
+  status?: 'active' | 'pending' | 'suspended' | 'disabled';
+  role?: 'owner' | 'admin' | 'member' | 'viewer';
+  created_at?: string;
+  last_login_at?: string;
+}
+
+export interface SsoTokens {
+  access_token: string;
+  refresh_token?: string;
+  token_type?: string;
+  expires_in?: number;
+  refresh_expires_in?: number;
+  scopes?: string[];
 }

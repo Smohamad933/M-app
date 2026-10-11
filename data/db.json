@@ -6,16 +6,35 @@
       "password": "Smosh1387",
       "name": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
       "role": "admin",
-      "createdAt": "2026-09-19T17:29:02.500Z"
+      "status": "active",
+      "isVerified": true,
+      "phone": "09120000000",
+      "email": "mohusyn@gmail.com",
+      "jobTitle": "مدیر ارشد و توسعه‌دهنده نرم‌افزار",
+      "city": "تهران",
+      "province": "تهران",
+      "createdAt": "2026-09-19T17:29:02.500Z",
+      "numericId": 1000,
+      "subscription": {
+        "plan": "pro"
+      },
+      "isProfileCompleted": true,
+      "baleChatId": 671754408,
+      "baleUsername": "smosh"
     },
     {
-      "id": "usr_1789976262249_zngz",
-      "username": "test_user_1789976262248",
+      "id": "usr_1791227196584_nceu",
+      "numericId": 1001,
+      "username": "test_user_1791227196583",
       "password": "TestPassword123",
       "name": "تست کننده سیستم",
       "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "446072",
+      "phone": "09121931174",
+      "email": "tester_1791227196583@taskrooz.local",
       "province": "اصفهان",
       "city": "اصفهان",
       "birthDate": "1375/02/10",
@@ -32,911 +51,412 @@
         "gym": "17:30",
         "sleep": "23:00"
       },
-      "createdAt": "2026-09-21T07:37:42.249Z"
-    },
-    {
-      "id": "usr_1789976262272_vjds",
-      "username": "regular_user_1789976262271",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T07:37:42.272Z"
-    },
-    {
-      "id": "usr_1789976262300_vu22",
-      "username": "user_target_1789976262299",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T07:37:42.300Z"
-    },
-    {
-      "id": "usr_1789976270878_964w",
-      "username": "test_user_1789976270877",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
+      "subscription": {
+        "plan": "free"
       },
-      "createdAt": "2026-09-21T07:37:50.878Z"
+      "isProfileCompleted": true,
+      "createdAt": "2026-10-05T19:06:36.584Z"
     },
     {
-      "id": "usr_1789976270899_96i1",
-      "username": "regular_user_1789976270899",
+      "id": "usr_1791227196621_rkww",
+      "numericId": 1002,
+      "username": "regular_user_1791227196619",
       "password": "Password123!",
       "name": "کاربر معمولی بدون دسترسی",
       "role": "user",
-      "createdAt": "2026-09-21T07:37:50.899Z"
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "218450",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.621Z"
     },
     {
-      "id": "usr_1789976270925_ie5d",
-      "username": "user_target_1789976270924",
+      "id": "usr_1791227196666_dxuh",
+      "numericId": 1003,
+      "username": "user_target_1791227196665",
       "password": "TargetPass123",
       "name": "کاربر هدف انتصاب تسک",
       "role": "user",
-      "createdAt": "2026-09-21T07:37:50.925Z"
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "275184",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.666Z"
     },
     {
-      "id": "usr_1789976270938_f0tg",
-      "username": "live_member_1789976270937",
+      "id": "usr_1791227196689_nqyq",
+      "numericId": 1004,
+      "username": "live_member_1791227196688",
       "password": "MemberPass123",
       "name": "عضو تازه پیوسته به سامانه",
       "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "637288",
       "city": "شیراز",
       "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T07:37:50.938Z"
-    },
-    {
-      "id": "usr_1789976752957_icns",
-      "username": "testuser1",
-      "password": "123",
-      "name": "Test",
-      "role": "user",
-      "createdAt": "2026-09-21T07:45:52.957Z"
-    },
-    {
-      "id": "usr_1789977181443_2tyf",
-      "username": "ali_test_1",
-      "password": "password123",
-      "name": "علی تستی",
-      "role": "user",
-      "createdAt": "2026-09-21T07:53:01.443Z"
-    },
-    {
-      "id": "usr_1789977184909_9o6l",
-      "username": "node_test_1789977184906",
-      "password": "123",
-      "name": "Node",
-      "role": "user",
-      "createdAt": "2026-09-21T07:53:04.909Z"
-    },
-    {
-      "id": "usr_1789977815505_36ub",
-      "username": "test_user_1789977815504",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
+      "skills": [],
+      "subscription": {
+        "plan": "free"
       },
-      "createdAt": "2026-09-21T08:03:35.505Z"
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.689Z"
     },
     {
-      "id": "usr_1789977815531_mdq2",
-      "username": "regular_user_1789977815531",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T08:03:35.531Z"
-    },
-    {
-      "id": "usr_1789977815557_s4n8",
-      "username": "user_target_1789977815557",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T08:03:35.557Z"
-    },
-    {
-      "id": "usr_1789977815570_42wk",
-      "username": "live_member_1789977815570",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T08:03:35.570Z"
-    },
-    {
-      "id": "usr_1789977824434_cusg",
-      "username": "test_user_1789977824433",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
-      },
-      "createdAt": "2026-09-21T08:03:44.434Z"
-    },
-    {
-      "id": "usr_1789977824459_rkxp",
-      "username": "regular_user_1789977824458",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T08:03:44.459Z"
-    },
-    {
-      "id": "usr_1789977824487_iism",
-      "username": "user_target_1789977824486",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T08:03:44.487Z"
-    },
-    {
-      "id": "usr_1789977824500_3tsi",
-      "username": "live_member_1789977824500",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T08:03:44.500Z"
-    },
-    {
-      "id": "usr_1789977853321_tk3z",
-      "username": "test_user_1789977853320",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
-      },
-      "createdAt": "2026-09-21T08:04:13.321Z"
-    },
-    {
-      "id": "usr_1789977853350_5mbw",
-      "username": "regular_user_1789977853350",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T08:04:13.350Z"
-    },
-    {
-      "id": "usr_1789977853379_hz38",
-      "username": "user_target_1789977853379",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T08:04:13.379Z"
-    },
-    {
-      "id": "usr_1789977853393_fb0w",
-      "username": "live_member_1789977853392",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T08:04:13.393Z"
-    },
-    {
-      "id": "usr_1789977861896_yub3",
-      "username": "sara_designer_1789977861887",
-      "password": "SaraPassword123",
-      "name": "سارا طراح رابط کاربری",
-      "role": "user",
-      "phone": "09351234567",
-      "city": "اصفهان",
-      "jobTitle": "طراح ارشد UI/UX",
-      "createdAt": "2026-09-21T08:04:21.896Z"
-    },
-    {
-      "id": "usr_1789977925941_kfbw",
-      "username": "test_user_1789977925940",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
-      },
-      "createdAt": "2026-09-21T08:05:25.941Z"
-    },
-    {
-      "id": "usr_1789977925966_2nas",
-      "username": "regular_user_1789977925965",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T08:05:25.966Z"
-    },
-    {
-      "id": "usr_1789977925995_sja9",
-      "username": "user_target_1789977925994",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T08:05:25.995Z"
-    },
-    {
-      "id": "usr_1789977926011_56uj",
-      "username": "live_member_1789977926010",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T08:05:26.011Z"
-    },
-    {
-      "id": "usr_1789983202782_xiu9",
-      "username": "test_user_1789983202781",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
-      },
-      "createdAt": "2026-09-21T09:33:22.782Z"
-    },
-    {
-      "id": "usr_1789983202818_h8gv",
-      "username": "regular_user_1789983202817",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T09:33:22.818Z"
-    },
-    {
-      "id": "usr_1789983202860_0bji",
-      "username": "user_target_1789983202859",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T09:33:22.860Z"
-    },
-    {
-      "id": "usr_1789983202877_z4km",
-      "username": "live_member_1789983202876",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T09:33:22.877Z"
-    },
-    {
-      "id": "usr_1789984039163_y9gc",
-      "username": "test_user_1789984039161",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
-      },
-      "createdAt": "2026-09-21T09:47:19.163Z"
-    },
-    {
-      "id": "usr_1789984039198_hypi",
-      "username": "regular_user_1789984039197",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T09:47:19.198Z"
-    },
-    {
-      "id": "usr_1789984039234_pc4l",
-      "username": "user_target_1789984039233",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T09:47:19.234Z"
-    },
-    {
-      "id": "usr_1789984039251_68u1",
-      "username": "live_member_1789984039250",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T09:47:19.251Z"
-    },
-    {
-      "id": "usr_1789986234970_6u8h",
-      "username": "test_user_1789986234969",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
-      },
-      "createdAt": "2026-09-21T10:23:54.970Z"
-    },
-    {
-      "id": "usr_1789986234999_0xr3",
-      "username": "regular_user_1789986234998",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T10:23:54.999Z"
-    },
-    {
-      "id": "usr_1789986235032_sycj",
-      "username": "user_target_1789986235031",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T10:23:55.032Z"
-    },
-    {
-      "id": "usr_1789986235049_5ldx",
-      "username": "live_member_1789986235048",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T10:23:55.049Z"
-    },
-    {
-      "id": "usr_1789986262360_ielv",
-      "username": "test_user_1789986262359",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
-      },
-      "createdAt": "2026-09-21T10:24:22.360Z"
-    },
-    {
-      "id": "usr_1789986262390_fhjc",
-      "username": "regular_user_1789986262389",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T10:24:22.390Z"
-    },
-    {
-      "id": "usr_1789986262439_3sla",
-      "username": "user_target_1789986262438",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T10:24:22.439Z"
-    },
-    {
-      "id": "usr_1789986262564_wht0",
-      "username": "live_member_1789986262563",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T10:24:22.564Z"
-    },
-    {
-      "id": "usr_1789986262658_b2fe",
-      "username": "reza_test_1789986262641",
+      "id": "usr_1791227196715_q6h0",
+      "numericId": 1005,
+      "username": "reza_test_1791227196714",
       "password": "RezaPassword123",
       "name": "رضا",
       "role": "user",
-      "createdAt": "2026-09-21T10:24:22.658Z"
-    },
-    {
-      "id": "usr_1789986974050_4yps",
-      "username": "test_user_1789986974048",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "822670",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
       },
-      "createdAt": "2026-09-21T10:36:14.050Z"
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.715Z"
     },
     {
-      "id": "usr_1789986974086_z2k7",
-      "username": "regular_user_1789986974085",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T10:36:14.086Z"
-    },
-    {
-      "id": "usr_1789986974127_m8rw",
-      "username": "user_target_1789986974126",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T10:36:14.127Z"
-    },
-    {
-      "id": "usr_1789986974147_80o4",
-      "username": "live_member_1789986974146",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T10:36:14.147Z"
-    },
-    {
-      "id": "usr_1789986974163_yfsv",
-      "username": "reza_test_1789986974162",
-      "password": "RezaPassword123",
-      "name": "رضا",
-      "role": "user",
-      "createdAt": "2026-09-21T10:36:14.163Z"
-    },
-    {
-      "id": "usr_1789987047332_i4lq",
-      "username": "test_user_1789987047331",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
-      },
-      "createdAt": "2026-09-21T10:37:27.332Z"
-    },
-    {
-      "id": "usr_1789987047376_8x14",
-      "username": "regular_user_1789987047375",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T10:37:27.376Z"
-    },
-    {
-      "id": "usr_1789987047421_xoiq",
-      "username": "user_target_1789987047420",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T10:37:27.421Z"
-    },
-    {
-      "id": "usr_1789987047442_cjsg",
-      "username": "live_member_1789987047441",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T10:37:27.442Z"
-    },
-    {
-      "id": "usr_1789987047461_hq4g",
-      "username": "reza_test_1789987047460",
-      "password": "RezaPassword123",
-      "name": "رضا",
-      "role": "user",
-      "createdAt": "2026-09-21T10:37:27.461Z"
-    },
-    {
-      "id": "usr_1789987574638_gl0y",
-      "username": "test_user_1789987574636",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
-      },
-      "createdAt": "2026-09-21T10:46:14.638Z"
-    },
-    {
-      "id": "usr_1789987574674_x51m",
-      "username": "regular_user_1789987574673",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T10:46:14.674Z"
-    },
-    {
-      "id": "usr_1789987574716_z6tw",
-      "username": "user_target_1789987574714",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T10:46:14.716Z"
-    },
-    {
-      "id": "usr_1789987574736_zczu",
-      "username": "live_member_1789987574734",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T10:46:14.736Z"
-    },
-    {
-      "id": "usr_1789987574753_eyzu",
-      "username": "reza_test_1789987574752",
-      "password": "RezaPassword123",
-      "name": "رضا",
-      "role": "user",
-      "createdAt": "2026-09-21T10:46:14.753Z"
-    },
-    {
-      "id": "usr_1789989601152_ejyr",
-      "username": "test_user_1789989601150",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
-      },
-      "createdAt": "2026-09-21T11:20:01.152Z"
-    },
-    {
-      "id": "usr_1789989601231_tklq",
-      "username": "regular_user_1789989601229",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T11:20:01.231Z"
-    },
-    {
-      "id": "usr_1789989601282_dw73",
-      "username": "user_target_1789989601281",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T11:20:01.282Z"
-    },
-    {
-      "id": "usr_1789989601304_j0dr",
-      "username": "live_member_1789989601303",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T11:20:01.304Z"
-    },
-    {
-      "id": "usr_1789989601367_exaf",
-      "username": "reza_test_1789989601366",
-      "password": "RezaPassword123",
-      "name": "رضا",
-      "role": "user",
-      "createdAt": "2026-09-21T11:20:01.367Z"
-    },
-    {
-      "id": "usr_1789991185680_b3cz",
-      "username": "test_user_1789991185679",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
-      },
-      "createdAt": "2026-09-21T11:46:25.680Z"
-    },
-    {
-      "id": "usr_1789991185722_zv7z",
-      "username": "regular_user_1789991185721",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T11:46:25.722Z"
-    },
-    {
-      "id": "usr_1789991185764_13vt",
-      "username": "user_target_1789991185763",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T11:46:25.764Z"
-    },
-    {
-      "id": "usr_1789991185785_jzvu",
-      "username": "live_member_1789991185784",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T11:46:25.786Z"
-    },
-    {
-      "id": "usr_1789991185804_yuts",
-      "username": "reza_test_1789991185803",
-      "password": "RezaPassword123",
-      "name": "رضا",
-      "role": "user",
-      "createdAt": "2026-09-21T11:46:25.804Z"
-    },
-    {
-      "id": "usr_1789995731682_crgc",
-      "username": "test_user_1789995731681",
-      "password": "TestPassword123",
-      "name": "تست کننده سیستم",
-      "role": "user",
-      "phone": "09120001122",
-      "email": "tester@taskrooz.local",
-      "province": "اصفهان",
-      "city": "اصفهان",
-      "birthDate": "1375/02/10",
-      "jobTitle": "مهندس ارشد نرم‌افزار",
-      "skills": [
-        "TypeScript",
-        "React",
-        "Docker"
-      ],
-      "dailyTimeline": {
-        "wakeUp": "06:00",
-        "workStart": "08:00",
-        "lunch": "13:00",
-        "gym": "17:30",
-        "sleep": "23:00"
-      },
-      "createdAt": "2026-09-21T13:02:11.682Z"
-    },
-    {
-      "id": "usr_1789995731722_kmvm",
-      "username": "regular_user_1789995731721",
-      "password": "Password123!",
-      "name": "کاربر معمولی بدون دسترسی",
-      "role": "user",
-      "createdAt": "2026-09-21T13:02:11.722Z"
-    },
-    {
-      "id": "usr_1789995731779_2f6l",
-      "username": "user_target_1789995731777",
-      "password": "TargetPass123",
-      "name": "کاربر هدف انتصاب تسک",
-      "role": "user",
-      "createdAt": "2026-09-21T13:02:11.779Z"
-    },
-    {
-      "id": "usr_1789995731815_1wbm",
-      "username": "live_member_1789995731812",
-      "password": "MemberPass123",
-      "name": "عضو تازه پیوسته به سامانه",
-      "role": "user",
-      "city": "شیراز",
-      "jobTitle": "کارشناس تضمین کیفیت (QA)",
-      "createdAt": "2026-09-21T13:02:11.815Z"
-    },
-    {
-      "id": "usr_1789995731846_dztz",
-      "username": "reza_test_1789995731845",
-      "password": "RezaPassword123",
-      "name": "رضا",
-      "role": "user",
-      "createdAt": "2026-09-21T13:02:11.846Z"
-    },
-    {
-      "id": "usr_1789995731860_i8po",
-      "username": "student_1789995731858",
+      "id": "usr_1791227196730_dapl",
+      "numericId": 1006,
+      "username": "student_1791227196729",
       "password": "StudentPass123",
       "name": "سارا احمدی",
       "role": "user",
-      "phone": "09129876543",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "599565",
+      "phone": "09129489256",
+      "email": "student_1791227196729@taskrooz.local",
       "birthDate": "1381/06/20",
       "jobTitle": "کارشناس هوش مصنوعی",
-      "createdAt": "2026-09-21T13:02:11.860Z"
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.730Z"
+    },
+    {
+      "id": "usr_1791227196769_96as",
+      "numericId": 1007,
+      "username": "noadmin_1791227196768",
+      "password": "Pass123!",
+      "name": "کاربر بدون دسترسی",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "913030",
+      "phone": "09123261586",
+      "email": "noadmin_1791227196768@taskrooz.local",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.769Z"
+    },
+    {
+      "id": "usr_1791227196865_i6o6",
+      "numericId": 1008,
+      "username": "bale_strict_1791227196864",
+      "password": "StrictPass123!",
+      "name": "کاربر آزمون بله",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "185504",
+      "phone": "09123202793",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.865Z",
+      "baleChatId": 987654321
+    },
+    {
+      "id": "usr_1791227196878_non2",
+      "numericId": 1009,
+      "username": "bob_colleague_1791227196877",
+      "password": "BobPass123!",
+      "name": "باب همکار",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "417131",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.878Z"
+    },
+    {
+      "id": "usr_1791227196894_rtu6",
+      "numericId": 1010,
+      "username": "sarah_chat_1791227196893",
+      "password": "SarahPass123!",
+      "name": "سارا چت",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "763804",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:36.894Z"
+    },
+    {
+      "id": "usr_1791227212044_cscs",
+      "numericId": 1011,
+      "username": "test_user_1791227212043",
+      "password": "TestPassword123",
+      "name": "تست کننده سیستم",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "118834",
+      "phone": "09121623092",
+      "email": "tester_1791227212043@taskrooz.local",
+      "province": "اصفهان",
+      "city": "اصفهان",
+      "birthDate": "1375/02/10",
+      "jobTitle": "مهندس ارشد نرم‌افزار",
+      "skills": [
+        "TypeScript",
+        "React",
+        "Docker"
+      ],
+      "dailyTimeline": {
+        "wakeUp": "06:00",
+        "workStart": "08:00",
+        "lunch": "13:00",
+        "gym": "17:30",
+        "sleep": "23:00"
+      },
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": true,
+      "createdAt": "2026-10-05T19:06:52.044Z"
+    },
+    {
+      "id": "usr_1791227212096_7n7r",
+      "numericId": 1012,
+      "username": "regular_user_1791227212096",
+      "password": "Password123!",
+      "name": "کاربر معمولی بدون دسترسی",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "630589",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.096Z"
+    },
+    {
+      "id": "usr_1791227212144_cb49",
+      "numericId": 1013,
+      "username": "user_target_1791227212143",
+      "password": "TargetPass123",
+      "name": "کاربر هدف انتصاب تسک",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "803461",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.144Z"
+    },
+    {
+      "id": "usr_1791227212171_7sjx",
+      "numericId": 1014,
+      "username": "live_member_1791227212170",
+      "password": "MemberPass123",
+      "name": "عضو تازه پیوسته به سامانه",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "337840",
+      "city": "شیراز",
+      "jobTitle": "کارشناس تضمین کیفیت (QA)",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.171Z"
+    },
+    {
+      "id": "usr_1791227212198_2aym",
+      "numericId": 1015,
+      "username": "reza_test_1791227212195",
+      "password": "RezaPassword123",
+      "name": "رضا",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "428561",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.198Z"
+    },
+    {
+      "id": "usr_1791227212211_x20i",
+      "numericId": 1016,
+      "username": "student_1791227212210",
+      "password": "StudentPass123",
+      "name": "سارا احمدی",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "656266",
+      "phone": "09123543769",
+      "email": "student_1791227212210@taskrooz.local",
+      "birthDate": "1381/06/20",
+      "jobTitle": "کارشناس هوش مصنوعی",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.211Z"
+    },
+    {
+      "id": "usr_1791227212254_2u0t",
+      "numericId": 1017,
+      "username": "noadmin_1791227212253",
+      "password": "Pass123!",
+      "name": "کاربر بدون دسترسی",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "523587",
+      "phone": "09121565674",
+      "email": "noadmin_1791227212253@taskrooz.local",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.254Z"
+    },
+    {
+      "id": "usr_1791227212358_zsdo",
+      "numericId": 1018,
+      "username": "bale_strict_1791227212356",
+      "password": "StrictPass123!",
+      "name": "کاربر آزمون بله",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "364498",
+      "phone": "09127241950",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.358Z",
+      "baleChatId": 987654321
+    },
+    {
+      "id": "usr_1791227212375_2jva",
+      "numericId": 1019,
+      "username": "bob_colleague_1791227212373",
+      "password": "BobPass123!",
+      "name": "باب همکار",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "623101",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.375Z"
+    },
+    {
+      "id": "usr_1791227212392_2xgu",
+      "numericId": 1020,
+      "username": "sarah_chat_1791227212391",
+      "password": "SarahPass123!",
+      "name": "سارا چت",
+      "role": "user",
+      "status": "active",
+      "isDemo": false,
+      "isVerified": true,
+      "verificationCode": "108768",
+      "skills": [],
+      "subscription": {
+        "plan": "free"
+      },
+      "isProfileCompleted": false,
+      "createdAt": "2026-10-05T19:06:52.392Z"
+    },
+    {
+      "id": "usr_1791633997089_5v0v",
+      "numericId": 1021,
+      "username": "bale_998877",
+      "name": "S.m.sh",
+      "password": "mu8zg03o",
+      "role": "user",
+      "status": "active",
+      "isVerified": true,
+      "baleChatId": 998877,
+      "createdAt": "2026-10-10T12:06:37.089Z",
+      "isProfileCompleted": true,
+      "subscription": {
+        "plan": "free"
+      }
     }
   ],
   "tasks": [
     {
-      "id": "task_1789995731862_z15lo",
-      "userId": "usr_1789995731860_i8po",
+      "id": "task_1791227212213_wd24p",
+      "userId": "usr_1791227212211_x20i",
       "projectId": null,
       "title": "تکمیل ماژول شبکه عصبی",
       "date": "1405-01-01",
@@ -948,57 +468,49 @@
       "isPinned": false,
       "focusMinutesSpent": 0,
       "subtasks": [],
-      "createdAt": "2026-09-21T13:02:11.862Z"
+      "createdAt": "2026-10-05T19:06:52.213Z"
+    },
+    {
+      "id": "task_1791227196733_9edfq",
+      "userId": "usr_1791227196730_dapl",
+      "projectId": null,
+      "title": "تکمیل ماژول شبکه عصبی",
+      "date": "1405-01-01",
+      "time": "14:00",
+      "durationMinutes": 0,
+      "completed": false,
+      "priority": "high",
+      "categoryId": "cat-work",
+      "isPinned": false,
+      "focusMinutesSpent": 0,
+      "subtasks": [],
+      "createdAt": "2026-10-05T19:06:36.733Z"
     }
   ],
   "categories": [
     {
-      "id": "cat-work",
-      "name": "کاری و شغلی",
-      "color": "#6366f1",
-      "icon": "Briefcase",
-      "isDefault": true
+      "id": "cat_work",
+      "name": "کار و پروژه‌ها",
+      "color": "#4f46e5",
+      "icon": "briefcase"
     },
     {
-      "id": "cat-personal",
-      "name": "کارهای شخصی",
-      "color": "#10b981",
-      "icon": "User",
-      "isDefault": true
-    },
-    {
-      "id": "cat-study",
+      "id": "cat_study",
       "name": "مطالعه و یادگیری",
-      "color": "#f59e0b",
-      "icon": "BookOpen",
-      "isDefault": true
+      "color": "#059669",
+      "icon": "book"
     },
     {
-      "id": "cat-health",
-      "name": "ورزش و سلامتی",
-      "color": "#f43f5e",
-      "icon": "Activity",
-      "isDefault": true
-    },
-    {
-      "id": "cat-shopping",
-      "name": "خرید و منزل",
-      "color": "#0ea5e9",
-      "icon": "ShoppingCart",
-      "isDefault": true
-    },
-    {
-      "id": "cat-finance",
-      "name": "امور مالی",
-      "color": "#8b5cf6",
-      "icon": "CreditCard",
-      "isDefault": true
+      "id": "cat_personal",
+      "name": "شخصی و سلامت",
+      "color": "#d97706",
+      "icon": "user"
     }
   ],
   "focus_rooms": [
     {
-      "id": "room_g1ry5s",
-      "name": "اتاق تمرکز و مطالعه مشترک",
+      "id": "room_deepwork",
+      "name": "اتاق تمرکز عمیق (دیپ ورک)",
       "hostId": "usr_admin_mohusyn",
       "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
       "focusDuration": 1500,
@@ -1006,1017 +518,57 @@
       "timeLeft": 1500,
       "isRunning": false,
       "mode": "focus",
-      "lastUpdated": 1789995731850,
+      "lastUpdated": 1791633973485,
       "participants": [
         {
           "userId": "usr_admin_mohusyn",
           "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
           "isHost": true,
-          "joinedAt": "۱۳:۰۲",
-          "lastPing": 1789995731850
-        },
-        {
-          "userId": "usr_1789995731846_dztz",
-          "userName": "رضا",
-          "isHost": false,
-          "joinedAt": "۱۳:۰۲",
-          "lastPing": 1789995731853
+          "joinedAt": "۰۸:۳۰",
+          "lastPing": 1791633973485
         }
       ],
       "messages": [
         {
-          "id": "msg_welcome_1789995731850",
+          "id": "msg_init_1",
           "userId": "system",
           "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز و مطالعه مشترک» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۱۳:۰۲"
-        },
-        {
-          "id": "msg_join_1789995731853",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "رضا به اتاق پیوست.",
-          "timestamp": "۱۳:۰۲"
+          "text": "اتاق تمرکز عمیق آماده است. کار روی مهم‌ترین تسک روز را آغاز کنید! 🎯",
+          "timestamp": "۰۸:۳۰"
         }
       ],
-      "createdAt": "2026-09-21T13:02:11.851Z"
-    },
-    {
-      "id": "room_dynamic_1789995731840",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789995731842,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۳:۰۲",
-          "lastPing": 1789995731843
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789995731842",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۱۳:۰۲"
-        },
-        {
-          "id": "msg_join_1789995731843",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۱۳:۰۲"
-        }
-      ],
-      "createdAt": "2026-09-21T13:02:11.842Z"
-    },
-    {
-      "id": "room_t9nr1d",
-      "name": "اتاق تمرکز برنامه‌نویسان ارشد",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789995731736,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۳:۰۲",
-          "lastPing": 1789995731729
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789995731729",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز برنامه‌نویسان ارشد» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۱۳:۰۲"
-        },
-        {
-          "id": "msg_1789995731733_vjs3",
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "text": "سلام به همگی، تمرکز ۲۵ دقیقه‌ای را آغاز می‌کنیم! 🎯",
-          "timestamp": "۱۳:۰۲"
-        },
-        {
-          "id": "msg_del_1789995731738",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "این اتاق توسط سید محمدحسین شیخ الاسلامی (Mohusyn) بسته شد. پیام‌ها طبق سیاست سیستم تا ۱۰ دقیقه در سرور محفوظ مانده و سپس به طور کامل پاکسازی خواهند شد.",
-          "timestamp": "۱۳:۰۲"
-        }
-      ],
-      "createdAt": "2026-09-21T13:02:11.729Z",
-      "isDeleted": true,
-      "deletedAt": 1789995731
-    },
-    {
-      "id": "room_qod088",
-      "name": "اتاق تمرکز و مطالعه مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789991185807,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۱:۴۶",
-          "lastPing": 1789991185807
-        },
-        {
-          "userId": "usr_1789991185804_yuts",
-          "userName": "رضا",
-          "isHost": false,
-          "joinedAt": "۱۱:۴۶",
-          "lastPing": 1789991185810
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789991185807",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز و مطالعه مشترک» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۱۱:۴۶"
-        },
-        {
-          "id": "msg_join_1789991185810",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "رضا به اتاق پیوست.",
-          "timestamp": "۱۱:۴۶"
-        }
-      ],
-      "createdAt": "2026-09-21T11:46:25.808Z"
-    },
-    {
-      "id": "room_dynamic_1789991185799",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789991185800,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۱:۴۶",
-          "lastPing": 1789991185801
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789991185800",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۱۱:۴۶"
-        },
-        {
-          "id": "msg_join_1789991185801",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۱۱:۴۶"
-        }
-      ],
-      "createdAt": "2026-09-21T11:46:25.800Z"
-    },
-    {
-      "id": "room_u248v9",
-      "name": "اتاق تمرکز و مطالعه مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789989601371,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۱:۲۰",
-          "lastPing": 1789989601371
-        },
-        {
-          "userId": "usr_1789989601367_exaf",
-          "userName": "رضا",
-          "isHost": false,
-          "joinedAt": "۱۱:۲۰",
-          "lastPing": 1789989601373
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789989601371",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز و مطالعه مشترک» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۱۱:۲۰"
-        },
-        {
-          "id": "msg_join_1789989601373",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "رضا به اتاق پیوست.",
-          "timestamp": "۱۱:۲۰"
-        }
-      ],
-      "createdAt": "2026-09-21T11:20:01.371Z"
-    },
-    {
-      "id": "room_dynamic_1789989601352",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789989601353,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۱:۲۰",
-          "lastPing": 1789989601354
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789989601353",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۱۱:۲۰"
-        },
-        {
-          "id": "msg_join_1789989601354",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۱۱:۲۰"
-        }
-      ],
-      "createdAt": "2026-09-21T11:20:01.353Z"
-    },
-    {
-      "id": "room_nyzt9q",
-      "name": "اتاق تمرکز و مطالعه مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789987574756,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۰:۴۶",
-          "lastPing": 1789987574757
-        },
-        {
-          "userId": "usr_1789987574753_eyzu",
-          "userName": "رضا",
-          "isHost": false,
-          "joinedAt": "۱۰:۴۶",
-          "lastPing": 1789987574759
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789987574757",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز و مطالعه مشترک» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۱۰:۴۶"
-        },
-        {
-          "id": "msg_join_1789987574759",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "رضا به اتاق پیوست.",
-          "timestamp": "۱۰:۴۶"
-        }
-      ],
-      "createdAt": "2026-09-21T10:46:14.757Z"
-    },
-    {
-      "id": "room_dynamic_1789987574749",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789987574750,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۰:۴۶",
-          "lastPing": 1789987574750
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789987574750",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۱۰:۴۶"
-        },
-        {
-          "id": "msg_join_1789987574750",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۱۰:۴۶"
-        }
-      ],
-      "createdAt": "2026-09-21T10:46:14.750Z"
-    },
-    {
-      "id": "room_hg1fqm",
-      "name": "اتاق تمرکز و مطالعه مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789987047464,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۰:۳۷",
-          "lastPing": 1789987047464
-        },
-        {
-          "userId": "usr_1789987047461_hq4g",
-          "userName": "رضا",
-          "isHost": false,
-          "joinedAt": "۱۰:۳۷",
-          "lastPing": 1789987047467
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789987047464",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز و مطالعه مشترک» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۱۰:۳۷"
-        },
-        {
-          "id": "msg_join_1789987047467",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "رضا به اتاق پیوست.",
-          "timestamp": "۱۰:۳۷"
-        }
-      ],
-      "createdAt": "2026-09-21T10:37:27.465Z"
-    },
-    {
-      "id": "room_dynamic_1789987047456",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789987047457,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۰:۳۷",
-          "lastPing": 1789987047458
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789987047457",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۱۰:۳۷"
-        },
-        {
-          "id": "msg_join_1789987047458",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۱۰:۳۷"
-        }
-      ],
-      "createdAt": "2026-09-21T10:37:27.458Z"
-    },
-    {
-      "id": "room_foca6o",
-      "name": "اتاق تمرکز و مطالعه مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789986974166,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۰:۳۶",
-          "lastPing": 1789986974166
-        },
-        {
-          "userId": "usr_1789986974163_yfsv",
-          "userName": "رضا",
-          "isHost": false,
-          "joinedAt": "۱۰:۳۶",
-          "lastPing": 1789986974168
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789986974166",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز و مطالعه مشترک» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۱۰:۳۶"
-        },
-        {
-          "id": "msg_join_1789986974168",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "رضا به اتاق پیوست.",
-          "timestamp": "۱۰:۳۶"
-        }
-      ],
-      "createdAt": "2026-09-21T10:36:14.166Z"
-    },
-    {
-      "id": "room_dynamic_1789986974159",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789986974160,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۰:۳۶",
-          "lastPing": 1789986974161
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789986974160",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۱۰:۳۶"
-        },
-        {
-          "id": "msg_join_1789986974161",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۱۰:۳۶"
-        }
-      ],
-      "createdAt": "2026-09-21T10:36:14.160Z"
-    },
-    {
-      "id": "room_jeqxnj",
-      "name": "اتاق تمرکز و مطالعه مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789986262661,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۰:۲۴",
-          "lastPing": 1789986262661
-        },
-        {
-          "userId": "usr_1789986262658_b2fe",
-          "userName": "رضا",
-          "isHost": false,
-          "joinedAt": "۱۰:۲۴",
-          "lastPing": 1789986262663
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789986262661",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز و مطالعه مشترک» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۱۰:۲۴"
-        },
-        {
-          "id": "msg_join_1789986262663",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "رضا به اتاق پیوست.",
-          "timestamp": "۱۰:۲۴"
-        }
-      ],
-      "createdAt": "2026-09-21T10:24:22.661Z"
-    },
-    {
-      "id": "room_dynamic_1789986262638",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789986262639,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۰:۲۴",
-          "lastPing": 1789986262640
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789986262639",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۱۰:۲۴"
-        },
-        {
-          "id": "msg_join_1789986262640",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۱۰:۲۴"
-        }
-      ],
-      "createdAt": "2026-09-21T10:24:22.639Z"
-    },
-    {
-      "id": "room_dynamic_1789986235059",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789986235060,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۱۰:۲۳",
-          "lastPing": 1789986235061
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789986235060",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۱۰:۲۳"
-        },
-        {
-          "id": "msg_join_1789986235061",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۱۰:۲۳"
-        }
-      ],
-      "createdAt": "2026-09-21T10:23:55.060Z"
-    },
-    {
-      "id": "room_dynamic_1789984039262",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789984039263,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۹:۴۷",
-          "lastPing": 1789984039264
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789984039263",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۰۹:۴۷"
-        },
-        {
-          "id": "msg_join_1789984039264",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۰۹:۴۷"
-        }
-      ],
-      "createdAt": "2026-09-21T09:47:19.263Z"
-    },
-    {
-      "id": "room_dynamic_1789983202888",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789983202889,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۹:۳۳",
-          "lastPing": 1789983202890
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789983202889",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۰۹:۳۳"
-        },
-        {
-          "id": "msg_join_1789983202890",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۰۹:۳۳"
-        }
-      ],
-      "createdAt": "2026-09-21T09:33:22.889Z"
-    },
-    {
-      "id": "room_dynamic_1789977926020",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789977926020,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۸:۰۵",
-          "lastPing": 1789977926021
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789977926020",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۰۸:۰۵"
-        },
-        {
-          "id": "msg_join_1789977926021",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۰۸:۰۵"
-        }
-      ],
-      "createdAt": "2026-09-21T08:05:26.020Z"
-    },
-    {
-      "id": "اتاق_طراحی_محصول",
-      "name": "اتاق_طراحی_محصول",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789977869613,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۸:۰۴",
-          "lastPing": 1789977869614
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789977869613",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق_طراحی_محصول» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۰۸:۰۴"
-        },
-        {
-          "id": "msg_join_1789977869614",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۰۸:۰۴"
-        }
-      ],
-      "createdAt": "2026-09-21T08:04:29.613Z"
+      "createdAt": "2026-10-10T12:06:13.485Z"
     },
     {
       "id": "room_dev",
-      "name": "اتاق تمرکز مشترک",
+      "name": "اتاق توسعه محصول و برنامه‌نویسی",
       "hostId": "usr_admin_mohusyn",
       "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
+      "focusDuration": 3000,
+      "breakDuration": 600,
+      "timeLeft": 3000,
       "isRunning": false,
       "mode": "focus",
-      "lastUpdated": 1789977869610,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۸:۰۴",
-          "lastPing": 1789977869610
-        }
-      ],
+      "lastUpdated": 1791633973485,
+      "participants": [],
       "messages": [
         {
-          "id": "msg_welcome_1789977869610",
+          "id": "msg_init_2",
           "userId": "system",
           "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۰۸:۰۴"
-        },
-        {
-          "id": "msg_join_1789977869610",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۰۸:۰۴"
+          "text": "اتاق توسعه محصول آماده است. برنامه‌نویسی با بازه‌های ۵۰ دقیقه‌ای! 💻",
+          "timestamp": "۰۹:۰۰"
         }
       ],
-      "createdAt": "2026-09-21T08:04:29.610Z"
-    },
-    {
-      "id": "room_dynamic_1789977853403",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789977853403,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۸:۰۴",
-          "lastPing": 1789977853404
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789977853403",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۰۸:۰۴"
-        },
-        {
-          "id": "msg_join_1789977853404",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۰۸:۰۴"
-        }
-      ],
-      "createdAt": "2026-09-21T08:04:13.403Z"
-    },
-    {
-      "id": "room_dynamic_1789977824509",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789977824510,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۸:۰۳",
-          "lastPing": 1789977824510
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789977824510",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۰۸:۰۳"
-        },
-        {
-          "id": "msg_join_1789977824510",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۰۸:۰۳"
-        }
-      ],
-      "createdAt": "2026-09-21T08:03:44.510Z"
-    },
-    {
-      "id": "room_deepwork",
-      "name": "اتاق تمرکز مشترک",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789977824508,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۸:۰۳",
-          "lastPing": 1789995731839
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789977824508",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تمرکز مشترک» ایجاد شد. به تمرکز تیمی خوش آمدید! 🎯",
-          "timestamp": "۰۸:۰۳"
-        },
-        {
-          "id": "msg_join_1789977824508",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "سید محمدحسین شیخ الاسلامی (Mohusyn) به اتاق پیوست.",
-          "timestamp": "۰۸:۰۳"
-        }
-      ],
-      "createdAt": "2026-09-21T08:03:44.508Z"
-    },
-    {
-      "id": "room_pgeesu",
-      "name": "اتاق تست تمرکز",
-      "hostId": "usr_admin_mohusyn",
-      "hostName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-      "focusDuration": 1500,
-      "breakDuration": 300,
-      "timeLeft": 1500,
-      "isRunning": false,
-      "mode": "focus",
-      "lastUpdated": 1789977099994,
-      "participants": [
-        {
-          "userId": "usr_admin_mohusyn",
-          "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
-          "isHost": true,
-          "joinedAt": "۰۷:۵۱",
-          "lastPing": 1789977099994
-        },
-        {
-          "userId": "usr_1789976752957_icns",
-          "userName": "Test",
-          "isHost": false,
-          "joinedAt": "۰۷:۵۱",
-          "lastPing": 1789977100001
-        }
-      ],
-      "messages": [
-        {
-          "id": "msg_welcome_1789977099994",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "اتاق «اتاق تست تمرکز» توسط سید محمدحسین شیخ الاسلامی (Mohusyn) ایجاد شد. خوش آمدید!",
-          "timestamp": "۰۷:۵۱"
-        },
-        {
-          "id": "msg_join_1789977100001",
-          "userId": "system",
-          "userName": "سیستم",
-          "text": "Test به اتاق پیوست.",
-          "timestamp": "۰۷:۵۱"
-        }
-      ],
-      "createdAt": "2026-09-21T07:51:39.994Z"
+      "createdAt": "2026-10-10T12:06:13.485Z"
     }
   ],
+  "focusRooms": [],
   "projects": [],
   "goals": [],
   "dailyNotes": [
     {
-      "id": "note_1789976262268_oys1",
+      "id": "note_1791227196613_qm1y",
       "userId": "usr_admin_mohusyn",
       "date": "2026-09-21",
       "content": "امروز جلسات تیمی فشرده بود اما کارهای اصلی با دقت انجام شد.",
@@ -2024,12 +576,12 @@
         "water",
         "workout"
       ],
-      "updatedAt": "2026-09-21T13:02:11.714Z"
+      "updatedAt": "2026-10-05T19:06:52.085Z"
     }
   ],
   "personalityResults": [
     {
-      "id": "pers_1789976262306_ju6y",
+      "id": "pers_1791227196677_t4dc",
       "userId": "usr_admin_mohusyn",
       "primaryType": "استراتژیست تحلیلی (Architect)",
       "scores": {
@@ -2042,137 +594,231 @@
         "اختصاص بلوک‌های تمرکز عمیق ۹۰ دقیقه‌ای در ساعات آغازین صبح",
         "حذف اعلان‌های پیام‌رسان‌ها در زمان کار با کد و طراحی معماری"
       ],
-      "completedAt": "2026-09-21T13:02:11.794Z"
+      "completedAt": "2026-10-05T19:06:52.157Z"
     }
   ],
   "globalSettings": {
+    "appName": "بگ تایم",
     "jobCategories": [
       "مهندس هوش مصنوعی و یادگیری عمیق",
       "مشاور حقوقی و مالکیت فکری",
       "متخصص DevOps و کلود"
     ],
-    "updatedAt": "2026-09-21T13:02:11.872Z"
+    "updatedAt": "2026-10-05T19:06:52.305Z",
+    "baleBot": {
+      "enabled": true,
+      "token": "1002345678:ABCdefGHIjklMNOpqrSTUvwxYZ_12345678",
+      "botUsername": "BagTime_Bot",
+      "verifyOnRegister": true,
+      "sendNotifications": true,
+      "allowTaskCreation": true
+    },
+    "broadcastNotice": {
+      "enabled": true,
+      "title": "جلسه اضطراری توسعه فنی",
+      "message": "تمامی اعضا راس ساعت ۱۷ در اتاق تمرکز حضور به هم رسانند.",
+      "type": "urgent"
+    },
+    "enforcedFont": "cairo",
+    "defaultDailyFocusMinutes": 120,
+    "workHoursPolicy": {
+      "start": "08:00",
+      "end": "16:30"
+    },
+    "roomPolicy": {
+      "allowUserRoomCreation": true,
+      "allowPublicChat": true
+    },
+    "dailyMantra": "تمرکز تیمی حداکثری و تحقق اهداف فصلی",
+    "texts": {
+      "appName": ""
+    }
   },
   "custom_fonts": [
     {
-      "id": "font_1789977853398_crma",
+      "id": "font_1791227196704_awxt",
       "name": "ساحل بولد سفارشی",
       "family": "SahelBoldCustom",
       "fontUrl": "/fonts/Sahel-Bold.woff2",
       "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
       "description": "فونت آپلود شده در تست یکپارچه",
       "isCustom": true,
-      "createdAt": "2026-09-21T08:04:13.398Z"
+      "createdAt": "2026-10-05T19:06:36.704Z"
     },
     {
-      "id": "font_1789977926015_ny3n",
+      "id": "font_1791227212180_5f6w",
       "name": "ساحل بولد سفارشی",
       "family": "SahelBoldCustom",
       "fontUrl": "/fonts/Sahel-Bold.woff2",
       "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
       "description": "فونت آپلود شده در تست یکپارچه",
       "isCustom": true,
-      "createdAt": "2026-09-21T08:05:26.015Z"
+      "createdAt": "2026-10-05T19:06:52.180Z"
     },
     {
-      "id": "font_1789983202882_3l10",
-      "name": "ساحل بولد سفارشی",
-      "family": "SahelBoldCustom",
-      "fontUrl": "/fonts/Sahel-Bold.woff2",
-      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
-      "description": "فونت آپلود شده در تست یکپارچه",
+      "id": "font_1791228009034_4hzi",
+      "name": "Test Font",
+      "family": "TestFont",
+      "fontUrl": "/fonts/testfont.woff2",
+      "dataUrl": "data:font/woff2;base64,d09GMgABAAAAAA...sample...",
+      "description": "Testing font upload",
       "isCustom": true,
-      "createdAt": "2026-09-21T09:33:22.882Z"
-    },
-    {
-      "id": "font_1789984039257_83y9",
-      "name": "ساحل بولد سفارشی",
-      "family": "SahelBoldCustom",
-      "fontUrl": "/fonts/Sahel-Bold.woff2",
-      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
-      "description": "فونت آپلود شده در تست یکپارچه",
-      "isCustom": true,
-      "createdAt": "2026-09-21T09:47:19.257Z"
-    },
-    {
-      "id": "font_1789986235054_86po",
-      "name": "ساحل بولد سفارشی",
-      "family": "SahelBoldCustom",
-      "fontUrl": "/fonts/Sahel-Bold.woff2",
-      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
-      "description": "فونت آپلود شده در تست یکپارچه",
-      "isCustom": true,
-      "createdAt": "2026-09-21T10:23:55.054Z"
-    },
-    {
-      "id": "font_1789986262632_los1",
-      "name": "ساحل بولد سفارشی",
-      "family": "SahelBoldCustom",
-      "fontUrl": "/fonts/Sahel-Bold.woff2",
-      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
-      "description": "فونت آپلود شده در تست یکپارچه",
-      "isCustom": true,
-      "createdAt": "2026-09-21T10:24:22.632Z"
-    },
-    {
-      "id": "font_1789986974153_s47r",
-      "name": "ساحل بولد سفارشی",
-      "family": "SahelBoldCustom",
-      "fontUrl": "/fonts/Sahel-Bold.woff2",
-      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
-      "description": "فونت آپلود شده در تست یکپارچه",
-      "isCustom": true,
-      "createdAt": "2026-09-21T10:36:14.153Z"
-    },
-    {
-      "id": "font_1789987047448_l4y8",
-      "name": "ساحل بولد سفارشی",
-      "family": "SahelBoldCustom",
-      "fontUrl": "/fonts/Sahel-Bold.woff2",
-      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
-      "description": "فونت آپلود شده در تست یکپارچه",
-      "isCustom": true,
-      "createdAt": "2026-09-21T10:37:27.448Z"
-    },
-    {
-      "id": "font_1789987574742_s4au",
-      "name": "ساحل بولد سفارشی",
-      "family": "SahelBoldCustom",
-      "fontUrl": "/fonts/Sahel-Bold.woff2",
-      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
-      "description": "فونت آپلود شده در تست یکپارچه",
-      "isCustom": true,
-      "createdAt": "2026-09-21T10:46:14.742Z"
-    },
-    {
-      "id": "font_1789989601345_7vif",
-      "name": "ساحل بولد سفارشی",
-      "family": "SahelBoldCustom",
-      "fontUrl": "/fonts/Sahel-Bold.woff2",
-      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
-      "description": "فونت آپلود شده در تست یکپارچه",
-      "isCustom": true,
-      "createdAt": "2026-09-21T11:20:01.345Z"
-    },
-    {
-      "id": "font_1789991185792_hwe0",
-      "name": "ساحل بولد سفارشی",
-      "family": "SahelBoldCustom",
-      "fontUrl": "/fonts/Sahel-Bold.woff2",
-      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
-      "description": "فونت آپلود شده در تست یکپارچه",
-      "isCustom": true,
-      "createdAt": "2026-09-21T11:46:25.792Z"
-    },
-    {
-      "id": "font_1789995731831_3scx",
-      "name": "ساحل بولد سفارشی",
-      "family": "SahelBoldCustom",
-      "fontUrl": "/fonts/Sahel-Bold.woff2",
-      "dataUrl": "data:font/woff2;base64,ZDA5R01nQUJBQUFBQUFZQUF3QUFBQUFBRGVBQS4uLg==",
-      "description": "فونت آپلود شده در تست یکپارچه",
-      "isCustom": true,
-      "createdAt": "2026-09-21T13:02:11.831Z"
+      "createdAt": "2026-10-05T19:20:09.034Z"
     }
-  ]
+  ],
+  "friendships": [
+    {
+      "id": "fs_1791227196887_nbuk",
+      "user1Id": "usr_admin_mohusyn",
+      "user2Id": "usr_1791227196878_non2",
+      "createdAt": "2026-10-05T19:06:36.887Z"
+    },
+    {
+      "id": "fs_1791227212384_7oxn",
+      "user1Id": "usr_admin_mohusyn",
+      "user2Id": "usr_1791227212375_2jva",
+      "createdAt": "2026-10-05T19:06:52.384Z"
+    }
+  ],
+  "friend_requests": [
+    {
+      "id": "freq_1791227196882_4azg",
+      "fromUserId": "usr_admin_mohusyn",
+      "fromUserName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "fromUserUsername": "Mohusyn",
+      "fromUserAvatar": null,
+      "toUserId": "usr_1791227196878_non2",
+      "status": "accepted",
+      "createdAt": "2026-10-05T19:06:36.882Z"
+    },
+    {
+      "id": "freq_1791227212379_33ok",
+      "fromUserId": "usr_admin_mohusyn",
+      "fromUserName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "fromUserUsername": "Mohusyn",
+      "fromUserAvatar": null,
+      "toUserId": "usr_1791227212375_2jva",
+      "status": "accepted",
+      "createdAt": "2026-10-05T19:06:52.379Z"
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg_1791227196898_4e85",
+      "senderId": "usr_admin_mohusyn",
+      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "senderAvatar": null,
+      "receiverId": "usr_1791227196894_rtu6",
+      "text": "سلام سارا، به تیم بگ تایم خوش آمدید!",
+      "createdAt": "2026-10-05T19:06:36.898Z",
+      "read": false
+    },
+    {
+      "id": "msg_1791227212398_2h0p",
+      "senderId": "usr_admin_mohusyn",
+      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "senderAvatar": null,
+      "receiverId": "usr_1791227212392_2xgu",
+      "text": "سلام سارا، به تیم بگ تایم خوش آمدید!",
+      "createdAt": "2026-10-05T19:06:52.398Z",
+      "read": false
+    },
+    {
+      "id": "msg_1791227217553_3pll",
+      "senderId": "usr_admin_mohusyn",
+      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)",
+      "senderAvatar": null,
+      "receiverId": "usr_admin_mohusyn",
+      "text": "سلام تست",
+      "createdAt": "2026-10-05T19:06:57.553Z",
+      "read": false
+    }
+  ],
+  "project_messages": [],
+  "notifications": [
+    {
+      "id": "notif_msg_1791227217553_5y1w",
+      "userId": "usr_admin_mohusyn",
+      "title": "پیام جدید از سید محمدحسین شیخ الاسلامی (Mohusyn) 💬",
+      "message": "سلام تست",
+      "type": "message",
+      "timestamp": "2026-10-05T19:06:57.553Z",
+      "read": false,
+      "senderId": "usr_admin_mohusyn",
+      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)"
+    },
+    {
+      "id": "notif_msg_1791227212398_7rrx",
+      "userId": "usr_1791227212392_2xgu",
+      "title": "پیام جدید از سید محمدحسین شیخ الاسلامی (Mohusyn) 💬",
+      "message": "سلام سارا، به تیم بگ تایم خوش آمدید!",
+      "type": "message",
+      "timestamp": "2026-10-05T19:06:52.398Z",
+      "read": false,
+      "senderId": "usr_admin_mohusyn",
+      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)"
+    },
+    {
+      "id": "notif_freq_freq_1791227212379_33ok",
+      "userId": "usr_1791227212375_2jva",
+      "title": "درخواست دوستی و همکاری جدید 👥",
+      "message": "سید محمدحسین شیخ الاسلامی (Mohusyn) برای شما درخواست همکاری ارسال کرد.",
+      "type": "friend",
+      "timestamp": "2026-10-05T19:06:52.379Z",
+      "read": false,
+      "senderId": "usr_admin_mohusyn",
+      "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)"
+    },
+    {
+      "id": "notif_msg_1791227196898_lanh",
+      "userId": "usr_1791227196894_rtu6",
+      "title": "پیام جدید از سید محمدحسین شیخ الاسلامی (Mohusyn) 💬",
+      "message": "سلام سارا، به تیم بگ تایم خوش آمدید!",
+      "type": "message",
+      "timestamp": "2026-10-05T19:06:36.898Z",
+      "read": false,
+      "senderId": "usr_admin_mohusyn",
+      "senderName": "سید محمدحسین شیخ الاسلامی (Mohusyn)"
+    },
+    {
+      "id": "notif_freq_freq_1791227196882_4azg",
+      "userId": "usr_1791227196878_non2",
+      "title": "درخواست دوستی و همکاری جدید 👥",
+      "message": "سید محمدحسین شیخ الاسلامی (Mohusyn) برای شما درخواست همکاری ارسال کرد.",
+      "type": "friend",
+      "timestamp": "2026-10-05T19:06:36.882Z",
+      "read": false,
+      "senderId": "usr_admin_mohusyn",
+      "userName": "سید محمدحسین شیخ الاسلامی (Mohusyn)"
+    }
+  ],
+  "payments": [],
+  "sessions": [
+    {
+      "id": "sess_7573725f6164",
+      "userId": "usr_admin_mohusyn",
+      "token": "dXNyX2FkbWluX21vaHVzeW46MTc5MTIyNzE5NjU3NA==",
+      "device": "رایانه شخصی (PC)",
+      "browser": "مرورگر وب",
+      "isMobile": false,
+      "ip": "127.0.0.1",
+      "location": "تهران",
+      "createdAt": "2026-10-05T19:06:36.575Z",
+      "lastActive": "2026-10-09T12:31:39.273Z"
+    },
+    {
+      "id": "sess_7573725f3137",
+      "userId": "usr_1791227196776_104a",
+      "token": "dXNyXzE3OTEyMjcxOTY3NzZfMTA0YToxNzkxMjI3MTk2Nzg3",
+      "device": "رایانه شخصی (PC)",
+      "browser": "مرورگر وب",
+      "isMobile": false,
+      "ip": "127.0.0.1",
+      "location": "اصفهان",
+      "createdAt": "2026-10-05T19:06:36.787Z",
+      "lastActive": "2026-10-05T19:06:52.395Z"
+    }
+  ],
+  "revoked_tokens": [],
+  "bale_login_tickets": {}
 }

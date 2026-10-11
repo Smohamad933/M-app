@@ -1,7 +1,7 @@
 <?php
 /**
  * TaskRooz - Server Health & Diagnostics (MySQL + Server Info)
- * Access at: https://task.mohusyn.ir/api/health.php
+ * Access at: https://bagtime.negahm.ir/api/health.php
  */
 require_once __DIR__ . '/config.php';
 
@@ -26,6 +26,7 @@ echo json_encode([
     'php_version' => PHP_VERSION,
     'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
     'database' => [
+        'installed' => $db->isInstalled(),
         'engine' => $db->mode,
         'mysql_connected' => $isMysqlConnected,
         'db_host' => DB_HOST,
