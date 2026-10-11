@@ -1516,6 +1516,80 @@ test('Bale Authentication Security: Deleted users get their own account, never M
   assert(!adminMe.body.user.baleUsername, 'Admin has NO baleUsername assigned');
 });
 
+test('Team Project Cross-Member Task Assignment, Visibility & Toggle', async () => {
+  // 1. Create User A
+  const uA = 'member_a_' + Date.now();
+  const regA = await request('POST', '/api/auth/register', {
+    username: uA,
+    password: 'Password123!',
+    name: 'کاربر الف',
+    phone: '0912' + Math.floor(1000000 + Math.random() * 9000000),
+  });
+  assert(regA.status === 201, 'User A registered');
+  const tokenA = regA.body.token;
+  const userA = regA.body.user;
+
+  // 2. Create User B
+  const uB = 'member_b_' + Date.now();
+  const regB = await request('POST', '/api/auth/register', {
+    username: uB,
+    password: 'Password123!',
+    name: 'کاربر ب',
+    phone: '0912' + Math.floor(1000000 + Math.random() * 9000000),
+  });
+  assert(regB.status === 201, 'User B registered');
+  const tokenB = regB.body.token;
+  const userB = regB.body.user;
+
+  // 3. User A creates a team project with User B
+  const projRes = await request('POST', '/api/projects', {
+    name: 'پروژه مشترک آلفا',
+    description: 'توسعه فاز اول تیمی',
+    memberIds: [userA.id, userB.id],
+  }, { Authorization: `Bearer ${tokenA}` });
+  assert(projRes.status === 201, `Project created, got ${projRes.status}`);
+  const project = projRes.body.project;
+  assert(project.memberIds.includes(userB.id), 'User B is in project');
+
+  // 4. User A creates a task in the project and assigns it to User B
+  const taskRes = await request('POST', '/api/tasks', {
+    title: 'بررسی کد و ادغام تغییرات',
+    projectId: project.id,
+    userId: userB.id,
+    assignedTo: userB.id,
+    date: '2026-10-15',
+  }, { Authorization: `Bearer ${tokenA}` });
+  assert(taskRes.status === 201, `Task created, got ${taskRes.status}`);
+  const createdTask = taskRes.body.task;
+  assert(createdTask.projectId === project.id, 'Task belongs to project');
+  assert(createdTask.assignedTo === userB.id, 'Task assigned to User B');
+
+  // 5. User B checks notifications and receives assignment notification
+  const notifRes = await request('GET', '/api/notifications', null, { Authorization: `Bearer ${tokenB}` });
+  assert(notifRes.status === 200, 'User B can fetch notifications');
+  const hasNotif = (notifRes.body.notifications || []).some((n) => n.title && n.title.includes('تخصیص تسک تیمی'));
+  assert(hasNotif, 'User B received in-app task assignment notification');
+
+  // 6. User B fetches their own tasks list without filtering - must include the team project task!
+  const bTasksRes = await request('GET', '/api/tasks', null, { Authorization: `Bearer ${tokenB}` });
+  assert(bTasksRes.status === 200, 'User B fetched tasks');
+  const foundTask = bTasksRes.body.tasks.find((t) => t.id === createdTask.id);
+  assert(foundTask, 'User B sees the team project task in their task list');
+  assert(foundTask.assignedToName === 'کاربر ب', 'Task has assignedToName enriched');
+
+  // 7. User B toggles the task to completed
+  const toggleRes = await request('PATCH', `/api/tasks?id=${createdTask.id}&action=toggle`, {}, { Authorization: `Bearer ${tokenB}` });
+  assert(toggleRes.status === 200, `User B toggled task, got ${toggleRes.status}`);
+  assert(toggleRes.body.completed === true, 'Task completed status is true');
+
+  // 8. User A checks project tasks and sees it completed
+  const aProjTasks = await request('GET', `/api/tasks?project_id=${project.id}`, null, { Authorization: `Bearer ${tokenA}` });
+  assert(aProjTasks.status === 200, 'User A fetched project tasks');
+  const projTaskForA = aProjTasks.body.tasks.find((t) => t.id === createdTask.id);
+  assert(projTaskForA, 'User A sees the task');
+  assert(projTaskForA.completed === true, 'Task is completed for User A too');
+});
+
 // Run all tests
 async function run() {
   const globalDbPath = path.join(__dirname, 'data', 'db.json');

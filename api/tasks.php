@@ -35,7 +35,35 @@ if ($method === 'GET') {
     $completed = isset($_GET['completed']) ? (bool)$_GET['completed'] : null;
     $projectId = !empty($_GET['project_id']) ? $_GET['project_id'] : null;
 
+    if ($projectId) {
+        $proj = $db->getProjectById($projectId);
+        $isMember = $proj && ($proj['creatorId'] === $currentUser['id'] || in_array($currentUser['id'], $proj['memberIds'] ?? []));
+        if ($isMember || $currentUser['role'] === 'admin') {
+            $targetUserId = null;
+        } else {
+            jsonResponse(['tasks' => []]);
+        }
+    }
+
     $tasks = $db->getTasks($targetUserId, $date, $categoryId, $completed, $projectId);
+
+    // Attach assignedToName
+    $allUsers = $db->getAllUsers();
+    $userMap = [];
+    foreach ($allUsers as $u) {
+        $userMap[$u['id']] = $u['name'] ?? $u['username'];
+        if (!empty($u['username'])) {
+            $userMap[$u['username']] = $u['name'] ?? $u['username'];
+        }
+    }
+    foreach ($tasks as &$t) {
+        $assignedId = $t['assignedTo'] ?? $t['assigned_to'] ?? $t['userId'] ?? $t['user_id'] ?? null;
+        if ($assignedId && isset($userMap[$assignedId])) {
+            $t['assignedToName'] = $userMap[$assignedId];
+        }
+    }
+    unset($t);
+
     jsonResponse(['tasks' => $tasks]);
 }
 
@@ -61,7 +89,15 @@ if ($method === 'POST') {
 
         if ($currentUser['role'] !== 'admin') {
             $existing = $db->getTaskById($id);
-            if ($existing && ($existing['userId'] ?? $existing['user_id'] ?? '') !== $currentUser['id'] && ($existing['userId'] ?? $existing['user_id'] ?? '') !== ($currentUser['username'] ?? '')) {
+            $proj = !empty($existing['projectId']) ? $db->getProjectById($existing['projectId']) : null;
+            $isProjMember = $proj && ($proj['creatorId'] === $currentUser['id'] || in_array($currentUser['id'], $proj['memberIds'] ?? []));
+            $isOwner = $existing && (
+                ($existing['userId'] ?? $existing['user_id'] ?? '') === $currentUser['id'] ||
+                ($existing['assignedTo'] ?? $existing['assigned_to'] ?? '') === $currentUser['id'] ||
+                ($existing['createdBy'] ?? $existing['created_by'] ?? '') === $currentUser['id'] ||
+                ($existing['userId'] ?? $existing['user_id'] ?? '') === ($currentUser['username'] ?? '')
+            );
+            if (!$isProjMember && !$isOwner) {
                 jsonResponse(['error' => 'شما مجاز به ویرایش تسک کاربران دیگر نیستید.'], 403);
             }
         }
@@ -132,7 +168,14 @@ if ($method === 'POST') {
 
         if ($currentUser['role'] !== 'admin') {
             $existing = $db->getTaskById($id);
-            if ($existing && ($existing['userId'] ?? $existing['user_id'] ?? '') !== $currentUser['id'] && ($existing['userId'] ?? $existing['user_id'] ?? '') !== ($currentUser['username'] ?? '')) {
+            $proj = !empty($existing['projectId']) ? $db->getProjectById($existing['projectId']) : null;
+            $isProjCreator = $proj && ($proj['creatorId'] === $currentUser['id']);
+            $isOwner = $existing && (
+                ($existing['userId'] ?? $existing['user_id'] ?? '') === $currentUser['id'] ||
+                ($existing['createdBy'] ?? $existing['created_by'] ?? '') === $currentUser['id'] ||
+                ($existing['userId'] ?? $existing['user_id'] ?? '') === ($currentUser['username'] ?? '')
+            );
+            if (!$isProjCreator && !$isOwner) {
                 jsonResponse(['error' => 'شما مجاز به حذف تسک کاربران دیگر نیستید.'], 403);
             }
         }
@@ -152,13 +195,29 @@ if ($method === 'POST') {
     }
 
     $targetUserId = $currentUser['id'];
+    $projectId = !empty($input['projectId']) ? trim((string)$input['projectId']) : null;
+    $assignedTo = $targetUserId;
+
+    if ($projectId) {
+        $proj = $db->getProjectById($projectId);
+        $isProjMember = $proj && ($proj['creatorId'] === $currentUser['id'] || in_array($currentUser['id'], $proj['memberIds'] ?? []));
+        if ($isProjMember && (!empty($input['userId']) || !empty($input['assignedTo']))) {
+            $candidate = trim((string)(!empty($input['assignedTo']) ? $input['assignedTo'] : $input['userId']));
+            $targetUserId = $candidate;
+            $assignedTo = $candidate;
+        }
+    }
+
     if ($currentUser['role'] === 'admin' && !empty($input['userId'])) {
         $targetUserId = $input['userId'];
+        $assignedTo = !empty($input['assignedTo']) ? $input['assignedTo'] : $targetUserId;
     }
 
     $taskData = [
         'id' => !empty($input['id']) ? trim($input['id']) : null,
         'userId' => $targetUserId,
+        'assignedTo' => $assignedTo,
+        'createdBy' => $currentUser['id'],
         'title' => $title,
         'description' => $input['description'] ?? '',
         'date' => $date,
@@ -166,12 +225,23 @@ if ($method === 'POST') {
         'durationMinutes' => (int)($input['durationMinutes'] ?? 0),
         'priority' => in_array($input['priority'] ?? '', ['high', 'medium', 'low']) ? $input['priority'] : 'medium',
         'categoryId' => $input['categoryId'] ?? 'cat-work',
-        'projectId' => $input['projectId'] ?? null,
+        'projectId' => $projectId,
         'isPinned' => !empty($input['isPinned']) ? 1 : 0,
         'subtasks' => !empty($input['subtasks']) ? $input['subtasks'] : [],
     ];
 
     $created = $db->createTask($taskData);
+
+    // Send notification if assigned to a teammate
+    if ($targetUserId !== $currentUser['id']) {
+        $assignerName = $currentUser['name'] ?? $currentUser['username'] ?? 'هم‌تیمی';
+        $db->addNotification(
+            $targetUserId,
+            'تخصیص تسک تیمی جدید 📋',
+            "{$assignerName} تسک «{$title}» را به شما محول کرد."
+        );
+    }
+
     jsonResponse(['message' => 'تسک با موفقیت اضافه شد.', 'task' => $created], 201);
 }
 
@@ -186,7 +256,15 @@ if ($method === 'PUT') {
 
     if ($currentUser['role'] !== 'admin') {
         $existing = $db->getTaskById($id);
-        if ($existing && ($existing['userId'] ?? $existing['user_id'] ?? '') !== $currentUser['id'] && ($existing['userId'] ?? $existing['user_id'] ?? '') !== ($currentUser['username'] ?? '')) {
+        $proj = !empty($existing['projectId']) ? $db->getProjectById($existing['projectId']) : null;
+        $isProjMember = $proj && ($proj['creatorId'] === $currentUser['id'] || in_array($currentUser['id'], $proj['memberIds'] ?? []));
+        $isOwner = $existing && (
+            ($existing['userId'] ?? $existing['user_id'] ?? '') === $currentUser['id'] ||
+            ($existing['assignedTo'] ?? $existing['assigned_to'] ?? '') === $currentUser['id'] ||
+            ($existing['createdBy'] ?? $existing['created_by'] ?? '') === $currentUser['id'] ||
+            ($existing['userId'] ?? $existing['user_id'] ?? '') === ($currentUser['username'] ?? '')
+        );
+        if (!$isProjMember && !$isOwner) {
             jsonResponse(['error' => 'شما مجاز به ویرایش تسک کاربران دیگر نیستید.'], 403);
         }
     }
@@ -261,6 +339,21 @@ if ($method === 'PATCH') {
         jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
     }
 
+    if ($currentUser['role'] !== 'admin') {
+        $existing = $db->getTaskById($id);
+        $proj = !empty($existing['projectId']) ? $db->getProjectById($existing['projectId']) : null;
+        $isProjMember = $proj && ($proj['creatorId'] === $currentUser['id'] || in_array($currentUser['id'], $proj['memberIds'] ?? []));
+        $isOwner = $existing && (
+            ($existing['userId'] ?? $existing['user_id'] ?? '') === $currentUser['id'] ||
+            ($existing['assignedTo'] ?? $existing['assigned_to'] ?? '') === $currentUser['id'] ||
+            ($existing['createdBy'] ?? $existing['created_by'] ?? '') === $currentUser['id'] ||
+            ($existing['userId'] ?? $existing['user_id'] ?? '') === ($currentUser['username'] ?? '')
+        );
+        if (!$isProjMember && !$isOwner) {
+            jsonResponse(['error' => 'شما مجاز به تغییر این تسک نیستید.'], 403);
+        }
+    }
+
     if ($action === 'toggle') {
         $res = $db->toggleTask($id);
         if ($res) {
@@ -287,7 +380,14 @@ if ($method === 'DELETE') {
 
     if ($currentUser['role'] !== 'admin') {
         $existing = $db->getTaskById($id);
-        if ($existing && ($existing['userId'] ?? $existing['user_id'] ?? '') !== $currentUser['id'] && ($existing['userId'] ?? $existing['user_id'] ?? '') !== ($currentUser['username'] ?? '')) {
+        $proj = !empty($existing['projectId']) ? $db->getProjectById($existing['projectId']) : null;
+        $isProjCreator = $proj && ($proj['creatorId'] === $currentUser['id']);
+        $isOwner = $existing && (
+            ($existing['userId'] ?? $existing['user_id'] ?? '') === $currentUser['id'] ||
+            ($existing['createdBy'] ?? $existing['created_by'] ?? '') === $currentUser['id'] ||
+            ($existing['userId'] ?? $existing['user_id'] ?? '') === ($currentUser['username'] ?? '')
+        );
+        if (!$isProjCreator && !$isOwner) {
             jsonResponse(['error' => 'شما مجاز به حذف تسک کاربران دیگر نیستید.'], 403);
         }
     }

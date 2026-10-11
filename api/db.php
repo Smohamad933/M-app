@@ -1898,13 +1898,32 @@ class TaskRoozDB {
                 if (!empty($userId)) {
                     $u = $this->getUserById($userId);
                     if (!$u) $u = $this->getUserByUsername($userId);
-                    if ($u) {
-                        $sql .= " AND (t.user_id = ? OR t.user_id = ?)";
-                        $params[] = $u['id'];
-                        $params[] = $u['username'];
+                    $uId = $u ? $u['id'] : $userId;
+                    $uName = $u ? ($u['username'] ?? '') : '';
+
+                    // Collect project IDs where user is creator or member
+                    $userProjIds = [];
+                    try {
+                        $pStmt = $this->pdo->prepare("SELECT id, creator_id, member_ids_json FROM projects");
+                        $pStmt->execute();
+                        foreach ($pStmt->fetchAll(PDO::FETCH_ASSOC) as $pr) {
+                            $mIds = !empty($pr['member_ids_json']) ? json_decode($pr['member_ids_json'], true) : [];
+                            if ($pr['creator_id'] === $uId || in_array($uId, $mIds) || ($uName && ($pr['creator_id'] === $uName || in_array($uName, $mIds)))) {
+                                $userProjIds[] = $pr['id'];
+                            }
+                        }
+                    } catch (Exception $ePr) {}
+
+                    if (!empty($userProjIds)) {
+                        $inQ = implode(',', array_fill(0, count($userProjIds), '?'));
+                        $sql .= " AND (t.user_id = ? OR t.user_id = ? OR t.project_id IN ({$inQ}))";
+                        $params[] = $uId;
+                        $params[] = $uName ?: $uId;
+                        foreach ($userProjIds as $pid) $params[] = $pid;
                     } else {
-                        $sql .= " AND t.user_id = ?";
-                        $params[] = $userId;
+                        $sql .= " AND (t.user_id = ? OR t.user_id = ?)";
+                        $params[] = $uId;
+                        $params[] = $uName ?: $uId;
                     }
                 }
                 if (!empty($date)) { $sql .= " AND t.date = ?"; $params[] = $date; }
@@ -1948,9 +1967,22 @@ class TaskRoozDB {
             if (!$u) $u = $this->getUserByUsername($userId);
             $uId = $u ? $u['id'] : $userId;
             $uName = $u ? ($u['username'] ?? '') : '';
-            $res = array_filter($res, function($t) use ($userId, $uId, $uName) {
+            $userProjIds = [];
+            foreach (($this->data['projects'] ?? []) as $p) {
+                $pCreator = $p['creatorId'] ?? ($p['creator_id'] ?? '');
+                $pMembers = $p['memberIds'] ?? ($p['member_ids'] ?? []);
+                if ($pCreator === $uId || in_array($uId, $pMembers) || ($uName && ($pCreator === $uName || in_array($uName, $pMembers)))) {
+                    $userProjIds[] = $p['id'];
+                }
+            }
+            $res = array_filter($res, function($t) use ($userId, $uId, $uName, $userProjIds) {
                 $tUid = $t['userId'] ?? $t['user_id'] ?? '';
-                return $tUid === $userId || ($uId && $tUid === $uId) || ($uName && $tUid === $uName);
+                $tAssigned = $t['assignedTo'] ?? $t['assigned_to'] ?? '';
+                $tProj = $t['projectId'] ?? $t['project_id'] ?? '';
+                if ($tUid === $userId || ($uId && $tUid === $uId) || ($uName && $tUid === $uName)) return true;
+                if ($tAssigned === $userId || ($uId && $tAssigned === $uId) || ($uName && $tAssigned === $uName)) return true;
+                if (!empty($tProj) && in_array($tProj, $userProjIds)) return true;
+                return false;
             });
         }
         if (!empty($date)) {

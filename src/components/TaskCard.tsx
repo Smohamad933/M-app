@@ -25,6 +25,7 @@ import {
   FolderKanban,
   AlertTriangle,
   Repeat,
+  UserCheck,
 } from 'lucide-react';
 
 interface TaskCardProps {
@@ -52,6 +53,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     setActiveFocusTaskId,
     setActiveTab,
     currentUser,
+    users,
     openIncompleteModal,
     calendarType,
     updateTask,
@@ -389,6 +391,29 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
             >
               <FolderKanban className="w-3 h-3" />
               {project?.name || task.projectName}
+            </span>
+          )}
+
+          {/* Assigned Teammate Badge */}
+          {task.projectId && (
+            <span
+              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                (task.assignedTo === currentUser?.id || task.userId === currentUser?.id)
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                  : 'bg-indigo-50 text-indigo-700 border-indigo-200/80'
+              }`}
+              title={
+                task.assignedTo === currentUser?.id || task.userId === currentUser?.id
+                  ? 'این تسک به شما محول شده است'
+                  : `محول شده به ${task.assignedToName || 'هم‌تیمی'}`
+              }
+            >
+              <UserCheck className="w-3 h-3" />
+              <span>
+                {task.assignedTo === currentUser?.id || task.userId === currentUser?.id
+                  ? 'محول شده به شما'
+                  : (task.assignedToName || users.find((u) => u.id === (task.assignedTo || task.userId))?.name || 'هم‌تیمی')}
+              </span>
             </span>
           )}
 

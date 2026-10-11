@@ -52,6 +52,8 @@ interface DBUser {
 interface DBTask {
   id: string;
   userId: string;
+  assignedTo?: string;
+  createdBy?: string;
   projectId?: string | null;
   projectName?: string;
   goalId?: string;
@@ -2213,10 +2215,21 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
       if (targetUserId) {
         filtered = filtered.filter(
-          (t) => t.userId === targetUserId || (t as any).user_id === targetUserId
+          (t) => t.userId === targetUserId || (t as any).user_id === targetUserId || (t as any).assignedTo === targetUserId
         );
       } else if (currentUser.role !== 'admin' && currentUser.username.toLowerCase() !== 'mohusyn') {
-        filtered = filtered.filter((t) => t.userId === currentUser.id);
+        const userProjectIds = new Set(
+          (db.projects || [])
+            .filter((p) => p.creatorId === currentUser.id || p.memberIds?.includes(currentUser.id))
+            .map((p) => p.id)
+        );
+        filtered = filtered.filter((t) => {
+          if (t.userId === currentUser.id || t.userId === currentUser.username) return true;
+          if ((t as any).assignedTo === currentUser.id) return true;
+          if ((t as any).createdBy === currentUser.id) return true;
+          if (t.projectId && userProjectIds.has(t.projectId)) return true;
+          return false;
+        });
       }
 
       const dateFilter = urlObj.searchParams.get('date');
@@ -2236,10 +2249,12 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       // Populate user name and project name
       const result = filtered.map((t) => {
         const u = db.users.find((user) => user.id === t.userId);
+        const assignee = (t as any).assignedTo ? db.users.find((user) => user.id === (t as any).assignedTo) : null;
         const p = t.projectId ? db.projects.find((proj) => proj.id === t.projectId) : null;
         return {
           ...t,
           userName: u?.name || 'کاربر',
+          assignedToName: assignee?.name || u?.name || '',
           projectName: p?.name || '',
         };
       });
@@ -2259,7 +2274,9 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           return true;
         }
         const task = db.tasks.find((t) => t.id === id);
-        if (task && currentUser.role !== 'admin' && task.userId !== currentUser.id) {
+        const isProjectCreator = task?.projectId && db.projects.some(p => p.id === task.projectId && p.creatorId === currentUser.id);
+        const canDelete = currentUser.role === 'admin' || currentUser.username.toLowerCase() === 'mohusyn' || task?.userId === currentUser.id || (task as any)?.createdBy === currentUser.id || isProjectCreator;
+        if (task && !canDelete) {
           sendJson(res, { error: 'عدم دسترسی.' }, 403);
           return true;
         }
@@ -2274,6 +2291,18 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         const task = db.tasks.find((t) => t.id === id);
         if (!task) {
           sendJson(res, { error: 'تسک پیدا نشد.' }, 404);
+          return true;
+        }
+        const canToggle =
+          currentUser.role === 'admin' ||
+          currentUser.username.toLowerCase() === 'mohusyn' ||
+          task.userId === currentUser.id ||
+          (task as any).assignedTo === currentUser.id ||
+          (task as any).createdBy === currentUser.id ||
+          (task.projectId && db.projects.some(p => p.id === task.projectId && (p.creatorId === currentUser.id || p.memberIds?.includes(currentUser.id))));
+
+        if (!canToggle) {
+          sendJson(res, { error: 'عدم دسترسی.' }, 403);
           return true;
         }
         task.completed = !task.completed;
@@ -2297,6 +2326,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           currentUser.username.toLowerCase() === 'mohusyn' ||
           existing.userId === currentUser.id ||
           existing.userId === currentUser.username ||
+          (existing as any).assignedTo === currentUser.id ||
+          (existing as any).createdBy === currentUser.id ||
           String((currentUser as any).numericId || '') === String(existing.userId) ||
           (existing.projectId && db.projects.some((p) => p.id === existing.projectId && (p.creatorId === currentUser.id || p.memberIds?.includes(currentUser.id))));
 
@@ -2305,11 +2336,20 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           return true;
         }
 
+        let updatedUserId = existing.userId;
+        if (body.userId || body.assignedTo) {
+          const candidate = String(body.userId || body.assignedTo).trim();
+          if (currentUser.role === 'admin' || isOwnerOrAdmin) {
+            updatedUserId = candidate;
+          }
+        }
+
         db.tasks[taskIndex] = {
           ...existing,
           ...body,
           projectId: body.projectId !== undefined ? body.projectId : existing.projectId,
-          userId: currentUser.role === 'admin' && body.userId ? body.userId : existing.userId,
+          userId: updatedUserId,
+          assignedTo: body.assignedTo || updatedUserId,
         };
 
         writeDb(db);
@@ -2324,8 +2364,26 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       }
 
       let targetUserId = currentUser.id;
-      if (currentUser.role === 'admin' && body.userId) {
-        targetUserId = body.userId;
+      const projectId = body.projectId || null;
+      const project = projectId ? db.projects.find((p) => p.id === projectId) : null;
+      const isProjectMember = project && (
+        project.creatorId === currentUser.id ||
+        project.memberIds?.includes(currentUser.id)
+      );
+
+      if (body.userId || body.assignedTo) {
+        const candidateAssignee = String(body.userId || body.assignedTo).trim();
+        if (currentUser.role === 'admin' || currentUser.username.toLowerCase() === 'mohusyn') {
+          targetUserId = candidateAssignee;
+        } else if (isProjectMember && project) {
+          const isMemberValid =
+            candidateAssignee === project.creatorId ||
+            project.memberIds?.includes(candidateAssignee) ||
+            db.users.some(u => (u.id === candidateAssignee || u.username === candidateAssignee) && (project.memberIds?.includes(u.id) || project.creatorId === u.id));
+          if (isMemberValid) {
+            targetUserId = candidateAssignee;
+          }
+        }
       }
 
       const targetDate = body.date || new Date().toISOString().slice(0, 10);
@@ -2355,12 +2413,11 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
 
-      const projectId = body.projectId || null;
-      const project = projectId ? db.projects.find((p) => p.id === projectId) : null;
-
       const newTask: DBTask = {
         id: reqId || ('task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)),
         userId: targetUserId,
+        assignedTo: targetUserId,
+        createdBy: currentUser.id,
         projectId,
         title,
         description: body.description?.trim(),
@@ -2377,6 +2434,21 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       };
 
       db.tasks.unshift(newTask);
+
+      // Notification to assigned user if different from creator
+      if (targetUserId !== currentUser.id) {
+        if (!(db as any).notifications) (db as any).notifications = [];
+        (db as any).notifications.unshift({
+          id: 'notif_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          userId: targetUserId,
+          title: 'تخصیص تسک تیمی جدید 📋',
+          message: `${currentUser.name} تسک «${title}» را ${project ? `در پروژه «${project.name}» ` : ''}به شما محول کرد.`,
+          type: 'task',
+          read: false,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
       writeDb(db);
 
       const u = db.users.find((user) => user.id === targetUserId);
@@ -2406,6 +2478,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         currentUser.username.toLowerCase() === 'mohusyn' ||
         existing.userId === currentUser.id ||
         existing.userId === currentUser.username ||
+        (existing as any).assignedTo === currentUser.id ||
+        (existing as any).createdBy === currentUser.id ||
         String((currentUser as any).numericId || '') === String(existing.userId) ||
         (existing.projectId && db.projects.some((p) => p.id === existing.projectId && (p.creatorId === currentUser.id || p.memberIds?.includes(currentUser.id))));
 
@@ -2414,11 +2488,20 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
 
+      let updatedUserId = existing.userId;
+      if (body.userId || body.assignedTo) {
+        const candidate = String(body.userId || body.assignedTo).trim();
+        if (currentUser.role === 'admin' || isOwnerOrAdmin) {
+          updatedUserId = candidate;
+        }
+      }
+
       db.tasks[taskIndex] = {
         ...existing,
         ...body,
         projectId: body.projectId !== undefined ? body.projectId : existing.projectId,
-        userId: currentUser.role === 'admin' && body.userId ? body.userId : existing.userId,
+        userId: updatedUserId,
+        assignedTo: body.assignedTo || updatedUserId,
       };
 
       writeDb(db);
@@ -2434,6 +2517,19 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       const task = db.tasks.find((t) => t.id === id);
       if (!task) {
         sendJson(res, { error: 'تسک پیدا نشد.' }, 404);
+        return true;
+      }
+
+      const canToggle =
+        currentUser.role === 'admin' ||
+        currentUser.username.toLowerCase() === 'mohusyn' ||
+        task.userId === currentUser.id ||
+        (task as any).assignedTo === currentUser.id ||
+        (task as any).createdBy === currentUser.id ||
+        (task.projectId && db.projects.some(p => p.id === task.projectId && (p.creatorId === currentUser.id || p.memberIds?.includes(currentUser.id))));
+
+      if (!canToggle) {
+        sendJson(res, { error: 'عدم دسترسی.' }, 403);
         return true;
       }
 
@@ -2463,7 +2559,9 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
 
-      if (currentUser.role !== 'admin' && task.userId !== currentUser.id) {
+      const isProjectCreator = task.projectId && db.projects.some(p => p.id === task.projectId && p.creatorId === currentUser.id);
+      const canDelete = currentUser.role === 'admin' || task.userId === currentUser.id || (task as any).createdBy === currentUser.id || isProjectCreator;
+      if (!canDelete) {
         sendJson(res, { error: 'عدم دسترسی.' }, 403);
         return true;
       }
