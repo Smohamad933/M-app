@@ -379,6 +379,8 @@ export const UserManagementView: React.FC = () => {
     verifyOnRegister: true,
     sendNotifications: true,
     allowTaskCreation: true,
+    adminNotificationUserId: '',
+    adminNotificationChatId: '',
   };
   const [baleForm, setBaleForm] = useState(initialBale);
   const [baleTesting, setBaleTesting] = useState(false);
@@ -1478,46 +1480,51 @@ export const UserManagementView: React.FC = () => {
                             </span>
                           )}
 
-                          {/* Phone */}
-                          {u.phone ? (
-                            <a
-                              href={`tel:${u.phone}`}
-                              className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-lg border border-emerald-800/40 hover:bg-emerald-900/40 transition-colors"
-                              title="تماس با شماره کاربر"
-                            >
-                              <Phone className="w-3 h-3 text-emerald-400 shrink-0" />
-                              <span dir="ltr">{u.phone}</span>
-                            </a>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 bg-zinc-900/60 px-2 py-0.5 rounded-lg border border-zinc-800/80" title="شماره تماس ثبت نشده">
-                              <Phone className="w-3 h-3 text-zinc-600 shrink-0" />
-                              <span>بدون شماره</span>
-                            </span>
-                          )}
+                          {/* Regular User Contact Info (Admin has no personal contact info tied to system account) */}
+                          {u.role !== 'admin' && (
+                            <>
+                              {/* Phone */}
+                              {u.phone ? (
+                                <a
+                                  href={`tel:${u.phone}`}
+                                  className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-lg border border-emerald-800/40 hover:bg-emerald-900/40 transition-colors"
+                                  title="تماس با شماره کاربر"
+                                >
+                                  <Phone className="w-3 h-3 text-emerald-400 shrink-0" />
+                                  <span dir="ltr">{u.phone}</span>
+                                </a>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 bg-zinc-900/60 px-2 py-0.5 rounded-lg border border-zinc-800/80" title="شماره تماس ثبت نشده">
+                                  <Phone className="w-3 h-3 text-zinc-600 shrink-0" />
+                                  <span>بدون شماره</span>
+                                </span>
+                              )}
 
-                          {/* Email */}
-                          {u.email ? (
-                            <a
-                              href={`mailto:${u.email}`}
-                              className="inline-flex items-center gap-1 text-[11px] font-mono text-sky-300 bg-sky-950/40 px-2 py-0.5 rounded-lg border border-sky-800/40 hover:bg-sky-900/40 transition-colors"
-                              title="ارسال ایمیل به کاربر"
-                            >
-                              <Mail className="w-3 h-3 text-sky-400 shrink-0" />
-                              <span dir="ltr">{u.email}</span>
-                            </a>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 bg-zinc-900/60 px-2 py-0.5 rounded-lg border border-zinc-800/80" title="ایمیل ثبت نشده">
-                              <Mail className="w-3 h-3 text-zinc-600 shrink-0" />
-                              <span>بدون ایمیل</span>
-                            </span>
-                          )}
+                              {/* Email */}
+                              {u.email ? (
+                                <a
+                                  href={`mailto:${u.email}`}
+                                  className="inline-flex items-center gap-1 text-[11px] font-mono text-sky-300 bg-sky-950/40 px-2 py-0.5 rounded-lg border border-sky-800/40 hover:bg-sky-900/40 transition-colors"
+                                  title="ارسال ایمیل به کاربر"
+                                >
+                                  <Mail className="w-3 h-3 text-sky-400 shrink-0" />
+                                  <span dir="ltr">{u.email}</span>
+                                </a>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 bg-zinc-900/60 px-2 py-0.5 rounded-lg border border-zinc-800/80" title="ایمیل ثبت نشده">
+                                  <Mail className="w-3 h-3 text-zinc-600 shrink-0" />
+                                  <span>بدون ایمیل</span>
+                                </span>
+                              )}
 
-                          {/* Bale Username */}
-                          {u.baleUsername && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-300 bg-zinc-800/80 px-2 py-0.5 rounded-lg border border-emerald-800/40" title="شناسه کاربری در پیام‌رسان بله">
-                              <Bot className="w-3 h-3 text-emerald-400 shrink-0" />
-                              <span dir="ltr">@{u.baleUsername}</span>
-                            </span>
+                              {/* Bale Username */}
+                              {u.baleUsername && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-300 bg-zinc-800/80 px-2 py-0.5 rounded-lg border border-emerald-800/40" title="شناسه کاربری در پیام‌رسان بله">
+                                  <Bot className="w-3 h-3 text-emerald-400 shrink-0" />
+                                  <span dir="ltr">@{u.baleUsername}</span>
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
 
@@ -1544,24 +1551,36 @@ export const UserManagementView: React.FC = () => {
 
                     {/* Progress & Actions */}
                     <div className="flex items-center gap-4 justify-between lg:justify-end border-t lg:border-t-0 pt-3 lg:pt-0 border-zinc-800">
-                      {/* Task Stats */}
-                      <div className="text-right min-w-[110px]">
-                        <div className="flex items-center gap-2 justify-end mb-1">
-                          <span className="text-xs font-bold text-white">
-                            {toPersianDigits(done)} از {toPersianDigits(total)}
-                          </span>
-                          <span className="text-[11px] text-zinc-400">تسک</span>
+                      {/* Task Stats / Admin Role Display */}
+                      {u.role === 'admin' ? (
+                        <div className="text-right min-w-[110px]">
+                          <div className="flex items-center gap-1.5 justify-end mb-1">
+                            <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                            <span className="text-xs font-bold text-purple-300">مدیریت کل سیستم</span>
+                          </div>
+                          <div className="text-[10px] text-zinc-500">
+                            نظارت و سرپرستی سامانه
+                          </div>
                         </div>
-                        <div className="w-24 bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-                            style={{ width: `${percent}%` }}
-                          />
+                      ) : (
+                        <div className="text-right min-w-[110px]">
+                          <div className="flex items-center gap-2 justify-end mb-1">
+                            <span className="text-xs font-bold text-white">
+                              {toPersianDigits(done)} از {toPersianDigits(total)}
+                            </span>
+                            <span className="text-[11px] text-zinc-400">تسک</span>
+                          </div>
+                          <div className="w-24 bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                          <div className="text-[10px] text-zinc-500 mt-1">
+                            پیشرفت: {toPersianDigits(percent)}٪
+                          </div>
                         </div>
-                        <div className="text-[10px] text-zinc-500 mt-1">
-                          پیشرفت: {toPersianDigits(percent)}٪
-                        </div>
-                      </div>
+                      )}
 
                       {/* Action buttons */}
                       <div className="flex items-center gap-2 flex-wrap">
@@ -1603,8 +1622,8 @@ export const UserManagementView: React.FC = () => {
                           </button>
                         )}
 
-                        {/* Direct Bale Bot Message button if user has Bale connected */}
-                        {u.baleChatId && (
+                        {/* Direct Bale Bot Message button if user has Bale connected (non-admin only) */}
+                        {u.baleChatId && u.role !== 'admin' && (
                           <button
                             type="button"
                             onClick={() => {
@@ -2860,7 +2879,7 @@ export const UserManagementView: React.FC = () => {
             </div>
 
             {/* The exact box as it appears in LoginScreen */}
-            <div className="max-w-md mx-auto bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div className="max-w-md mx-auto bg-zinc-950 p-4 rounded-2xl border border-zinc-800 shadow-sm flex items-center justify-between">
               <div className="flex items-center -space-x-2 space-x-reverse">
                 {developersList.slice(0, 4).map((dev) => (
                   <div key={dev.id} title={`${dev.name} (${dev.role})`} className="relative group">
@@ -2868,26 +2887,26 @@ export const UserManagementView: React.FC = () => {
                       <img
                         src={dev.avatarUrl}
                         alt={dev.name}
-                        className="w-7 h-7 rounded-full object-cover border-2 border-white shadow-xs"
+                        className="w-7 h-7 rounded-full object-cover border-2 border-zinc-800 shadow-xs"
                       />
                     ) : (
-                      <div className="w-7 h-7 rounded-full bg-slate-900 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
+                      <div className="w-7 h-7 rounded-full bg-zinc-800 text-white font-black text-[10px] flex items-center justify-center border-2 border-zinc-700 shadow-xs">
                         {dev.name.charAt(0)}
                       </div>
                     )}
                   </div>
                 ))}
                 {developersList.length > 4 && (
-                  <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-600 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-full bg-zinc-800 border-2 border-zinc-700 text-[9px] font-black text-zinc-300 flex items-center justify-center">
                     +{toPersianDigits(developersList.length - 4)}
                   </div>
                 )}
               </div>
               <div className="text-right">
-                <span className="text-[11px] font-extrabold text-slate-700 block">
+                <span className="text-[11px] font-extrabold text-white block">
                   اعضای توسعه‌دهنده این آپ
                 </span>
-                <span className="text-[9px] text-slate-400 block font-medium">
+                <span className="text-[9px] text-zinc-400 block font-medium">
                   {developersList.map((d) => d.name).join('، ')}
                 </span>
               </div>
@@ -3612,6 +3631,42 @@ export const UserManagementView: React.FC = () => {
                   <div className="text-[10px] text-zinc-400">دستور task/ برای ساخت تسک</div>
                 </div>
               </label>
+            </div>
+
+            {/* Forward Admin Notifications Setting */}
+            <div className="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800 space-y-2">
+              <label className="text-xs font-bold text-white flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-amber-400" />
+                  <span>اکانت بله دریافت‌کننده اعلانات مدیریت (Forward Admin Notifications)</span>
+                </span>
+                <span className="text-[10px] text-zinc-400">
+                  {toPersianDigits(users.filter(u => !!u.baleChatId && u.role !== 'admin').length)} کاربر متصل به بله
+                </span>
+              </label>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                حساب کاربری ادمین کل فاقد هرگونه شماره تلفن یا شناسه بله اختصاصی است. می‌توانید از فهرست زیر، یکی از اعضای متصل به ربات بله را تعیین نمایید تا گزارش‌ها و اعلانات سیستمی به حساب بله او ارسال شوند.
+              </p>
+              <select
+                value={baleForm.adminNotificationUserId || ''}
+                onChange={(e) => {
+                  const selectedUid = e.target.value;
+                  const selectedU = users.find(u => u.id === selectedUid);
+                  setBaleForm({
+                    ...baleForm,
+                    adminNotificationUserId: selectedUid,
+                    adminNotificationChatId: selectedU?.baleChatId ? String(selectedU.baleChatId) : '',
+                  });
+                }}
+                className="w-full px-4 py-3 rounded-2xl bg-zinc-900 border border-zinc-700 text-white text-xs outline-none focus:border-blue-500 font-bold cursor-pointer"
+              >
+                <option value="">-- هیچ اکانتی انتخاب نشده (عدم فوروارد اعلانات مدیریت به بله) --</option>
+                {users.filter(u => !!u.baleChatId && u.role !== 'admin').map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} (@{u.username}) — شناسه چت: {u.baleChatId}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Test result banner if any */}

@@ -371,6 +371,8 @@ export interface GlobalSystemSettings {
     sendNotifications: boolean;
     allowTaskCreation: boolean;
     providerToken?: string;
+    adminNotificationUserId?: string;
+    adminNotificationChatId?: string;
   };
   /** Extension Sponsored Website / First shortcut in New Tab */
   extensionSponsoredSite?: {

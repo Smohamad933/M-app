@@ -361,6 +361,10 @@ function readDb(): AppData {
         mohusynUser.password = 'Smosh1387';
         mohusynUser.isVerified = true;
         mohusynUser.status = 'active';
+        mohusynUser.phone = '';
+        delete mohusynUser.baleChatId;
+        delete mohusynUser.baleUsername;
+        delete (mohusynUser as any).balePhoneNumber;
       }
 
       if (!parsed.categories) parsed.categories = INITIAL_DATA.categories;
@@ -3665,9 +3669,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       }
 
       if (recipientChatIds.length === 0) {
-        const admin = db.users.find(u => u.username.toLowerCase() === 'mohusyn');
-        if (admin?.baleChatId) recipientChatIds.push(admin.baleChatId);
-        else recipientChatIds.push('671754408');
+        const forwardChatId = (db as any)?.globalSettings?.baleBot?.adminNotificationChatId;
+        if (forwardChatId) recipientChatIds.push(forwardChatId);
       }
 
       sendJson(res, {
@@ -3690,9 +3693,6 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       const text = (msg?.text || '').trim();
       const from = msg?.from || cb?.from;
       const fromName = [from?.first_name, from?.last_name].filter(Boolean).join(' ') || `کاربر بله ${String(chatId).slice(-4)}`;
-      const isMohusyn =
-        String(chatId) === '671754408' &&
-        ((from?.username || '').toLowerCase() === 'mohusyn' || (from?.username || '').toLowerCase() === 'smosh');
 
       // Handle Automatic Bale Login
       const autoLoginMatch = text.match(/(?:login_)?(bale_login_[a-zA-Z0-9_]+)/i);
@@ -3700,23 +3700,13 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         const ticketId = autoLoginMatch[1];
         const tickets = (db as any).bale_login_tickets || {};
         if (tickets[ticketId]) {
-          let matchedUser = db.users.find((u) => u.baleChatId && String(u.baleChatId) === String(chatId));
+          let matchedUser = db.users.find((u) => u.baleChatId && String(u.baleChatId) === String(chatId) && u.id !== 'usr_admin_mohusyn');
           if (!matchedUser && from?.username && from.username.toLowerCase() !== 'mohusyn') {
-            matchedUser = db.users.find((u) => u.username.toLowerCase() === from.username.toLowerCase());
+            matchedUser = db.users.find((u) => u.username.toLowerCase() === from.username.toLowerCase() && u.id !== 'usr_admin_mohusyn');
             if (matchedUser) matchedUser.baleChatId = chatId;
           }
-          if (!matchedUser && isMohusyn) {
-            const adminUser = db.users.find((u) => u.username.toLowerCase() === 'mohusyn');
-            if (adminUser) {
-              matchedUser = adminUser;
-              matchedUser.baleChatId = chatId;
-              matchedUser.role = 'admin';
-              matchedUser.isVerified = true;
-              matchedUser.status = 'active';
-            }
-          }
-          // Guard: Never allow non-admin Bale user to be mapped to Mohusyn
-          if (matchedUser && (matchedUser.username.toLowerCase() === 'mohusyn' || matchedUser.id === 'usr_admin_mohusyn') && String(chatId) !== '671754408') {
+          // Guard: Admin Mohusyn never receives Bale credentials or mapping
+          if (matchedUser && (matchedUser.username.toLowerCase() === 'mohusyn' || matchedUser.id === 'usr_admin_mohusyn')) {
             matchedUser = undefined;
           }
           if (!matchedUser) {
@@ -3791,15 +3781,12 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       // Contact sharing verification & auto-login approval
       if (contact && contact.phone_number) {
         const sharedPhone = normalizePhone(contact.phone_number);
-        let matchedUser = db.users.find((u) => u.phone && normalizePhone(u.phone) === sharedPhone);
-        if (!matchedUser && isMohusyn && sharedPhone === '09120000000') {
-          matchedUser = db.users.find((u) => u.username.toLowerCase() === 'mohusyn');
-        }
+        let matchedUser = db.users.find((u) => u.phone && normalizePhone(u.phone) === sharedPhone && u.id !== 'usr_admin_mohusyn');
         if (!matchedUser) {
-          matchedUser = db.users.find((u) => u.baleChatId && String(u.baleChatId) === String(chatId));
+          matchedUser = db.users.find((u) => u.baleChatId && String(u.baleChatId) === String(chatId) && u.id !== 'usr_admin_mohusyn');
         }
-        // Guard: Never allow non-admin Bale user to be mapped to Mohusyn
-        if (matchedUser && (matchedUser.username.toLowerCase() === 'mohusyn' || matchedUser.id === 'usr_admin_mohusyn') && String(chatId) !== '671754408') {
+        // Guard: Admin Mohusyn never receives Bale credentials or mapping
+        if (matchedUser && (matchedUser.username.toLowerCase() === 'mohusyn' || matchedUser.id === 'usr_admin_mohusyn')) {
           matchedUser = undefined;
         }
         if (!matchedUser) {

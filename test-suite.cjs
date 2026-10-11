@@ -1506,11 +1506,14 @@ test('Bale Authentication Security: Deleted users get their own account, never M
   assert(meRes.body.user.role === 'user', 'Me returns role user');
   assert(meRes.body.user.name === 'محمد رضایی', 'Me returns correct name');
 
-  // 6. Verify Mohusyn admin account is intact and untouched
+  // 6. Verify Mohusyn admin account is intact, untouched, and has NO personal contact/bale info
   const adminMe = await request('GET', '/api/auth.php?action=me', null, adminHeader);
   assert(adminMe.status === 200 && adminMe.body.user, 'Fetched me for admin');
   assert(adminMe.body.user.username.toLowerCase() === 'mohusyn', 'Admin is still Mohusyn');
   assert(adminMe.body.user.role === 'admin', 'Admin role is admin');
+  assert(!adminMe.body.user.phone, 'Admin has NO phone assigned');
+  assert(!adminMe.body.user.baleChatId, 'Admin has NO baleChatId assigned');
+  assert(!adminMe.body.user.baleUsername, 'Admin has NO baleUsername assigned');
 });
 
 // Run all tests

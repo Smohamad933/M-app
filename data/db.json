@@ -8,7 +8,7 @@
       "role": "admin",
       "status": "active",
       "isVerified": true,
-      "phone": "09120000000",
+      "phone": "",
       "email": "mohusyn@gmail.com",
       "jobTitle": "مدیر ارشد و توسعه‌دهنده نرم‌افزار",
       "city": "تهران",
@@ -18,9 +18,7 @@
       "subscription": {
         "plan": "pro"
       },
-      "isProfileCompleted": true,
-      "baleChatId": 671754408,
-      "baleUsername": "smosh"
+      "isProfileCompleted": true
     },
     {
       "id": "usr_1791227196584_nceu",

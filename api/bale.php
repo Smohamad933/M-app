@@ -1073,9 +1073,15 @@ if ($isWebhook) {
                 ];
                 $dbObj->saveJson();
 
-                $adminUser = $dbObj->getUserByUsername('Mohusyn');
-                if ($adminUser && !empty($adminUser['baleChatId']) && !empty($botToken)) {
-                    sendBaleMessage($botToken, $adminUser['baleChatId'], "🔔 کاربر {$primaryUser['name']} (@{$primaryUser['username']}) در بازوی بله متقاضی اشتراک ویژه شد و شماره کارت دریافت کرد.");
+                $adminChatId = !empty($baleConfig['adminNotificationChatId']) ? $baleConfig['adminNotificationChatId'] : null;
+                if (!$adminChatId && !empty($baleConfig['adminNotificationUserId'])) {
+                    $forwardUser = $dbObj->getUserById($baleConfig['adminNotificationUserId']);
+                    if ($forwardUser && !empty($forwardUser['baleChatId'])) {
+                        $adminChatId = $forwardUser['baleChatId'];
+                    }
+                }
+                if ($adminChatId && !empty($botToken)) {
+                    sendBaleMessage($botToken, $adminChatId, "🔔 کاربر {$primaryUser['name']} (@{$primaryUser['username']}) در بازوی بله متقاضی اشتراک ویژه شد و شماره کارت دریافت کرد.");
                 }
             }
 
@@ -1277,27 +1283,23 @@ if ($isWebhook) {
                 $testUname = $cleanUname . '_' . $counter++;
             }
 
-            $isAdminContact = (
-                strval($chatId) === '671754408' &&
-                (strtolower($fromUser['username'] ?? '') === 'mohusyn' || strtolower($fromUser['username'] ?? '') === 'smosh') &&
-                $sharedPhoneNorm === '09120000000'
-            );
-
-            $targetUser = $dbObj->createUser($testUname, bin2hex(random_bytes(5)), $fromName, $isAdminContact ? 'admin' : 'user', [
+            $targetUser = $dbObj->createUser($testUname, bin2hex(random_bytes(5)), $fromName, 'user', [
                 'baleChatId' => $chatId,
                 'baleUsername' => $fromUser['username'] ?? '',
                 'phone' => $sharedPhoneNorm,
                 'balePhoneNumber' => $contact['phone_number'],
                 'isVerified' => true,
                 'status' => 'active',
-                'role' => $isAdminContact ? 'admin' : 'user',
+                'role' => 'user',
             ]);
             broadcastBaleUserToPeer($targetUser);
         }
 
-        if ($targetUser) {
-            $isAdminUser = isUserAdmin($targetUser) && strval($chatId) === '671754408';
+        if ($targetUser && ($targetUser['id'] === 'usr_admin_mohusyn' || strtolower($targetUser['username'] ?? '') === 'mohusyn')) {
+            $targetUser = null;
+        }
 
+        if ($targetUser) {
             $updateFields = [
                 'phone' => $sharedPhoneNorm,
                 'balePhoneNumber' => $contact['phone_number'],
@@ -1305,14 +1307,9 @@ if ($isWebhook) {
                 'status' => 'active',
                 'baleChatId' => $chatId,
                 'baleUsername' => $fromUser['username'] ?? ($targetUser['baleUsername'] ?? ''),
+                'role' => 'user',
             ];
-            if ($isAdminUser) {
-                $updateFields['role'] = 'admin';
-                $targetUser['role'] = 'admin';
-            } else {
-                $updateFields['role'] = 'user';
-                $targetUser['role'] = 'user';
-            }
+            $targetUser['role'] = 'user';
             if (!empty($sharedFullName) && (empty($targetUser['name']) || strpos($targetUser['name'], 'کاربر بله') === 0 || strpos($targetUser['name'], 'bale_') === 0)) {
                 $updateFields['name'] = $sharedFullName;
                 $targetUser['name'] = $sharedFullName;
@@ -1597,28 +1594,10 @@ if ($isWebhook) {
             }
         }
 
-        // 3. Fallback: Check if Mohusyn by username or fixed chat ID (strictly chat ID 671754408)
-        $fromName = trim(($fromUser['first_name'] ?? '') . ' ' . ($fromUser['last_name'] ?? ''));
-        if (!$matchedUser && strval($chatId) === '671754408') {
-            $matchedUser = $dbObj->getUserByUsername('Mohusyn');
-            if ($matchedUser) {
-                $dbObj->updateUserProfile($matchedUser['id'], [
-                    'baleChatId' => '671754408',
-                    'baleUsername' => $fromUser['username'] ?? ($matchedUser['baleUsername'] ?? 'smosh'),
-                    'role' => 'admin',
-                    'isVerified' => true,
-                    'status' => 'active',
-                ]);
-                $matchedUser['baleChatId'] = '671754408';
-                $matchedUser['role'] = 'admin';
-            }
-        }
-
-        // GUARD: Never allow non-admin Bale user to be mapped to Mohusyn
+        // GUARD: Admin Mohusyn never receives Bale credentials or mapping
         if (
             $matchedUser &&
-            (strtolower($matchedUser['username'] ?? '') === 'mohusyn' || ($matchedUser['id'] ?? '') === 'usr_admin_mohusyn') &&
-            strval($chatId) !== '671754408'
+            (strtolower($matchedUser['username'] ?? '') === 'mohusyn' || ($matchedUser['id'] ?? '') === 'usr_admin_mohusyn')
         ) {
             $matchedUser = null;
         }
@@ -2203,8 +2182,15 @@ if (
             "درخواست ارتقا به {$planLabel} 💳",
             "کاربر {$userName} متقاضی ارتقا به طرح {$planLabel} است و شماره کارت درخواست کرده است."
         );
-        if (!empty($adminUser['baleChatId']) && !empty($botToken)) {
-            sendBaleMessage($botToken, $adminUser['baleChatId'], "🔔 کاربر {$userName} متقاضی ارتقا به طرح {$planLabel} است و شماره کارت درخواست کرده است.\n" . ($note ? "توضیح: {$note}" : ""));
+        $adminChatId = !empty($baleConfig['adminNotificationChatId']) ? $baleConfig['adminNotificationChatId'] : null;
+        if (!$adminChatId && !empty($baleConfig['adminNotificationUserId'])) {
+            $forwardUser = $dbObj->getUserById($baleConfig['adminNotificationUserId']);
+            if ($forwardUser && !empty($forwardUser['baleChatId'])) {
+                $adminChatId = $forwardUser['baleChatId'];
+            }
+        }
+        if ($adminChatId && !empty($botToken)) {
+            sendBaleMessage($botToken, $adminChatId, "🔔 کاربر {$userName} متقاضی ارتقا به طرح {$planLabel} است و شماره کارت درخواست کرده است.\n" . ($note ? "توضیح: {$note}" : ""));
         }
     }
 
