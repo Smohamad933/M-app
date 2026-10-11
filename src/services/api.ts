@@ -1471,10 +1471,33 @@ export const api = {
     }
   },
 
-  async toggleTask(id: string): Promise<{ completed: boolean; completedAt?: string }> {
-    return await request(`api/tasks.php?action=toggle&id=${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-    });
+  async toggleTask(id: string, completed?: boolean): Promise<{ completed: boolean; completedAt?: string }> {
+    try {
+      return await request('api/tasks.php', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'toggle',
+          id,
+          completed,
+        }),
+      });
+    } catch {
+      try {
+        return await request('api/toggle-task.php', {
+          method: 'POST',
+          body: JSON.stringify({ id, completed }),
+        });
+      } catch {
+        return await request(
+          `api/tasks.php?action=toggle&id=${encodeURIComponent(id)}${
+            completed !== undefined ? `&completed=${completed ? 1 : 0}` : ''
+          }`,
+          {
+            method: 'POST',
+          }
+        );
+      }
+    }
   },
 
   async addFocusMinutes(id: string, minutes: number): Promise<void> {

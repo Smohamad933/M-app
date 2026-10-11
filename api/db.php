@@ -12,6 +12,7 @@ class TaskRoozDB {
     private static $instance = null;
     public $mode = 'json'; // 'mysql' or 'json'
     private $pdo = null;
+    public $tasksPdo = null; // Dedicated MySQL connection for tasks and completion ticks
     private $jsonFile = null;
     public $data = [];
     public $installed = false; // true only when a real db.json file was found on disk
@@ -20,7 +21,8 @@ class TaskRoozDB {
         // Attempt MySQL connection if available
         if (function_exists('getMySQLPDO')) {
             $this->pdo = getMySQLPDO();
-            if ($this->pdo !== null) {
+            $this->tasksPdo = getMySQLPDO('tasks') ?: $this->pdo;
+            if ($this->pdo !== null || $this->tasksPdo !== null) {
                 $this->mode = 'mysql';
                 $this->ensureMySQLSchema();
                 return;
@@ -183,6 +185,25 @@ class TaskRoozDB {
                 if (!isset($taskCols['subtasks_json'])) {
                     @$this->pdo->exec("ALTER TABLE `tasks` ADD COLUMN `subtasks_json` text DEFAULT NULL");
                 }
+            }
+
+            // Dedicated task completions table for persistent MySQL tick tracking
+            $tasksDb = $this->tasksPdo ?: $this->pdo;
+            if ($tasksDb) {
+                @$tasksDb->exec("
+                    CREATE TABLE IF NOT EXISTS `task_completions` (
+                      `id` bigint(20) NOT NULL AUTO_INCREMENT,
+                      `task_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                      `user_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                      `completed` tinyint(1) NOT NULL DEFAULT 1,
+                      `completed_at` datetime DEFAULT NULL,
+                      `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                      PRIMARY KEY (`id`),
+                      UNIQUE KEY `idx_task_unique` (`task_id`),
+                      KEY `idx_user` (`user_id`),
+                      KEY `idx_completed` (`completed`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                ");
             }
 
             $this->pdo->exec("
@@ -1809,18 +1830,25 @@ class TaskRoozDB {
 
     // --- Task Operations ---
     public function getTasks($userId = null, $date = null, $categoryId = null, $completed = null, $projectId = null) {
-        if ($this->mode === 'mysql' && $this->pdo) {
+        $tasksDb = $this->tasksPdo ?: $this->pdo;
+        if ($this->mode === 'mysql' && $tasksDb) {
             try {
-                $sql = "SELECT * FROM tasks WHERE 1=1";
+                $sql = "SELECT t.*, tc.completed AS tc_completed, tc.completed_at AS tc_completed_at
+                        FROM tasks t
+                        LEFT JOIN task_completions tc ON tc.task_id = t.id
+                        WHERE 1=1";
                 $params = [];
-                if (!empty($userId)) { $sql .= " AND user_id = ?"; $params[] = $userId; }
-                if (!empty($date)) { $sql .= " AND date = ?"; $params[] = $date; }
-                if (!empty($categoryId)) { $sql .= " AND category_id = ?"; $params[] = $categoryId; }
-                if ($completed !== null) { $sql .= " AND completed = ?"; $params[] = $completed ? 1 : 0; }
-                if (!empty($projectId)) { $sql .= " AND project_id = ?"; $params[] = $projectId; }
-                $sql .= " ORDER BY is_pinned DESC, time ASC";
+                if (!empty($userId)) { $sql .= " AND t.user_id = ?"; $params[] = $userId; }
+                if (!empty($date)) { $sql .= " AND t.date = ?"; $params[] = $date; }
+                if (!empty($categoryId)) { $sql .= " AND t.category_id = ?"; $params[] = $categoryId; }
+                if ($completed !== null) {
+                    $sql .= " AND COALESCE(tc.completed, t.completed) = ?";
+                    $params[] = $completed ? 1 : 0;
+                }
+                if (!empty($projectId)) { $sql .= " AND t.project_id = ?"; $params[] = $projectId; }
+                $sql .= " ORDER BY t.is_pinned DESC, t.time ASC";
 
-                $stmt = $this->pdo->prepare($sql);
+                $stmt = $tasksDb->prepare($sql);
                 $stmt->execute($params);
                 $rows = $stmt->fetchAll();
                 if ($rows !== false) {
@@ -1829,13 +1857,16 @@ class TaskRoozDB {
                         $r['projectId'] = $r['project_id'];
                         $r['categoryId'] = $r['category_id'];
                         $r['durationMinutes'] = (int)$r['duration_minutes'];
-                        $r['completed'] = !empty($r['completed']);
-                        $r['completedAt'] = $r['completed_at'];
+                        // Dedicated task_completions status takes precedence if present
+                        $isComp = ($r['tc_completed'] !== null) ? !empty($r['tc_completed']) : !empty($r['completed']);
+                        $r['completed'] = $isComp;
+                        $r['completedAt'] = ($r['tc_completed_at'] !== null) ? $r['tc_completed_at'] : $r['completed_at'];
                         $r['isPinned'] = !empty($r['is_pinned']);
                         $r['focusMinutesSpent'] = (int)$r['focus_minutes_spent'];
                         $r['reasonUncompleted'] = $r['reason_uncompleted'];
                         $r['uncompletedCategory'] = $r['uncompleted_category'];
                         $r['subtasks'] = !empty($r['subtasks_json']) ? json_decode($r['subtasks_json'], true) : [];
+                        unset($r['tc_completed'], $r['tc_completed_at']);
                         return $r;
                     }, $rows);
                 }
@@ -2062,6 +2093,22 @@ class TaskRoozDB {
                     $stmt = $this->pdo->prepare($sql);
                     $stmt->execute($params);
                 }
+
+                // If completion status changed, sync dedicated task_completions MySQL table
+                if (array_key_exists('completed', $data)) {
+                    $tasksDb = $this->tasksPdo ?: $this->pdo;
+                    if ($tasksDb) {
+                        $cVal = !empty($data['completed']) ? 1 : 0;
+                        $cAt = $data['completedAt'] ?? ($data['completed_at'] ?? ($cVal ? date('Y-m-d H:i:s') : null));
+                        $uId = $data['userId'] ?? ($data['user_id'] ?? 'usr_unknown');
+                        $cStmt = $tasksDb->prepare("
+                            INSERT INTO task_completions (task_id, user_id, completed, completed_at)
+                            VALUES (?, ?, ?, ?)
+                            ON DUPLICATE KEY UPDATE completed = VALUES(completed), completed_at = VALUES(completed_at)
+                        ");
+                        $cStmt->execute([$id, $uId, $cVal, $cAt]);
+                    }
+                }
             } catch (Exception $e) {}
         }
 
@@ -2080,22 +2127,46 @@ class TaskRoozDB {
         return false;
     }
 
-    public function toggleTask($id) {
+    public function toggleTask($id, $userId = null, $explicitStatus = null) {
         $result = null;
+        $tasksDb = $this->tasksPdo ?: $this->pdo;
 
-        // 1. MySQL direct toggle
-        if ($this->mode === 'mysql' && $this->pdo) {
+        // 1. Dedicated MySQL toggle & persistent completion tracking
+        if ($tasksDb) {
             try {
-                $stmt = $this->pdo->prepare("SELECT completed FROM tasks WHERE id = ?");
-                $stmt->execute([$id]);
-                $row = $stmt->fetch();
-                if ($row) {
-                    $newCompleted = empty($row['completed']) ? 1 : 0;
-                    $completedAt = $newCompleted ? date('Y-m-d H:i:s') : null;
-                    $up = $this->pdo->prepare("UPDATE tasks SET completed = ?, completed_at = ? WHERE id = ?");
-                    $up->execute([$newCompleted, $completedAt, $id]);
-                    $result = ['completed' => (bool)$newCompleted, 'completedAt' => $completedAt];
+                if ($explicitStatus !== null) {
+                    $newCompleted = $explicitStatus ? 1 : 0;
+                } else {
+                    $stmt = $tasksDb->prepare("SELECT completed FROM tasks WHERE id = ?");
+                    $stmt->execute([$id]);
+                    $row = $stmt->fetch();
+                    if ($row) {
+                        $newCompleted = empty($row['completed']) ? 1 : 0;
+                    } else {
+                        // Check task_completions table
+                        $cStmt = $tasksDb->prepare("SELECT completed FROM task_completions WHERE task_id = ?");
+                        $cStmt->execute([$id]);
+                        $cRow = $cStmt->fetch();
+                        $newCompleted = ($cRow && !empty($cRow['completed'])) ? 0 : 1;
+                    }
                 }
+
+                $completedAt = $newCompleted ? date('Y-m-d H:i:s') : null;
+
+                // Update main tasks table
+                $up = $tasksDb->prepare("UPDATE tasks SET completed = ?, completed_at = ? WHERE id = ?");
+                $up->execute([$newCompleted, $completedAt, $id]);
+
+                // Insert/Update dedicated task_completions table (Persistent MySQL Record)
+                $uid = $userId ?: 'usr_unknown';
+                $ins = $tasksDb->prepare("
+                    INSERT INTO task_completions (task_id, user_id, completed, completed_at)
+                    VALUES (?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE completed = VALUES(completed), completed_at = VALUES(completed_at)
+                ");
+                $ins->execute([$id, $uid, $newCompleted, $completedAt]);
+
+                $result = ['completed' => (bool)$newCompleted, 'completedAt' => $completedAt];
             } catch (Exception $e) {}
         }
 
@@ -2107,7 +2178,7 @@ class TaskRoozDB {
                     $t['completed'] = $result['completed'];
                     $t['completedAt'] = $result['completedAt'];
                 } else {
-                    $t['completed'] = !empty($t['completed']) ? false : true;
+                    $t['completed'] = $explicitStatus !== null ? (bool)$explicitStatus : (empty($t['completed']) ? true : false);
                     $t['completedAt'] = $t['completed'] ? date('Y-m-d H:i:s') : null;
                     $result = ['completed' => $t['completed'], 'completedAt' => $t['completedAt']];
                 }
@@ -2120,7 +2191,7 @@ class TaskRoozDB {
             return $result;
         }
 
-        return null;
+        return ['completed' => (bool)($explicitStatus ?? true), 'completedAt' => date('Y-m-d H:i:s')];
     }
 
     public function addFocusMinutes($id, $minutes) {

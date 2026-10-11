@@ -1329,8 +1329,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fetched = await api.getTasks(filter);
       const now = Date.now();
       const merged = fetched.map((serverTask) => {
+        // 1. Check in-memory recent toggle cache (60 seconds retention)
         const recent = recentlyUpdatedTasksRef.current.get(serverTask.id);
-        if (recent && now - recent.timestamp < 5000) {
+        if (recent && now - recent.timestamp < 60000) {
           return {
             ...serverTask,
             completed: recent.task.completed,
@@ -1338,13 +1339,39 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
             subtasks: recent.task.subtasks || serverTask.subtasks,
           };
         }
+
+        // 2. Check local tick persistence (within last 30 minutes)
+        if (typeof window !== 'undefined') {
+          try {
+            const rawTick = localStorage.getItem(`taskrooz_tick_${serverTask.id}`);
+            if (rawTick) {
+              const parsed = JSON.parse(rawTick);
+              if (now - parsed.timestamp < 1800000) {
+                return {
+                  ...serverTask,
+                  completed: parsed.completed,
+                  completedAt: parsed.completedAt,
+                };
+              }
+            }
+          } catch {}
+        }
+
         return serverTask;
       });
+
       setTasks(merged);
+
+      // Persist to local cache
+      if (currentUser?.id && typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`taskrooz_tasks_cache_${currentUser.id}`, JSON.stringify(merged));
+        } catch {}
+      }
     } catch (e) {
       console.error('Error fetching tasks:', e);
     }
-  }, [selectedFilterUserId, selectedProjectId]);
+  }, [selectedFilterUserId, selectedProjectId, currentUser?.id]);
 
   const refreshUsers = useCallback(async () => {
     if (currentUser) {
@@ -1455,6 +1482,19 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (currentUser) {
+      // Instantly load cached tasks and their ticks so the UI renders immediately with 0 delay:
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('taskrooz_tasks_cache_' + currentUser.id);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setTasks(parsed);
+            }
+          }
+        } catch {}
+      }
+
       refreshTasks();
       refreshUsers();
       refreshProjects();
@@ -1888,16 +1928,37 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subtasks: updatedSubtasks,
     };
 
+    // Keep in recently updated map with 60 second retention
     recentlyUpdatedTasksRef.current.set(id, { task: updatedTask, timestamp: Date.now() });
 
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? updatedTask : t))
-    );
+    // Update in-memory state and persist locally immediately
+    setTasks((prev) => {
+      const next = prev.map((t) => (t.id === id ? updatedTask : t));
+      if (currentUser?.id && typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`taskrooz_tasks_cache_${currentUser.id}`, JSON.stringify(next));
+          localStorage.setItem(
+            `taskrooz_tick_${id}`,
+            JSON.stringify({
+              completed: newStatus,
+              completedAt: updatedTask.completedAt,
+              timestamp: Date.now(),
+            })
+          );
+        } catch {}
+      }
+      return next;
+    });
 
+    // Save directly to MySQL and backend storage
     try {
-      await api.updateTask(updatedTask);
-    } catch (err) {
-      console.error('Failed to save task update to server:', err);
+      await api.toggleTask(id, newStatus);
+    } catch {
+      try {
+        await api.updateTask(updatedTask);
+      } catch (err) {
+        console.error('Failed to save task toggle to server:', err);
+      }
     }
 
     broadcastSync('TASK_UPDATED', { taskId: id, projectId: task.projectId });

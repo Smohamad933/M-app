@@ -22,25 +22,20 @@ if ($method === 'GET') {
 
 // POST /api/tasks -> Create task or quick toggle/delete/update
 if ($method === 'POST') {
-    requireVerifiedUser();
     $input = getJsonInput();
     $action = $input['action'] ?? $_GET['action'] ?? '';
 
+    // 1. Quick Task Completion Toggle (Dedicated MySQL & database save - NEVER BLOCKED BY VERIFICATION)
     if ($action === 'toggle') {
         $id = $input['id'] ?? $_GET['id'] ?? '';
         if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
-        $res = $db->toggleTask($id);
+        $explicitStatus = array_key_exists('completed', $input) ? (bool)$input['completed'] : (isset($_GET['completed']) ? (bool)$_GET['completed'] : null);
+        $res = $db->toggleTask($id, $currentUser['id'], $explicitStatus);
         if ($res) jsonResponse($res);
         jsonResponse(['error' => 'تسک پیدا نشد.'], 404);
     }
 
-    if ($action === 'delete' || $action === 'remove' || ($input['_method'] ?? '') === 'DELETE' || ($_GET['_method'] ?? '') === 'DELETE') {
-        $id = $input['id'] ?? $_GET['id'] ?? '';
-        if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
-        $db->deleteTask($id);
-        jsonResponse(['message' => 'تسک با موفقیت حذف شد.']);
-    }
-
+    // 2. Task Update (NEVER BLOCKED BY VERIFICATION)
     if ($action === 'update' || $action === 'edit' || ($input['_method'] ?? '') === 'PUT') {
         $id = $input['id'] ?? '';
         if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
@@ -104,6 +99,16 @@ if ($method === 'POST') {
         $db->updateTask($updateData);
         jsonResponse(['message' => 'تسک به‌روزرسانی شد.']);
     }
+
+    if ($action === 'delete' || $action === 'remove' || ($input['_method'] ?? '') === 'DELETE' || ($_GET['_method'] ?? '') === 'DELETE') {
+        $id = $input['id'] ?? $_GET['id'] ?? '';
+        if (empty($id)) jsonResponse(['error' => 'شناسه تسک الزامی است.'], 400);
+        $db->deleteTask($id);
+        jsonResponse(['message' => 'تسک با موفقیت حذف شد.']);
+    }
+
+    // Creating NEW tasks requires verified user
+    requireVerifiedUser();
 
     $title = trim($input['title'] ?? '');
     $date = trim($input['date'] ?? date('Y-m-d'));
