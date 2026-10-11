@@ -211,6 +211,24 @@ if ($method === 'POST') {
     ];
 
     $created = $db->createTask($taskData);
+
+    // Notify assigned member if assigned to another user
+    if (!empty($targetUserId) && $targetUserId !== $currentUser['id']) {
+        $projName = '';
+        if (!empty($taskData['projectId'])) {
+            $p = $db->getTeamProject($taskData['projectId']);
+            if ($p) $projName = $p['name'];
+        }
+        $msg = "تسک «{$title}» " . (!empty($projName) ? "در پروژه «{$projName}» " : '') . "توسط {$currentUser['name']} به شما واگذار شد.";
+        $db->addNotification(
+            $targetUserId,
+            'تخصیص تسک جدید 📋',
+            $msg,
+            'task',
+            ['taskId' => $created['id'], 'projectId' => $created['projectId'] ?? null]
+        );
+    }
+
     jsonResponse(['message' => 'تسک با موفقیت اضافه شد.', 'task' => $created], 201);
 }
 
@@ -295,6 +313,25 @@ if ($method === 'PUT') {
     }
 
     $db->updateTask($updateData);
+
+    if (!empty($updateData['userId']) && $updateData['userId'] !== ($existing['userId'] ?? '') && $updateData['userId'] !== $currentUser['id']) {
+        $taskTitle = $updateData['title'] ?? $existing['title'] ?? 'تسک';
+        $pId = $updateData['projectId'] ?? $existing['projectId'] ?? null;
+        $projName = '';
+        if ($pId) {
+            $p = $db->getTeamProject($pId);
+            if ($p) $projName = $p['name'];
+        }
+        $msg = "تسک «{$taskTitle}» " . (!empty($projName) ? "در پروژه «{$projName}» " : '') . "توسط {$currentUser['name']} به شما واگذار شد.";
+        $db->addNotification(
+            $updateData['userId'],
+            'تخصیص تسک جدید 📋',
+            $msg,
+            'task',
+            ['taskId' => $id, 'projectId' => $pId]
+        );
+    }
+
     jsonResponse(['message' => 'تسک به‌روزرسانی شد.']);
 }
 

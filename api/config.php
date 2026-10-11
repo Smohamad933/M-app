@@ -108,6 +108,28 @@ function getAuthToken() {
     return $token;
 }
 
+function touchUserActivity($userId, $storage) {
+    if (empty($userId) || !$storage) return;
+    static $touched = [];
+    if (isset($touched[$userId])) return;
+    $touched[$userId] = true;
+
+    $now = date('Y-m-d H:i:s');
+    if ($storage->mode === 'mysql' && $storage->pdo) {
+        try {
+            $storage->pdo->prepare("UPDATE users SET last_active_at = ? WHERE id = ? OR LOWER(username) = LOWER(?)")->execute([$now, $userId, $userId]);
+        } catch (Exception $e) {}
+    }
+    if (isset($storage->data['users']) && is_array($storage->data['users'])) {
+        foreach ($storage->data['users'] as &$usr) {
+            if (($usr['id'] ?? '') === $userId || strtolower($usr['username'] ?? '') === strtolower($userId)) {
+                $usr['lastActiveAt'] = $now;
+                break;
+            }
+        }
+    }
+}
+
 function getCurrentUser($dbInstance = null) {
     global $db;
     $storage = $dbInstance ?: $db;
@@ -157,6 +179,7 @@ function getCurrentUser($dbInstance = null) {
             } else {
                 $u['role'] = 'user';
             }
+            touchUserActivity($u['id'], $storage);
             return $u;
         }
         return null;
@@ -175,6 +198,7 @@ function getCurrentUser($dbInstance = null) {
             } else {
                 $u['role'] = 'user';
             }
+            touchUserActivity($u['id'], $storage);
             return $u;
         }
     }

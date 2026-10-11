@@ -1424,11 +1424,12 @@ export const api = {
   },
 
   // Tasks (Managed directly on Central Server)
-  async getTasks(filter?: { userId?: string | null; date?: string; categoryId?: string }): Promise<Task[]> {
+  async getTasks(filter?: { userId?: string | null; date?: string; categoryId?: string; projectId?: string | null }): Promise<Task[]> {
     const params = new URLSearchParams();
     if (filter?.userId) params.append('user_id', filter.userId);
     if (filter?.date) params.append('date', filter.date);
     if (filter?.categoryId) params.append('category_id', filter.categoryId);
+    if (filter?.projectId) params.append('project_id', filter.projectId);
 
     const qs = params.toString() ? `?${params.toString()}` : '';
     const data = await request<{ tasks: Task[] }>(`api/tasks.php${qs}`);

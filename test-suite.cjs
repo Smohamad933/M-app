@@ -1617,6 +1617,47 @@ test('Team Project Task Synchronization & Member Distribution: Shared project ta
   // 11. Strict Isolation: Eve tries to toggle task 1 -> 403 Forbidden
   const eveToggleRes = await request('POST', '/api/tasks', { action: 'toggle', id: task1Id }, eveHeader);
   assert(eveToggleRes.status === 403, `Eve blocked with 403 from toggling task 1, got ${eveToggleRes.status}`);
+
+  // 12. Notification delivery: Bob received an in-app notification about the task assigned by Alice
+  const bobNotifs = await request('GET', '/api/notifications.php', null, bobHeader);
+  assert(bobNotifs.status === 200, 'Bob fetched notifications');
+  const taskNotif = (bobNotifs.body.notifications || []).find((n) => n.title.includes('تخصیص تسک'));
+  assert(taskNotif, 'Bob received notification about assigned project task');
+});
+
+// 41. Admin Member Presence & Last Online Sorting: Super Admin sees lastActiveAt, non-admins restricted
+test('Admin Member Presence & Last Online Tracking: Super Admin sees lastActiveAt for all members, non-admins restricted', async () => {
+  const adminLogin = await request('POST', '/api/auth/login', { username: 'Mohusyn', password: 'Smosh1387' });
+  const adminHeader = { Authorization: `Bearer ${adminLogin.body.token}` };
+
+  // 1. Regular user registration & activity
+  const activeUname = 'active_user_' + Date.now();
+  const regUser = await request('POST', '/api/auth/register', {
+    username: activeUname,
+    password: 'ActivePass123!',
+    name: 'کاربر فعال آنلاین',
+    skipVerificationForTest: true,
+  });
+  assert(regUser.status === 201, 'User registered');
+  const userLogin = await request('POST', '/api/auth/login', { username: activeUname, password: 'ActivePass123!' });
+  const userHeader = { Authorization: `Bearer ${userLogin.body.token}` };
+
+  // 2. User performs an action in the app to record activity
+  await request('GET', '/api/tasks', null, userHeader);
+
+  // 3. Super Admin fetches user directory
+  const adminUsersRes = await request('GET', '/api/users', null, adminHeader);
+  assert(adminUsersRes.status === 200, 'Admin fetched users');
+  const targetInList = (adminUsersRes.body.users || []).find((u) => u.username === activeUname);
+  assert(targetInList, 'Active user found in admin list');
+  assert(targetInList.lastActiveAt, 'Super admin can see lastActiveAt timestamp for member');
+
+  // 4. Non-admin regular user fetches public directory
+  const publicUsersRes = await request('GET', '/api/users?action=public', null, userHeader);
+  assert(publicUsersRes.status === 200, 'Regular user fetched public directory');
+  const publicTarget = (publicUsersRes.body.users || []).find((u) => u.username === activeUname);
+  assert(publicTarget, 'User found in public list');
+  assert(!publicTarget.lastActiveAt, 'Public search MUST NOT expose lastActiveAt to non-admin users');
 });
 
 // Run all tests

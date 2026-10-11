@@ -162,6 +162,34 @@ const BrandImageField: React.FC<{
   );
 };
 
+const getOnlineStatus = (lastActiveAt?: string | null, createdAt?: string | null) => {
+  if (!lastActiveAt && !createdAt) {
+    return { text: 'هنوز وارد نشده', isOnline: false, secondsAgo: Infinity };
+  }
+  const dateToUse = lastActiveAt || createdAt!;
+  const diffMs = Date.now() - new Date(dateToUse).getTime();
+  const diffSec = Math.max(0, Math.floor(diffMs / 1000));
+
+  // If active in last 3 minutes (180s):
+  if (diffSec < 180) {
+    return { text: 'هم‌اکنون آنلاین در اپ', isOnline: true, secondsAgo: diffSec };
+  }
+  if (diffSec < 3600) {
+    const mins = Math.max(1, Math.floor(diffSec / 60));
+    return { text: `${toPersianDigits(mins)} دقیقه پیش`, isOnline: false, secondsAgo: diffSec };
+  }
+  if (diffSec < 86400) {
+    const hours = Math.floor(diffSec / 3600);
+    return { text: `${toPersianDigits(hours)} ساعت پیش`, isOnline: false, secondsAgo: diffSec };
+  }
+  if (diffSec < 86400 * 30) {
+    const days = Math.floor(diffSec / 86400);
+    return { text: `${toPersianDigits(days)} روز پیش`, isOnline: false, secondsAgo: diffSec };
+  }
+  const months = Math.floor(diffSec / (86400 * 30));
+  return { text: `بیش از ${toPersianDigits(months)} ماه پیش`, isOnline: false, secondsAgo: diffSec };
+};
+
 export const UserManagementView: React.FC = () => {
   const {
     users,
@@ -197,6 +225,8 @@ export const UserManagementView: React.FC = () => {
   const [isFontModalOpen, setIsFontModalOpen] = useState(false);
   const pendingUsers = users.filter((u) => u.status === 'pending_approval');
   const [planFilter, setPlanFilter] = useState<'all' | 'pro' | 'free'>('all');
+  const [userSortOrder, setUserSortOrder] = useState<'lastActive' | 'tasks' | 'progress' | 'name'>('lastActive');
+  const isSuperAdmin = currentUser?.role === 'admin' || currentUser?.username?.toLowerCase() === 'mohusyn';
 
   // Payments management state
   const [paymentsList, setPaymentsList] = useState<any[]>([]);
@@ -1331,6 +1361,61 @@ export const UserManagementView: React.FC = () => {
             </button>
           </div>
 
+          {/* Super Admin: User Sort Controls (Only visible to Super Admin) */}
+          {isSuperAdmin && (
+            <div className="flex items-center gap-2 flex-wrap pt-2 px-1">
+              <span className="text-[11px] text-zinc-400 font-bold flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-sky-400" />
+                <span>ترتیب نمایش اعضا:</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setUserSortOrder('lastActive')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  userSortOrder === 'lastActive'
+                    ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-xs'
+                    : 'bg-zinc-900/60 text-zinc-400 border border-zinc-800 hover:text-white'
+                }`}
+                title="مرتب‌سازی بر اساس زمان آخرین آنلاین بودن در اپ (جدیدترین‌ها اول)"
+              >
+                <span>🕒 آخرین بار آنلاین در اپ (پیش‌فرض)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUserSortOrder('tasks')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  userSortOrder === 'tasks'
+                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-xs'
+                    : 'bg-zinc-900/60 text-zinc-400 border border-zinc-800 hover:text-white'
+                }`}
+              >
+                <span>📊 بیشترین تسک‌ها</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUserSortOrder('progress')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  userSortOrder === 'progress'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+                    : 'bg-zinc-900/60 text-zinc-400 border border-zinc-800 hover:text-white'
+                }`}
+              >
+                <span>📈 درصد پیشرفت</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUserSortOrder('name')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  userSortOrder === 'name'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
+                    : 'bg-zinc-900/60 text-zinc-400 border border-zinc-800 hover:text-white'
+                }`}
+              >
+                <span>🔤 نام (الفبایی)</span>
+              </button>
+            </div>
+          )}
+
           {/* Users List Table/Cards */}
           <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 overflow-hidden shadow-sm">
             <div className="px-5 py-3.5 border-b border-zinc-800/80 flex items-center justify-between">
@@ -1363,12 +1448,26 @@ export const UserManagementView: React.FC = () => {
             )}
 
             <div className="divide-y divide-zinc-800/60">
-              {users
+              {[...users]
                 .filter((u) => {
                   const isPrem = u.role === 'admin' || (!!u.subscription?.plan && u.subscription.plan !== 'free');
                   if (planFilter === 'pro') return isPrem;
                   if (planFilter === 'free') return !isPrem;
                   return true;
+                })
+                .sort((a, b) => {
+                  if (userSortOrder === 'lastActive') {
+                    const statusA = getOnlineStatus(a.lastActiveAt, a.createdAt);
+                    const statusB = getOnlineStatus(b.lastActiveAt, b.createdAt);
+                    return statusA.secondsAgo - statusB.secondsAgo;
+                  }
+                  if (userSortOrder === 'tasks') {
+                    return (b.totalTasks || 0) - (a.totalTasks || 0);
+                  }
+                  if (userSortOrder === 'progress') {
+                    return (b.progressPercent || 0) - (a.progressPercent || 0);
+                  }
+                  return (a.name || '').localeCompare(b.name || '', 'fa');
                 })
                 .map((u) => {
                 const isCurrent = u.id === currentUser?.id;
@@ -1377,6 +1476,7 @@ export const UserManagementView: React.FC = () => {
                 const percent = total > 0 ? Math.round((done / total) * 100) : 0;
                 const skills = Array.isArray(u.skills) ? u.skills : [];
                 const isUserPremium = u.role === 'admin' || (!!u.subscription?.plan && u.subscription.plan !== 'free');
+                const onlineStatus = getOnlineStatus(u.lastActiveAt, u.createdAt);
 
                 return (
                   <div
@@ -1478,6 +1578,28 @@ export const UserManagementView: React.FC = () => {
                               <MapPin className="w-3 h-3 text-zinc-500" />
                               {u.province} {u.city && `، ${u.city}`}
                             </span>
+                          )}
+
+                          {/* Super Admin Only: Online / Last Active in app */}
+                          {isSuperAdmin && (
+                            onlineStatus.isOnline ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-black shadow-2xs">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                </span>
+                                <span>هم‌اکنون آنلاین در اپ</span>
+                              </span>
+                            ) : (
+                              <span
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-zinc-800/80 text-zinc-300 border border-zinc-700/60 text-[10px] font-bold"
+                                title={u.lastActiveAt ? `آخرین فعالیت ثبت‌شده: ${u.lastActiveAt}` : 'هنوز فعالیتی ثبت نشده'}
+                              >
+                                <Clock className="w-3 h-3 text-sky-400" />
+                                <span className="text-zinc-400 font-normal">آخرین حضور در اپ:</span>
+                                <span className="text-zinc-200 font-bold">{onlineStatus.text}</span>
+                              </span>
+                            )
                           )}
 
                           {/* Regular User Contact Info (Admin has no personal contact info tied to system account) */}
@@ -4098,6 +4220,13 @@ export const UserManagementView: React.FC = () => {
                       <span className="inline-flex items-center gap-1 text-[11px] text-zinc-400 font-mono">
                         <Calendar className="w-3 h-3 text-zinc-500" />
                         متولد {toPersianDigits(reportUser.birthDate)}
+                      </span>
+                    )}
+
+                    {isSuperAdmin && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-sky-300 bg-sky-950/40 px-2 py-0.5 rounded-lg border border-sky-800/40">
+                        <Clock className="w-3 h-3 text-sky-400" />
+                        <span>آخرین حضور در اپ: {getOnlineStatus(reportUser.lastActiveAt, reportUser.createdAt).text}</span>
                       </span>
                     )}
                   </div>

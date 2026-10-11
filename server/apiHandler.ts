@@ -40,6 +40,7 @@ interface DBUser {
   };
   isProfileCompleted?: boolean;
   avatar?: string; // data URL (base64) profile photo
+  lastActiveAt?: string | null;
   verificationCode?: string;
   isVerified?: boolean;
   baleChatId?: string | number;
@@ -749,6 +750,13 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
   const db = readDb();
   const currentUser = getUserFromToken(req, db);
+
+  if (currentUser) {
+    const liveUser = db.users.find((u) => u.id === currentUser.id || u.username === currentUser.username);
+    if (liveUser) {
+      liveUser.lastActiveAt = new Date().toISOString();
+    }
+  }
 
   // 1. Auth routes
   if (pathname.startsWith('/api/auth')) {
@@ -1519,6 +1527,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
           dailyTimeline: u.dailyTimeline || [],
           subscription: u.subscription || { plan: u.role === 'admin' ? 'pro' : 'free' },
           createdAt: u.createdAt,
+          lastActiveAt: currentUser?.role === 'admin' ? (u.lastActiveAt || u.createdAt || null) : null,
           totalTasks: total,
           completedTasks: done,
           progressPercent: total > 0 ? Math.round((done / total) * 100) : 0,
@@ -2435,6 +2444,22 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       };
 
       db.tasks.unshift(newTask);
+
+      if (targetUserId !== currentUser.id) {
+        const notifMsg = `تسک «${title}» ${project ? `در پروژه «${project.name}» ` : ''}توسط ${currentUser.name} به شما تخصیص داده شد.`;
+        if (!db.notifications) db.notifications = [];
+        db.notifications.unshift({
+          id: 'notif_task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          userId: targetUserId,
+          title: 'تخصیص تسک جدید 📋',
+          message: notifMsg,
+          type: 'task',
+          data: { taskId: newTask.id, projectId: newTask.projectId },
+          read: false,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
       writeDb(db);
 
       const u = db.users.find((user) => user.id === targetUserId);
@@ -2472,12 +2497,42 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         return true;
       }
 
+      let newUserId = existing.userId;
+      const effectiveProjectId = body.projectId !== undefined ? body.projectId : existing.projectId;
+      if (currentUser.role === 'admin' && body.userId) {
+        newUserId = body.userId;
+      } else if (body.userId && effectiveProjectId) {
+        const proj = db.projects.find((p) => p.id === effectiveProjectId);
+        if (proj) {
+          const allMembers = [proj.creatorId, ...(proj.memberIds || [])];
+          if (allMembers.includes(currentUser.id) && allMembers.includes(body.userId)) {
+            newUserId = body.userId;
+          }
+        }
+      }
+
       db.tasks[taskIndex] = {
         ...existing,
         ...body,
-        projectId: body.projectId !== undefined ? body.projectId : existing.projectId,
-        userId: currentUser.role === 'admin' && body.userId ? body.userId : existing.userId,
+        projectId: effectiveProjectId,
+        userId: newUserId,
       };
+
+      if (newUserId && newUserId !== existing.userId && newUserId !== currentUser.id) {
+        const proj = effectiveProjectId ? db.projects.find((p) => p.id === effectiveProjectId) : null;
+        const notifMsg = `تسک «${body.title || existing.title}» ${proj ? `در پروژه «${proj.name}» ` : ''}توسط ${currentUser.name} به شما واگذار شد.`;
+        if (!db.notifications) db.notifications = [];
+        db.notifications.unshift({
+          id: 'notif_task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          userId: newUserId,
+          title: 'تخصیص تسک جدید 📋',
+          message: notifMsg,
+          type: 'task',
+          data: { taskId: id, projectId: effectiveProjectId },
+          read: false,
+          createdAt: new Date().toISOString(),
+        });
+      }
 
       writeDb(db);
       sendJson(res, { message: 'تسک به‌روزرسانی شد.', task: db.tasks[taskIndex] });

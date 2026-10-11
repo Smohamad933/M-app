@@ -218,6 +218,9 @@ class TaskRoozDB {
                     if (!isset($taskCols['subtasks_json'])) {
                         @$pdoInstance->exec("ALTER TABLE `tasks` ADD COLUMN `subtasks_json` text DEFAULT NULL");
                     }
+                    if (!isset($taskCols['project_id'])) {
+                        @$pdoInstance->exec("ALTER TABLE `tasks` ADD COLUMN `project_id` varchar(64) DEFAULT NULL");
+                    }
                 }
             };
 
@@ -226,6 +229,36 @@ class TaskRoozDB {
             if ($this->tasksPdo) {
                 $ensureTasksSchema($this->tasksPdo);
             }
+
+            // Ensure last_active_at on users table
+            try {
+                $uCols = [];
+                $uStmt = @$this->pdo->query("SHOW COLUMNS FROM `users`");
+                if ($uStmt) {
+                    while ($uc = $uStmt->fetch(PDO::FETCH_ASSOC)) {
+                        $uCols[strtolower($uc['Field'])] = true;
+                    }
+                    if (!isset($uCols['last_active_at'])) {
+                        @$this->pdo->exec("ALTER TABLE `users` ADD COLUMN `last_active_at` datetime DEFAULT NULL");
+                    }
+                }
+            } catch (Exception $eU) {}
+
+            // Dedicated projects table
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS `projects` (
+                  `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `description` text COLLATE utf8mb4_unicode_ci,
+                  `color` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#6366f1',
+                  `icon` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Folder',
+                  `creator_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `creator_name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+                  `member_ids_json` text COLLATE utf8mb4_unicode_ci,
+                  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
 
             // Dedicated task completions table for persistent MySQL tick tracking
             if ($tasksDb) {
@@ -1013,6 +1046,7 @@ class TaskRoozDB {
                         $u['baleUsername'] = $u['bale_username'] ?? $u['baleUsername'] ?? null;
                         $u['baleNotifToken'] = $u['bale_notif_token'] ?? $u['baleNotifToken'] ?? null;
                         $u['baleNotificationsEnabled'] = !empty($u['bale_notif_enabled'] ?? $u['baleNotificationsEnabled']);
+                        $u['lastActiveAt'] = $u['last_active_at'] ?? $u['lastActiveAt'] ?? null;
                         $u['subscription'] = !empty($u['subscription_json'])
                             ? (is_array($u['subscription_json']) ? $u['subscription_json'] : json_decode($u['subscription_json'], true))
                             : (!empty($u['subscriptionJson']) ? json_decode($u['subscriptionJson'], true) : ['plan' => (($u['role'] ?? '') === 'admin' ? 'pro' : 'free')]);
@@ -1075,6 +1109,7 @@ class TaskRoozDB {
                 'baleNotifToken' => $u['baleNotifToken'] ?? ($u['bale_notif_token'] ?? null),
                 'baleNotificationsEnabled' => !empty($u['baleNotificationsEnabled']) || !empty($u['bale_notif_enabled']),
                 'subscription' => $u['subscription'] ?? ['plan' => (($u['role'] ?? '') === 'admin' ? 'pro' : 'free')],
+                'lastActiveAt' => $u['lastActiveAt'] ?? ($u['last_active_at'] ?? null),
                 'createdAt' => $u['createdAt'] ?? $u['created_at'] ?? date('Y-m-d H:i:s'),
                 'totalTasks' => $total,
                 'completedTasks' => $done,
@@ -2163,6 +2198,10 @@ class TaskRoozDB {
                     $fields[] = "`project_id` = ?";
                     $params[] = $data['projectId'] ?? $data['project_id'];
                 }
+                if (array_key_exists('userId', $data) || array_key_exists('user_id', $data)) {
+                    $fields[] = "`user_id` = ?";
+                    $params[] = $data['userId'] ?? $data['user_id'];
+                }
                 if (array_key_exists('date', $data)) {
                     $fields[] = "`date` = ?";
                     $params[] = $data['date'];
@@ -2897,33 +2936,56 @@ class TaskRoozDB {
     }
 
     public function getAllTeamProjects($userId = null, $isAdmin = false) {
-        $filterProjects = function($list) use ($userId) {
-            if (empty($userId)) return $list;
-            return array_values(array_filter($list, function($p) use ($userId) {
-                if (($p['creatorId'] ?? '') === $userId) return true;
+        $targetUser = !empty($userId) ? ($this->getUserById($userId) ?: $this->getUserByUsername($userId)) : null;
+        $userKeys = array_values(array_unique(array_filter([
+            $userId,
+            $targetUser['id'] ?? null,
+            $targetUser['username'] ?? null,
+            isset($targetUser['numericId']) ? strval($targetUser['numericId']) : null
+        ])));
+
+        $filterProjects = function($list) use ($userKeys) {
+            if (empty($userKeys)) return $list;
+            return array_values(array_filter($list, function($p) use ($userKeys) {
+                $creator = $p['creatorId'] ?? $p['creator_id'] ?? '';
+                if (in_array($creator, $userKeys, true)) return true;
                 $mIds = $p['memberIds'] ?? [];
-                if (is_array($mIds) && in_array($userId, $mIds)) return true;
+                if (is_array($mIds)) {
+                    foreach ($mIds as $m) {
+                        if (in_array(strval($m), $userKeys, true)) return true;
+                    }
+                }
                 return false;
             }));
         };
 
+        $mergedProjects = [];
+        $seenProjectIds = [];
+
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
                 $stmt = $this->pdo->query("SELECT id, name, description, color, icon, creator_id as creatorId, creator_name as creatorName, member_ids_json, created_at as createdAt FROM projects ORDER BY created_at DESC");
-                $rows = $stmt->fetchAll();
+                $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : null;
                 if ($rows) {
-                    $all = array_map(function($p) {
-                        $p['memberIds'] = !empty($p['member_ids_json']) ? json_decode($p['member_ids_json'], true) : [];
-                        return $p;
-                    }, $rows);
-                    return $filterProjects($all);
+                    foreach ($rows as $p) {
+                        $p['memberIds'] = !empty($p['member_ids_json']) ? (is_array($p['member_ids_json']) ? $p['member_ids_json'] : json_decode($p['member_ids_json'], true)) : [];
+                        $seenProjectIds[$p['id']] = true;
+                        $mergedProjects[] = $p;
+                    }
                 }
             } catch (Exception $e) {}
         }
 
         $this->loadJson();
         $projects = $this->data['projects'] ?? [];
-        return $filterProjects($projects);
+        foreach ($projects as $jp) {
+            if (!isset($seenProjectIds[$jp['id']])) {
+                $seenProjectIds[$jp['id']] = true;
+                $mergedProjects[] = $jp;
+            }
+        }
+
+        return $filterProjects($mergedProjects);
     }
 
     public function getTeamProject($id) {
@@ -3647,7 +3709,7 @@ class TaskRoozDB {
                     if (!in_array($memberId, $p['memberIds'])) {
                         $p['memberIds'][] = $memberId;
                     }
-                    $this->saveTasks();
+                    $this->saveJson();
                     break;
                 }
             }

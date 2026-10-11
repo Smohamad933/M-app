@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `skills_json` text COLLATE utf8mb4_unicode_ci,
   `timeline_json` text COLLATE utf8mb4_unicode_ci,
   `avatar` longtext COLLATE utf8mb4_unicode_ci,
+  `last_active_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_username` (`username`)
@@ -69,6 +70,20 @@ CREATE TABLE IF NOT EXISTS `tasks` (
   PRIMARY KEY (`id`),
   KEY `idx_task_user` (`user_id`),
   KEY `idx_task_date` (`date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3.1. جدول ثبت وضعیت تکمیل تسک‌ها (task_completions)
+CREATE TABLE IF NOT EXISTS `task_completions` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `task_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `completed` tinyint(1) NOT NULL DEFAULT 1,
+  `completed_at` datetime DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_task_unique` (`task_id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_completed` (`completed`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4. جدول اتاق‌های تمرکز زنده (focus_rooms)

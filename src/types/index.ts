@@ -61,6 +61,7 @@ export interface User {
   baleNotificationsEnabled?: boolean;
   verificationCode?: string;
   isVerified?: boolean;
+  lastActiveAt?: string | null;
   createdAt: string;
   totalTasks?: number;
   completedTasks?: number;
