@@ -38,6 +38,7 @@ class TaskRoozDB {
             return;
         }
         try {
+            $this->pdo->exec("SET SESSION lock_wait_timeout = 2");
             $this->pdo->exec("
                 CREATE TABLE IF NOT EXISTS `users` (
                   `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,

@@ -451,62 +451,9 @@ if ($method === 'GET') {
 
     $users = $db->getAllUsers();
 
-    // Dual-server synchronization: query sibling domain only when explicitly requested (keeps standard calls instant)
+    // Dual-server synchronization: prevent recursive self-requests that trigger 504 gateway deadlocks
     if (!empty($_GET['sync_peer']) || $action === 'sync_peers') {
-        try {
-            $currHost = $_SERVER['HTTP_HOST'] ?? '';
-            $peerHost = (strpos($currHost, 'bagtime.negahm.ir') !== false) 
-                ? 'https://bagtime.negahm.ir' 
-                : 'https://bagtime.negahm.ir';
-
-            $peerRaw = false;
-            if (function_exists('curl_init')) {
-                $ch = curl_init("{$peerHost}/api/users.php?action=public&no_peer=1");
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 2);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                $peerRaw = curl_exec($ch);
-                curl_close($ch);
-            }
-            if (!$peerRaw) {
-                $ctx = stream_context_create([
-                    'http' => ['timeout' => 2, 'ignore_errors' => true],
-                    'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false],
-                ]);
-                $peerRaw = @file_get_contents("{$peerHost}/api/users.php?action=public&no_peer=1", false, $ctx);
-            }
-            if ($peerRaw) {
-                $peerData = @json_decode($peerRaw, true);
-                if (!empty($peerData['users']) && is_array($peerData['users'])) {
-                    $existingKeys = [];
-                    foreach ($users as $u) {
-                        $existingKeys[strtolower(trim((string)($u['username'] ?? $u['id'])))] = true;
-                    }
-                    $tombstones = $db->getDeletedUserKeys();
-                    foreach ($peerData['users'] as $pu) {
-                        $pk = strtolower(trim((string)($pu['username'] ?? $pu['id'])));
-                        $pId = strtolower(trim((string)($pu['id'] ?? '')));
-                        if (isset($tombstones[$pk]) || isset($tombstones[$pId])) {
-                            // User was deleted — do not resurrect
-                            continue;
-                        }
-                        if (!isset($existingKeys[$pk]) && $pk !== 'mohusyn') {
-                            $createdU = $db->createUser($pu['username'], bin2hex(random_bytes(5)), $pu['name'] ?? $pu['username'], $pu['role'] ?? 'user', [
-                                'baleChatId' => $pu['baleChatId'] ?? null,
-                                'baleUsername' => $pu['baleUsername'] ?? null,
-                                'isVerified' => true,
-                                'status' => 'active',
-                                'phone' => $pu['phone'] ?? '',
-                                'email' => $pu['email'] ?? '',
-                            ]);
-                            $users[] = $createdU;
-                            $existingKeys[$pk] = true;
-                        }
-                    }
-                }
-            }
-        } catch (Exception $e) {}
+        // Intentionally no-op to protect origin web server from self-referential HTTP loopbacks
     }
 
     jsonResponse(['users' => $users]);

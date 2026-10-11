@@ -13,6 +13,7 @@ if (session_status() === PHP_SESSION_NONE) {
     @ini_set('session.cookie_httponly', '1');
     @ini_set('session.use_only_cookies', '1');
     @session_start();
+    @session_write_close();
 }
 
 // 1. Load local configuration if exists (so extracting new zip files NEVER overwrites your database credentials)
@@ -47,6 +48,7 @@ $GLOBALS['taskrooz_db_error'] = null;
 function getMySQLPDO($module = null) {
     static $connections = [];
     static $failed = [];
+    static $failedHosts = [];
 
     $host = DB_HOST;
     $port = DB_PORT;
@@ -68,29 +70,38 @@ function getMySQLPDO($module = null) {
         $dbName = DB_NAME_NOTIFICATIONS;
     }
 
+    $hostKey = "{$host}:{$port}";
+    if (!empty($failedHosts[$hostKey])) {
+        return null;
+    }
+
     $connKey = "{$host}:{$port}/{$dbName}";
     if (isset($connections[$connKey])) return $connections[$connKey];
     if (!empty($failed[$connKey])) return null;
 
     if (!extension_loaded('pdo_mysql') || !class_exists('PDO')) {
         $failed[$connKey] = true;
+        $failedHosts[$hostKey] = true;
         $GLOBALS['taskrooz_db_error'] = 'اکستنشن pdo_mysql در PHP سرور فعال نیست.';
         return null;
     }
 
     try {
+        @ini_set('default_socket_timeout', '2');
         $dsn = "mysql:host=" . $host . ";port=" . $port . ";dbname=" . $dbName . ";charset=utf8mb4";
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_TIMEOUT => 3,
+            PDO::ATTR_TIMEOUT => 2,
         ];
         $pdo = new PDO($dsn, $user, $pass, $options);
         $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+        $pdo->exec("SET SESSION lock_wait_timeout = 2");
         $connections[$connKey] = $pdo;
         return $pdo;
     } catch (Exception $e) {
         $failed[$connKey] = true;
+        $failedHosts[$hostKey] = true;
         $GLOBALS['taskrooz_db_error'] = $e->getMessage();
         return null;
     }

@@ -123,7 +123,7 @@ function touchUserActivity($userId, $storage) {
     }
     if ($storage->mode === 'mysql' && $pdo) {
         try {
-            $pdo->prepare("UPDATE users SET last_active_at = ? WHERE id = ? OR LOWER(username) = LOWER(?)")->execute([$now, $userId, $userId]);
+            $pdo->prepare("UPDATE users SET last_active_at = ? WHERE id = ? LIMIT 1")->execute([$now, $userId]);
         } catch (Exception $e) {}
     }
     if (isset($storage->data['users']) && is_array($storage->data['users'])) {
