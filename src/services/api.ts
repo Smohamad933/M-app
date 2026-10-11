@@ -415,19 +415,6 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   return fetchPromise;
 }
 
-
-function isTestUsername(username: string): boolean {
-  const u = (username || '').toLowerCase().trim();
-  if (u === 'mohusyn' || u === 'bale_998877') return false;
-  const prefixes = [
-    'test_', 'regular_user_', 'user_target_', 'live_member_', 'reza_test_',
-    'student_', 'noadmin_', 'bale_strict_', 'bob_colleague_', 'bob_dev_',
-    'sarah_chat_', 'priv_user_', 'viewer_', 'reg_designer_', 'm_rezaei_',
-    'alice_pm_', 'eve_outsider_'
-  ];
-  return prefixes.some((p) => u.startsWith(p));
-}
-
 export const api = {
   /** Check whether the database is installed (file data/db.json present & valid) */
   checkDatabase: async (): Promise<{ installed: boolean }> => {
@@ -1065,25 +1052,23 @@ export const api = {
       const map = new Map<string, User>();
       map.set('mohusyn', baseAdmin);
 
-      const rawDel = localStorage.getItem('taskrooz_deleted_user_keys');
-      const tombKeys = new Set<string>(rawDel ? JSON.parse(rawDel) : []);
-
+      // Server directory is authoritative: every account registered on the server must be visible to admin
       serverUsers.forEach((u) => {
-        const uId = String(u.id || '').trim().toLowerCase();
-        const uName = String(u.username || '').trim().toLowerCase();
-        if (isTestUsername(uName) || isTestUsername(uId)) return;
-        if (uName !== 'mohusyn' && (tombKeys.has(uId) || tombKeys.has(uName))) return;
-        if (u.username) map.set(u.username.toLowerCase(), u);
+        if (!u || !u.username) return;
+        const uName = String(u.username).trim().toLowerCase();
+        map.set(uName, u);
       });
-      localList.forEach((u) => {
-        const uId = String(u.id || '').trim().toLowerCase();
-        const uName = String(u.username || '').trim().toLowerCase();
-        if (isTestUsername(uName) || isTestUsername(uId)) return;
-        if (uName !== 'mohusyn' && (tombKeys.has(uId) || tombKeys.has(uName))) return;
-        if (u.username && !map.has(u.username.toLowerCase())) {
-          map.set(u.username.toLowerCase(), u);
-        }
-      });
+
+      // If server was unreachable, fall back to local registered list
+      if (!serverReachable) {
+        localList.forEach((u) => {
+          if (!u || !u.username) return;
+          const uName = String(u.username).trim().toLowerCase();
+          if (!map.has(uName)) {
+            map.set(uName, u);
+          }
+        });
+      }
 
       return Array.from(map.values()).map((u) => {
         if (!u.avatar) {
@@ -1101,20 +1086,15 @@ export const api = {
 
   async purgeTestUsers(): Promise<{ ok: boolean; count: number; message: string }> {
     try {
-      const raw = localStorage.getItem('taskrooz_registered_users');
-      if (raw) {
-        const parsed: User[] = JSON.parse(raw);
-        const filtered = parsed.filter((u) => !isTestUsername(u.username || ''));
-        localStorage.setItem('taskrooz_registered_users', JSON.stringify(filtered));
-      }
-      const rawLocal = localStorage.getItem('taskrooz_users_local');
-      if (rawLocal) {
-        const parsed: User[] = JSON.parse(rawLocal);
-        const filtered = parsed.filter((u) => !isTestUsername(u.username || ''));
-        localStorage.setItem('taskrooz_users_local', JSON.stringify(filtered));
-      }
+      localStorage.removeItem('taskrooz_deleted_user_keys');
+      localStorage.removeItem('taskrooz_registered_users');
+      localStorage.removeItem('taskrooz_users_local');
     } catch {}
     return request<{ ok: boolean; count: number; message: string }>('api/users.php?action=purge_test_users');
+  },
+
+  async fixNumericIds(): Promise<{ message: string }> {
+    return request<{ message: string }>('api/users.php?action=fix_numeric_ids');
   },
 
   async syncUsersToMySQL(): Promise<{ ok: boolean; count: number; message: string }> {
@@ -1148,33 +1128,16 @@ export const api = {
     jobTitle?: string;
     skills?: string[];
   }): Promise<User> {
-    let data: { user: User; message: string };
-    try {
-      data = await request<{ user: User; message: string }>('api/users.php', {
-        method: 'POST',
-        body: JSON.stringify(user),
-      });
-    } catch (err: any) {
-      data = await request<{ user: User; message: string }>('api/users.php?action=create_user', {
-        method: 'POST',
-        body: JSON.stringify(user),
-      });
-    }
-
+    const data = await request<{ user: User; message: string }>('api/users.php', {
+      method: 'POST',
+      body: JSON.stringify(user),
+    });
     try {
       const raw = localStorage.getItem('taskrooz_registered_users');
       const list: User[] = raw ? JSON.parse(raw) : [];
       const cleanList = list.filter((u) => u.id !== data.user.id && u.username?.toLowerCase() !== data.user.username?.toLowerCase());
       cleanList.push(data.user);
       localStorage.setItem('taskrooz_registered_users', JSON.stringify(cleanList));
-
-      // Clear any tombstone so re-created user immediately shows up
-      const rawDel = localStorage.getItem('taskrooz_deleted_user_keys');
-      if (rawDel) {
-        const delKeys: string[] = JSON.parse(rawDel);
-        const filteredDel = delKeys.filter((k) => k !== data.user.id.toLowerCase() && k !== data.user.username.toLowerCase());
-        localStorage.setItem('taskrooz_deleted_user_keys', JSON.stringify(filteredDel));
-      }
     } catch {}
     broadcastSync('USER_REGISTERED', data.user);
     return data.user;
@@ -1460,7 +1423,7 @@ export const api = {
       formData.append('family', cleanFamily);
       formData.append('filename', file.name);
       formData.append('description', description?.trim() || 'فونت سفارشی آپلود شده از سیستم');
-      if (dataUrl) {
+      if (dataUrl && dataUrl.length < 500000) {
         formData.append('dataUrl', dataUrl);
       }
 
@@ -1513,30 +1476,11 @@ export const api = {
   },
 
   async createTask(task: Omit<Task, 'id' | 'createdAt'>): Promise<Task> {
-    try {
-      const data = await request<{ task: Task; message: string }>('api/tasks.php', {
-        method: 'POST',
-        body: JSON.stringify(task),
-      });
-      if (data?.task) return data.task;
-    } catch (err: any) {
-      console.warn('POST createTask failed, trying fallback action=create:', err);
-      try {
-        const data = await request<{ task: Task; message: string }>('api/tasks.php?action=create', {
-          method: 'POST',
-          body: JSON.stringify(task),
-        });
-        if (data?.task) return data.task;
-      } catch {}
-    }
-
-    // Resilient fallback: ensure task creation never crashes or disappears
-    const fallbackTask: Task = {
-      id: 'task_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-      createdAt: new Date().toISOString(),
-      ...task,
-    } as Task;
-    return fallbackTask;
+    const data = await request<{ task: Task; message: string }>('api/tasks.php', {
+      method: 'POST',
+      body: JSON.stringify(task),
+    });
+    return data.task;
   },
 
   async updateTask(task: Task): Promise<void> {

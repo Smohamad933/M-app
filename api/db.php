@@ -860,24 +860,49 @@ class TaskRoozDB {
         }
 
         $maxNum = 1000;
+        $usedNumericIds = [1000 => true];
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
-                $mStmt = $this->pdo->query("SELECT MAX(numeric_id) as max_id FROM users");
-                $mRow = $mStmt ? $mStmt->fetch() : null;
-                if ($mRow && !empty($mRow['max_id']) && is_numeric($mRow['max_id'])) {
-                    $maxNum = max($maxNum, (int)$mRow['max_id']);
+                $mStmt = $this->pdo->query("SELECT numeric_id FROM users");
+                if ($mStmt) {
+                    while ($mRow = $mStmt->fetch(PDO::FETCH_ASSOC)) {
+                        $n = (int)($mRow['numeric_id'] ?? 0);
+                        if ($n > 0) {
+                            $usedNumericIds[$n] = true;
+                            $maxNum = max($maxNum, $n);
+                        }
+                    }
                 }
             } catch (Exception $eM) {}
         }
-        foreach ($this->getAllUsers() as $existingU) {
-            $nVal = $existingU['numericId'] ?? ($existingU['numeric_id'] ?? 0);
-            if (!empty($nVal) && is_numeric($nVal)) {
-                $maxNum = max($maxNum, (int)$nVal);
+        $this->loadJson();
+        if (!empty($this->data['users']) && is_array($this->data['users'])) {
+            foreach ($this->data['users'] as $existingU) {
+                $nVal = (int)($existingU['numericId'] ?? ($existingU['numeric_id'] ?? 0));
+                if ($nVal > 0) {
+                    $usedNumericIds[$nVal] = true;
+                    $maxNum = max($maxNum, $nVal);
+                }
             }
         }
-        $numericId = (!empty($extra['numericId']) && is_numeric($extra['numericId']))
-            ? (int)$extra['numericId']
-            : (($role === 'admin' && $usernameLower === 'mohusyn') ? 1000 : ($maxNum + 1));
+        $lastAssigned = (int)($this->data['last_assigned_numeric_id'] ?? 1000);
+        $maxNum = max($maxNum, $lastAssigned);
+
+        if ($role === 'admin' && $usernameLower === 'mohusyn') {
+            $numericId = 1000;
+        } else {
+            $candidateNum = (!empty($extra['numericId']) && is_numeric($extra['numericId'])) ? (int)$extra['numericId'] : 0;
+            if ($candidateNum > 1000 && !isset($usedNumericIds[$candidateNum])) {
+                $numericId = $candidateNum;
+            } else {
+                $nextId = $maxNum + 1;
+                while (isset($usedNumericIds[$nextId])) {
+                    $nextId++;
+                }
+                $numericId = $nextId;
+            }
+            $this->data['last_assigned_numeric_id'] = max($numericId, (int)($this->data['last_assigned_numeric_id'] ?? 1000));
+        }
         $isCompleted = !empty($birthDate) && !empty($jobTitle) && !empty($city);
 
         $status = $extra['status'] ?? 'active';
@@ -1062,18 +1087,6 @@ class TaskRoozDB {
                     foreach ($users as $u) {
                         $uUname = strtolower(trim((string)($u['username'] ?? '')));
                         $uId = strtolower(trim((string)($u['id'] ?? '')));
-                        // Filter out test runner accounts
-                        if ($uUname !== 'mohusyn' && $uId !== 'usr_admin_mohusyn') {
-                            $isTest = false;
-                            foreach (['test_', 'regular_user_', 'user_target_', 'live_member_', 'reza_test_', 'student_', 'noadmin_', 'bale_strict_', 'bob_colleague_', 'bob_dev_', 'sarah_chat_', 'priv_user_', 'viewer_', 'reg_designer_', 'm_rezaei_', 'alice_pm_', 'eve_outsider_', 'bale_998877'] as $pfx) {
-                                if (strpos($uUname, $pfx) === 0 || strpos($uId, $pfx) === 0) {
-                                    $isTest = true;
-                                    break;
-                                }
-                            }
-                            if ($isTest) continue;
-                        }
-
                         $uKey = strtolower(trim((string)($u['username'] ?? $u['id'])));
                         $uIdKey = strtolower(trim((string)($u['id'] ?? '')));
                         $tc = $taskCounts[$uIdKey] ?? ($taskCounts[$uKey] ?? null);
@@ -1115,18 +1128,6 @@ class TaskRoozDB {
             foreach ($this->data['users'] as $u) {
                 $uUname = strtolower(trim((string)($u['username'] ?? '')));
                 $uId = strtolower(trim((string)($u['id'] ?? '')));
-                // Filter out test runner accounts
-                if ($uUname !== 'mohusyn' && $uId !== 'usr_admin_mohusyn') {
-                    $isTest = false;
-                    foreach (['test_', 'regular_user_', 'user_target_', 'live_member_', 'reza_test_', 'student_', 'noadmin_', 'bale_strict_', 'bob_colleague_', 'bob_dev_', 'sarah_chat_', 'priv_user_', 'viewer_', 'reg_designer_', 'm_rezaei_', 'alice_pm_', 'eve_outsider_', 'bale_998877'] as $pfx) {
-                        if (strpos($uUname, $pfx) === 0 || strpos($uId, $pfx) === 0) {
-                            $isTest = true;
-                            break;
-                        }
-                    }
-                    if ($isTest) continue;
-                }
-
                 $key = strtolower(trim((string)($u['username'] ?? $u['id'])));
                 if (isset($userMap[$key]) || ($uId !== '' && isset($userMap[$uId]))) {
                     $existingKey = isset($userMap[$key]) ? $key : $uId;
@@ -1256,6 +1257,46 @@ class TaskRoozDB {
                 'completedTasks' => 0,
                 'progressPercent' => 0,
             ];
+        }
+
+        // 5. Automatic detection and healing of duplicate/colliding numeric IDs
+        $seenNumeric = [];
+        $hasDuplicate = false;
+        foreach ($userMap as $u) {
+            $uName = strtolower(trim((string)($u['username'] ?? '')));
+            if ($uName === 'mohusyn') continue;
+            $num = (int)($u['numericId'] ?? ($u['numeric_id'] ?? 0));
+            if ($num <= 1000 || isset($seenNumeric[$num])) {
+                $hasDuplicate = true;
+                break;
+            }
+            $seenNumeric[$num] = true;
+        }
+
+        static $fixingNumeric = false;
+        if ($hasDuplicate && !$fixingNumeric) {
+            $fixingNumeric = true;
+            $this->fixAllUserNumericIds();
+            $fixingNumeric = false;
+            // Refresh updated numeric IDs in $userMap
+            if ($this->mode === 'mysql' && $this->pdo) {
+                try {
+                    $nStmt = $this->pdo->query("SELECT id, numeric_id FROM users");
+                    if ($nStmt) {
+                        $freshMap = [];
+                        while ($nr = $nStmt->fetch(PDO::FETCH_ASSOC)) {
+                            $freshMap[$nr['id']] = (int)$nr['numeric_id'];
+                        }
+                        foreach ($userMap as &$um) {
+                            $uid = $um['id'] ?? '';
+                            if (isset($freshMap[$uid])) {
+                                $um['numericId'] = $freshMap[$uid];
+                            }
+                        }
+                        unset($um);
+                    }
+                } catch (Exception $eN) {}
+            }
         }
 
         return array_values($userMap);
@@ -1897,95 +1938,104 @@ class TaskRoozDB {
     }
 
     public function fixAllUserNumericIds() {
-        // Fix in MySQL
+        $this->loadJson();
+
+        // 1. Gather all users across MySQL and JSON
+        $allUsers = [];
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
                 $stmt = $this->pdo->query("SELECT id, username, numeric_id, created_at FROM users ORDER BY created_at ASC, id ASC");
-                $users = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+                $allUsers = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+            } catch (Exception $e) {}
+        }
 
-                $usedIds = [1000 => true];
-                $needsUpdate = [];
-                $nextId = 1001;
+        $jsonUsers = $this->data['users'] ?? [];
+        $userKeyMap = [];
+        foreach ($allUsers as $u) {
+            $k = strtolower(trim((string)($u['username'] ?? $u['id'])));
+            $userKeyMap[$k] = true;
+            if (!empty($u['id'])) $userKeyMap[strtolower(trim($u['id']))] = true;
+        }
+        foreach ($jsonUsers as $ju) {
+            $k = strtolower(trim((string)($ju['username'] ?? $ju['id'])));
+            $uid = strtolower(trim((string)($ju['id'] ?? '')));
+            if (!isset($userKeyMap[$k]) && !isset($userKeyMap[$uid])) {
+                $allUsers[] = [
+                    'id' => $ju['id'],
+                    'username' => $ju['username'],
+                    'numeric_id' => $ju['numericId'] ?? ($ju['numeric_id'] ?? 0),
+                    'created_at' => $ju['createdAt'] ?? date('Y-m-d H:i:s'),
+                ];
+                $userKeyMap[$k] = true;
+                if ($uid !== '') $userKeyMap[$uid] = true;
+            }
+        }
 
-                // Ensure Mohusyn has 1000
-                foreach ($users as $u) {
-                    $uname = strtolower(trim((string)($u['username'] ?? '')));
-                    $uid = $u['id'];
-                    $currNum = isset($u['numeric_id']) ? (int)$u['numeric_id'] : 0;
-                    if ($uname === 'mohusyn' || $uid === 'usr_admin_mohusyn') {
-                        if ($currNum !== 1000) {
-                            $needsUpdate[$uid] = 1000;
-                        }
-                    }
+        // Sort users by created_at ASC, id ASC
+        usort($allUsers, function($a, $b) {
+            $ca = $a['created_at'] ?? '';
+            $cb = $b['created_at'] ?? '';
+            if ($ca !== $cb) return strcmp($ca, $cb);
+            return strcmp($a['id'] ?? '', $b['id'] ?? '');
+        });
+
+        $usedIds = [1000 => true];
+        $idToNum = [];
+        $nextId = 1001;
+
+        // Pass 1: Admin Mohusyn is strictly 1000
+        foreach ($allUsers as $u) {
+            $uname = strtolower(trim((string)($u['username'] ?? '')));
+            $uid = $u['id'];
+            if ($uname === 'mohusyn' || $uid === 'usr_admin_mohusyn') {
+                $idToNum[$uid] = 1000;
+            }
+        }
+
+        // Pass 2: Assign unique sequential numbers strictly > 1000 to all non-admins
+        foreach ($allUsers as $u) {
+            $uname = strtolower(trim((string)($u['username'] ?? '')));
+            $uid = $u['id'];
+            if ($uname === 'mohusyn' || $uid === 'usr_admin_mohusyn') continue;
+
+            $currNum = isset($u['numeric_id']) ? (int)$u['numeric_id'] : (isset($u['numericId']) ? (int)$u['numericId'] : 0);
+            if ($currNum <= 1000 || isset($usedIds[$currNum])) {
+                while (isset($usedIds[$nextId])) {
+                    $nextId++;
                 }
-
-                // Check other users
-                foreach ($users as $u) {
-                    $uname = strtolower(trim((string)($u['username'] ?? '')));
-                    $uid = $u['id'];
-                    if ($uname === 'mohusyn' || $uid === 'usr_admin_mohusyn') continue;
-
-                    $currNum = isset($u['numeric_id']) ? (int)$u['numeric_id'] : 0;
-                    if ($currNum <= 1000 || isset($usedIds[$currNum])) {
-                        while (isset($usedIds[$nextId])) {
-                            $nextId++;
-                        }
-                        $needsUpdate[$uid] = $nextId;
-                        $usedIds[$nextId] = true;
-                        $nextId++;
-                    } else {
-                        $usedIds[$currNum] = true;
-                        if ($currNum >= $nextId) {
-                            $nextId = $currNum + 1;
-                        }
-                    }
+                $idToNum[$uid] = $nextId;
+                $usedIds[$nextId] = true;
+                $nextId++;
+            } else {
+                $usedIds[$currNum] = true;
+                $idToNum[$uid] = $currNum;
+                if ($currNum >= $nextId) {
+                    $nextId = $currNum + 1;
                 }
+            }
+        }
 
-                if (!empty($needsUpdate)) {
-                    $up = $this->pdo->prepare("UPDATE users SET numeric_id = ? WHERE id = ?");
-                    foreach ($needsUpdate as $uid => $newNum) {
-                        $up->execute([$newNum, $uid]);
-                    }
+        // Apply to MySQL
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $up = $this->pdo->prepare("UPDATE users SET numeric_id = ? WHERE id = ?");
+                foreach ($idToNum as $uid => $num) {
+                    $up->execute([$num, $uid]);
                 }
             } catch (Exception $e) {}
         }
 
-        // Fix in JSON
-        $this->loadJson();
+        // Apply to JSON
         if (!empty($this->data['users']) && is_array($this->data['users'])) {
-            $usedIds = [1000 => true];
-            $nextId = 1001;
             foreach ($this->data['users'] as &$u) {
-                $uname = strtolower(trim((string)($u['username'] ?? '')));
                 $uid = $u['id'] ?? '';
-                if ($uname === 'mohusyn' || $uid === 'usr_admin_mohusyn') {
-                    $u['numericId'] = 1000;
+                if (isset($idToNum[$uid])) {
+                    $u['numericId'] = $idToNum[$uid];
                 }
             }
             unset($u);
-
-            foreach ($this->data['users'] as &$u) {
-                $uname = strtolower(trim((string)($u['username'] ?? '')));
-                $uid = $u['id'] ?? '';
-                if ($uname === 'mohusyn' || $uid === 'usr_admin_mohusyn') continue;
-
-                $currNum = isset($u['numericId']) ? (int)$u['numericId'] : (isset($u['numeric_id']) ? (int)$u['numeric_id'] : 0);
-                if ($currNum <= 1000 || isset($usedIds[$currNum])) {
-                    while (isset($usedIds[$nextId])) {
-                        $nextId++;
-                    }
-                    $u['numericId'] = $nextId;
-                    $usedIds[$nextId] = true;
-                    $nextId++;
-                } else {
-                    $usedIds[$currNum] = true;
-                    $u['numericId'] = $currNum;
-                    if ($currNum >= $nextId) {
-                        $nextId = $currNum + 1;
-                    }
-                }
-            }
-            unset($u);
+            $maxAssigned = !empty($idToNum) ? max(array_values($idToNum)) : 1000;
+            $this->data['last_assigned_numeric_id'] = max($maxAssigned, (int)($this->data['last_assigned_numeric_id'] ?? 1000));
             $this->saveJson();
         }
     }
@@ -2016,7 +2066,7 @@ class TaskRoozDB {
         $id = trim((string)$id);
         if ($id === '') return false;
 
-        // 1. Resolve user first by ID or username or numeric ID
+        // 1. Resolve user first by ID or username
         $user = $this->getUserById($id);
         if (!$user) {
             $user = $this->getUserByUsername($id);
@@ -2024,9 +2074,7 @@ class TaskRoozDB {
         if (!$user) {
             foreach ($this->getAllUsers() as $u) {
                 if ((string)($u['id'] ?? '') === $id ||
-                    (string)($u['username'] ?? '') === $id ||
-                    (string)($u['numericId'] ?? '') === $id ||
-                    (string)($u['numeric_id'] ?? '') === $id) {
+                    (string)($u['username'] ?? '') === $id) {
                     $user = $u;
                     break;
                 }
@@ -2147,8 +2195,6 @@ class TaskRoozDB {
                         $uId,
                         $uName,
                         strtolower($uName),
-                        isset($u['numericId']) ? strval($u['numericId']) : null,
-                        isset($u['numeric_id']) ? strval($u['numeric_id']) : null,
                     ])));
                     if (strtolower($uName) === 'mohusyn' || $uId === 'usr_admin_mohusyn' || strtolower($userId) === 'mohusyn' || $userId === 'usr_admin_1') {
                         $userAliases[] = 'Mohusyn';
@@ -2214,7 +2260,6 @@ class TaskRoozDB {
                         $uId,
                         $uName,
                         strtolower($uName),
-                        isset($u['numericId']) ? strval($u['numericId']) : null,
                     ])));
                     if (strtolower($uName) === 'mohusyn' || $uId === 'usr_admin_mohusyn' || strtolower($userId) === 'mohusyn' || $userId === 'usr_admin_1') {
                         $userAliases[] = 'Mohusyn';
@@ -3240,7 +3285,6 @@ class TaskRoozDB {
             $userId,
             $targetUser['id'] ?? null,
             $targetUser['username'] ?? null,
-            isset($targetUser['numericId']) ? strval($targetUser['numericId']) : null
         ])));
 
         $filterProjects = function($list) use ($userKeys) {
@@ -3787,7 +3831,6 @@ class TaskRoozDB {
         if ($userObj) {
             $idList[] = $userObj['id'];
             if (!empty($userObj['username'])) $idList[] = $userObj['username'];
-            if (!empty($userObj['numericId'])) $idList[] = (string)$userObj['numericId'];
         }
         $idList = array_values(array_unique(array_filter($idList)));
 

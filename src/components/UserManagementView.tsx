@@ -56,6 +56,7 @@ import {
   Sun,
   Moon,
   Bell,
+  Hash,
 } from 'lucide-react';
 
 /**
@@ -197,8 +198,6 @@ export const UserManagementView: React.FC = () => {
     createUser,
     deleteUser,
     refreshUsers,
-    refreshTasks,
-    refreshProjects,
     setSelectedFilterUserId,
     setActiveTab,
     openCreateModal,
@@ -227,6 +226,7 @@ export const UserManagementView: React.FC = () => {
   const [broadcastTargetUserId, setBroadcastTargetUserId] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSyncingMySQL, setIsSyncingMySQL] = useState(false);
+  const [isFixingNumericIds, setIsFixingNumericIds] = useState(false);
   const [isPurgingTests, setIsPurgingTests] = useState(false);
   const [isFontModalOpen, setIsFontModalOpen] = useState(false);
   const pendingUsers = users.filter((u) => u.status === 'pending_approval');
@@ -906,6 +906,21 @@ export const UserManagementView: React.FC = () => {
     }
   };
 
+  const handleFixNumericIds = async () => {
+    setIsFixingNumericIds(true);
+    sounds.playPop();
+    try {
+      const res = await api.fixNumericIds();
+      sounds.playComplete();
+      alert(res.message || 'کدهای کاربری عددی با موفقیت اصلاح و یکتا شدند.');
+      await refreshUsers();
+    } catch (e: any) {
+      alert(e.message || 'خطا در یکتا‌سازی کدهای کاربری');
+    } finally {
+      setIsFixingNumericIds(false);
+    }
+  };
+
   const handlePurgeTests = async () => {
     if (!window.confirm('آیا از پاکسازی و حذف تمامی اکانت‌های آزمایشی اطمینان دارید؟')) return;
     setIsPurgingTests(true);
@@ -915,8 +930,6 @@ export const UserManagementView: React.FC = () => {
       sounds.playComplete();
       alert(res.message || 'اکانت‌های تستی با موفقیت حذف شدند.');
       await refreshUsers();
-      await refreshTasks();
-      await refreshProjects();
     } catch (e: any) {
       alert(e.message || 'خطا در پاکسازی اکانت‌های آزمایشی');
     } finally {
@@ -1071,6 +1084,15 @@ export const UserManagementView: React.FC = () => {
           >
             <Database className={`w-3.5 h-3.5 text-cyan-400 ${isSyncingMySQL ? 'animate-spin' : ''}`} />
             <span>همگام‌سازی MySQL</span>
+          </button>
+
+          <button
+            onClick={handleFixNumericIds}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700/80 text-zinc-200 border border-zinc-700/50 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
+            title="اصلاح و یکتا‌سازی کدهای کاربری عددی همه کاربران"
+          >
+            <Hash className={`w-3.5 h-3.5 text-amber-400 ${isFixingNumericIds ? 'animate-spin' : ''}`} />
+            <span>یکتا‌سازی کدهای عددی</span>
           </button>
 
           <button
