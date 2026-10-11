@@ -1003,7 +1003,13 @@ export const UserManagementView: React.FC = () => {
     e.preventDefault();
     setIsSavingSettings(true);
     try {
-      await updateGlobalSettings(formSettings);
+      const activeFontId = formSettings.enforcedFont || systemFont;
+      const targetFont = allAvailableFonts.find((f) => f.id === activeFontId);
+      const payload: GlobalSystemSettings = {
+        ...formSettings,
+        enforcedFontOption: targetFont || formSettings.enforcedFontOption,
+      };
+      await updateGlobalSettings(payload);
       setSettingsSavedNotice(true);
       setTimeout(() => setSettingsSavedNotice(false), 3000);
     } catch (err: any) {
@@ -2343,10 +2349,18 @@ export const UserManagementView: React.FC = () => {
                   value={formSettings.enforcedFont || systemFont}
                   onChange={async (e) => {
                     const newFont = e.target.value;
-                    setFormSettings((prev) => ({ ...prev, enforcedFont: newFont }));
+                    const targetFont = allAvailableFonts.find((f) => f.id === newFont);
+                    setFormSettings((prev) => ({ 
+                      ...prev, 
+                      enforcedFont: newFont,
+                      enforcedFontOption: targetFont || undefined,
+                    }));
                     setSystemFont(newFont);
                     try {
-                      await updateGlobalSettings({ enforcedFont: newFont });
+                      await updateGlobalSettings({ 
+                        enforcedFont: newFont,
+                        enforcedFontOption: targetFont || undefined,
+                      });
                     } catch {}
                   }}
                   className="flex-1 px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-purple-500 cursor-pointer"

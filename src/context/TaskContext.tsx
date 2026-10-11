@@ -304,15 +304,18 @@ export const AVAILABLE_FONTS: SystemFontOption[] = [
 
 export function applyFontToDom(family: string) {
   if (typeof document === 'undefined') return;
-  const cleanFamily = family.trim();
+  const rawFirst = family.replace(/['"]/g, '').split(',')[0].trim();
+  const composedFamily = rawFirst 
+    ? `'${rawFirst}', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
+    : `'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
 
   // 1. Set CSS variable on documentElement
-  document.documentElement.style.setProperty('--font-sans', cleanFamily);
+  document.documentElement.style.setProperty('--font-sans', composedFamily);
 
   // 2. Set inline style directly on html and body
-  document.documentElement.style.fontFamily = cleanFamily;
+  document.documentElement.style.fontFamily = composedFamily;
   if (document.body) {
-    document.body.style.fontFamily = cleanFamily;
+    document.body.style.fontFamily = composedFamily;
   }
 
   // 3. Inject high-priority global style tag that enforces font across all elements
@@ -324,10 +327,10 @@ export function applyFontToDom(family: string) {
   }
   styleEl.textContent = `
     :root {
-      --font-sans: ${cleanFamily} !important;
+      --font-sans: ${composedFamily} !important;
     }
-    *, *::before, *::after, html, body, #root, input, button, select, textarea {
-      font-family: ${cleanFamily} !important;
+    *, *::before, *::after, html, body, #root, div, span, p, h1, h2, h3, h4, h5, h6, a, label, input, button, select, textarea {
+      font-family: ${composedFamily} !important;
     }
   `;
 }
@@ -355,10 +358,25 @@ function injectFontLink(font: SystemFontOption) {
       const style = document.createElement('style');
       style.id = elementId;
       const cleanFamily = (font.family || font.name || 'CustomFont').replace(/['"]/g, '').split(',')[0].trim();
+
+      let formatHint = '';
+      const lower = fontSource.toLowerCase();
+      if (lower.includes('.woff2') || lower.includes('font/woff2')) {
+        formatHint = " format('woff2')";
+      } else if (lower.includes('.woff') || lower.includes('font/woff')) {
+        formatHint = " format('woff')";
+      } else if (lower.includes('.ttf') || lower.includes('font/ttf') || lower.includes('font/truetype')) {
+        formatHint = " format('truetype')";
+      } else if (lower.includes('.otf') || lower.includes('font/otf') || lower.includes('font/opentype')) {
+        formatHint = " format('opentype')";
+      }
+
       style.textContent = `
         @font-face {
           font-family: '${cleanFamily}';
-          src: url('${fontSource}') format('woff2'), url('${fontSource}') format('woff'), url('${fontSource}') format('truetype'), url('${fontSource}') format('opentype');
+          src: url('${fontSource}')${formatHint};
+          font-weight: 100 900;
+          font-style: normal;
           font-display: swap;
         }
       `;

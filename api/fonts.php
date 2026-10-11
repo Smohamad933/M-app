@@ -13,9 +13,18 @@ require_once __DIR__ . '/config.php';
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
+// Preflight CORS
+if ($method === 'OPTIONS') {
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: *');
+    http_response_code(200);
+    exit;
+}
+
 // 1. Direct Font File Streaming (bypasses IIS static file MIME type blocks)
 if ($method === 'GET' && !empty($_GET['file'])) {
-    $file = basename($_GET['file']);
+    $file = basename(urldecode($_GET['file']));
     $searchPaths = [
         dirname(__DIR__) . '/fonts/' . $file,
         dirname(__DIR__) . '/public/fonts/' . $file,
@@ -43,6 +52,7 @@ if ($method === 'GET' && !empty($_GET['file'])) {
         header('Content-Length: ' . filesize($targetPath));
         header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Methods: GET, OPTIONS');
+        header('Access-Control-Allow-Headers: *');
         header('Cache-Control: public, max-age=31536000, immutable');
         readfile($targetPath);
         exit;
