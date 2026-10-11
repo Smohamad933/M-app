@@ -79,13 +79,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
         return (
           <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping inline-block" />
-            فوری
+            فوری و مهم
           </span>
         );
       case 'medium':
         return (
           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-            مهم
+            متوسط
           </span>
         );
       case 'low':
@@ -207,20 +207,20 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
           </button>
         )}
 
-        {/* Pin button */}
+        {/* Star / Priority High button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             togglePin(task.id);
           }}
           className={`p-1 rounded-lg transition-colors cursor-pointer ${
-            task.isPinned
-              ? 'text-[#f95738]'
-              : 'text-slate-400 hover:text-[#f95738]'
+            task.isPinned || task.priority === 'high'
+              ? 'text-amber-500 hover:text-amber-600'
+              : 'text-slate-400 hover:text-amber-500'
           }`}
-          title={task.isPinned ? 'حذف سنجاق' : 'سنجاق به بالا'}
+          title={task.isPinned || task.priority === 'high' ? 'حذف ستاره و اولویت مهم' : 'ستاره‌دار کردن (اولویت مهم و فوری)'}
         >
-          <Star className={`w-3.5 h-3.5 ${task.isPinned ? 'fill-[#f95738] text-[#f95738]' : ''}`} />
+          <Star className={`w-3.5 h-3.5 ${task.isPinned || task.priority === 'high' ? 'fill-amber-500 text-amber-500' : ''}`} />
         </button>
 
         {/* More Menu */}

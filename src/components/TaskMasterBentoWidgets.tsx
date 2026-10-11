@@ -6,7 +6,11 @@ import {
   getDaysAround,
   isoToJalali,
   jalaliToISO,
+  jalaliToGregorian,
+  gregorianToJalali,
   PERSIAN_MONTHS,
+  GREGORIAN_MONTHS,
+  parseISODate,
 } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import {
@@ -43,7 +47,10 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
     setActiveTab,
     dailyNotes,
     saveDailyNote,
+    calendarType,
   } = useTask();
+
+  const isGregorian = calendarType === 'gregorian';
 
   const [showTodayBanner, setShowTodayBanner] = useState(true);
   const [noteContent, setNoteContent] = useState('');
@@ -117,16 +124,52 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
     return `✨ امروز ${toPersianDigits(pendingTasksCount)} تسک در پیش داری؛ با اولین قدم شروع کن، قدرت اراده تو از هر مانعی بزرگتره! 💪`;
   }, [totalTasksCount, completedTasksCount, pendingTasksCount]);
 
-  // 2. REAL CALENDAR LOGIC: Jalali Month calculation
-  const [activeJy, activeJm] = useMemo(() => {
-    const [y, m] = isoToJalali(activeDate);
-    return [y, m];
-  }, [activeDate]);
-  const [calMonth, setCalMonth] = useState<number>(activeJm);
-  const [calYear, setCalYear] = useState<number>(activeJy);
+  // 2. REAL CALENDAR LOGIC: Dynamic Jalali / Gregorian calculation
+  const [calMonth, setCalMonth] = useState<number>(() => {
+    const sel = parseISODate(activeDate);
+    if (isGregorian) return sel.getMonth() + 1;
+    const [, m] = isoToJalali(activeDate);
+    return m;
+  });
+  const [calYear, setCalYear] = useState<number>(() => {
+    const sel = parseISODate(activeDate);
+    if (isGregorian) return sel.getFullYear();
+    const [y] = isoToJalali(activeDate);
+    return y;
+  });
 
-  const monthName = PERSIAN_MONTHS[calMonth - 1] || 'شهریور';
-  const daysInMonth = calMonth <= 6 ? 31 : calMonth <= 11 ? 30 : 29;
+  // Sync year and month whenever calendarType or activeDate changes
+  useEffect(() => {
+    const sel = parseISODate(activeDate);
+    if (isGregorian) {
+      setCalYear(sel.getFullYear());
+      setCalMonth(sel.getMonth() + 1);
+    } else {
+      const [jy, jm] = gregorianToJalali(sel.getFullYear(), sel.getMonth() + 1, sel.getDate());
+      setCalYear(jy);
+      setCalMonth(jm);
+    }
+  }, [calendarType, activeDate, isGregorian]);
+
+  const monthName = isGregorian
+    ? GREGORIAN_MONTHS[calMonth - 1] || 'October'
+    : PERSIAN_MONTHS[calMonth - 1] || 'شهریور';
+
+  const daysInMonth = isGregorian
+    ? new Date(calYear, calMonth, 0).getDate()
+    : (calMonth <= 6 ? 31 : calMonth <= 11 ? 30 : 29);
+
+  const firstDayOffset = isGregorian
+    ? new Date(calYear, calMonth - 1, 1).getDay()
+    : (() => {
+        const [gy, gm, gd] = jalaliToGregorian(calYear, calMonth, 1);
+        const jsDay = new Date(gy, gm - 1, gd).getDay();
+        return (jsDay + 1) % 7;
+      })();
+
+  const weekdayHeaders = isGregorian
+    ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    : ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
 
   const navigateMonth = (delta: number) => {
     sounds.playPop();
@@ -156,7 +199,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
       const rate = total > 0 ? Math.round((done / total) * 100) : 0;
       return {
         iso: wd.iso,
-        dayNum: wd.jalaliDay,
+        dayNum: isGregorian ? wd.date.getDate() : wd.jalaliDay,
         rate,
         total,
         isToday: wd.iso === todayISO,
@@ -370,7 +413,7 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
             </button>
 
             <span className="text-xs font-black text-slate-800 px-1.5 min-w-[65px] text-center">
-              {monthName} {toPersianDigits(calYear)}
+              {isGregorian ? `${monthName} ${calYear}` : `${monthName} ${toPersianDigits(calYear)}`}
             </span>
 
             <button
@@ -385,27 +428,31 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
         </div>
 
         {/* Days Header */}
-        <div className="grid grid-cols-7 text-center text-xs font-black text-slate-400">
-          <span>ش</span>
-          <span>ی</span>
-          <span>د</span>
-          <span>س</span>
-          <span>چ</span>
-          <span>پ</span>
-          <span>ج</span>
+        <div
+          dir={isGregorian ? 'ltr' : 'rtl'}
+          className="grid grid-cols-7 text-center text-xs font-black text-slate-400"
+        >
+          {weekdayHeaders.map((wd, idx) => (
+            <span key={idx}>{wd}</span>
+          ))}
         </div>
 
         {/* Calendar Grid: Real month days with real task count indicators */}
-        <div className="grid grid-cols-7 gap-y-2 text-center text-xs font-bold">
+        <div
+          dir={isGregorian ? 'ltr' : 'rtl'}
+          className="grid grid-cols-7 gap-y-2 text-center text-xs font-bold"
+        >
           {/* Previous month filler */}
-          <div className="h-8 rounded-xl pattern-hatched opacity-60 m-0.5" />
-          <div className="h-8 rounded-xl pattern-hatched opacity-60 m-0.5" />
-          <div className="h-8 rounded-xl pattern-hatched opacity-60 m-0.5" />
+          {Array.from({ length: firstDayOffset }).map((_, i) => (
+            <div key={`fill-${i}`} className="h-8 rounded-xl pattern-hatched opacity-40 m-0.5" />
+          ))}
 
           {/* Days 1 to daysInMonth */}
           {Array.from({ length: daysInMonth }, (_, i) => {
             const dayNum = i + 1;
-            const dayISO = jalaliToISO(calYear, calMonth, dayNum);
+            const dayISO = isGregorian
+              ? `${calYear}-${String(calMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
+              : jalaliToISO(calYear, calMonth, dayNum);
             const isSelected = dayISO === activeDate;
             const isToday = dayISO === todayISO;
 
@@ -434,9 +481,9 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
                     setSelectedDate(dayISO);
                   }}
                   className={`w-8 h-8 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer relative text-xs ${style}`}
-                  title={`${toPersianDigits(dayNum)} ${monthName} (${hasTasks ? `${dayTasksList.length} تسک` : 'بدون تسک'})`}
+                  title={`${isGregorian ? dayNum : toPersianDigits(dayNum)} ${monthName} (${hasTasks ? `${dayTasksList.length} تسک` : 'بدون تسک'})`}
                 >
-                  <span>{toPersianDigits(dayNum)}</span>
+                  <span>{isGregorian ? dayNum : toPersianDigits(dayNum)}</span>
                   {hasTasks && !isSelected && !allDone && (
                     <span className="w-1 h-1 rounded-full bg-slate-400 absolute bottom-1" />
                   )}
@@ -444,10 +491,6 @@ export const TaskMasterBentoWidgets: React.FC<BentoWidgetsProps> = ({
               </div>
             );
           })}
-
-          {/* Trailing padding days */}
-          <div className="h-8 rounded-xl bg-slate-50/60 m-0.5" />
-          <div className="h-8 rounded-xl bg-slate-50/60 m-0.5" />
         </div>
       </div>
 

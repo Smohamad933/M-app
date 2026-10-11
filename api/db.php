@@ -170,25 +170,64 @@ class TaskRoozDB {
                   KEY `idx_task_date` (`date`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
-            $taskCols = [];
-            $tColStmt = $this->pdo->query("SHOW COLUMNS FROM `tasks`");
-            if ($tColStmt) {
-                while ($tc = $tColStmt->fetch(PDO::FETCH_ASSOC)) {
-                    $taskCols[strtolower($tc['Field'])] = true;
+            $ensureTasksSchema = function($pdoInstance) {
+                if (!$pdoInstance) return;
+                @$pdoInstance->exec("
+                    CREATE TABLE IF NOT EXISTS `tasks` (
+                      `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                      `user_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                      `project_id` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                      `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                      `description` text COLLATE utf8mb4_unicode_ci,
+                      `date` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+                      `time` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT '09:00',
+                      `duration_minutes` int(11) NOT NULL DEFAULT '30',
+                      `completed` tinyint(1) NOT NULL DEFAULT '0',
+                      `completed_at` datetime DEFAULT NULL,
+                      `priority` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'medium',
+                      `category_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'cat-work',
+                      `is_pinned` tinyint(1) NOT NULL DEFAULT '0',
+                      `focus_minutes_spent` int(11) NOT NULL DEFAULT '0',
+                      `reason_uncompleted` text COLLATE utf8mb4_unicode_ci,
+                      `uncompleted_category` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                      `subtasks_json` text COLLATE utf8mb4_unicode_ci,
+                      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                      PRIMARY KEY (`id`),
+                      KEY `idx_task_user` (`user_id`),
+                      KEY `idx_task_date` (`date`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                ");
+                $taskCols = [];
+                $tColStmt = @$pdoInstance->query("SHOW COLUMNS FROM `tasks`");
+                if ($tColStmt) {
+                    while ($tc = $tColStmt->fetch(PDO::FETCH_ASSOC)) {
+                        $taskCols[strtolower($tc['Field'])] = true;
+                    }
+                    if (!isset($taskCols['is_pinned'])) {
+                        @$pdoInstance->exec("ALTER TABLE `tasks` ADD COLUMN `is_pinned` tinyint(1) DEFAULT 0");
+                    }
+                    if (!isset($taskCols['focus_minutes_spent'])) {
+                        @$pdoInstance->exec("ALTER TABLE `tasks` ADD COLUMN `focus_minutes_spent` int(11) DEFAULT 0");
+                    }
+                    if (!isset($taskCols['reason_uncompleted'])) {
+                        @$pdoInstance->exec("ALTER TABLE `tasks` ADD COLUMN `reason_uncompleted` text DEFAULT NULL");
+                    }
+                    if (!isset($taskCols['uncompleted_category'])) {
+                        @$pdoInstance->exec("ALTER TABLE `tasks` ADD COLUMN `uncompleted_category` varchar(50) DEFAULT NULL");
+                    }
+                    if (!isset($taskCols['subtasks_json'])) {
+                        @$pdoInstance->exec("ALTER TABLE `tasks` ADD COLUMN `subtasks_json` text DEFAULT NULL");
+                    }
                 }
-                if (!isset($taskCols['reason_uncompleted'])) {
-                    @$this->pdo->exec("ALTER TABLE `tasks` ADD COLUMN `reason_uncompleted` text DEFAULT NULL");
-                }
-                if (!isset($taskCols['uncompleted_category'])) {
-                    @$this->pdo->exec("ALTER TABLE `tasks` ADD COLUMN `uncompleted_category` varchar(50) DEFAULT NULL");
-                }
-                if (!isset($taskCols['subtasks_json'])) {
-                    @$this->pdo->exec("ALTER TABLE `tasks` ADD COLUMN `subtasks_json` text DEFAULT NULL");
-                }
+            };
+
+            $ensureTasksSchema($this->pdo);
+            $tasksDb = $this->tasksPdo ?: $this->pdo;
+            if ($this->tasksPdo) {
+                $ensureTasksSchema($this->tasksPdo);
             }
 
             // Dedicated task completions table for persistent MySQL tick tracking
-            $tasksDb = $this->tasksPdo ?: $this->pdo;
             if ($tasksDb) {
                 @$tasksDb->exec("
                     CREATE TABLE IF NOT EXISTS `task_completions` (

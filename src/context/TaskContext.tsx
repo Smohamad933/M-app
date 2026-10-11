@@ -2031,8 +2031,14 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    const nextPinned = !task.isPinned;
-    const updatedTask = { ...task, isPinned: nextPinned };
+    // Toggle pin and priority together so "ستاره مهم بودن" sets priority to high/important and pins task
+    const willBePinned = !(task.isPinned || task.priority === 'high');
+    const nextPriority: 'high' | 'medium' = willBePinned ? 'high' : 'medium';
+    const updatedTask: Task = {
+      ...task,
+      isPinned: willBePinned,
+      priority: nextPriority,
+    };
     setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));
     sounds.playPop();
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import type { UncompletedCategory } from '../types';
 import {
@@ -16,9 +16,16 @@ import {
 
 export const TaskIncompleteModal: React.FC = () => {
   const { incompleteModalTask, closeIncompleteModal, setTaskIncompleteReason } = useTask();
-  const [selectedCategory, setSelectedCategory] = useState<UncompletedCategory>('procrastination');
+  const [selectedCategory, setSelectedCategory] = useState<UncompletedCategory>('distraction');
   const [customReason, setCustomReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (incompleteModalTask) {
+      setSelectedCategory(incompleteModalTask.uncompletedCategory || 'distraction');
+      setCustomReason(incompleteModalTask.reasonUncompleted || '');
+    }
+  }, [incompleteModalTask]);
 
   if (!incompleteModalTask) return null;
 
