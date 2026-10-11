@@ -64,6 +64,15 @@ if ($method === 'DELETE' || ($method === 'POST' && ($action === 'delete' || (iss
         jsonResponse(['error' => 'شناسه فونت الزامی است.'], 400);
     }
     $db->deleteCustomFont($id);
+    try {
+        $cur = $db->getGlobalSettings();
+        if (($cur['enforcedFont'] ?? '') === $id) {
+            $db->updateGlobalSettings([
+                'enforcedFont' => 'vazirmatn',
+                'enforcedFontOption' => null,
+            ]);
+        }
+    } catch (Exception $e) {}
     jsonResponse(['message' => 'فونت سفارشی با موفقیت حذف شد.']);
 }
 
@@ -152,12 +161,20 @@ if ($method === 'POST' && ($action === 'upload' || empty($action))) {
 
     $createdFont = $db->addCustomFont($fontRecord);
 
+    // Also automatically enforce this uploaded font as the system default for ALL users
+    try {
+        $db->updateGlobalSettings([
+            'enforcedFont' => $id,
+            'enforcedFontOption' => $createdFont,
+        ]);
+    } catch (Exception $e) {}
+
     // If client supplied dataUrl, keep it in response for instant local preview
     if (empty($createdFont['dataUrl']) && !empty($dataUrl)) {
         $createdFont['dataUrl'] = $dataUrl;
     }
 
-    jsonResponse(['message' => 'فونت با موفقیت بارگذاری و ذخیره شد.', 'font' => $createdFont], 201);
+    jsonResponse(['message' => 'فونت با موفقیت بارگذاری و برای همه کاربران فعال شد.', 'font' => $createdFont], 201);
 }
 
 jsonResponse(['error' => 'متد نامعتبر است.'], 405);

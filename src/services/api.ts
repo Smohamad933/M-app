@@ -175,8 +175,8 @@ export function setPreferredServer(srv: string) {
   } catch {}
 }
 
-function resolveApiUrl(endpoint: string): string {
-  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+export function resolveApiUrl(endpoint: string): string {
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://') || endpoint.startsWith('data:')) {
     return endpoint;
   }
   const clean = endpoint.replace(/^\/+/, '');

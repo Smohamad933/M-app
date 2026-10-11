@@ -3478,7 +3478,8 @@ class TaskRoozDB {
     }
 
     public function updateGlobalSettings($settings) {
-        $merged = array_merge($this->data['globalSettings'] ?? [], $settings, [
+        $current = $this->getGlobalSettings();
+        $merged = array_merge(is_array($current) ? $current : [], $settings, [
             'updatedAt' => date('Y-m-d H:i:s'),
         ]);
 

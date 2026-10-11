@@ -22,7 +22,7 @@ import type {
   AppOperatingMode,
   TaskWorkLog,
 } from '../types';
-import { api, setAuthToken, DEFAULT_GLOBAL_SETTINGS, onSyncEvent, broadcastSync, clearApiCache } from '../services/api';
+import { api, setAuthToken, DEFAULT_GLOBAL_SETTINGS, onSyncEvent, broadcastSync, clearApiCache, resolveApiUrl } from '../services/api';
 import { getTodayISO, formatPersianDate, toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import { DEFAULT_APP_TEXTS } from '../utils/appTexts';
@@ -338,13 +338,8 @@ function injectFontLink(font: SystemFontOption) {
     let fontSource = font.dataUrl || font.fontUrl;
     if (!fontSource) return;
 
-    if (!fontSource.startsWith('data:') && !fontSource.startsWith('http://') && !fontSource.startsWith('https://')) {
-      if (typeof window !== 'undefined' && window.location) {
-        fontSource = fontSource.startsWith('/') 
-          ? `${window.location.origin}${fontSource}` 
-          : `${window.location.origin}/${fontSource}`;
-      }
-    }
+    // Use resolveApiUrl so subdirectories like /nobat/ on IIS are properly supported
+    fontSource = resolveApiUrl(fontSource);
 
     const elementId = `custom-font-style-${font.id || 'default'}`;
     const existing = document.getElementById(elementId);
@@ -406,8 +401,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const allAvailableFonts = useMemo(() => {
-    return [...AVAILABLE_FONTS, ...customFonts];
-  }, [customFonts]);
+    const list = [...AVAILABLE_FONTS, ...customFonts];
+    if (globalSettings?.enforcedFontOption && !list.some((f) => f.id === globalSettings.enforcedFontOption?.id)) {
+      list.push(globalSettings.enforcedFontOption);
+    }
+    return list;
+  }, [customFonts, globalSettings?.enforcedFontOption]);
 
   const [systemFont, setSystemFontState] = useState<string>(() => {
     try {
@@ -430,11 +429,14 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // If current user is admin, automatically broadcast/persist as global default for everyone
     if (currentUser?.role === 'admin' || currentUser?.username?.toLowerCase() === 'mohusyn') {
-      updateGlobalSettings({ enforcedFont: fontId }).catch(() => {});
+      updateGlobalSettings({ 
+        enforcedFont: fontId,
+        enforcedFontOption: found || undefined,
+      }).catch(() => {});
     }
   };
 
-  const addCustomFont = (fontData: { name: string; family: string; fontUrl?: string; description?: string }) => {
+  const addCustomFont = async (fontData: { name: string; family: string; fontUrl?: string; description?: string }) => {
     const rawFamily = fontData.family.trim().replace(/['"]/g, '');
     const newFont: SystemFontOption = {
       id: 'custom_' + Date.now(),
@@ -452,7 +454,13 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCustomFonts(updated);
     api.saveCustomFonts(updated);
     setSystemFontState(newFont.id);
-    applyFontToDom(newFont.family);
+    if (newFont.family) {
+      applyFontToDom(newFont.family);
+    }
+    await updateGlobalSettings({
+      enforcedFont: newFont.id,
+      enforcedFontOption: newFont,
+    });
     sounds.playComplete();
   };
 
@@ -465,6 +473,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (font.family) {
       applyFontToDom(font.family);
     }
+    // Update global settings so it becomes the enforced default for all users immediately
+    await updateGlobalSettings({
+      enforcedFont: font.id,
+      enforcedFontOption: font,
+    });
     sounds.playComplete();
     return font;
   };
@@ -477,6 +490,10 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (systemFont === fontId) {
       setSystemFontState('vazirmatn');
       applyFontToDom("'Vazirmatn', sans-serif");
+      updateGlobalSettings({
+        enforcedFont: 'vazirmatn',
+        enforcedFontOption: undefined,
+      }).catch(() => {});
     }
     sounds.playPop();
   };
@@ -492,8 +509,16 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       },
     };
     setGlobalSettings(updated);
+    try {
+      localStorage.setItem('taskrooz_global_settings', JSON.stringify(updated));
+    } catch {}
     await api.saveGlobalSettings(updated);
-    if (updated.enforcedFont) {
+    if (updated.enforcedFontOption) {
+      injectFontLink(updated.enforcedFontOption);
+      if (updated.enforcedFontOption.family) {
+        applyFontToDom(updated.enforcedFontOption.family);
+      }
+    } else if (updated.enforcedFont) {
       setSystemFontState(updated.enforcedFont);
       const targetFont = allAvailableFonts.find((f) => f.id === updated.enforcedFont) || AVAILABLE_FONTS.find((f) => f.id === updated.enforcedFont);
       if (targetFont?.family) {
@@ -505,19 +530,29 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const activeId = globalSettings?.enforcedFont || systemFont || 'vazirmatn';
-    const found = allAvailableFonts.find((f) => f.id === activeId) || allAvailableFonts[0] || AVAILABLE_FONTS[0];
-    if (found) {
-      if (found.fontUrl || found.dataUrl) {
-        injectFontLink(found);
+    let target = allAvailableFonts.find((f) => f.id === activeId);
+    if (!target && globalSettings?.enforcedFontOption && globalSettings.enforcedFontOption.id === activeId) {
+      target = globalSettings.enforcedFontOption;
+    }
+    if (!target) {
+      // If font is custom and not yet loaded into allAvailableFonts, DO NOT prematurely reset to vazirmatn!
+      if (activeId.startsWith('font_') || activeId.startsWith('custom_')) {
+        return;
       }
-      if (found.family) {
-        applyFontToDom(found.family);
+      target = AVAILABLE_FONTS.find((f) => f.id === activeId) || AVAILABLE_FONTS[0];
+    }
+    if (target) {
+      if (target.fontUrl || target.dataUrl) {
+        injectFontLink(target);
+      }
+      if (target.family) {
+        applyFontToDom(target.family);
       }
       try {
-        localStorage.setItem('taskrooz_system_font', found.id);
+        localStorage.setItem('taskrooz_system_font', target.id);
       } catch {}
     }
-  }, [systemFont, allAvailableFonts, globalSettings?.enforcedFont]);
+  }, [systemFont, allAvailableFonts, globalSettings?.enforcedFont, globalSettings?.enforcedFontOption]);
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
@@ -1338,6 +1373,15 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           api.getDailyNotes().then((notes) => setDailyNotes(notes)).catch(() => {}),
           api.getGlobalSettings().then((gSettings) => {
             setGlobalSettings(gSettings);
+            try {
+              localStorage.setItem('taskrooz_global_settings', JSON.stringify(gSettings));
+            } catch {}
+            if (gSettings.enforcedFontOption) {
+              injectFontLink(gSettings.enforcedFontOption);
+              if (gSettings.enforcedFontOption.family) {
+                applyFontToDom(gSettings.enforcedFontOption.family);
+              }
+            }
             if (gSettings.enforcedFont) {
               setSystemFontState(gSettings.enforcedFont);
             }
@@ -1354,6 +1398,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           api.fetchCustomFonts().then((remoteFonts) => {
             setCustomFonts(remoteFonts);
             remoteFonts.forEach(injectFontLink);
+            const activeId = globalSettings?.enforcedFont || systemFont;
+            const match = remoteFonts.find((f) => f.id === activeId);
+            if (match?.family) {
+              applyFontToDom(match.family);
+            }
           }).catch(() => {})
         ]);
       } catch (e) {

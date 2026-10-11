@@ -329,6 +329,7 @@ export interface GlobalSystemSettings {
   };
   enforcedTheme: 'system' | 'dark' | 'light' | 'obsidian';
   enforcedFont: string;
+  enforcedFontOption?: SystemFontOption;
   defaultDailyFocusMinutes: number;
   workHoursPolicy: {
     start: string;
