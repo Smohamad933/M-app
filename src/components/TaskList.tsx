@@ -19,8 +19,6 @@ export const TaskList: React.FC = () => {
 
   const todayISO = new Date().toISOString().slice(0, 10);
 
-  const todayISO = new Date().toISOString().slice(0, 10);
-
   // Filter tasks based on all active criteria
   const filteredTasks = tasks.filter((task) => {
     if (filterStatus === 'overdue') {
