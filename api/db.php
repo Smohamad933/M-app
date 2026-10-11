@@ -20,7 +20,7 @@ class TaskRoozDB {
     private function __construct() {
         // Attempt MySQL connection if available
         if (function_exists('getMySQLPDO')) {
-            $this->pdo = getMySQLPDO();
+            $this->pdo = getMySQLPDO('users') ?: getMySQLPDO();
             $this->tasksPdo = getMySQLPDO('tasks') ?: $this->pdo;
             if ($this->pdo !== null || $this->tasksPdo !== null) {
                 $this->mode = 'mysql';
@@ -1008,30 +1008,46 @@ class TaskRoozDB {
         if ($this->mode === 'mysql' && $this->pdo) {
             try {
                 $users = null;
+                // Query users table directly without cross-database join to guarantee users always load
                 try {
-                    $stmt = $this->pdo->query("
-                        SELECT 
-                            u.*,
-                            COALESCE(t.totalTasks, 0) as totalTasks,
-                            COALESCE(t.completedTasks, 0) as completedTasks
-                        FROM users u
-                        LEFT JOIN (
+                    $stmt = $this->pdo->query("SELECT * FROM users ORDER BY created_at ASC");
+                    $users = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : null;
+                } catch (Exception $eU1) {
+                    try {
+                        $stmt = $this->pdo->query("SELECT * FROM users");
+                        $users = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : null;
+                    } catch (Exception $eU2) {
+                        $users = null;
+                    }
+                }
+
+                // Separately aggregate task counts from tasks table
+                $tasksDb = $this->tasksPdo ?: $this->pdo;
+                $taskCounts = [];
+                if ($tasksDb) {
+                    try {
+                        $tStmt = $tasksDb->query("
                             SELECT user_id, COUNT(*) as totalTasks, SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completedTasks
                             FROM tasks
                             GROUP BY user_id
-                        ) t ON (u.id = t.user_id OR LOWER(u.username) = LOWER(t.user_id))
-                        ORDER BY u.created_at ASC
-                    ");
-                    $users = $stmt ? $stmt->fetchAll() : null;
-                } catch (Exception $eSub) {
-                    $stmt = $this->pdo->query("SELECT * FROM users ORDER BY created_at ASC");
-                    $users = $stmt ? $stmt->fetchAll() : null;
+                        ");
+                        if ($tStmt) {
+                            while ($tc = $tStmt->fetch(PDO::FETCH_ASSOC)) {
+                                $uidKey = strtolower(trim((string)$tc['user_id']));
+                                $taskCounts[$uidKey] = $tc;
+                            }
+                        }
+                    } catch (Exception $eTc) {}
                 }
 
                 if ($users && count($users) > 0) {
                     foreach ($users as $u) {
-                        $total = (int)($u['totalTasks'] ?? 0);
-                        $done = (int)($u['completedTasks'] ?? 0);
+                        $uKey = strtolower(trim((string)($u['username'] ?? $u['id'])));
+                        $uIdKey = strtolower(trim((string)($u['id'] ?? '')));
+                        $tc = $taskCounts[$uIdKey] ?? ($taskCounts[$uKey] ?? null);
+
+                        $total = (int)($tc['totalTasks'] ?? ($u['totalTasks'] ?? 0));
+                        $done = (int)($tc['completedTasks'] ?? ($u['completedTasks'] ?? 0));
                         $u['totalTasks'] = $total;
                         $u['completedTasks'] = $done;
                         $u['progressPercent'] = $total > 0 ? round(($done / $total) * 100) : 0;
@@ -1053,8 +1069,7 @@ class TaskRoozDB {
                             ? (is_array($u['subscription_json']) ? $u['subscription_json'] : json_decode($u['subscription_json'], true))
                             : (!empty($u['subscriptionJson']) ? json_decode($u['subscriptionJson'], true) : ['plan' => (($u['role'] ?? '') === 'admin' ? 'pro' : 'free')]);
 
-                        $key = strtolower(trim((string)($u['username'] ?? $u['id'])));
-                        $userMap[$key] = $u;
+                        $userMap[$uKey] = $u;
                     }
                 }
             } catch (Exception $e) {}
@@ -1939,18 +1954,34 @@ class TaskRoozDB {
                     if (!$u) $u = $this->getUserByUsername($userId);
                     $uId = $u ? $u['id'] : $userId;
                     $uName = $u ? ($u['username'] ?? '') : $userId;
+
+                    $userAliases = array_values(array_unique(array_filter([
+                        $userId,
+                        $uId,
+                        $uName,
+                        strtolower($uName),
+                        isset($u['numericId']) ? strval($u['numericId']) : null,
+                        isset($u['numeric_id']) ? strval($u['numeric_id']) : null,
+                    ])));
+                    if (strtolower($uName) === 'mohusyn' || $uId === 'usr_admin_mohusyn' || strtolower($userId) === 'mohusyn') {
+                        $userAliases[] = 'Mohusyn';
+                        $userAliases[] = 'mohusyn';
+                        $userAliases[] = 'usr_admin_mohusyn';
+                        $userAliases[] = 'usr_mohusyn_admin';
+                        $userAliases[] = '1000';
+                        $userAliases[] = '1';
+                    }
+                    $userAliases = array_values(array_unique(array_filter($userAliases)));
+                    $inUsers = implode(',', array_fill(0, count($userAliases), '?'));
+
                     if (!empty($userProjectIds)) {
-                        $inClause = implode(',', array_fill(0, count($userProjectIds), '?'));
-                        $sql .= " AND (t.user_id = ? OR t.user_id = ? OR t.project_id IN ({$inClause}))";
-                        $params[] = $uId;
-                        $params[] = $uName;
-                        foreach ($userProjectIds as $pid) {
-                            $params[] = $pid;
-                        }
+                        $inProj = implode(',', array_fill(0, count($userProjectIds), '?'));
+                        $sql .= " AND (t.user_id IN ({$inUsers}) OR t.project_id IN ({$inProj}))";
+                        foreach ($userAliases as $ua) $params[] = $ua;
+                        foreach ($userProjectIds as $pid) $params[] = $pid;
                     } else {
-                        $sql .= " AND (t.user_id = ? OR t.user_id = ?)";
-                        $params[] = $uId;
-                        $params[] = $uName;
+                        $sql .= " AND t.user_id IN ({$inUsers})";
+                        foreach ($userAliases as $ua) $params[] = $ua;
                     }
                 }
                 if (!empty($date)) { $sql .= " AND t.date = ?"; $params[] = $date; }
@@ -1989,12 +2020,28 @@ class TaskRoozDB {
                     $u = !empty($userId) ? ($this->getUserById($userId) ?: $this->getUserByUsername($userId)) : null;
                     $uId = $u ? $u['id'] : $userId;
                     $uName = $u ? ($u['username'] ?? '') : $userId;
+                    $userAliases = array_values(array_unique(array_filter([
+                        $userId,
+                        $uId,
+                        $uName,
+                        strtolower($uName),
+                        isset($u['numericId']) ? strval($u['numericId']) : null,
+                    ])));
+                    if (strtolower($uName) === 'mohusyn' || $uId === 'usr_admin_mohusyn' || strtolower($userId) === 'mohusyn') {
+                        $userAliases[] = 'Mohusyn';
+                        $userAliases[] = 'mohusyn';
+                        $userAliases[] = 'usr_admin_mohusyn';
+                        $userAliases[] = 'usr_mohusyn_admin';
+                        $userAliases[] = '1000';
+                    }
+                    $userAliases = array_values(array_unique(array_filter($userAliases)));
+                    $inUsers = implode(',', array_fill(0, count($userAliases), '?'));
+
                     $sqlFb = "SELECT * FROM tasks WHERE 1=1";
                     $fbParams = [];
                     if (!empty($userId)) {
-                        $sqlFb .= " AND (user_id = ? OR user_id = ?)";
-                        $fbParams[] = $uId;
-                        $fbParams[] = $uName;
+                        $sqlFb .= " AND user_id IN ({$inUsers})";
+                        foreach ($userAliases as $ua) $fbParams[] = $ua;
                     }
                     if (!empty($date)) { $sqlFb .= " AND date = ?"; $fbParams[] = $date; }
                     if (!empty($categoryId)) { $sqlFb .= " AND category_id = ?"; $fbParams[] = $categoryId; }
