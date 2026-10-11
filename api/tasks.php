@@ -19,14 +19,8 @@ if ($method === 'GET') {
         if ($isAdmin || $isSelf) {
             $targetUserId = $requestedUserId;
         } else {
-            // Strict isolation: non-admins can NEVER view active/private tasks of other users!
-            // Only completed tasks can be viewed for public profile stats.
-            $isExplicitCompleted = (isset($_GET['completed']) && ((int)$_GET['completed'] === 1 || $_GET['completed'] === 'true' || $_GET['completed'] === '1'));
-            if ($isExplicitCompleted) {
-                $targetUserId = $requestedUserId;
-            } else {
-                jsonResponse(['tasks' => []]);
-            }
+            // Strict privacy: regular users can NEVER view or fetch tasks of another user
+            jsonResponse(['tasks' => []]);
         }
     }
 

@@ -2213,9 +2213,16 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       const projectIdFilter = urlObj.searchParams.get('project_id');
 
       if (targetUserId) {
-        filtered = filtered.filter(
-          (t) => t.userId === targetUserId || (t as any).user_id === targetUserId
-        );
+        const isAdmin = currentUser.role === 'admin' || currentUser.username.toLowerCase() === 'mohusyn';
+        const isSelf = targetUserId === currentUser.id || targetUserId === currentUser.username;
+        if (isAdmin || isSelf) {
+          filtered = filtered.filter(
+            (t) => t.userId === targetUserId || (t as any).user_id === targetUserId
+          );
+        } else {
+          // Strict privacy: regular users can NEVER fetch another user's task details
+          filtered = [];
+        }
       } else if (currentUser.role !== 'admin' && currentUser.username.toLowerCase() !== 'mohusyn') {
         filtered = filtered.filter((t) => t.userId === currentUser.id);
       }
