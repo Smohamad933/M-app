@@ -261,40 +261,76 @@ export const AVAILABLE_FONTS: SystemFontOption[] = [
   {
     id: 'vazirmatn',
     name: 'وزیرمتن (پیش‌فرض مدرن)',
-    family: "'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    family: "'Vazirmatn', sans-serif",
     description: 'استاندارد، مدرن و فوق‌العاده خوانا برای وب و موبایل',
   },
   {
-    id: 'cairo',
-    name: 'قاهره (بولد و پویا)',
-    family: "'Cairo', 'Vazirmatn', -apple-system, sans-serif",
-    description: 'فونت هندسی و چشم‌نواز با خطوط قوی و مدرن',
-  },
-  {
-    id: 'rubik',
-    name: 'روبیک (گرد و صمیمی)',
-    family: "'Rubik', 'Vazirmatn', -apple-system, sans-serif",
-    description: 'فونت با گوشه‌های نرم و گرد، صمیمی و زیبا',
-  },
-  {
     id: 'shabnam',
-    name: 'شبنم (فرهنگی و خوانا)',
-    family: "'Shabnam', 'Vazirmatn', -apple-system, sans-serif",
+    name: 'شبنم (فرهنگی و ساختاریافته)',
+    family: "'Shabnam', sans-serif",
     description: 'فونت رسمی، ساختاریافته و با تناسبات دقیق',
   },
   {
     id: 'sahel',
     name: 'ساحل (هندسی و لطیف)',
-    family: "'Sahel', 'Vazirmatn', -apple-system, sans-serif",
+    family: "'Sahel', sans-serif",
     description: 'فونت هندسی، ظریف و چشم‌نواز برای متون طولانی',
+  },
+  {
+    id: 'samim',
+    name: 'صمیم (گرم و صمیمی)',
+    family: "'Samim', sans-serif",
+    description: 'فونت گرم، صمیمی و ساده برای رابط کاربری',
+  },
+  {
+    id: 'cairo',
+    name: 'قاهره (بولد و پویا)',
+    family: "'Cairo', sans-serif",
+    description: 'فونت هندسی و چشم‌نواز با خطوط قوی و مدرن',
+  },
+  {
+    id: 'rubik',
+    name: 'روبیک (گرد و دوستانه)',
+    family: "'Rubik', sans-serif",
+    description: 'فونت با گوشه‌های نرم و گرد، صمیمی و زیبا',
   },
   {
     id: 'jakarta',
     name: 'پلاس جاکارتا مدرن',
-    family: "'Plus Jakarta Sans', 'Vazirmatn', sans-serif",
+    family: "'Plus Jakarta Sans', sans-serif",
     description: 'فونت بین‌المللی مینیمال و تمیز',
   },
 ];
+
+export function applyFontToDom(family: string) {
+  if (typeof document === 'undefined') return;
+  const cleanFamily = family.trim();
+
+  // 1. Set CSS variable on documentElement
+  document.documentElement.style.setProperty('--font-sans', cleanFamily);
+
+  // 2. Set inline style directly on html and body
+  document.documentElement.style.fontFamily = cleanFamily;
+  if (document.body) {
+    document.body.style.fontFamily = cleanFamily;
+  }
+
+  // 3. Inject high-priority global style tag that enforces font across all elements
+  let styleEl = document.getElementById('taskrooz-active-font-rule') as HTMLStyleElement | null;
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'taskrooz-active-font-rule';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = `
+    :root {
+      --font-sans: ${cleanFamily} !important;
+    }
+    *, *::before, *::after, html, body, #root, input, button, select, textarea {
+      font-family: ${cleanFamily} !important;
+    }
+  `;
+}
 
 function injectFontLink(font: SystemFontOption) {
   try {
@@ -383,7 +419,19 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setSystemFont = (fontId: string) => {
     setSystemFontState(fontId);
+    try {
+      localStorage.setItem('taskrooz_system_font', fontId);
+    } catch {}
+    const found = allAvailableFonts.find((f) => f.id === fontId) || AVAILABLE_FONTS.find((f) => f.id === fontId);
+    if (found?.family) {
+      applyFontToDom(found.family);
+    }
     sounds.playPop();
+
+    // If current user is admin, automatically broadcast/persist as global default for everyone
+    if (currentUser?.role === 'admin' || currentUser?.username?.toLowerCase() === 'mohusyn') {
+      updateGlobalSettings({ enforcedFont: fontId }).catch(() => {});
+    }
   };
 
   const addCustomFont = (fontData: { name: string; family: string; fontUrl?: string; description?: string }) => {
@@ -391,7 +439,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newFont: SystemFontOption = {
       id: 'custom_' + Date.now(),
       name: fontData.name.trim(),
-      family: `'${rawFamily}', 'Vazirmatn', sans-serif`,
+      family: `'${rawFamily}', sans-serif`,
       description: fontData.description?.trim() || 'فونت سفارشی افزوده شده',
       fontUrl: fontData.fontUrl?.trim() || undefined,
       isCustom: true,
@@ -404,6 +452,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCustomFonts(updated);
     api.saveCustomFonts(updated);
     setSystemFontState(newFont.id);
+    applyFontToDom(newFont.family);
     sounds.playComplete();
   };
 
@@ -413,6 +462,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = [...customFonts.filter((f) => f.id !== font.id && f.name.toLowerCase() !== font.name.toLowerCase()), font];
     setCustomFonts(updated);
     setSystemFontState(font.id);
+    if (font.family) {
+      applyFontToDom(font.family);
+    }
     sounds.playComplete();
     return font;
   };
@@ -424,6 +476,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     api.deleteCustomFont(fontId);
     if (systemFont === fontId) {
       setSystemFontState('vazirmatn');
+      applyFontToDom("'Vazirmatn', sans-serif");
     }
     sounds.playPop();
   };
@@ -442,32 +495,29 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await api.saveGlobalSettings(updated);
     if (updated.enforcedFont) {
       setSystemFontState(updated.enforcedFont);
+      const targetFont = allAvailableFonts.find((f) => f.id === updated.enforcedFont) || AVAILABLE_FONTS.find((f) => f.id === updated.enforcedFont);
+      if (targetFont?.family) {
+        applyFontToDom(targetFont.family);
+      }
     }
     sounds.playComplete();
   };
 
   useEffect(() => {
-    const found = allAvailableFonts.find((f) => f.id === systemFont) || allAvailableFonts[0] || AVAILABLE_FONTS[0];
+    const activeId = globalSettings?.enforcedFont || systemFont || 'vazirmatn';
+    const found = allAvailableFonts.find((f) => f.id === activeId) || allAvailableFonts[0] || AVAILABLE_FONTS[0];
     if (found) {
       if (found.fontUrl || found.dataUrl) {
         injectFontLink(found);
       }
       if (found.family) {
-        if (found.isCustom) {
-          const cleanFam = found.family.replace(/['"]/g, '').split(',')[0].trim();
-          document.documentElement.style.setProperty(
-            '--font-sans',
-            `'${cleanFam}', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
-          );
-        } else {
-          document.documentElement.style.setProperty('--font-sans', found.family);
-        }
+        applyFontToDom(found.family);
       }
       try {
         localStorage.setItem('taskrooz_system_font', found.id);
       } catch {}
     }
-  }, [systemFont, allAvailableFonts]);
+  }, [systemFont, allAvailableFonts, globalSettings?.enforcedFont]);
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {

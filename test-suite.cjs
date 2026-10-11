@@ -1664,13 +1664,18 @@ test('Admin Member Presence & Last Online Tracking: Super Admin sees lastActiveA
 async function run() {
   const globalDbPath = path.join(__dirname, 'data', 'db.json');
   const globalUsersPath = path.join(__dirname, 'data', 'users.json');
+  const globalTasksPath = path.join(__dirname, 'data', 'tasks.json');
   const globalBackup = globalDbPath + '.suite_backup';
   const globalUsersBackup = globalUsersPath + '.suite_backup';
+  const globalTasksBackup = globalTasksPath + '.suite_backup';
   if (fs.existsSync(globalDbPath)) {
     fs.copyFileSync(globalDbPath, globalBackup);
   }
   if (fs.existsSync(globalUsersPath)) {
     fs.copyFileSync(globalUsersPath, globalUsersBackup);
+  }
+  if (fs.existsSync(globalTasksPath)) {
+    fs.copyFileSync(globalTasksPath, globalTasksBackup);
   }
 
   try {
@@ -1705,6 +1710,10 @@ async function run() {
     if (fs.existsSync(globalUsersBackup)) {
       fs.copyFileSync(globalUsersBackup, globalUsersPath);
       fs.unlinkSync(globalUsersBackup);
+    }
+    if (fs.existsSync(globalTasksBackup)) {
+      fs.copyFileSync(globalTasksBackup, globalTasksPath);
+      fs.unlinkSync(globalTasksBackup);
     }
   }
 }

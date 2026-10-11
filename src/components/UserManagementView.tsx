@@ -201,6 +201,8 @@ export const UserManagementView: React.FC = () => {
     setActiveTab,
     openCreateModal,
     allAvailableFonts,
+    systemFont,
+    setSystemFont,
     exportUsersCsv,
     globalSettings,
     updateGlobalSettings,
@@ -223,6 +225,7 @@ export const UserManagementView: React.FC = () => {
   const [broadcastTargetUserId, setBroadcastTargetUserId] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSyncingMySQL, setIsSyncingMySQL] = useState(false);
+  const [isPurgingTests, setIsPurgingTests] = useState(false);
   const [isFontModalOpen, setIsFontModalOpen] = useState(false);
   const pendingUsers = users.filter((u) => u.status === 'pending_approval');
   const [planFilter, setPlanFilter] = useState<'all' | 'pro' | 'free'>('all');
@@ -901,6 +904,22 @@ export const UserManagementView: React.FC = () => {
     }
   };
 
+  const handlePurgeTests = async () => {
+    if (!window.confirm('آیا از پاکسازی و حذف تمامی اکانت‌های آزمایشی اطمینان دارید؟')) return;
+    setIsPurgingTests(true);
+    sounds.playPop();
+    try {
+      const res = await api.purgeTestUsers();
+      sounds.playComplete();
+      alert(res.message || 'اکانت‌های تستی با موفقیت حذف شدند.');
+      await refreshUsers();
+    } catch (e: any) {
+      alert(e.message || 'خطا در پاکسازی اکانت‌های آزمایشی');
+    } finally {
+      setIsPurgingTests(false);
+    }
+  };
+
   const handleOpenAdd = () => {
     setName('');
     setUsername('');
@@ -1042,6 +1061,15 @@ export const UserManagementView: React.FC = () => {
           >
             <Database className={`w-3.5 h-3.5 text-cyan-400 ${isSyncingMySQL ? 'animate-spin' : ''}`} />
             <span>همگام‌سازی MySQL</span>
+          </button>
+
+          <button
+            onClick={handlePurgeTests}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
+            title="حذف فوری تمامی اکانت‌ها و تسک‌های آزمایشی ایجاد شده"
+          >
+            <Trash2 className={`w-3.5 h-3.5 text-rose-400 ${isPurgingTests ? 'animate-spin' : ''}`} />
+            <span>پاکسازی اکانت‌های تست</span>
           </button>
 
           <button
@@ -2312,9 +2340,16 @@ export const UserManagementView: React.FC = () => {
               </p>
               <div className="flex items-center gap-2">
                 <select
-                  value={formSettings.enforcedFont}
-                  onChange={(e) => setFormSettings({ ...formSettings, enforcedFont: e.target.value })}
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-purple-500"
+                  value={formSettings.enforcedFont || systemFont}
+                  onChange={async (e) => {
+                    const newFont = e.target.value;
+                    setFormSettings((prev) => ({ ...prev, enforcedFont: newFont }));
+                    setSystemFont(newFont);
+                    try {
+                      await updateGlobalSettings({ enforcedFont: newFont });
+                    } catch {}
+                  }}
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs outline-none focus:border-purple-500 cursor-pointer"
                 >
                   {allAvailableFonts.map((f) => (
                     <option key={f.id} value={f.id}>

@@ -416,6 +416,18 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 
+function isTestUsername(username: string): boolean {
+  const u = (username || '').toLowerCase().trim();
+  if (u === 'mohusyn' || u === 'bale_998877') return false;
+  const prefixes = [
+    'test_', 'regular_user_', 'user_target_', 'live_member_', 'reza_test_',
+    'student_', 'noadmin_', 'bale_strict_', 'bob_colleague_', 'bob_dev_',
+    'sarah_chat_', 'priv_user_', 'viewer_', 'reg_designer_', 'm_rezaei_',
+    'alice_pm_', 'eve_outsider_'
+  ];
+  return prefixes.some((p) => u.startsWith(p));
+}
+
 export const api = {
   /** Check whether the database is installed (file data/db.json present & valid) */
   checkDatabase: async (): Promise<{ installed: boolean }> => {
@@ -1059,12 +1071,14 @@ export const api = {
       serverUsers.forEach((u) => {
         const uId = String(u.id || '').trim().toLowerCase();
         const uName = String(u.username || '').trim().toLowerCase();
+        if (isTestUsername(uName) || isTestUsername(uId)) return;
         if (uName !== 'mohusyn' && (tombKeys.has(uId) || tombKeys.has(uName))) return;
         if (u.username) map.set(u.username.toLowerCase(), u);
       });
       localList.forEach((u) => {
         const uId = String(u.id || '').trim().toLowerCase();
         const uName = String(u.username || '').trim().toLowerCase();
+        if (isTestUsername(uName) || isTestUsername(uId)) return;
         if (uName !== 'mohusyn' && (tombKeys.has(uId) || tombKeys.has(uName))) return;
         if (u.username && !map.has(u.username.toLowerCase())) {
           map.set(u.username.toLowerCase(), u);
@@ -1083,6 +1097,24 @@ export const api = {
     } catch {
       return serverUsers.length > 0 ? serverUsers : [baseAdmin];
     }
+  },
+
+  async purgeTestUsers(): Promise<{ ok: boolean; count: number; message: string }> {
+    try {
+      const raw = localStorage.getItem('taskrooz_registered_users');
+      if (raw) {
+        const parsed: User[] = JSON.parse(raw);
+        const filtered = parsed.filter((u) => !isTestUsername(u.username || ''));
+        localStorage.setItem('taskrooz_registered_users', JSON.stringify(filtered));
+      }
+      const rawLocal = localStorage.getItem('taskrooz_users_local');
+      if (rawLocal) {
+        const parsed: User[] = JSON.parse(rawLocal);
+        const filtered = parsed.filter((u) => !isTestUsername(u.username || ''));
+        localStorage.setItem('taskrooz_users_local', JSON.stringify(filtered));
+      }
+    } catch {}
+    return request<{ ok: boolean; count: number; message: string }>('api/users.php?action=purge_test_users');
   },
 
   async syncUsersToMySQL(): Promise<{ ok: boolean; count: number; message: string }> {

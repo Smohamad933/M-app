@@ -1043,6 +1043,20 @@ class TaskRoozDB {
 
                 if ($users && count($users) > 0) {
                     foreach ($users as $u) {
+                        $uUname = strtolower(trim((string)($u['username'] ?? '')));
+                        $uId = strtolower(trim((string)($u['id'] ?? '')));
+                        // Filter out test runner accounts
+                        if ($uUname !== 'mohusyn' && $uUname !== 'bale_998877' && $uId !== 'usr_admin_mohusyn' && $uId !== 'usr_1791633997089_5v0v') {
+                            $isTest = false;
+                            foreach (['test_', 'regular_user_', 'user_target_', 'live_member_', 'reza_test_', 'student_', 'noadmin_', 'bale_strict_', 'bob_colleague_', 'bob_dev_', 'sarah_chat_', 'priv_user_', 'viewer_', 'reg_designer_', 'm_rezaei_', 'alice_pm_', 'eve_outsider_'] as $pfx) {
+                                if (strpos($uUname, $pfx) === 0 || strpos($uId, $pfx) === 0) {
+                                    $isTest = true;
+                                    break;
+                                }
+                            }
+                            if ($isTest) continue;
+                        }
+
                         $uKey = strtolower(trim((string)($u['username'] ?? $u['id'])));
                         $uIdKey = strtolower(trim((string)($u['id'] ?? '')));
                         $tc = $taskCounts[$uIdKey] ?? ($taskCounts[$uKey] ?? null);
@@ -1082,8 +1096,21 @@ class TaskRoozDB {
 
         if (isset($this->data['users']) && is_array($this->data['users'])) {
             foreach ($this->data['users'] as $u) {
-                $key = strtolower(trim((string)($u['username'] ?? $u['id'])));
+                $uUname = strtolower(trim((string)($u['username'] ?? '')));
                 $uId = strtolower(trim((string)($u['id'] ?? '')));
+                // Filter out test runner accounts
+                if ($uUname !== 'mohusyn' && $uUname !== 'bale_998877' && $uId !== 'usr_admin_mohusyn' && $uId !== 'usr_1791633997089_5v0v') {
+                    $isTest = false;
+                    foreach (['test_', 'regular_user_', 'user_target_', 'live_member_', 'reza_test_', 'student_', 'noadmin_', 'bale_strict_', 'bob_colleague_', 'bob_dev_', 'sarah_chat_', 'priv_user_', 'viewer_', 'reg_designer_', 'm_rezaei_', 'alice_pm_', 'eve_outsider_'] as $pfx) {
+                        if (strpos($uUname, $pfx) === 0 || strpos($uId, $pfx) === 0) {
+                            $isTest = true;
+                            break;
+                        }
+                    }
+                    if ($isTest) continue;
+                }
+
+                $key = strtolower(trim((string)($u['username'] ?? $u['id'])));
                 if (isset($userMap[$key]) || ($uId !== '' && isset($userMap[$uId]))) {
                     $existingKey = isset($userMap[$key]) ? $key : $uId;
                     // Enrich missing Bale chat info if available in JSON
@@ -1256,6 +1283,73 @@ class TaskRoozDB {
             }
         } catch (Exception $e) {}
         return $inserted;
+    }
+
+    public function purgeTestUsers() {
+        $deletedCount = 0;
+        // 1. MySQL purge
+        if ($this->mode === 'mysql' && $this->pdo) {
+            try {
+                $testPatterns = [
+                    'test_%', 'regular_user_%', 'user_target_%', 'live_member_%',
+                    'reza_test_%', 'student_%', 'noadmin_%', 'bale_strict_%',
+                    'bob_colleague_%', 'bob_dev_%', 'sarah_chat_%', 'priv_user_%',
+                    'viewer_%', 'reg_designer_%', 'm_rezaei_%', 'alice_pm_%', 'eve_outsider_%'
+                ];
+                $whereClauses = [];
+                $params = [];
+                foreach ($testPatterns as $pat) {
+                    $whereClauses[] = "username LIKE ?";
+                    $params[] = $pat;
+                }
+                $whereSql = implode(' OR ', $whereClauses);
+                
+                $stmt = $this->pdo->prepare("SELECT id FROM users WHERE LOWER(username) != 'mohusyn' AND username != 'bale_998877' AND ({$whereSql})");
+                $stmt->execute($params);
+                $delIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+                if (!empty($delIds)) {
+                    $deletedCount = count($delIds);
+                    $inSql = implode(',', array_fill(0, count($delIds), '?'));
+                    $tasksDb = $this->tasksPdo ?: $this->pdo;
+                    if ($tasksDb) {
+                        try {
+                            $tDel = $tasksDb->prepare("DELETE FROM tasks WHERE user_id IN ({$inSql})");
+                            $tDel->execute($delIds);
+                        } catch (Exception $eT) {}
+                    }
+                    $uDel = $this->pdo->prepare("DELETE FROM users WHERE id IN ({$inSql})");
+                    $uDel->execute($delIds);
+                }
+            } catch (Exception $e) {}
+        }
+
+        // 2. JSON purge
+        $this->loadJson();
+        $realUsernames = ['mohusyn', 'bale_998877'];
+        $realUserIds = ['usr_admin_mohusyn', 'usr_1791633997089_5v0v'];
+
+        if (isset($this->data['users']) && is_array($this->data['users'])) {
+            $before = count($this->data['users']);
+            $this->data['users'] = array_values(array_filter($this->data['users'], function($u) use ($realUsernames, $realUserIds) {
+                $uname = strtolower($u['username'] ?? '');
+                $uid = $u['id'] ?? '';
+                return in_array($uname, $realUsernames) || in_array($uid, $realUserIds);
+            }));
+            $deletedCount += max(0, $before - count($this->data['users']));
+        }
+
+        if (isset($this->data['tasks']) && is_array($this->data['tasks'])) {
+            $this->data['tasks'] = array_values(array_filter($this->data['tasks'], function($t) use ($realUsernames, $realUserIds) {
+                $uid = $t['userId'] ?? $t['user_id'] ?? '';
+                return in_array(strtolower($uid), $realUsernames) || in_array($uid, $realUserIds);
+            }));
+        }
+
+        $this->saveUsers();
+        $this->saveTasks();
+        $this->saveJson();
+        return $deletedCount;
     }
 
     public function setUserSubscription($userId, $plan, $planType = null, $expiresAt = null) {
