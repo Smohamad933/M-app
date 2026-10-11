@@ -59,9 +59,10 @@ if ($action === 'register' || $action === 'signup' || empty($action) && isset($_
     $isDemoMode = ($globalSettings['appOperatingMode'] ?? '') === 'community_demo';
     $baleConfig = $globalSettings['baleBot'] ?? [];
     
-    // Bale verification is strictly required by default for regular users
+    // Bale verification is strictly required ONLY when Bale bot is fully configured and enabled with token
     $isTestRunner = !empty($_SERVER['HTTP_X_TEST_SUITE']) || !empty($_GET['is_test']) || !empty($input['skipVerificationForTest']);
-    $baleEnabled = !$isTestRunner;
+    $baleBotActive = !empty($baleConfig['enabled']) && !empty($baleConfig['botToken']);
+    $baleEnabled = !$isTestRunner && $baleBotActive;
     if (isset($baleConfig['verifyOnRegister']) && $baleConfig['verifyOnRegister'] === false) {
         $baleEnabled = false;
     }
@@ -265,11 +266,13 @@ if ($action === 'login' || empty($action) && (isset($_GET['username']) || isset(
         jsonResponse(['error' => 'نام کاربری یا کلمه عبور نادرست است.'], 401);
     }
 
-    // STRICT BALE VERIFICATION GUARD: Block unverified regular users from logging in
-    if (($user['role'] ?? 'user') !== 'admin' && strtolower($user['username'] ?? '') !== 'mohusyn') {
+    // STRICT BALE VERIFICATION GUARD: Block unverified regular users from logging in ONLY when Bale Bot is active
+    $globalSettings = $db->getGlobalSettings();
+    $baleConfig = $globalSettings['baleBot'] ?? [];
+    $baleBotActive = !empty($baleConfig['enabled']) && !empty($baleConfig['botToken']);
+
+    if ($baleBotActive && ($user['role'] ?? 'user') !== 'admin' && strtolower($user['username'] ?? '') !== 'mohusyn') {
         if (empty($user['isVerified']) || ($user['status'] ?? '') === 'pending_verification') {
-            $globalSettings = $db->getGlobalSettings();
-            $baleConfig = $globalSettings['baleBot'] ?? [];
             $botUsername = trim($baleConfig['botUsername'] ?? 'BagTime_Bot');
             if (empty($botUsername)) $botUsername = 'BagTime_Bot';
             jsonResponse([

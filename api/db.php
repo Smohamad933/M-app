@@ -2100,11 +2100,12 @@ class TaskRoozDB {
                         isset($u['numericId']) ? strval($u['numericId']) : null,
                         isset($u['numeric_id']) ? strval($u['numeric_id']) : null,
                     ])));
-                    if (strtolower($uName) === 'mohusyn' || $uId === 'usr_admin_mohusyn' || strtolower($userId) === 'mohusyn') {
+                    if (strtolower($uName) === 'mohusyn' || $uId === 'usr_admin_mohusyn' || strtolower($userId) === 'mohusyn' || $userId === 'usr_admin_1') {
                         $userAliases[] = 'Mohusyn';
                         $userAliases[] = 'mohusyn';
                         $userAliases[] = 'usr_admin_mohusyn';
                         $userAliases[] = 'usr_mohusyn_admin';
+                        $userAliases[] = 'usr_admin_1';
                         $userAliases[] = '1000';
                         $userAliases[] = '1';
                     }
@@ -2165,11 +2166,12 @@ class TaskRoozDB {
                         strtolower($uName),
                         isset($u['numericId']) ? strval($u['numericId']) : null,
                     ])));
-                    if (strtolower($uName) === 'mohusyn' || $uId === 'usr_admin_mohusyn' || strtolower($userId) === 'mohusyn') {
+                    if (strtolower($uName) === 'mohusyn' || $uId === 'usr_admin_mohusyn' || strtolower($userId) === 'mohusyn' || $userId === 'usr_admin_1') {
                         $userAliases[] = 'Mohusyn';
                         $userAliases[] = 'mohusyn';
                         $userAliases[] = 'usr_admin_mohusyn';
                         $userAliases[] = 'usr_mohusyn_admin';
+                        $userAliases[] = 'usr_admin_1';
                         $userAliases[] = '1000';
                     }
                     $userAliases = array_values(array_unique(array_filter($userAliases)));
@@ -2289,6 +2291,9 @@ class TaskRoozDB {
 
     public function createTask($data) {
         $userId = $data['userId'] ?? $data['user_id'] ?? 'usr_admin_mohusyn';
+        if (strtolower((string)$userId) === 'mohusyn' || $userId === 'usr_admin_1' || $userId === 'usr_mohusyn_admin') {
+            $userId = 'usr_admin_mohusyn';
+        }
         $title = trim($data['title']);
         $date = $data['date'] ?? date('Y-m-d');
         $id = !empty($data['id']) ? trim($data['id']) : ('task_' . time() . '_' . substr(bin2hex(random_bytes(3)), 0, 4));
@@ -3594,46 +3599,6 @@ class TaskRoozDB {
         } catch (Exception $eGs) {}
 
         return $fonts;
-    }
-
-    public function getCustomFontById($id) {
-        if ($this->mode === 'mysql' && $this->pdo) {
-            try {
-                $stmt = $this->pdo->prepare("SELECT id, name, family, font_url as fontUrl, data_url as dataUrl, description, created_at as createdAt FROM custom_fonts WHERE id = ? LIMIT 1");
-                $stmt->execute([$id]);
-                $r = $stmt->fetch(PDO::FETCH_ASSOC);
-                if ($r) {
-                    $r['isCustom'] = true;
-                    return $r;
-                }
-            } catch (Exception $e) {}
-        }
-        $this->loadJson();
-        foreach ($this->data['custom_fonts'] ?? [] as $f) {
-            if (($f['id'] ?? '') === $id) return $f;
-        }
-        return null;
-    }
-
-    public function getCustomFontByFile($filename) {
-        if ($this->mode === 'mysql' && $this->pdo) {
-            try {
-                $stmt = $this->pdo->prepare("SELECT id, name, family, font_url as fontUrl, data_url as dataUrl, description, created_at as createdAt FROM custom_fonts WHERE font_url LIKE ? OR id LIKE ? LIMIT 1");
-                $stmt->execute(['%' . $filename . '%', '%' . $filename . '%']);
-                $r = $stmt->fetch(PDO::FETCH_ASSOC);
-                if ($r) {
-                    $r['isCustom'] = true;
-                    return $r;
-                }
-            } catch (Exception $e) {}
-        }
-        $this->loadJson();
-        foreach ($this->data['custom_fonts'] ?? [] as $f) {
-            if (strpos($f['fontUrl'] ?? '', $filename) !== false || ($f['id'] ?? '') === $filename) {
-                return $f;
-            }
-        }
-        return null;
     }
 
     public function getCustomFontById($id) {

@@ -1148,16 +1148,33 @@ export const api = {
     jobTitle?: string;
     skills?: string[];
   }): Promise<User> {
-    const data = await request<{ user: User; message: string }>('api/users.php', {
-      method: 'POST',
-      body: JSON.stringify(user),
-    });
+    let data: { user: User; message: string };
+    try {
+      data = await request<{ user: User; message: string }>('api/users.php', {
+        method: 'POST',
+        body: JSON.stringify(user),
+      });
+    } catch (err: any) {
+      data = await request<{ user: User; message: string }>('api/users.php?action=create_user', {
+        method: 'POST',
+        body: JSON.stringify(user),
+      });
+    }
+
     try {
       const raw = localStorage.getItem('taskrooz_registered_users');
       const list: User[] = raw ? JSON.parse(raw) : [];
       const cleanList = list.filter((u) => u.id !== data.user.id && u.username?.toLowerCase() !== data.user.username?.toLowerCase());
       cleanList.push(data.user);
       localStorage.setItem('taskrooz_registered_users', JSON.stringify(cleanList));
+
+      // Clear any tombstone so re-created user immediately shows up
+      const rawDel = localStorage.getItem('taskrooz_deleted_user_keys');
+      if (rawDel) {
+        const delKeys: string[] = JSON.parse(rawDel);
+        const filteredDel = delKeys.filter((k) => k !== data.user.id.toLowerCase() && k !== data.user.username.toLowerCase());
+        localStorage.setItem('taskrooz_deleted_user_keys', JSON.stringify(filteredDel));
+      }
     } catch {}
     broadcastSync('USER_REGISTERED', data.user);
     return data.user;

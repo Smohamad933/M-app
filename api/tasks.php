@@ -41,24 +41,6 @@ function isUserAllowedTaskAccess($currentUser, $task, $db) {
     return false;
 }
 
-function isUserAllowedTaskAccess($currentUser, $task, $db) {
-    if (!$task) return false;
-    if ($currentUser['role'] === 'admin') return true;
-    $tUid = $task['userId'] ?? $task['user_id'] ?? '';
-    if ($tUid === $currentUser['id'] || $tUid === ($currentUser['username'] ?? '')) return true;
-    $tPid = $task['projectId'] ?? $task['project_id'] ?? '';
-    if (!empty($tPid)) {
-        $proj = $db->getTeamProject($tPid);
-        if ($proj) {
-            $mIds = $proj['memberIds'] ?? [];
-            if (($proj['creatorId'] ?? '') === $currentUser['id'] || (is_array($mIds) && in_array($currentUser['id'], $mIds))) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 // GET /api/tasks
 if ($method === 'GET') {
     $targetUserId = $currentUser['id'];

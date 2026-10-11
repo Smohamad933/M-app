@@ -1977,7 +1977,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...taskData,
       isRoutine,
       routineType: routineType || 'none',
-      userId: taskData.userId || currentUser?.id || 'usr_admin_1',
+      userId: taskData.userId || currentUser?.id || 'usr_admin_mohusyn',
     };
 
     const created = await api.createTask(primaryTaskInput);
@@ -2006,7 +2006,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           date: dateStr,
           isRoutine: true,
           routineType,
-          userId: taskData.userId || currentUser?.id || 'usr_admin_1',
+          userId: taskData.userId || currentUser?.id || 'usr_admin_mohusyn',
         });
       }
 
@@ -2017,7 +2017,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const extra = await api.createTask({
               ...item,
-              userId: item.userId || currentUser?.id || 'usr_admin_1',
+              userId: item.userId || currentUser?.id || 'usr_admin_mohusyn',
             });
             batchCreated.push(extra);
           } catch {}
