@@ -35,7 +35,6 @@ import {
   MessageSquare,
   ArrowUpRight,
   CalendarDays,
-  Zap,
   Calendar,
   Sparkles,
   Download,
@@ -180,6 +179,7 @@ interface SamsungControlCenterDashboardProps {
   onOpenPublicProfile: (user: any) => void;
   onStartDirectChat: (friend: any) => void;
   setActiveTab: (tab: any) => void;
+  interfaceMode?: 'simple' | 'advanced';
 }
 
 export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboardProps> = ({
@@ -189,34 +189,19 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
   onOpenPublicProfile,
   onStartDirectChat,
   setActiveTab,
+  interfaceMode = 'advanced',
 }) => {
   const { tasks, currentUser, selectedDate, streak, getText, friends, calendarType } = useTask();
 
-  // New Modals
+  // Modals
   const [isZenOpen, setIsZenOpen] = useState(false);
   const [isCalendarSyncOpen, setIsCalendarSyncOpen] = useState(false);
 
-  // Simple Mode Toggle
-  const userKey = currentUser?.id || 'guest';
-  const simpleModeKey = `taskrooz_simple_mode_${userKey}`;
-  const [isSimpleMode, setIsSimpleMode] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(simpleModeKey) === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  const toggleSimpleMode = () => {
-    sounds.playPop();
-    const next = !isSimpleMode;
-    setIsSimpleMode(next);
-    try {
-      localStorage.setItem(simpleModeKey, String(next));
-    } catch {}
-  };
+  // Simple Mode is directly controlled by the sidebar interfaceMode toggle!
+  const isSimpleMode = interfaceMode === 'simple';
 
   // Modular Layout Persistence
+  const userKey = currentUser?.id || 'guest';
   const storageKey = `taskrooz_dashboard_layout_${userKey}`;
 
   const [widgets, setWidgets] = useState<SamsungWidgetConfig[]>(() => {
@@ -361,11 +346,12 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
   const hiddenWidgets = widgets.filter((w) => !w.visible);
 
   // Component Renderer for each modular widget
-  const renderWidgetContent = (id: string) => {
+  const renderWidgetContent = (id: string, colSpan: number = 12) => {
     switch (id) {
-      case 'kpi_cards':
+      case 'kpi_cards': {
+        const isHalf = colSpan <= 8;
         return (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full h-full">
+          <div className={`grid gap-3 sm:gap-4 w-full h-full min-h-[300px] ${isHalf ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>
             <div className="p-4 sm:p-5 bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between">
               <div className="flex items-center justify-between text-slate-500 mb-1.5">
                 <span className="text-xs font-bold">تسک‌های امروز</span>
@@ -422,6 +408,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
             </div>
           </div>
         );
+      }
 
       case 'focus_garden':
         return <FocusGardenWidget />;
@@ -769,21 +756,6 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Simple vs Pro Mode Switcher */}
-          <button
-            type="button"
-            onClick={toggleSimpleMode}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 ${
-              isSimpleMode
-                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-black'
-                : 'bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 border border-slate-200/90 dark:border-zinc-800 hover:bg-slate-50'
-            }`}
-            title="تغییر به حالت ساده، خلوت و سریع جهت کارکرد آسان"
-          >
-            <Zap className={`w-3.5 h-3.5 ${isSimpleMode ? 'text-amber-500 fill-amber-500/40' : 'text-slate-400'}`} />
-            <span>{isSimpleMode ? 'حالت ساده (فعال)' : 'ساده‌سازی نما ⚡'}</span>
-          </button>
-
           {!isSimpleMode && (
             isEditMode ? (
               <button
@@ -1105,7 +1077,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
                   {/* WIDGET CONTENT */}
                   <div className="h-full w-full">
-                    {renderWidgetContent(w.id)}
+                    {renderWidgetContent(w.id, w.colSpan)}
                   </div>
                 </div>
               );

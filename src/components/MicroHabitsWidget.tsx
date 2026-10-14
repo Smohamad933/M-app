@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import { sounds } from '../utils/sound';
 import confetti from 'canvas-confetti';
@@ -12,6 +12,7 @@ import {
   Code2,
   Brain,
   Trash2,
+  Sparkles,
 } from 'lucide-react';
 
 export interface MicroHabit {
@@ -49,11 +50,12 @@ const DEFAULT_HABITS: MicroHabit[] = [
 ];
 
 export const MicroHabitsWidget: React.FC = () => {
-  const { currentUser } = useTask();
+  const { tasks, currentUser, selectedDate } = useTask();
   const userKey = currentUser?.id || 'guest';
   const storageKey = `taskrooz_micro_habits_${userKey}`;
 
   const todayISO = new Date().toISOString().split('T')[0];
+  const targetDate = selectedDate || todayISO;
 
   const [habits, setHabits] = useState<MicroHabit[]>(() => {
     try {
@@ -74,11 +76,50 @@ export const MicroHabitsWidget: React.FC = () => {
     } catch {}
   };
 
-  // Toggle habit for today
-  const toggleHabitToday = (id: string) => {
+  // Auto-sync completed tasks with habits:
+  // If user completed a task containing "کتاب", "ورزش", "آب", or "کد", auto-mark corresponding habit for that date!
+  useEffect(() => {
+    const todayCompletedTasks = tasks.filter((t) => t.date === targetDate && t.completed);
+    if (todayCompletedTasks.length === 0) return;
+
+    let hasChanges = false;
+    const next = habits.map((h) => {
+      let shouldCheck = !!h.history[targetDate];
+
+      // Check keyword matches in completed tasks
+      if (!shouldCheck) {
+        if (h.iconName === 'book' && todayCompletedTasks.some((t) => /کتاب|مطالعه|درس|read/i.test(t.title))) {
+          shouldCheck = true;
+        } else if (h.iconName === 'sport' && todayCompletedTasks.some((t) => /ورزش|تمرین|باشگاه|دویدن|sport|gym/i.test(t.title))) {
+          shouldCheck = true;
+        } else if (h.iconName === 'code' && todayCompletedTasks.some((t) => /کد|برنامه|پروژه|code|dev/i.test(t.title))) {
+          shouldCheck = true;
+        }
+      }
+
+      if (shouldCheck !== !!h.history[targetDate]) {
+        hasChanges = true;
+        return {
+          ...h,
+          history: {
+            ...h.history,
+            [targetDate]: shouldCheck,
+          },
+        };
+      }
+      return h;
+    });
+
+    if (hasChanges) {
+      saveHabits(next);
+    }
+  }, [tasks, targetDate]);
+
+  // Toggle habit for today / selected date
+  const toggleHabit = (id: string) => {
     const next = habits.map((h) => {
       if (h.id === id) {
-        const current = !!h.history[todayISO];
+        const current = !!h.history[targetDate];
         const nextState = !current;
         if (nextState) {
           sounds.playComplete();
@@ -90,6 +131,17 @@ export const MicroHabitsWidget: React.FC = () => {
               colors: ['#10b981', '#6366f1', '#f59e0b'],
             });
           } catch {}
+
+          // Grant +5 Gems to focus garden for habit completion
+          try {
+            const gardenKey = `taskrooz_garden_${userKey}`;
+            const gSaved = localStorage.getItem(gardenKey);
+            if (gSaved) {
+              const g = JSON.parse(gSaved);
+              g.gems = (g.gems || 0) + 5;
+              localStorage.setItem(gardenKey, JSON.stringify(g));
+            }
+          } catch {}
         } else {
           sounds.playPop();
         }
@@ -97,7 +149,7 @@ export const MicroHabitsWidget: React.FC = () => {
           ...h,
           history: {
             ...h.history,
-            [todayISO]: nextState,
+            [targetDate]: nextState,
           },
         };
       }
@@ -133,7 +185,6 @@ export const MicroHabitsWidget: React.FC = () => {
     return d.toISOString().split('T')[0];
   });
 
-  // Calculate overall heatmap intensity for each day (0 to 4 based on total completed habits)
   const getDayIntensity = (dateStr: string) => {
     const count = habits.filter((h) => h.history[dateStr]).length;
     if (count === 0) return 0;
@@ -154,7 +205,7 @@ export const MicroHabitsWidget: React.FC = () => {
       case 4:
         return 'bg-emerald-600 dark:bg-emerald-400 border-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.5)]';
       default:
-        return 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700/50';
+        return 'bg-slate-100 dark:bg-zinc-800/80 border-slate-200 dark:border-zinc-700/50';
     }
   };
 
@@ -175,7 +226,7 @@ export const MicroHabitsWidget: React.FC = () => {
 
   return (
     <div
-      className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full select-none"
+      className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-[0_4px_25px_rgba(0,0,0,0.03)] h-full min-h-[350px] flex flex-col justify-between select-none"
       dir="rtl"
     >
       {/* 1. Header & Quick Add */}
@@ -185,8 +236,11 @@ export const MicroHabitsWidget: React.FC = () => {
             <Flame className="w-5 h-5 fill-indigo-500/30" />
           </div>
           <div>
-            <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white">
-              هاب عادات روزانه و استمرار
+            <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white flex items-center gap-1.5">
+              <span>هاب عادات روزانه و استمرار</span>
+              <span className="text-[10px] px-2 py-0.2 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-bold">
+                سینک با تسک‌ها
+              </span>
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-zinc-400">
               زنجیره عملکرد در ۲۸ روز گذشته
@@ -250,9 +304,9 @@ export const MicroHabitsWidget: React.FC = () => {
       )}
 
       {/* 2. Habits Checklist */}
-      <div className="space-y-2 py-3 max-h-48 overflow-y-auto no-scrollbar">
+      <div className="space-y-2 py-3 max-h-48 overflow-y-auto no-scrollbar flex-1">
         {habits.map((habit) => {
-          const isDone = !!habit.history[todayISO];
+          const isDone = !!habit.history[targetDate];
           return (
             <div
               key={habit.id}
@@ -265,7 +319,7 @@ export const MicroHabitsWidget: React.FC = () => {
               <div className="flex items-center gap-2.5 min-w-0">
                 <button
                   type="button"
-                  onClick={() => toggleHabitToday(habit.id)}
+                  onClick={() => toggleHabit(habit.id)}
                   className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                     isDone
                       ? 'bg-emerald-500 text-white shadow-xs'
@@ -282,14 +336,21 @@ export const MicroHabitsWidget: React.FC = () => {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => handleDelete(habit.id)}
-                className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-opacity"
-                title="حذف عادت"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {isDone && (
+                  <span className="text-[10px] text-amber-500 font-bold flex items-center gap-0.5">
+                    <Sparkles className="w-3 h-3" /> ۵+ الماس
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleDelete(habit.id)}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-opacity"
+                  title="حذف عادت"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           );
         })}

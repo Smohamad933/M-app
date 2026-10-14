@@ -99,6 +99,7 @@ import {
   DEFAULT_DASHBOARD_BLOCKS,
 } from './DashboardCustomizationModal';
 import { SamsungControlCenterDashboard } from './SamsungControlCenterDashboard';
+import { LiveUpdateModal } from './LiveUpdateModal';
 
 interface MainLayoutProps {
   onOpenInstagramStudio?: () => void;
@@ -170,6 +171,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
   const [isBaleModalOpen, setIsBaleModalOpen] = useState(false);
   const [isExtensionModalOpen, setIsExtensionModalOpen] = useState(false);
   const [isAiAgentModalOpen, setIsAiAgentModalOpen] = useState(false);
+  const [isLiveUpdateOpen, setIsLiveUpdateOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
@@ -1083,6 +1085,22 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   </button>
                 )}
 
+                {/* Zero-Downtime Live Server Updater - ONLY FOR SUPER ADMIN */}
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      setIsLiveUpdateOpen(true);
+                    }}
+                    className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 items-center gap-1.5 flex"
+                    title="بروزرسانی زنده و آنی سرور بدون داون‌تایم با فایل ZIP"
+                  >
+                    <span className="text-xs">⚡</span>
+                    <span className="hidden sm:inline">بروزرسانی زنده</span>
+                  </button>
+                )}
+
                 {/* Progress Newspaper Story Button */}
                 <button
                   type="button"
@@ -1438,6 +1456,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                 onOpenPublicProfile={(u) => setViewingPublicUser(u)}
                 onStartDirectChat={(u) => setDirectChatUser(u)}
                 setActiveTab={setActiveTab}
+                interfaceMode={interfaceMode}
               />
             )}
 
@@ -2084,6 +2103,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
         navItems={navItems}
         isAdmin={isAdmin}
       />
+
+      {/* Zero-Downtime Live Server Updater Modal */}
+      {isAdmin && (
+        <LiveUpdateModal
+          isOpen={isLiveUpdateOpen}
+          onClose={() => setIsLiveUpdateOpen(false)}
+        />
+      )}
     </div>
   );
 };
