@@ -212,9 +212,10 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
     if (index <= 0) return;
     sounds.playPop();
     const next = [...widgets];
-    const temp = next[index - 1];
-    next[index - 1] = next[index];
-    next[index] = temp;
+    // In a 2-column grid, move row-up (-2) if available, else -1
+    const target = index >= 2 ? index - 2 : index - 1;
+    const [item] = next.splice(index, 1);
+    next.splice(target, 0, item);
     saveLayout(next);
   };
 
@@ -222,35 +223,34 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
     if (index >= widgets.length - 1) return;
     sounds.playPop();
     const next = [...widgets];
-    const temp = next[index + 1];
-    next[index + 1] = next[index];
-    next[index] = temp;
+    // In a 2-column grid, move row-down (+2) if available, else +1
+    const target = index + 2 < next.length ? index + 2 : index + 1;
+    const [item] = next.splice(index, 1);
+    next.splice(target, 0, item);
     saveLayout(next);
   };
 
   const moveLeft = (index: number) => {
-    // In Persian RTL: Left is forward in the flex/grid line
+    // In Persian RTL: Left is next item (+1)
     if (index >= widgets.length - 1) return;
     sounds.playPop();
     const next = [...widgets];
-    const temp = next[index + 1];
-    next[index + 1] = next[index];
-    next[index] = temp;
+    const [item] = next.splice(index, 1);
+    next.splice(index + 1, 0, item);
     saveLayout(next);
   };
 
   const moveRight = (index: number) => {
-    // In Persian RTL: Right is backward in the flex/grid line
+    // In Persian RTL: Right is previous item (-1)
     if (index <= 0) return;
     sounds.playPop();
     const next = [...widgets];
-    const temp = next[index - 1];
-    next[index - 1] = next[index];
-    next[index] = temp;
+    const [item] = next.splice(index, 1);
+    next.splice(index - 1, 0, item);
     saveLayout(next);
   };
 
-  // Resize width toggle (e.g. 6 to 12 cols, or 12 to 6)
+  // Resize width toggle (e.g. 12 -> 6 -> 4 -> 12)
   const toggleWidth = (index: number) => {
     sounds.playPop();
     const next = [...widgets];
@@ -258,11 +258,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
     if (curr === 12) {
       next[index].colSpan = 6;
     } else if (curr === 6) {
-      next[index].colSpan = 12;
-    } else if (curr === 8) {
-      next[index].colSpan = 12;
-    } else if (curr === 4) {
-      next[index].colSpan = 6;
+      next[index].colSpan = 4;
     } else {
       next[index].colSpan = 12;
     }
@@ -641,15 +637,15 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
   return (
     <div className="space-y-5 animate-in fade-in w-full min-w-0 select-none" dir="rtl">
-      {/* 1. TOP HEADER & SAMSUNG CONTROL CENTER EDIT TRIGGER */}
+      {/* 1. TOP HEADER & DASHBOARD EDIT TRIGGER */}
       <div className="flex items-center justify-between pb-1 flex-wrap gap-2.5">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-xs font-black text-slate-700 dark:text-zinc-300">
-            کنترل‌سنتر و داشبورد ماژولار
+            داشبورد ماژولار و دسترسی سریع
           </span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200/50">
-            سامسونگ One UI 7
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200/50">
+            چیدمان هوشمند
           </span>
         </div>
 
@@ -674,16 +670,16 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
                 setIsEditMode(true);
               }}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 hover:text-black dark:hover:text-white font-bold text-xs shadow-xs transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-800 active:scale-95 group"
-              title="ویرایش آزادانه چیدمان المان‌های داشبورد مشابه کنترل سنتر سامسونگ"
+              title="ویرایش آزادانه چیدمان و موقعیت المان‌های داشبورد"
             >
               <Pencil className="w-3.5 h-3.5 text-indigo-500 group-hover:rotate-12 transition-transform" />
-              <span>ویرایش چیدمان کنترل‌سنتر</span>
+              <span>ویرایش چیدمان داشبورد</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* 2. SAMSUNG CONTROL CENTER EDIT MODE BANNER */}
+      {/* 2. DASHBOARD EDIT MODE BANNER */}
       {isEditMode && (
         <div className="p-4 rounded-3xl bg-gradient-to-r from-indigo-50 via-white to-slate-50 dark:from-indigo-950/40 dark:via-zinc-900 dark:to-zinc-900 border-2 border-indigo-400 dark:border-indigo-600 shadow-xl space-y-3 animate-in slide-in-from-top-2">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -693,7 +689,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
               </div>
               <div>
                 <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>حالت شخصی‌سازی آزادانه (One UI Grid)</span>
+                  <span>حالت ویرایش چیدمان داشبورد</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-200/80 dark:bg-indigo-900/80 text-indigo-900 dark:text-indigo-200 font-bold">
                     فعال
                   </span>
@@ -720,10 +716,10 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
                 type="button"
                 onClick={handleReset}
                 className="px-3 py-1.5 rounded-xl bg-slate-200/80 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-                title="بازنشانی چیدمان اولیه سامسونگ"
+                title="بازنشانی چیدمان به حالت پیش‌فرض"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>بازنشانی</span>
+                <span>بازنشانی پیش‌فرض</span>
               </button>
 
               <button
