@@ -17,6 +17,7 @@ import {
   Award,
   Check,
   Star,
+  Sprout,
 } from 'lucide-react';
 
 interface ProgressNewspaperStoryModalProps {
@@ -161,6 +162,34 @@ export const ProgressNewspaperStoryModal: React.FC<ProgressNewspaperStoryModalPr
   const totalFocusMins = completedTasks.reduce((acc, t) => acc + (t.focusMinutesSpent || t.durationMinutes || 0), 0);
 
   const activeTwin = CELEBRITY_DATABASE;
+
+  // Gamification & Habit calculation
+  const userKey = currentUser?.id || 'guest';
+  let gardenLevel = 1;
+  let gardenTitle = 'بذر پرامید';
+  try {
+    const savedGarden = localStorage.getItem(`taskrooz_garden_${userKey}`);
+    if (savedGarden) {
+      const g = JSON.parse(savedGarden);
+      const totalXP = (g.xp || 120) + (completedTasks.length * 40) + (totalFocusMins * 5);
+      gardenLevel = Math.floor(totalXP / 250) + 1;
+      if (gardenLevel >= 10) gardenTitle = 'اسطوره استمرار';
+      else if (gardenLevel >= 7) gardenTitle = 'باغبان زمردین';
+      else if (gardenLevel >= 5) gardenTitle = 'درخت پربار';
+      else if (gardenLevel >= 3) gardenTitle = 'نهال استوار';
+    }
+  } catch {}
+
+  let completedHabitsCount = 0;
+  try {
+    const savedHabits = localStorage.getItem(`taskrooz_micro_habits_${userKey}`);
+    if (savedHabits) {
+      const habitsList = JSON.parse(savedHabits);
+      if (Array.isArray(habitsList)) {
+        completedHabitsCount = habitsList.filter((h: any) => h.history && h.history[targetDate]).length;
+      }
+    }
+  } catch {}
 
   // Dynamic Progress verdict
   const progressVerdict =
@@ -352,6 +381,20 @@ export const ProgressNewspaperStoryModal: React.FC<ProgressNewspaperStoryModalPr
             <p className="text-[11px] text-zinc-300 font-medium" style={{ letterSpacing: '0px' }}>
               «{activeTwin.headline}»
             </p>
+
+            {/* Gamification & Habits Showcase */}
+            <div className="flex items-center justify-center gap-2 pt-0.5">
+              <span className="text-[9px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold flex items-center gap-1">
+                <Sprout className="w-3 h-3 text-emerald-400" />
+                <span>سطح {toPersianDigits(gardenLevel)} باغچه ({gardenTitle})</span>
+              </span>
+              {completedHabitsCount > 0 && (
+                <span className="text-[9px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold flex items-center gap-1">
+                  <Flame className="w-3 h-3 text-amber-400 fill-amber-400/40" />
+                  <span>{toPersianDigits(completedHabitsCount)} عادت روزانه</span>
+                </span>
+              )}
+            </div>
           </div>
 
           {/* 3. THREE 3D GLASS PRODUCTIVITY STAT CARDS */}

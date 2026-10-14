@@ -1429,7 +1429,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
               </div>
             )}
 
-            {/* TAB 1: DASHBOARD (SAMSUNG ONE UI CONTROL CENTER) */}
+            {/* TAB 1: DASHBOARD (MODULAR CONTROL CENTER) */}
             {activeTab === 'dashboard' && (
               <SamsungControlCenterDashboard
                 onOpenCreateTask={(d) => openCreateModal(d || selectedDate)}
@@ -1437,6 +1437,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                 onOpenDailyStory={() => setIsDailyStoryOpen(true)}
                 onOpenPublicProfile={(u) => setViewingPublicUser(u)}
                 onStartDirectChat={(u) => setDirectChatUser(u)}
+                setActiveTab={setActiveTab}
               />
             )}
 

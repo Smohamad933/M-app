@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
-import { toPersianDigits } from '../utils/persianDate';
+import { toPersianDigits, formatAppDate } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
 import { TaskMasterBentoWidgets } from './TaskMasterBentoWidgets';
 import { QuickAddBar } from './QuickAddBar';
 import { DashboardTaskList } from './DashboardTaskList';
 import { WeeklyStrip } from './WeeklyStrip';
 import { UserAvatar } from './UserAvatar';
+import { ZenStandbyModal } from './ZenStandbyModal';
+import { CalendarSyncModal } from './CalendarSyncModal';
+import { FocusGardenWidget } from './FocusGardenWidget';
+import { MicroHabitsWidget } from './MicroHabitsWidget';
 import {
   SlidersHorizontal,
   Pencil,
@@ -15,7 +19,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Maximize2,
-  Minimize2,
   Eye,
   EyeOff,
   Plus,
@@ -32,6 +35,10 @@ import {
   MessageSquare,
   ArrowUpRight,
   CalendarDays,
+  Zap,
+  Calendar,
+  Sparkles,
+  Download,
 } from 'lucide-react';
 
 export interface SamsungWidgetConfig {
@@ -51,6 +58,38 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     colSpan: 12,
     visible: true,
     category: 'kpi',
+  },
+  {
+    id: 'focus_garden',
+    title: 'باغچه تمرکز و سطح افتخار (XP)',
+    subtitle: 'پرورش گیاه مجازی با دقایق تمرکز و انجام تسک‌ها',
+    colSpan: 6,
+    visible: true,
+    category: 'tools',
+  },
+  {
+    id: 'micro_habits',
+    title: 'هاب عادات روزانه و استمرار',
+    subtitle: 'پیگیری عادات کوچک و نقشه حرارتی ۲۸ روزه',
+    colSpan: 6,
+    visible: true,
+    category: 'tools',
+  },
+  {
+    id: 'zen_standby',
+    title: 'حالت تمرکز رومیزی مینیمال (ساعت هوشمند)',
+    subtitle: 'نمای بزرگ ساعت رومیزی، تایمر و اصوات باران و آرامش',
+    colSpan: 6,
+    visible: true,
+    category: 'tools',
+  },
+  {
+    id: 'calendar_sync',
+    title: 'خروجی تقویم و همگام‌سازی ابری',
+    subtitle: 'خروجی استاندارد تقویم (.ics)، گوگل کلندر و اوت‌لوک',
+    colSpan: 6,
+    visible: true,
+    category: 'tools',
   },
   {
     id: 'bento_tasks',
@@ -139,7 +178,8 @@ interface SamsungControlCenterDashboardProps {
   onOpenNewspaperStory: () => void;
   onOpenDailyStory: () => void;
   onOpenPublicProfile: (user: any) => void;
-  onStartDirectChat: (user: any) => void;
+  onStartDirectChat: (friend: any) => void;
+  setActiveTab: (tab: any) => void;
 }
 
 export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboardProps> = ({
@@ -148,28 +188,43 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
   onOpenDailyStory,
   onOpenPublicProfile,
   onStartDirectChat,
+  setActiveTab,
 }) => {
-  const {
-    tasks,
-    streak,
-    selectedDate,
-    setActiveTab,
-    getText,
-    currentUser,
-    friends,
-  } = useTask();
+  const { tasks, currentUser, selectedDate, streak, getText, friends, calendarType } = useTask();
 
-  const userKey = currentUser ? (currentUser.id || currentUser.username || 'guest') : 'guest';
-  const storageKey = `taskrooz_samsung_dashboard_${userKey}`;
+  // New Modals
+  const [isZenOpen, setIsZenOpen] = useState(false);
+  const [isCalendarSyncOpen, setIsCalendarSyncOpen] = useState(false);
 
-  const [isEditMode, setIsEditMode] = useState(false);
+  // Simple Mode Toggle
+  const userKey = currentUser?.id || 'guest';
+  const simpleModeKey = `taskrooz_simple_mode_${userKey}`;
+  const [isSimpleMode, setIsSimpleMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(simpleModeKey) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSimpleMode = () => {
+    sounds.playPop();
+    const next = !isSimpleMode;
+    setIsSimpleMode(next);
+    try {
+      localStorage.setItem(simpleModeKey, String(next));
+    } catch {}
+  };
+
+  // Modular Layout Persistence
+  const storageKey = `taskrooz_dashboard_layout_${userKey}`;
+
   const [widgets, setWidgets] = useState<SamsungWidgetConfig[]>(() => {
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed: SamsungWidgetConfig[] = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge with any new defaults if missing
           const existingIds = new Set(parsed.map((w) => w.id));
           const missing = DEFAULT_SAMSUNG_WIDGETS.filter((w) => !existingIds.has(w.id));
           return [...parsed, ...missing];
@@ -179,10 +234,10 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
     return DEFAULT_SAMSUNG_WIDGETS;
   });
 
+  const [isEditMode, setIsEditMode] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [showHiddenTray, setShowHiddenTray] = useState(false);
 
-  // Sync when user changes
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
@@ -207,12 +262,11 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
     } catch {}
   };
 
-  // Movement operations (Up, Down, Left, Right)
+  // Movement operations
   const moveUp = (index: number) => {
     if (index <= 0) return;
     sounds.playPop();
     const next = [...widgets];
-    // In a 2-column grid, move row-up (-2) if available, else -1
     const target = index >= 2 ? index - 2 : index - 1;
     const [item] = next.splice(index, 1);
     next.splice(target, 0, item);
@@ -223,7 +277,6 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
     if (index >= widgets.length - 1) return;
     sounds.playPop();
     const next = [...widgets];
-    // In a 2-column grid, move row-down (+2) if available, else +1
     const target = index + 2 < next.length ? index + 2 : index + 1;
     const [item] = next.splice(index, 1);
     next.splice(target, 0, item);
@@ -231,7 +284,6 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
   };
 
   const moveLeft = (index: number) => {
-    // In Persian RTL: Left is next item (+1)
     if (index >= widgets.length - 1) return;
     sounds.playPop();
     const next = [...widgets];
@@ -241,7 +293,6 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
   };
 
   const moveRight = (index: number) => {
-    // In Persian RTL: Right is previous item (-1)
     if (index <= 0) return;
     sounds.playPop();
     const next = [...widgets];
@@ -250,22 +301,13 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
     saveLayout(next);
   };
 
-  // Resize width toggle (e.g. 12 -> 6 -> 4 -> 12)
-  const toggleWidth = (index: number) => {
+  const setWidgetWidth = (index: number, span: 12 | 8 | 6 | 4) => {
     sounds.playPop();
     const next = [...widgets];
-    const curr = next[index].colSpan;
-    if (curr === 12) {
-      next[index].colSpan = 6;
-    } else if (curr === 6) {
-      next[index].colSpan = 4;
-    } else {
-      next[index].colSpan = 12;
-    }
+    next[index].colSpan = span;
     saveLayout(next);
   };
 
-  // Visibility toggle
   const toggleVisibility = (index: number) => {
     sounds.playPop();
     const next = [...widgets];
@@ -279,7 +321,6 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
     saveLayout(next);
   };
 
-  // Reset to default Samsung layout
   const handleReset = () => {
     sounds.playPop();
     saveLayout(DEFAULT_SAMSUNG_WIDGETS);
@@ -317,7 +358,6 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
   const todayRate = todayTotal > 0 ? Math.round((todayCompleted / todayTotal) * 100) : 0;
   const totalFocusMinutes = tasks.reduce((sum, t) => sum + (t.focusMinutesSpent || 0), 0);
 
-  // Hidden widgets count
   const hiddenWidgets = widgets.filter((w) => !w.visible);
 
   // Component Renderer for each modular widget
@@ -380,6 +420,85 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
                 بهترین رکورد: {toPersianDigits(streak.bestStreak)} {getText('streakLabel')}
               </div>
             </div>
+          </div>
+        );
+
+      case 'focus_garden':
+        return <FocusGardenWidget />;
+
+      case 'micro_habits':
+        return <MicroHabitsWidget />;
+
+      case 'zen_standby':
+        return (
+          <div className="p-5 sm:p-6 bg-gradient-to-br from-[#070b14] via-[#0d1424] to-[#05080e] text-white rounded-3xl border border-indigo-500/30 shadow-md flex flex-col justify-between h-full select-none relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <h3 className="text-xs sm:text-sm font-black text-white">
+                  ساعت رومیزی و تمرکز ذهن
+                </h3>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
+                Zen Mode
+              </span>
+            </div>
+
+            <div className="my-auto py-3 text-center space-y-1">
+              <div className="font-mono text-3xl sm:text-4xl font-black text-white">
+                {new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}
+              </div>
+              <p className="text-xs text-zinc-400">
+                مناسب قرار دادن گوشی روی استند میز کار با اصوات طبیعت و باران
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setIsZenOpen(true);
+              }}
+              className="w-full py-2.5 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-950/50 cursor-pointer active:scale-95"
+            >
+              <Maximize2 className="w-4 h-4" />
+              <span>ورود به حالت تمام‌صفحه رومیزی</span>
+            </button>
+          </div>
+        );
+
+      case 'calendar_sync':
+        return (
+          <div className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full select-none">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-indigo-500" />
+                <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white">
+                  خروجی تقویم و همگام‌سازی
+                </h3>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-bold">
+                .ICS / Google
+              </span>
+            </div>
+
+            <div className="py-2 space-y-1">
+              <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed font-medium">
+                تسک‌ها و برنامه‌های زمان‌دار خود را با یک کلیک به تقویم رسمی تلفن همراه، Google Calendar و Outlook منتقل کنید.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setIsCalendarSyncOpen(true);
+              }}
+              className="w-full py-2.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
+            >
+              <Download className="w-4 h-4 text-indigo-500" />
+              <span>دانلود فایل تقویم و تنظیمات همگام‌سازی</span>
+            </button>
           </div>
         );
 
@@ -637,7 +756,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
   return (
     <div className="space-y-5 animate-in fade-in w-full min-w-0 select-none" dir="rtl">
-      {/* 1. TOP HEADER & DASHBOARD EDIT TRIGGER */}
+      {/* 1. TOP HEADER & CONTROLS */}
       <div className="flex items-center justify-between pb-1 flex-wrap gap-2.5">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -645,244 +764,361 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
             داشبورد ماژولار و دسترسی سریع
           </span>
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200/50">
-            چیدمان هوشمند
+            {isSimpleMode ? 'حالت ساده' : 'چیدمان آزاد'}
           </span>
         </div>
 
         <div className="flex items-center gap-2">
-          {isEditMode ? (
-            <button
-              type="button"
-              onClick={() => {
-                sounds.playComplete();
-                setIsEditMode(false);
-              }}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-95"
-            >
-              <Check className="w-4 h-4 stroke-[3]" />
-              <span>پایان و ذخیره چیدمان</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                sounds.playPop();
-                setIsEditMode(true);
-              }}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 hover:text-black dark:hover:text-white font-bold text-xs shadow-xs transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-800 active:scale-95 group"
-              title="ویرایش آزادانه چیدمان و موقعیت المان‌های داشبورد"
-            >
-              <Pencil className="w-3.5 h-3.5 text-indigo-500 group-hover:rotate-12 transition-transform" />
-              <span>ویرایش چیدمان داشبورد</span>
-            </button>
-          )}
-        </div>
-      </div>
+          {/* Simple vs Pro Mode Switcher */}
+          <button
+            type="button"
+            onClick={toggleSimpleMode}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 ${
+              isSimpleMode
+                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-black'
+                : 'bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 border border-slate-200/90 dark:border-zinc-800 hover:bg-slate-50'
+            }`}
+            title="تغییر به حالت ساده، خلوت و سریع جهت کارکرد آسان"
+          >
+            <Zap className={`w-3.5 h-3.5 ${isSimpleMode ? 'text-amber-500 fill-amber-500/40' : 'text-slate-400'}`} />
+            <span>{isSimpleMode ? 'حالت ساده (فعال)' : 'ساده‌سازی نما ⚡'}</span>
+          </button>
 
-      {/* 2. DASHBOARD EDIT MODE BANNER */}
-      {isEditMode && (
-        <div className="p-4 rounded-3xl bg-gradient-to-r from-indigo-50 via-white to-slate-50 dark:from-indigo-950/40 dark:via-zinc-900 dark:to-zinc-900 border-2 border-indigo-400 dark:border-indigo-600 shadow-xl space-y-3 animate-in slide-in-from-top-2">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
-                <SlidersHorizontal className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>حالت ویرایش چیدمان داشبورد</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-200/80 dark:bg-indigo-900/80 text-indigo-900 dark:text-indigo-200 font-bold">
-                    فعال
-                  </span>
-                </h4>
-                <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
-                  المان‌ها را با دکمه‌های جهت (⬆️ بالا، ⬇️ پایین، ⬅️ چپ، ➡️ راست) جابجا کنید، اندازه را با ↔️ تغییر دهید یا کارت‌ها را بکشید و رها کنید.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
-              {hiddenWidgets.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowHiddenTray(!showHiddenTray)}
-                  className="px-3 py-1.5 rounded-xl bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900/80 text-indigo-900 dark:text-indigo-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>المان‌های مخفی ({toPersianDigits(hiddenWidgets.length)})</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={handleReset}
-                className="px-3 py-1.5 rounded-xl bg-slate-200/80 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-                title="بازنشانی چیدمان به حالت پیش‌فرض"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>بازنشانی پیش‌فرض</span>
-              </button>
-
+          {!isSimpleMode && (
+            isEditMode ? (
               <button
                 type="button"
                 onClick={() => {
                   sounds.playComplete();
                   setIsEditMode(false);
                 }}
-                className="px-4 py-1.5 rounded-xl bg-[#121212] dark:bg-white text-white dark:text-zinc-900 text-xs font-black transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shadow-xs"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-95"
               >
-                <Check className="w-3.5 h-3.5" />
-                <span>تایید</span>
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>پایان و ذخیره چیدمان</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsEditMode(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 hover:text-black dark:hover:text-white font-bold text-xs shadow-xs transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-800 active:scale-95 group"
+                title="ویرایش آزادانه چیدمان و موقعیت المان‌های داشبورد"
+              >
+                <Pencil className="w-3.5 h-3.5 text-indigo-500 group-hover:rotate-12 transition-transform" />
+                <span>ویرایش چیدمان داشبورد</span>
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* 2. SIMPLE MODE VIEW (For effortless, distraction-free daily operation) */}
+      {isSimpleMode ? (
+        <div className="space-y-5 animate-in fade-in">
+          {/* Friendly Greeting Card */}
+          <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 text-white shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1 relative z-10">
+              <span className="text-[11px] font-bold text-emerald-100 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                {formatAppDate(selectedDate || new Date().toISOString().split('T')[0], calendarType, 'full')}
+              </span>
+              <h2 className="text-lg sm:text-xl font-black">
+                سلام {currentUser?.name || 'همراه گرامی'}، روز پرانرژی و موفقی داشته باشی ☀️
+              </h2>
+              <p className="text-xs text-emerald-100/90 font-medium">
+                {toPersianDigits(todayCompleted)} از {toPersianDigits(todayTotal)} تسک امروز انجام شده ({toPersianDigits(todayRate)}٪ موفقیت)
+              </p>
+            </div>
+
+            {/* Quick Action Dock */}
+            <div className="flex items-center gap-2 flex-wrap relative z-10 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsZenOpen(true);
+                }}
+                className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+              >
+                <Clock className="w-3.5 h-3.5 text-amber-300" />
+                <span>ساعت رومیزی</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsCalendarSyncOpen(true);
+                }}
+                className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+              >
+                <Calendar className="w-3.5 h-3.5 text-sky-300" />
+                <span>خروجی تقویم</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  onOpenNewspaperStory();
+                }}
+                className="py-2 px-3 rounded-2xl bg-white text-emerald-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>استوری روز</span>
               </button>
             </div>
           </div>
 
-          {/* Hidden Widgets Drawer */}
-          {showHiddenTray && hiddenWidgets.length > 0 && (
-            <div className="pt-3 border-t border-indigo-100 dark:border-indigo-900/50 space-y-2">
-              <span className="text-[11px] font-bold text-slate-600 dark:text-zinc-400">
-                المان‌های غیرفعال (برای بازگرداندن به داشبورد، روی + کلیک کنید):
+          {/* Direct Quick Add Bar */}
+          <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 shadow-sm space-y-3">
+            <span className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5">
+              <Plus className="w-4 h-4 text-emerald-500" />
+              <span>ثبت آسان و سریع کار جدید:</span>
+            </span>
+            <QuickAddBar />
+          </div>
+
+          {/* Simple Today Task Checklist */}
+          <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <CheckSquare className="w-4 h-4 text-emerald-500" />
+                <span>کارهای امروز شما</span>
+              </h3>
+              <span className="text-xs font-bold text-slate-500 dark:text-zinc-400 font-mono">
+                {toPersianDigits(todayCompleted)} / {toPersianDigits(todayTotal)}
               </span>
-              <div className="flex flex-wrap gap-2">
-                {hiddenWidgets.map((hw) => (
-                  <button
-                    key={hw.id}
-                    type="button"
-                    onClick={() => unhideWidget(hw.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-bold hover:border-emerald-500 transition-colors shadow-2xs cursor-pointer group"
-                  >
-                    <Plus className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-125 transition-transform" />
-                    <span>{hw.title}</span>
-                  </button>
-                ))}
-              </div>
             </div>
-          )}
+            <DashboardTaskList onNavigateToTasks={() => setActiveTab('tasks')} />
+          </div>
+
+          {/* Micro Habit & Garden Duo in Simple Mode */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <FocusGardenWidget />
+            <MicroHabitsWidget />
+          </div>
         </div>
-      )}
-
-      {/* 3. RESPONSIVE 12-COLUMN SAMSUNG CONTROL CENTER GRID */}
-      <div
-        className={`grid grid-cols-12 gap-5 w-full relative transition-all ${
-          isEditMode
-            ? 'p-3 sm:p-5 rounded-[36px] bg-slate-100/50 dark:bg-zinc-950/40 border-2 border-dashed border-indigo-300 dark:border-indigo-800/80 bg-[radial-gradient(#6366f1_1px,transparent_1px)] [background-size:20px_20px]'
-            : ''
-        }`}
-      >
-        {widgets.map((w, index) => {
-          if (!w.visible && !isEditMode) return null;
-
-          const colSpanClass = getColSpanClass(w.colSpan);
-          const isDraggingThis = draggedIndex === index;
-
-          return (
-            <div
-              key={w.id}
-              draggable={isEditMode}
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, index)}
-              className={`${colSpanClass} transition-all duration-300 relative group/card ${
-                !w.visible ? 'opacity-40 grayscale' : ''
-              } ${
-                isEditMode
-                  ? 'p-1.5 rounded-[32px] ring-2 ring-indigo-500/20 hover:ring-indigo-500/60 shadow-lg bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xs'
-                  : ''
-              } ${isDraggingThis ? 'scale-95 opacity-50 rotate-1' : ''}`}
-            >
-              {/* EDIT OVERLAY TOOLBAR: ONE UI STYLE DIRECTIONAL CONTROLS */}
-              {isEditMode && (
-                <div className="absolute -top-3 left-3 right-3 z-30 flex items-center justify-between p-1 px-2.5 rounded-2xl bg-[#121212] dark:bg-zinc-800 text-white shadow-xl border border-white/10 text-xs animate-in fade-in">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <GripVertical className="w-3.5 h-3.5 text-slate-400 cursor-grab active:cursor-grabbing flex-shrink-0" />
-                    <span className="font-black text-[10px] text-white truncate max-w-[120px]">
-                      {w.title}
-                    </span>
-                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-white/15 text-slate-300 font-mono">
-                      {w.colSpan === 12 ? 'کامل' : `${Math.round((w.colSpan / 12) * 100)}٪`}
-                    </span>
+      ) : (
+        /* 3. ADVANCED MODULAR DASHBOARD VIEW */
+        <>
+          {/* Edit Mode Banner */}
+          {isEditMode && (
+            <div className="p-4 rounded-3xl bg-gradient-to-r from-indigo-50 via-white to-slate-50 dark:from-indigo-950/40 dark:via-zinc-900 dark:to-zinc-900 border-2 border-indigo-400 dark:border-indigo-600 shadow-xl space-y-3 animate-in slide-in-from-top-2">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                    <SlidersHorizontal className="w-5 h-5" />
                   </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>حالت ویرایش چیدمان داشبورد</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-200/80 dark:bg-indigo-900/80 text-indigo-900 dark:text-indigo-200 font-bold">
+                        فعال
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
+                      جهت‌ها را تغییر دهید، عرض المان را با دکمه‌های درصدی تعیین کنید یا کارت‌ها را بکشید و رها کنید.
+                    </p>
+                  </div>
+                </div>
 
-                  {/* Move Controls: Up, Down, Left, Right, Width, Hide */}
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    {/* Move Up */}
+                <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
+                  {hiddenWidgets.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => moveUp(index)}
-                      disabled={index === 0}
-                      title="انتقال به بالا ⬆️"
-                      className="p-1 rounded-lg hover:bg-white/20 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                      onClick={() => setShowHiddenTray(!showHiddenTray)}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900/80 text-indigo-900 dark:text-indigo-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
                     >
-                      <ArrowUp className="w-3 h-3" />
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>المان‌های مخفی ({toPersianDigits(hiddenWidgets.length)})</span>
                     </button>
+                  )}
 
-                    {/* Move Down */}
-                    <button
-                      type="button"
-                      onClick={() => moveDown(index)}
-                      disabled={index === widgets.length - 1}
-                      title="انتقال به پایین ⬇️"
-                      className="p-1 rounded-lg hover:bg-white/20 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                    >
-                      <ArrowDown className="w-3 h-3" />
-                    </button>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="px-3 py-1.5 rounded-xl bg-slate-200/80 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                    title="بازنشانی چیدمان به حالت پیش‌فرض"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>بازنشانی پیش‌فرض</span>
+                  </button>
 
-                    {/* Move Right (RTL: previous position) */}
-                    <button
-                      type="button"
-                      onClick={() => moveRight(index)}
-                      disabled={index === 0}
-                      title="انتقال به راست ➡️"
-                      className="p-1 rounded-lg hover:bg-white/20 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                    >
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playComplete();
+                      setIsEditMode(false);
+                    }}
+                    className="px-4 py-1.5 rounded-xl bg-[#121212] dark:bg-white text-white dark:text-zinc-900 text-xs font-black transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shadow-xs"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>تایید</span>
+                  </button>
+                </div>
+              </div>
 
-                    {/* Move Left (RTL: next position) */}
-                    <button
-                      type="button"
-                      onClick={() => moveLeft(index)}
-                      disabled={index === widgets.length - 1}
-                      title="انتقال به چپ ⬅️"
-                      className="p-1 rounded-lg hover:bg-white/20 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                    >
-                      <ArrowLeft className="w-3 h-3" />
-                    </button>
-
-                    {/* Toggle Width */}
-                    <button
-                      type="button"
-                      onClick={() => toggleWidth(index)}
-                      title="تغییر عرض (تمام‌عرض / نیم‌صفحه)"
-                      className="p-1 rounded-lg hover:bg-white/20 text-amber-300 hover:text-amber-200 cursor-pointer"
-                    >
-                      {w.colSpan === 12 ? (
-                        <Minimize2 className="w-3 h-3" />
-                      ) : (
-                        <Maximize2 className="w-3 h-3" />
-                      )}
-                    </button>
-
-                    {/* Toggle Visibility */}
-                    <button
-                      type="button"
-                      onClick={() => toggleVisibility(index)}
-                      title={w.visible ? 'مخفی کردن المان' : 'نمایش المان'}
-                      className="p-1 rounded-lg hover:bg-white/20 text-rose-300 hover:text-rose-200 cursor-pointer"
-                    >
-                      {w.visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                    </button>
+              {/* Hidden Widgets Shelf */}
+              {showHiddenTray && hiddenWidgets.length > 0 && (
+                <div className="pt-3 border-t border-indigo-100 dark:border-indigo-900/50 space-y-2">
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-zinc-400">
+                    المان‌های غیرفعال (برای بازگرداندن به داشبورد، روی + کلیک کنید):
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {hiddenWidgets.map((hw) => (
+                      <button
+                        key={hw.id}
+                        type="button"
+                        onClick={() => unhideWidget(hw.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-bold hover:border-emerald-500 transition-colors shadow-2xs cursor-pointer group"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-125 transition-transform" />
+                        <span>{hw.title}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
-
-              {/* Widget Card Body */}
-              <div className="w-full h-full">
-                {renderWidgetContent(w.id)}
-              </div>
             </div>
-          );
-        })}
-      </div>
+          )}
+
+          {/* 4. MODULAR GRID */}
+          <div
+            className={`grid grid-cols-12 gap-5 w-full relative transition-all ${
+              isEditMode
+                ? 'p-3 sm:p-5 rounded-[36px] bg-slate-100/50 dark:bg-zinc-950/40 border-2 border-dashed border-indigo-300 dark:border-indigo-800/80 bg-[radial-gradient(#6366f1_1px,transparent_1px)] [background-size:20px_20px]'
+                : ''
+            }`}
+          >
+            {widgets.map((w, index) => {
+              if (!w.visible && !isEditMode) return null;
+
+              const colSpanClass = getColSpanClass(w.colSpan);
+              const isDraggingThis = draggedIndex === index;
+
+              return (
+                <div
+                  key={w.id}
+                  draggable={isEditMode}
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, index)}
+                  className={`${colSpanClass} transition-all duration-300 relative group/card ${
+                    !w.visible ? 'opacity-40 grayscale' : ''
+                  } ${
+                    isEditMode
+                      ? 'p-1.5 rounded-[32px] ring-2 ring-indigo-500/20 hover:ring-indigo-500/60 shadow-lg bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xs'
+                      : ''
+                  } ${isDraggingThis ? 'scale-95 opacity-50 rotate-1' : ''}`}
+                >
+                  {/* EDIT OVERLAY TOOLBAR: ONE-TOUCH FREEDOM CONTROLS */}
+                  {isEditMode && (
+                    <div className="absolute -top-3 left-2 right-2 z-30 flex items-center justify-between p-1 px-2.5 rounded-2xl bg-[#121212] dark:bg-zinc-800 text-white shadow-xl border border-white/10 text-xs animate-in fade-in flex-wrap gap-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <GripVertical className="w-3.5 h-3.5 text-slate-400 cursor-grab active:cursor-grabbing flex-shrink-0" />
+                        <span className="font-black text-[10px] text-white truncate max-w-[110px]">
+                          {w.title}
+                        </span>
+                      </div>
+
+                      {/* Directional Move Controls */}
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => moveUp(index)}
+                          disabled={index === 0}
+                          title="ردیف بالا ⬆️"
+                          className="p-1 rounded-md hover:bg-white/20 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                        >
+                          <ArrowUp className="w-3 h-3" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => moveDown(index)}
+                          disabled={index === widgets.length - 1}
+                          title="ردیف پایین ⬇️"
+                          className="p-1 rounded-md hover:bg-white/20 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                        >
+                          <ArrowDown className="w-3 h-3" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => moveRight(index)}
+                          disabled={index === 0}
+                          title="به راست ➡️"
+                          className="p-1 rounded-md hover:bg-white/20 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                        >
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => moveLeft(index)}
+                          disabled={index === widgets.length - 1}
+                          title="به چپ ⬅️"
+                          className="p-1 rounded-md hover:bg-white/20 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                        >
+                          <ArrowLeft className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      {/* Direct Width Selectors (33%, 50%, 66%, 100%) */}
+                      <div className="flex items-center gap-0.5 bg-white/10 rounded-lg p-0.5">
+                        {[
+                          { span: 4, label: '۳۳٪' },
+                          { span: 6, label: '۵۰٪' },
+                          { span: 8, label: '۶۶٪' },
+                          { span: 12, label: '۱۰۰٪' },
+                        ].map((btn) => (
+                          <button
+                            key={btn.span}
+                            type="button"
+                            onClick={() => setWidgetWidth(index, btn.span as any)}
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-all cursor-pointer ${
+                              w.colSpan === btn.span
+                                ? 'bg-emerald-500 text-white font-black'
+                                : 'text-zinc-300 hover:text-white hover:bg-white/10'
+                            }`}
+                          >
+                            {btn.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Visibility Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => toggleVisibility(index)}
+                        title={w.visible ? 'مخفی کردن المان' : 'نمایش المان'}
+                        className="p-1 rounded-md hover:bg-white/20 text-slate-400 hover:text-red-400 cursor-pointer"
+                      >
+                        {w.visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* WIDGET CONTENT */}
+                  <div className="h-full w-full">
+                    {renderWidgetContent(w.id)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* ZEN STANDBY MODAL */}
+      <ZenStandbyModal isOpen={isZenOpen} onClose={() => setIsZenOpen(false)} />
+
+      {/* CALENDAR SYNC MODAL */}
+      <CalendarSyncModal isOpen={isCalendarSyncOpen} onClose={() => setIsCalendarSyncOpen(false)} />
     </div>
   );
 };
