@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import { toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
+import { getUserGems, deductGems, addGems } from '../utils/gemManager';
 import confetti from 'canvas-confetti';
 import {
   X,
@@ -52,6 +53,17 @@ export const FocusGardenShopModal: React.FC<FocusGardenShopModalProps> = ({
     return ['clover', 'terracotta', 'none'];
   });
 
+  const [currentGems, setCurrentGems] = useState<number>(() => gardenGems || getUserGems(userKey));
+
+  useEffect(() => {
+    setCurrentGems(getUserGems(userKey));
+    const handleUpdate = () => {
+      setCurrentGems(getUserGems(userKey));
+    };
+    window.addEventListener('taskrooz_garden_updated', handleUpdate);
+    return () => window.removeEventListener('taskrooz_garden_updated', handleUpdate);
+  }, [userKey, isOpen]);
+
   if (!isOpen) return null;
 
   const saveUnlocked = (items: string[]) => {
@@ -74,8 +86,14 @@ export const FocusGardenShopModal: React.FC<FocusGardenShopModalProps> = ({
     }
 
     // Purchase
-    if (gardenGems < price) {
+    if (currentGems < price) {
       alert('الماس کافی ندارید! با انجام تسک‌ها، تمرکز و دعوت دوستان الماس بیشتری کسب کنید.');
+      return;
+    }
+
+    const success = deductGems(userKey, price);
+    if (!success) {
+      alert('خطا در خرید: موجودی الماس کافی نیست.');
       return;
     }
 
@@ -89,8 +107,10 @@ export const FocusGardenShopModal: React.FC<FocusGardenShopModalProps> = ({
       });
     } catch {}
 
-    const newGems = gardenGems - price;
-    onUpdateGems(newGems);
+    const nextGems = getUserGems(userKey);
+    setCurrentGems(nextGems);
+    onUpdateGems(nextGems);
+
     const updatedUnlocked = [...unlockedItems, itemId];
     saveUnlocked(updatedUnlocked);
 
@@ -108,7 +128,9 @@ export const FocusGardenShopModal: React.FC<FocusGardenShopModalProps> = ({
       setCopiedInvite(true);
       // Reward +50 gems on first share
       if (!unlockedItems.includes('invited_once')) {
-        onUpdateGems(gardenGems + 50);
+        const nextGems = addGems(userKey, 50);
+        setCurrentGems(nextGems);
+        onUpdateGems(nextGems);
         saveUnlocked([...unlockedItems, 'invited_once']);
       }
       setTimeout(() => setCopiedInvite(false), 2500);
@@ -172,7 +194,7 @@ export const FocusGardenShopModal: React.FC<FocusGardenShopModalProps> = ({
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-mono font-black">
               <Sparkles className="w-4 h-4 text-amber-500" />
-              <span>{toPersianDigits(gardenGems)} الماس</span>
+              <span>{toPersianDigits(currentGems)} الماس</span>
             </div>
 
             <button

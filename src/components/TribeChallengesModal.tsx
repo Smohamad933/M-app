@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import { toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
+import { getUserGems, deductGems, addGems } from '../utils/gemManager';
 import confetti from 'canvas-confetti';
 import {
   X,
@@ -16,6 +17,7 @@ import {
   Medal,
   Heart,
   TrendingUp,
+  AlertCircle,
 } from 'lucide-react';
 
 interface TribeChallengesModalProps {
@@ -46,6 +48,19 @@ export const TribeChallengesModal: React.FC<TribeChallengesModalProps> = ({ isOp
   const [giftGems, setGiftGems] = useState<number>(30);
   const [giftNote, setGiftNote] = useState<string>('خدا قوت رفیق! این الماس‌ها برای رشد باغچه‌ت 🌿');
   const [giftSentSuccess, setGiftSentSuccess] = useState<boolean>(false);
+  const [giftError, setGiftError] = useState<string | null>(null);
+
+  // Real-time gems synchronization
+  const [myGems, setMyGems] = useState<number>(() => getUserGems(userKey));
+
+  useEffect(() => {
+    setMyGems(getUserGems(userKey));
+    const handleUpdate = () => {
+      setMyGems(getUserGems(userKey));
+    };
+    window.addEventListener('taskrooz_garden_updated', handleUpdate);
+    return () => window.removeEventListener('taskrooz_garden_updated', handleUpdate);
+  }, [userKey, isOpen]);
 
   const [claimedQuests, setClaimedQuests] = useState<string[]>(() => {
     try {
@@ -120,21 +135,34 @@ export const TribeChallengesModal: React.FC<TribeChallengesModalProps> = ({ isOp
     setClaimedQuests(next);
     try {
       localStorage.setItem(claimedKey, JSON.stringify(next));
-
-      // Grant gems to Focus Garden
-      const gardenKey = `taskrooz_garden_${userKey}`;
-      const savedG = localStorage.getItem(gardenKey);
-      if (savedG) {
-        const g = JSON.parse(savedG);
-        g.gems = (g.gems || 0) + q.rewardGems;
-        localStorage.setItem(gardenKey, JSON.stringify(g));
-      }
+      // Add real gems to balance
+      const newTotal = addGems(userKey, q.rewardGems);
+      setMyGems(newTotal);
     } catch {}
   };
 
   const handleSendGift = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFriend) return;
+    setGiftError(null);
+
+    // 1. Validate real balance: MUST NOT EXCEED AVAILABLE GEMS!
+    if (myGems < giftGems) {
+      sounds.playPop();
+      setGiftError(`موجودی الماس شما (${toPersianDigits(myGems)}) برای ارسال ${toPersianDigits(giftGems)} الماس کافی نیست!`);
+      return;
+    }
+
+    // 2. Atomically deduct gems
+    const success = deductGems(userKey, giftGems);
+    if (!success) {
+      sounds.playPop();
+      setGiftError('خطا در کسر موجودی: الماس کافی ندارید.');
+      return;
+    }
+
+    setMyGems(getUserGems(userKey));
+
     sounds.playComplete();
     try {
       confetti({
@@ -145,7 +173,7 @@ export const TribeChallengesModal: React.FC<TribeChallengesModalProps> = ({ isOp
       });
     } catch {}
 
-    // Deduct user gems or log gift in storage
+    // Log gift in storage
     try {
       const sentGiftsKey = `taskrooz_sent_gifts_${userKey}`;
       const existing = JSON.parse(localStorage.getItem(sentGiftsKey) || '[]');
@@ -164,6 +192,8 @@ export const TribeChallengesModal: React.FC<TribeChallengesModalProps> = ({ isOp
       setGiftNote('');
     }, 3000);
   };
+
+  const hasEnoughGems = myGems >= giftGems;
 
   return (
     <div
@@ -190,16 +220,24 @@ export const TribeChallengesModal: React.FC<TribeChallengesModalProps> = ({ isOp
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playPop();
-              onClose();
-            }}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Live Gems Pill */}
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 font-mono font-bold text-xs">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>{toPersianDigits(myGems)} الماس</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                onClose();
+              }}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tab Switcher */}
@@ -331,12 +369,24 @@ export const TribeChallengesModal: React.FC<TribeChallengesModalProps> = ({ isOp
 
           {activeTab === 'gift' && (
             <form onSubmit={handleSendGift} className="space-y-4">
-              <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
-                <Heart className="w-4 h-4 text-rose-500 shrink-0 fill-rose-500/20" />
-                <span>
-                  با ارسال الماس و بذر به دوستانتان، به آنها در پرورش باغچه تمرکز انگیزه ببخشید!
-                </span>
+              <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-rose-500 shrink-0 fill-rose-500/20" />
+                  <span>
+                    با ارسال الماس از موجودی خود، به دوستانتان در رشد باغچه‌شان انگیزه ببخشید!
+                  </span>
+                </div>
+                <div className="font-mono font-black text-xs shrink-0 mr-2 text-amber-700 dark:text-amber-300">
+                  موجودی: {toPersianDigits(myGems)} الماس
+                </div>
               </div>
+
+              {giftError && (
+                <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-300 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{giftError}</span>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1.5">
@@ -362,24 +412,37 @@ export const TribeChallengesModal: React.FC<TribeChallengesModalProps> = ({ isOp
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1.5">
-                  تعداد الماس اهدایی:
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-zinc-300">
+                    تعداد الماس اهدایی:
+                  </label>
+                  <span className={`text-[11px] font-bold ${hasEnoughGems ? 'text-emerald-600' : 'text-rose-500'}`}>
+                    {hasEnoughGems ? 'موجودی کافی است' : 'کسری موجودی الماس!'}
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
-                  {[20, 50, 100].map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setGiftGems(amt)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border ${
-                        giftGems === amt
-                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
-                          : 'border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400'
-                      }`}
-                    >
-                      {toPersianDigits(amt)} الماس
-                    </button>
-                  ))}
+                  {[20, 50, 100].map((amt) => {
+                    const canAfford = myGems >= amt;
+                    return (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => {
+                          setGiftGems(amt);
+                          setGiftError(null);
+                        }}
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border ${
+                          giftGems === amt
+                            ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-black'
+                            : canAfford
+                            ? 'border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:border-slate-400'
+                            : 'border-slate-200 dark:border-zinc-800 text-slate-400 opacity-60'
+                        }`}
+                      >
+                        {toPersianDigits(amt)} الماس
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -398,16 +461,20 @@ export const TribeChallengesModal: React.FC<TribeChallengesModalProps> = ({ isOp
 
               <button
                 type="submit"
-                disabled={!selectedFriend}
-                className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer"
+                disabled={!selectedFriend || !hasEnoughGems}
+                className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer"
               >
                 <Send className="w-4 h-4" />
-                <span>ارسال بسته هدیه به دوست</span>
+                <span>
+                  {hasEnoughGems
+                    ? `ارسال ${toPersianDigits(giftGems)} الماس به دوست`
+                    : `موجودی ناکافی است (${toPersianDigits(myGems)} / ${toPersianDigits(giftGems)})`}
+                </span>
               </button>
 
               {giftSentSuccess && (
                 <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 text-emerald-700 dark:text-emerald-300 text-xs font-bold text-center animate-in fade-in">
-                  ✓ هدیه شما با موفقیت برای دوستتان ارسال گردید!
+                  ✓ هدیه شما با موفقیت از حسابتان کسر و برای دوستتان ارسال گردید!
                 </div>
               )}
             </form>

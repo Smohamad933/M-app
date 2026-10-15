@@ -14,6 +14,7 @@ import { MonthlyReportCardModal } from './MonthlyReportCardModal';
 import { DataBackupModal } from './DataBackupModal';
 import { FocusGardenWidget } from './FocusGardenWidget';
 import { MicroHabitsWidget } from './MicroHabitsWidget';
+import { getUserGems } from '../utils/gemManager';
 import {
   SlidersHorizontal,
   Pencil,
@@ -230,11 +231,21 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
   const [isReportCardOpen, setIsReportCardOpen] = useState(false);
   const [isDataBackupOpen, setIsDataBackupOpen] = useState(false);
 
+  // Gems synchronization
+  const userKey = currentUser?.id || 'guest';
+  const [dashboardGems, setDashboardGems] = useState<number>(() => getUserGems(userKey));
+
+  useEffect(() => {
+    setDashboardGems(getUserGems(userKey));
+    const handleUpdate = () => setDashboardGems(getUserGems(userKey));
+    window.addEventListener('taskrooz_garden_updated', handleUpdate);
+    return () => window.removeEventListener('taskrooz_garden_updated', handleUpdate);
+  }, [userKey]);
+
   // Simple Mode is directly controlled by the sidebar interfaceMode toggle!
   const isSimpleMode = interfaceMode === 'simple';
 
   // Modular Layout Persistence
-  const userKey = currentUser?.id || 'guest';
   const storageKey = `taskrooz_dashboard_layout_${userKey}`;
 
   const [widgets, setWidgets] = useState<SamsungWidgetConfig[]>(() => {
@@ -930,112 +941,123 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
         </div>
       </div>
 
-      {/* 2. SIMPLE MODE VIEW (For effortless, distraction-free daily operation) */}
-      {isSimpleMode ? (
-        <div className="space-y-5 animate-in fade-in">
-          {/* Friendly Greeting Card */}
-          <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 text-white shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1 relative z-10">
-              <span className="text-[11px] font-bold text-emerald-100 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                {formatAppDate(selectedDate || new Date().toISOString().split('T')[0], calendarType, 'full')}
-              </span>
-              <h2 className="text-lg sm:text-xl font-black">
-                سلام {currentUser?.name || 'همراه گرامی'}، روز پرانرژی و موفقی داشته باشی ☀️
-              </h2>
-              <p className="text-xs text-emerald-100/90 font-medium">
-                {toPersianDigits(todayCompleted)} از {toPersianDigits(todayTotal)} تسک امروز انجام شده ({toPersianDigits(todayRate)}٪ موفقیت)
-              </p>
-            </div>
-
-            {/* Quick Action Dock */}
-            <div className="flex items-center gap-2 flex-wrap relative z-10 w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setIsZenOpen(true);
-                }}
-                className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-              >
-                <Clock className="w-3.5 h-3.5 text-amber-300" />
-                <span>ساعت رومیزی</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setIsTribeModalOpen(true);
-                }}
-                className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-              >
-                <Trophy className="w-3.5 h-3.5 text-amber-300" />
-                <span>چالش‌های قبیله</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setIsReportCardOpen(true);
-                }}
-                className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-              >
-                <Share2 className="w-3.5 h-3.5 text-indigo-200" />
-                <span>کارنامه ماهانه</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setActiveTab('hourly');
-                }}
-                className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-              >
-                <CalendarDays className="w-3.5 h-3.5 text-emerald-200" />
-                <span>بلاک ۲۴ساعته</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setIsDataBackupOpen(true);
-                }}
-                className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-              >
-                <Database className="w-3.5 h-3.5 text-teal-200" />
-                <span>پشتیبان‌گیری</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setIsCalendarSyncOpen(true);
-                }}
-                className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-              >
-                <Calendar className="w-3.5 h-3.5 text-sky-300" />
-                <span>خروجی تقویم</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  onOpenNewspaperStory();
-                }}
-                className="py-2 px-3 rounded-2xl bg-white text-emerald-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                <span>استوری روز</span>
-              </button>
-            </div>
+      {/* 2. SHARED HERO CARD (Greeting, Live Gems, Streak, Quick Actions) */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 text-white shadow-xl relative overflow-hidden flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 select-none animate-in fade-in">
+        <div className="space-y-1.5 relative z-10">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-bold text-emerald-100 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              {formatAppDate(selectedDate || new Date().toISOString().split('T')[0], calendarType, 'full')}
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-amber-200 text-xs font-mono font-bold flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              {toPersianDigits(dashboardGems)} الماس
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-rose-200 text-xs font-mono font-bold flex items-center gap-1">
+              <Flame className="w-3.5 h-3.5 text-rose-300" />
+              {toPersianDigits(streak.currentStreak)} روز استریک
+            </span>
           </div>
 
+          <h2 className="text-lg sm:text-xl font-black">
+            سلام {currentUser?.name || 'همراه گرامی'}، روز پرانرژی و موفقی داشته باشی ☀️
+          </h2>
+          <p className="text-xs text-emerald-100/90 font-medium">
+            {toPersianDigits(todayCompleted)} از {toPersianDigits(todayTotal)} تسک امروز انجام شده ({toPersianDigits(todayRate)}٪ موفقیت)
+          </p>
+        </div>
+
+        {/* Quick Action Dock */}
+        <div className="flex items-center gap-2 flex-wrap relative z-10 w-full lg:w-auto">
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playPop();
+              setIsZenOpen(true);
+            }}
+            className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+          >
+            <Clock className="w-3.5 h-3.5 text-amber-300" />
+            <span>ساعت رومیزی</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playPop();
+              setIsTribeModalOpen(true);
+            }}
+            className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+          >
+            <Trophy className="w-3.5 h-3.5 text-amber-300" />
+            <span>چالش‌های قبیله</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playPop();
+              setIsReportCardOpen(true);
+            }}
+            className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+          >
+            <Share2 className="w-3.5 h-3.5 text-indigo-200" />
+            <span>کارنامه ماهانه</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playPop();
+              setActiveTab('hourly');
+            }}
+            className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+          >
+            <CalendarDays className="w-3.5 h-3.5 text-emerald-200" />
+            <span>بلاک ۲۴ساعته</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playPop();
+              setIsDataBackupOpen(true);
+            }}
+            className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+          >
+            <Database className="w-3.5 h-3.5 text-teal-200" />
+            <span>پشتیبان‌گیری</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playPop();
+              setIsCalendarSyncOpen(true);
+            }}
+            className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+          >
+            <Calendar className="w-3.5 h-3.5 text-sky-300" />
+            <span>خروجی تقویم</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playPop();
+              onOpenNewspaperStory();
+            }}
+            className="py-2 px-3 rounded-2xl bg-white text-emerald-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+            <span>استوری روز</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. MODE-SPECIFIC BODY */}
+      {isSimpleMode ? (
+        <div className="space-y-5 animate-in fade-in">
           {/* Direct Quick Add Bar */}
           <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 shadow-sm space-y-3">
             <span className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5">

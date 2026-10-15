@@ -62,6 +62,7 @@ import {
   Search,
   Plus,
   Share2,
+  Flame,
   Columns3,
   List,
   ShieldCheck,
@@ -100,6 +101,8 @@ import {
 } from './DashboardCustomizationModal';
 import { SamsungControlCenterDashboard } from './SamsungControlCenterDashboard';
 import { LiveUpdateModal } from './LiveUpdateModal';
+import { FocusGardenShopModal, type PlantCustomization } from './FocusGardenShopModal';
+import { getUserGems, saveGardenData, getGardenData } from '../utils/gemManager';
 
 interface MainLayoutProps {
   onOpenInstagramStudio?: () => void;
@@ -110,6 +113,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
     currentUser,
     users,
     tasks,
+    streak,
     projects,
     activeTab,
     setActiveTab,
@@ -172,6 +176,26 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
   const [isExtensionModalOpen, setIsExtensionModalOpen] = useState(false);
   const [isAiAgentModalOpen, setIsAiAgentModalOpen] = useState(false);
   const [isLiveUpdateOpen, setIsLiveUpdateOpen] = useState(false);
+  const [isGardenShopOpen, setIsGardenShopOpen] = useState(false);
+  const [userGems, setUserGems] = useState<number>(() => getUserGems(currentUser?.id || 'guest'));
+  const [gardenCustomization, setGardenCustomization] = useState<PlantCustomization>(() => {
+    try {
+      const saved = localStorage.getItem(`taskrooz_garden_custom_${currentUser?.id || 'guest'}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { species: 'clover', pot: 'terracotta', aura: 'none' };
+  });
+
+  useEffect(() => {
+    const userKey = currentUser?.id || 'guest';
+    setUserGems(getUserGems(userKey));
+    const handleUpdate = () => {
+      setUserGems(getUserGems(userKey));
+    };
+    window.addEventListener('taskrooz_garden_updated', handleUpdate);
+    return () => window.removeEventListener('taskrooz_garden_updated', handleUpdate);
+  }, [currentUser?.id]);
+
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
@@ -1013,6 +1037,31 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
 
               {/* Header Right Actions */}
               <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                {/* 1. Real-time Gems Counter & Shop Shortcut (Prominent for all users) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setIsGardenShopOpen(true);
+                  }}
+                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-amber-400/80 dark:border-amber-500/40 bg-gradient-to-r from-amber-100/90 via-amber-50 to-indigo-50/80 dark:from-amber-950/40 dark:to-indigo-950/30 hover:shadow-md transition-all flex items-center gap-1.5 text-amber-800 dark:text-amber-200 font-bold text-xs cursor-pointer flex-shrink-0 active:scale-95 shadow-2xs group"
+                  title="موجودی الماس‌های شما - کلیک کنید تا وارد فروشگاه باغچه شوید"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500 animate-pulse group-hover:rotate-12 transition-transform" />
+                  <span className="font-mono font-black">{toPersianDigits(userGems)}</span>
+                  <span className="text-[11px] font-black text-amber-700 dark:text-amber-300">الماس</span>
+                </button>
+
+                {/* 2. Streak Badge */}
+                <div
+                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-rose-200/80 dark:border-rose-900/40 bg-rose-50/70 dark:bg-rose-950/20 flex items-center gap-1.5 text-rose-700 dark:text-rose-300 font-bold text-xs flex-shrink-0"
+                  title={`زنجیره استمرار: ${toPersianDigits(streak.currentStreak)} روز`}
+                >
+                  <Flame className="w-3.5 h-3.5 text-rose-500 fill-rose-500/30 animate-pulse" />
+                  <span className="font-mono font-black">{toPersianDigits(streak.currentStreak)}</span>
+                  <span className="hidden sm:inline text-[10px]">روز</span>
+                </div>
+
                 {/* Mobile Search Toggle Button */}
                 <button
                   type="button"
@@ -2111,6 +2160,30 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
           onClose={() => setIsLiveUpdateOpen(false)}
         />
       )}
+
+      {/* FOCUS GARDEN SHOP & ACCESSORIES MODAL */}
+      <FocusGardenShopModal
+        isOpen={isGardenShopOpen}
+        onClose={() => setIsGardenShopOpen(false)}
+        gardenGems={userGems}
+        onUpdateGems={(newGems) => {
+          saveGardenData(currentUser?.id || 'guest', {
+            ...getGardenData(currentUser?.id || 'guest'),
+            gems: newGems,
+          });
+          setUserGems(newGems);
+        }}
+        customization={gardenCustomization}
+        onUpdateCustomization={(c) => {
+          setGardenCustomization(c);
+          try {
+            localStorage.setItem(
+              `taskrooz_garden_custom_${currentUser?.id || 'guest'}`,
+              JSON.stringify(c)
+            );
+          } catch {}
+        }}
+      />
     </div>
   );
 };

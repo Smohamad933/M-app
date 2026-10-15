@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import { sounds } from '../utils/sound';
+import { addGems } from '../utils/gemManager';
 import confetti from 'canvas-confetti';
 import {
   CheckCircle2,
@@ -133,15 +134,7 @@ export const MicroHabitsWidget: React.FC = () => {
           } catch {}
 
           // Grant +5 Gems to focus garden for habit completion
-          try {
-            const gardenKey = `taskrooz_garden_${userKey}`;
-            const gSaved = localStorage.getItem(gardenKey);
-            if (gSaved) {
-              const g = JSON.parse(gSaved);
-              g.gems = (g.gems || 0) + 5;
-              localStorage.setItem(gardenKey, JSON.stringify(g));
-            }
-          } catch {}
+          addGems(userKey, 5);
         } else {
           sounds.playPop();
         }

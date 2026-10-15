@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import { toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
+import { getGardenData, saveGardenData } from '../utils/gemManager';
 import confetti from 'canvas-confetti';
 import {
   Sprout,
@@ -19,11 +20,23 @@ interface FocusGardenState {
 export const FocusGardenWidget: React.FC = () => {
   const { tasks, currentUser } = useTask();
   const userKey = currentUser?.id || 'guest';
-  const storageKey = `taskrooz_garden_${userKey}`;
   const customKey = `taskrooz_garden_custom_${userKey}`;
 
   const todayISO = new Date().toISOString().split('T')[0];
   const [isShopOpen, setIsShopOpen] = useState(false);
+
+  // Focus garden state
+  const [garden, setGarden] = useState<FocusGardenState>(() => getGardenData(userKey));
+
+  // Sync garden state across components
+  useEffect(() => {
+    setGarden(getGardenData(userKey));
+    const handleUpdate = () => {
+      setGarden(getGardenData(userKey));
+    };
+    window.addEventListener('taskrooz_garden_updated', handleUpdate);
+    return () => window.removeEventListener('taskrooz_garden_updated', handleUpdate);
+  }, [userKey]);
 
   // Customization state
   const [customization, setCustomization] = useState<PlantCustomization>(() => {
@@ -41,19 +54,6 @@ export const FocusGardenWidget: React.FC = () => {
   // Calculate stats from tasks
   const completedTasks = tasks.filter((t) => t.completed);
   const totalFocusMins = tasks.reduce((sum, t) => sum + (t.focusMinutesSpent || 0), 0);
-
-  // Focus garden state
-  const [garden, setGarden] = useState<FocusGardenState>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return {
-      xp: 120,
-      gems: 40,
-      lastWateredDate: '',
-    };
-  });
 
   const baseTaskXP = completedTasks.length * 40;
   const focusXP = totalFocusMins * 5;
@@ -93,17 +93,13 @@ export const FocusGardenWidget: React.FC = () => {
       lastWateredDate: todayISO,
     };
     setGarden(updated);
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-    } catch {}
+    saveGardenData(userKey, updated);
   };
 
   const handleUpdateGems = (newGems: number) => {
     const updated = { ...garden, gems: newGems };
     setGarden(updated);
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-    } catch {}
+    saveGardenData(userKey, updated);
   };
 
   const handleUpdateCustomization = (c: PlantCustomization) => {

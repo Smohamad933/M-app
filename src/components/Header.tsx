@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import { getGreeting, formatAppDate, toPersianDigits, getTodayISO } from '../utils/persianDate';
+import { getUserGems } from '../utils/gemManager';
 import {
   Flame,
   Share2,
@@ -9,6 +10,7 @@ import {
   Sun,
   Moon,
   Calendar,
+  Sparkles,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -17,7 +19,17 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }) => {
-  const { tasks, streak, selectedDate, setIsShareModalOpen, calendarType, toggleCalendarType, themeMode, toggleThemeMode } = useTask();
+  const { tasks, streak, selectedDate, setIsShareModalOpen, calendarType, toggleCalendarType, themeMode, toggleThemeMode, currentUser } = useTask();
+
+  const userKey = currentUser?.id || 'guest';
+  const [gems, setGems] = useState<number>(() => getUserGems(userKey));
+
+  useEffect(() => {
+    setGems(getUserGems(userKey));
+    const handleUpdate = () => setGems(getUserGems(userKey));
+    window.addEventListener('taskrooz_garden_updated', handleUpdate);
+    return () => window.removeEventListener('taskrooz_garden_updated', handleUpdate);
+  }, [userKey]);
 
   const greeting = getGreeting();
   const todayTasks = tasks.filter((t) => t.date === selectedDate);
@@ -30,13 +42,18 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSearch, isSearchActive }
     <header className="px-5 pt-4 pb-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 sticky top-0 z-20">
       {/* Top row: Status, streak, and quick tool actions */}
       <div className="flex items-center justify-between mb-3">
-        {/* Streak badge */}
+        {/* Streak and Gems badges */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20 shadow-xs">
             <Flame className="w-4 h-4 fill-amber-500 text-amber-500 animate-pulse" />
             <span className="text-xs font-bold font-sans">
               {toPersianDigits(streak.currentStreak)} روز استریک
             </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 shadow-xs font-mono font-bold text-xs">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500/30" />
+            <span>{toPersianDigits(gems)} الماس</span>
           </div>
         </div>
 
