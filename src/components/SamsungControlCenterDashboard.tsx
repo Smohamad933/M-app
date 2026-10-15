@@ -9,6 +9,9 @@ import { WeeklyStrip } from './WeeklyStrip';
 import { UserAvatar } from './UserAvatar';
 import { ZenStandbyModal } from './ZenStandbyModal';
 import { CalendarSyncModal } from './CalendarSyncModal';
+import { TribeChallengesModal } from './TribeChallengesModal';
+import { MonthlyReportCardModal } from './MonthlyReportCardModal';
+import { DataBackupModal } from './DataBackupModal';
 import { FocusGardenWidget } from './FocusGardenWidget';
 import { MicroHabitsWidget } from './MicroHabitsWidget';
 import {
@@ -38,6 +41,9 @@ import {
   Calendar,
   Sparkles,
   Download,
+  Trophy,
+  Database,
+  Share2,
 } from 'lucide-react';
 
 export interface SamsungWidgetConfig {
@@ -86,6 +92,30 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     id: 'calendar_sync',
     title: 'خروجی تقویم و همگام‌سازی ابری',
     subtitle: 'خروجی استاندارد تقویم (.ics)، گوگل کلندر و اوت‌لوک',
+    colSpan: 6,
+    visible: true,
+    category: 'tools',
+  },
+  {
+    id: 'tribe_challenges',
+    title: 'چالش‌های گروهی و قبیله',
+    subtitle: 'همکاری جمعی برای فتح اهداف، دریافت الماس و جوایز نایاب',
+    colSpan: 6,
+    visible: true,
+    category: 'tools',
+  },
+  {
+    id: 'monthly_report_card',
+    title: 'کارت وضعیت و کارنامه ماهانه',
+    subtitle: 'استاتوس تصویری عملکرد ماهانه مناسب برای اشتراک‌گذاری',
+    colSpan: 6,
+    visible: true,
+    category: 'tools',
+  },
+  {
+    id: 'data_backup',
+    title: 'پشتیبان‌گیری محلی و بازیابی اطلاعات',
+    subtitle: 'دانلود نسخه پشتیبان آفلاین JSON و بازیابی آسان',
     colSpan: 6,
     visible: true,
     category: 'tools',
@@ -196,6 +226,9 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
   // Modals
   const [isZenOpen, setIsZenOpen] = useState(false);
   const [isCalendarSyncOpen, setIsCalendarSyncOpen] = useState(false);
+  const [isTribeModalOpen, setIsTribeModalOpen] = useState(false);
+  const [isReportCardOpen, setIsReportCardOpen] = useState(false);
+  const [isDataBackupOpen, setIsDataBackupOpen] = useState(false);
 
   // Simple Mode is directly controlled by the sidebar interfaceMode toggle!
   const isSimpleMode = interfaceMode === 'simple';
@@ -485,6 +518,116 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
             >
               <Download className="w-4 h-4 text-indigo-500" />
               <span>دانلود فایل تقویم و تنظیمات همگام‌سازی</span>
+            </button>
+          </div>
+        );
+
+      case 'tribe_challenges':
+        return (
+          <div className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full select-none">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white">
+                  چالش‌های هفتگی قبیله
+                </h3>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-bold">
+                ۳ چالش فعال
+              </span>
+            </div>
+
+            <div className="py-2 space-y-2">
+              <div className="text-xs text-slate-600 dark:text-zinc-300 font-medium">
+                در ماراتن ۱۰۰۰ دقیقه تمرکز جمعی و بستن ۵۰ تسک هفتگی با دوستان مشارکت کنید و الماس بگیرید.
+              </div>
+              <div className="w-full bg-slate-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                <div className="bg-amber-500 h-full rounded-full" style={{ width: '68%' }} />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsTribeModalOpen(true);
+                }}
+                className="flex-1 py-2.5 px-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+              >
+                <Trophy className="w-4 h-4" />
+                <span>مشاهده چالش‌ها و جوایز</span>
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'monthly_report_card':
+        return (
+          <div className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full select-none">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
+              <div className="flex items-center gap-2">
+                <Share2 className="w-4 h-4 text-indigo-500" />
+                <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white">
+                  کارنامه ماهانه عملکرد (Story)
+                </h3>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold">
+                ۱۰۸۰×۱۹۲۰
+              </span>
+            </div>
+
+            <div className="py-2 space-y-1">
+              <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed font-medium">
+                کارنامه تصویری با کیفیت بالا شامل مجموع تسک‌ها، ساعات تمرکز، استریک و سطح باغچه جهت اشتراک‌گذاری در استوری.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setIsReportCardOpen(true);
+              }}
+              className="w-full py-2.5 px-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
+            >
+              <Download className="w-4 h-4" />
+              <span>مشاهده و دانلود کارت استوری ماهانه</span>
+            </button>
+          </div>
+        );
+
+      case 'data_backup':
+        return (
+          <div className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full select-none">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
+              <div className="flex items-center gap-2">
+                <Database className="w-4 h-4 text-emerald-500" />
+                <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white">
+                  پشتیبان‌گیری و بازیابی محلی
+                </h3>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold">
+                JSON آفلاین
+              </span>
+            </div>
+
+            <div className="py-2 space-y-1">
+              <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed font-medium">
+                دانلود یک‌کلیکه تمام تسک‌ها، پروژه‌ها، عادات و وضعیت باغچه در فایل امن JSON و بازیابی آسان در هر زمان.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setIsDataBackupOpen(true);
+              }}
+              className="w-full py-2.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
+            >
+              <Database className="w-4 h-4 text-emerald-500" />
+              <span>مدیریت بکاپ و بازیابی اطلاعات</span>
             </button>
           </div>
         );
@@ -823,6 +966,54 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
                 type="button"
                 onClick={() => {
                   sounds.playPop();
+                  setIsTribeModalOpen(true);
+                }}
+                className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+              >
+                <Trophy className="w-3.5 h-3.5 text-amber-300" />
+                <span>چالش‌های قبیله</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsReportCardOpen(true);
+                }}
+                className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+              >
+                <Share2 className="w-3.5 h-3.5 text-indigo-200" />
+                <span>کارنامه ماهانه</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setActiveTab('hourly');
+                }}
+                className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+              >
+                <CalendarDays className="w-3.5 h-3.5 text-emerald-200" />
+                <span>بلاک ۲۴ساعته</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsDataBackupOpen(true);
+                }}
+                className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+              >
+                <Database className="w-3.5 h-3.5 text-teal-200" />
+                <span>پشتیبان‌گیری</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
                   setIsCalendarSyncOpen(true);
                 }}
                 className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
@@ -1091,6 +1282,15 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
       {/* CALENDAR SYNC MODAL */}
       <CalendarSyncModal isOpen={isCalendarSyncOpen} onClose={() => setIsCalendarSyncOpen(false)} />
+
+      {/* TRIBE SOCIAL CHALLENGES MODAL */}
+      <TribeChallengesModal isOpen={isTribeModalOpen} onClose={() => setIsTribeModalOpen(false)} />
+
+      {/* MONTHLY REPORT CARD MODAL */}
+      <MonthlyReportCardModal isOpen={isReportCardOpen} onClose={() => setIsReportCardOpen(false)} />
+
+      {/* DATA BACKUP & RESTORE MODAL */}
+      <DataBackupModal isOpen={isDataBackupOpen} onClose={() => setIsDataBackupOpen(false)} />
     </div>
   );
 };

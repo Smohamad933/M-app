@@ -2,25 +2,25 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTask } from '../context/TaskContext';
 import { toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
-import confetti from 'canvas-confetti';
 import {
   X,
   Play,
   Pause,
   RotateCcw,
-  Volume2,
-  VolumeX,
   Maximize2,
   Minimize2,
-  CheckCircle2,
-  Flame,
-  Sparkles,
+  Volume2,
+  VolumeX,
   CloudRain,
   Wind,
-  Plus,
-  Minus,
-  Save,
+  Sparkles,
+  CheckCircle2,
   Check,
+  ChevronDown,
+  Palette,
+  Clock,
+  Droplets,
+  Flame,
 } from 'lucide-react';
 
 interface ZenStandbyModalProps {
@@ -28,17 +28,17 @@ interface ZenStandbyModalProps {
   onClose: () => void;
 }
 
-type AmbientSoundType = 'none' | 'rain' | 'waves' | 'cafe' | 'forest';
+export type AmbientSoundType = 'none' | 'clock' | 'river' | 'fireplace' | 'rain' | 'waves';
 
 export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClose }) => {
-  const { tasks, toggleTaskComplete, updateTask, selectedDate } = useTask();
+  const { tasks, updateTask, toggleTaskComplete, selectedDate } = useTask();
 
-  // Clock
+  // Clock state
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Focus Timer (in seconds)
-  const [timerSeconds, setTimerSeconds] = useState(25 * 60);
+  // Focus Timer state
   const [initialSeconds, setInitialSeconds] = useState(25 * 60);
+  const [timerSeconds, setTimerSeconds] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [sessionCount, setSessionCount] = useState(1);
   const [elapsedFocusSeconds, setElapsedFocusSeconds] = useState(0);
@@ -48,6 +48,7 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
   const [theme, setTheme] = useState<'obsidian' | 'emerald' | 'amber' | 'indigo'>('obsidian');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSavedNotice, setIsSavedNotice] = useState(false);
+  const [soundMenuOpen, setSoundMenuOpen] = useState(false);
 
   // Active task selection
   const todayISO = new Date().toISOString().split('T')[0];
@@ -57,6 +58,8 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
   // Web Audio Context for native sound generator
   const audioCtxRef = useRef<AudioContext | null>(null);
   const ambientNodeRef = useRef<AudioNode | null>(null);
+  const tickIntervalRef = useRef<number | null>(null);
+  const crackleIntervalRef = useRef<number | null>(null);
 
   // Update clock every second
   useEffect(() => {
@@ -65,41 +68,48 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
     return () => clearInterval(interval);
   }, [isOpen]);
 
-  // Pomodoro countdown & elapsed focus counter
+  // Handle countdown timer & elapsed focus tracking
   useEffect(() => {
     if (!isRunning || !isOpen) return;
     const interval = setInterval(() => {
-      setElapsedFocusSeconds((prev) => prev + 1);
       setTimerSeconds((prev) => {
         if (prev <= 1) {
-          sounds.playComplete();
           setIsRunning(false);
-          setSessionCount((s) => s + 1);
-          try {
-            confetti({
-              particleCount: 70,
-              spread: 70,
-              origin: { y: 0.6 },
-            });
-          } catch {}
+          sounds.playComplete();
+          setSessionCount((c) => c + 1);
           return 0;
         }
         return prev - 1;
       });
+      setElapsedFocusSeconds((prev) => prev + 1);
     }, 1000);
+
     return () => clearInterval(interval);
   }, [isRunning, isOpen]);
+
+  // Clean all sound generators
+  const stopAllSounds = () => {
+    if (tickIntervalRef.current) {
+      clearInterval(tickIntervalRef.current);
+      tickIntervalRef.current = null;
+    }
+    if (crackleIntervalRef.current) {
+      clearInterval(crackleIntervalRef.current);
+      crackleIntervalRef.current = null;
+    }
+    if (ambientNodeRef.current) {
+      try {
+        (ambientNodeRef.current as any).stop?.();
+        (ambientNodeRef.current as any).disconnect?.();
+      } catch {}
+      ambientNodeRef.current = null;
+    }
+  };
 
   // Handle ambient sound synthesis using Web Audio API
   useEffect(() => {
     if (!isOpen || activeSound === 'none') {
-      if (ambientNodeRef.current) {
-        try {
-          (ambientNodeRef.current as any).stop?.();
-          (ambientNodeRef.current as any).disconnect?.();
-        } catch {}
-        ambientNodeRef.current = null;
-      }
+      stopAllSounds();
       return;
     }
 
@@ -113,13 +123,31 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
         ctx.resume();
       }
 
-      if (ambientNodeRef.current) {
-        try {
-          (ambientNodeRef.current as any).stop?.();
-          (ambientNodeRef.current as any).disconnect?.();
-        } catch {}
+      stopAllSounds();
+
+      // 1. MECHANICAL CLOCK TICK-TOCK
+      if (activeSound === 'clock') {
+        let isTick = true;
+        const playTick = () => {
+          if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') return;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(isTick ? 1400 : 950, ctx.currentTime);
+          gain.gain.setValueAtTime(0.06, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.035);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.035);
+          isTick = !isTick;
+        };
+        playTick();
+        tickIntervalRef.current = window.setInterval(playTick, 1000);
+        return;
       }
 
+      // 2. CONTINUOUS NOISE GENERATORS (Rain, River, Waves, Fireplace)
       const bufferSize = ctx.sampleRate * 2;
       const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const output = noiseBuffer.getChannelData(0);
@@ -136,44 +164,61 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
         b6 = white * 0.115926;
       }
 
-      const whiteNoise = ctx.createBufferSource();
-      whiteNoise.buffer = noiseBuffer;
-      whiteNoise.loop = true;
+      const noiseSource = ctx.createBufferSource();
+      noiseSource.buffer = noiseBuffer;
+      noiseSource.loop = true;
 
       const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+
       if (activeSound === 'rain') {
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(1000, ctx.currentTime);
+        filter.frequency.setValueAtTime(950, ctx.currentTime);
+        gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      } else if (activeSound === 'river') {
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(750, ctx.currentTime);
+        filter.Q.setValueAtTime(1.2, ctx.currentTime);
+        gain.gain.setValueAtTime(0.22, ctx.currentTime);
       } else if (activeSound === 'waves') {
         filter.type = 'bandpass';
         filter.frequency.setValueAtTime(450, ctx.currentTime);
-        filter.Q.setValueAtTime(1.5, ctx.currentTime);
-      } else {
+        filter.Q.setValueAtTime(1.6, ctx.currentTime);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      } else if (activeSound === 'fireplace') {
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(700, ctx.currentTime);
+        filter.frequency.setValueAtTime(500, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+
+        // Periodic crackles for wood fire
+        const playCrackle = () => {
+          if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') return;
+          const osc = ctx.createOscillator();
+          const cGain = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(250 + Math.random() * 800, ctx.currentTime);
+          cGain.gain.setValueAtTime(0.04 + Math.random() * 0.05, ctx.currentTime);
+          cGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.02 + Math.random() * 0.03);
+          osc.connect(cGain);
+          cGain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.06);
+        };
+        crackleIntervalRef.current = window.setInterval(playCrackle, 350);
       }
 
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-
-      whiteNoise.connect(filter);
+      noiseSource.connect(filter);
       filter.connect(gain);
       gain.connect(ctx.destination);
-      whiteNoise.start();
+      noiseSource.start();
 
-      ambientNodeRef.current = whiteNoise;
+      ambientNodeRef.current = noiseSource;
     } catch (e) {
       console.warn('Audio synthesis unavailable', e);
     }
 
     return () => {
-      if (ambientNodeRef.current) {
-        try {
-          (ambientNodeRef.current as any).stop?.();
-          (ambientNodeRef.current as any).disconnect?.();
-        } catch {}
-        ambientNodeRef.current = null;
-      }
+      stopAllSounds();
     };
   }, [activeSound, isOpen]);
 
@@ -188,19 +233,15 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
 
   const timerMin = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
   const timerSec = (timerSeconds % 60).toString().padStart(2, '0');
-  const timerProgress = initialSeconds > 0 ? ((initialSeconds - timerSeconds) / initialSeconds) * 100 : 0;
 
-  // Time adjusters
-  const addFiveMinutes = () => {
+  // Adjust timer by +/- 5 minutes
+  const handleAdjustTimer = (deltaMinutes: number) => {
     sounds.playPop();
-    setTimerSeconds((prev) => prev + 300);
-    setInitialSeconds((prev) => prev + 300);
-  };
-
-  const subtractFiveMinutes = () => {
-    sounds.playPop();
-    setTimerSeconds((prev) => Math.max(prev - 300, 60));
-    setInitialSeconds((prev) => Math.max(prev - 300, 60));
+    const newSeconds = Math.max(60, timerSeconds + deltaMinutes * 60);
+    setTimerSeconds(newSeconds);
+    if (!isRunning) {
+      setInitialSeconds(newSeconds);
+    }
   };
 
   // Sync / Save elapsed focus minutes to selected task
@@ -219,43 +260,47 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      try {
-        document.documentElement.requestFullscreen?.().catch(() => {});
-        (window.screen?.orientation as any)?.lock?.('landscape').catch(() => {});
-      } catch {}
+      document.documentElement.requestFullscreen?.().catch(() => {});
       setIsFullscreen(true);
     } else {
-      try {
-        document.exitFullscreen?.().catch(() => {});
-      } catch {}
+      document.exitFullscreen?.().catch(() => {});
       setIsFullscreen(false);
     }
   };
 
-  const getThemeClass = () => {
+  const getThemeGradient = () => {
     switch (theme) {
       case 'emerald':
-        return 'from-[#02100a] via-[#051c14] to-[#010805] text-emerald-400 border-emerald-900/40';
+        return 'from-emerald-950 via-zinc-950 to-black text-emerald-400';
       case 'amber':
-        return 'from-[#140b02] via-[#211404] to-[#0a0501] text-amber-400 border-amber-900/40';
+        return 'from-amber-950 via-zinc-950 to-black text-amber-400';
       case 'indigo':
-        return 'from-[#060918] via-[#0d1330] to-[#03050c] text-indigo-400 border-indigo-900/40';
+        return 'from-indigo-950 via-zinc-950 to-black text-indigo-400';
       default:
-        return 'from-[#05070a] via-[#090d14] to-[#020305] text-white border-white/10';
+        return 'from-zinc-950 via-black to-zinc-950 text-white';
     }
   };
 
+  const soundOptions = [
+    { id: 'none' as const, label: 'خاموش', icon: VolumeX },
+    { id: 'clock' as const, label: 'تیک‌تاک آنتیک', icon: Clock },
+    { id: 'river' as const, label: 'جویبار آب', icon: Droplets },
+    { id: 'fireplace' as const, label: 'آتش شومینه', icon: Flame },
+    { id: 'rain' as const, label: 'باران آرام', icon: CloudRain },
+    { id: 'waves' as const, label: 'امواج اقیانوس', icon: Wind },
+  ];
+
   return (
     <div
-      className={`fixed inset-0 z-[100] flex flex-col justify-between p-3 sm:p-6 bg-gradient-to-b ${getThemeClass()} select-none transition-colors duration-700 overflow-hidden font-sans`}
+      className={`fixed inset-0 z-[100] bg-gradient-to-b ${getThemeGradient()} flex flex-col justify-between p-4 sm:p-8 select-none transition-colors duration-700 overflow-hidden`}
       dir="rtl"
     >
-      {/* 1. TOP CONTROLS BAR */}
-      <div className="flex items-center justify-between w-full z-20 shrink-0">
+      {/* 1. TOP BAR: STATUS & TOOLS */}
+      <div className="flex items-center justify-between w-full max-w-6xl mx-auto z-20 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-xs sm:text-sm font-black tracking-wide text-zinc-200">
-            حالت رومیزی و تمرکز ذهن
+            میز کار رومیزی و تمرکز عمیق (Zen Mode)
           </span>
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 font-mono">
             نوبت {toPersianDigits(sessionCount)}
@@ -264,42 +309,58 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
 
         {/* Ambient Sound Selector & Tools */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Sound Presets */}
-          <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-2xl p-1">
+          {/* Sound Presets Dropdown */}
+          <div className="relative">
             <button
               type="button"
-              onClick={() => setActiveSound(activeSound === 'rain' ? 'none' : 'rain')}
-              className={`p-1.5 px-2 rounded-xl text-xs flex items-center gap-1 transition-all ${
-                activeSound === 'rain' ? 'bg-sky-500/30 text-sky-300 border border-sky-400/30' : 'text-zinc-400 hover:text-white'
+              onClick={() => setSoundMenuOpen(!soundMenuOpen)}
+              className={`p-1.5 px-3 rounded-2xl text-xs flex items-center gap-1.5 border transition-all cursor-pointer ${
+                activeSound !== 'none'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  : 'bg-black/50 border-white/10 text-zinc-400 hover:text-white'
               }`}
-              title="صدای باران"
+              title="انتخاب صدای محیطی آرامش‌بخش"
             >
-              <CloudRain className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-[11px]">باران</span>
+              {activeSound === 'none' ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 animate-pulse text-amber-400" />}
+              <span className="text-[11px] font-bold">
+                {soundOptions.find((s) => s.id === activeSound)?.label || 'صدا'}
+              </span>
+              <ChevronDown className="w-3 h-3 opacity-60" />
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveSound(activeSound === 'waves' ? 'none' : 'waves')}
-              className={`p-1.5 px-2 rounded-xl text-xs flex items-center gap-1 transition-all ${
-                activeSound === 'waves' ? 'bg-teal-500/30 text-teal-300 border border-teal-400/30' : 'text-zinc-400 hover:text-white'
-              }`}
-              title="صدای امواج و باد"
-            >
-              <Wind className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-[11px]">امواج</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveSound('none')}
-              className={`p-1.5 rounded-xl text-xs transition-all ${
-                activeSound === 'none' ? 'text-zinc-500' : 'text-amber-400'
-              }`}
-              title="قطع صدا"
-            >
-              {activeSound === 'none' ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 animate-pulse" />}
-            </button>
+            {soundMenuOpen && (
+              <div className="absolute left-0 mt-2 w-44 bg-zinc-900 border border-white/15 rounded-2xl p-1.5 shadow-2xl z-50 backdrop-blur-md animate-in fade-in zoom-in-95">
+                <div className="text-[10px] font-bold text-zinc-400 px-2 py-1 border-b border-white/10">
+                  اصوات آرامش‌بخش رومیزی:
+                </div>
+                {soundOptions.map((opt) => {
+                  const Icon = opt.icon;
+                  const isSelected = activeSound === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        sounds.playPop();
+                        setActiveSound(opt.id);
+                        setSoundMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-amber-500/20 text-amber-300'
+                          : 'text-zinc-300 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-3.5 h-3.5" />
+                        <span>{opt.label}</span>
+                      </div>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Theme Switcher */}
@@ -309,19 +370,20 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
               const themes: Array<'obsidian' | 'emerald' | 'amber' | 'indigo'> = ['obsidian', 'emerald', 'amber', 'indigo'];
               const nextIndex = (themes.indexOf(theme) + 1) % themes.length;
               setTheme(themes[nextIndex]);
+              sounds.playPop();
             }}
-            className="w-8 sm:w-9 h-8 sm:h-9 rounded-2xl bg-white/10 hover:bg-white/20 text-zinc-300 flex items-center justify-center transition-all cursor-pointer"
-            title="تغییر تم"
+            className="p-2 rounded-2xl bg-black/50 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
+            title="تغییر تم رنگی"
           >
-            <Sparkles className="w-4 h-4" />
+            <Palette className="w-4 h-4" />
           </button>
 
-          {/* Fullscreen / 16:9 Landscape Toggle */}
+          {/* Fullscreen Toggle */}
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="w-8 sm:w-9 h-8 sm:h-9 rounded-2xl bg-white/10 hover:bg-white/20 text-zinc-300 flex items-center justify-center transition-all cursor-pointer"
-            title="حالت تمام‌صفحه ۱۶:۹ افقی"
+            className="p-2 rounded-2xl bg-black/50 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
+            title="حالت تمام صفحه"
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
@@ -329,84 +391,86 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
           {/* Close */}
           <button
             type="button"
-            onClick={onClose}
-            className="w-8 sm:w-9 h-8 sm:h-9 rounded-2xl bg-white/10 hover:bg-red-500/20 hover:text-red-300 text-zinc-300 flex items-center justify-center transition-all cursor-pointer"
-            title="خروج"
+            onClick={() => {
+              sounds.playPop();
+              onClose();
+            }}
+            className="p-2 rounded-2xl bg-white/10 hover:bg-rose-500/30 hover:text-rose-300 text-zinc-300 border border-white/10 transition-all cursor-pointer"
+            title="خروج از حالت ذن"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* 2. CENTER STAGE: RESPONSIVE 16:9 / WIDESCREEN DESK CLOCK & TIMER */}
-      <div className="my-auto py-2 flex flex-col landscape:flex-row items-center justify-center gap-6 sm:gap-10 z-10 w-full max-w-4xl mx-auto">
-        {/* Giant Digital Clock (STRICT LTR, ZERO WEIRD WRAPPING) */}
-        <div className="text-center flex flex-col items-center justify-center">
+      {/* 2. MAIN CENTERPIECE: 16:9 DESK CLOCK & TIMER CONTROLS */}
+      <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col landscape:flex-row items-center justify-center gap-6 sm:gap-14 my-auto z-10 py-4">
+        
+        {/* Left Side (or Top on Portrait): THE DIGITAL DESK CLOCK */}
+        <div className="flex flex-col items-center justify-center text-center">
           <div
             dir="ltr"
-            className="flex items-baseline justify-center gap-1.5 sm:gap-3 font-mono font-black text-white/95 select-none drop-shadow-[0_0_50px_rgba(255,255,255,0.18)]"
+            className="font-mono font-black tracking-wider text-5xl sm:text-7xl md:text-8xl lg:text-9xl drop-shadow-[0_0_35px_rgba(255,255,255,0.18)] flex items-baseline justify-center select-all whitespace-nowrap tabular-nums leading-none"
           >
-            <span className="text-5xl sm:text-7xl md:text-8xl tracking-tight">
-              {toPersianDigits(hours)}
-            </span>
-            <span className="text-3xl sm:text-5xl md:text-6xl text-zinc-500 animate-pulse">:</span>
-            <span className="text-5xl sm:text-7xl md:text-8xl tracking-tight">
-              {toPersianDigits(minutes)}
-            </span>
-            <span className="text-2xl sm:text-3xl md:text-4xl text-zinc-400 font-normal pl-1">
-              :{toPersianDigits(seconds)}
+            <span className="w-[1.25ch] text-center inline-block">{hours}</span>
+            <span className="opacity-70 animate-pulse mx-1">:</span>
+            <span className="w-[1.25ch] text-center inline-block">{minutes}</span>
+            <span className="text-3xl sm:text-5xl md:text-6xl text-zinc-400/80 font-normal ml-2">
+              <span className="opacity-50">:</span>
+              <span className="w-[1.25ch] text-center inline-block">{seconds}</span>
             </span>
           </div>
-          <div className="text-xs text-zinc-400 font-medium pt-2">
-            ساعت رسمی رومیزی
+
+          <div className="mt-3 text-xs sm:text-sm font-bold text-zinc-400 flex items-center gap-2">
+            <span>ساعت رسمی ایران</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
+            <span className="text-zinc-500 font-mono">
+              {currentTime.toLocaleDateString('fa-IR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </span>
           </div>
         </div>
 
-        {/* Minimal Focus Timer Box with +/- 5 min adjusters and Task Sync */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-black/60 border border-white/15 backdrop-blur-md flex flex-col items-center gap-3 w-full max-w-sm shadow-2xl">
-          <div className="flex items-center justify-between w-full text-xs text-zinc-400">
-            <span className="font-bold flex items-center gap-1.5">
-              <Flame className="w-4 h-4 text-amber-400 fill-amber-400/40" />
-              <span>تایمر تمرکز عمیق</span>
-            </span>
-            <div dir="ltr" className="font-mono font-black text-sm text-white">
-              {toPersianDigits(timerMin)}:{toPersianDigits(timerSec)}
+        {/* Divider for Landscape Mode */}
+        <div className="hidden landscape:block w-px h-64 bg-gradient-to-b from-transparent via-white/20 to-transparent" />
+
+        {/* Right Side: POMODORO TIMER & STEPPERS */}
+        <div className="flex flex-col items-center justify-center p-5 sm:p-7 rounded-3xl bg-black/40 border border-white/10 backdrop-blur-xl shadow-2xl w-full max-w-sm space-y-4">
+          <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>تایمر تمرکز عمیق (Focus Timer)</span>
+          </div>
+
+          {/* Stepper + Timer Digits Display */}
+          <div className="flex items-center justify-center gap-3 w-full" dir="ltr">
+            {/* -5 Minutes Button */}
+            <button
+              type="button"
+              onClick={() => handleAdjustTimer(-5)}
+              className="p-2 sm:p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-zinc-200 font-mono font-bold text-xs transition-all cursor-pointer active:scale-95"
+              title="کاهش ۵ دقیقه"
+            >
+              -۵د
+            </button>
+
+            {/* Countdown Digits */}
+            <div className="font-mono font-black text-4xl sm:text-5xl text-white tracking-wider tabular-nums px-3 py-1 bg-white/5 rounded-2xl border border-white/10 shadow-inner">
+              {timerMin}:{timerSec}
             </div>
+
+            {/* +5 Minutes Button */}
+            <button
+              type="button"
+              onClick={() => handleAdjustTimer(+5)}
+              className="p-2 sm:p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-zinc-200 font-mono font-bold text-xs transition-all cursor-pointer active:scale-95"
+              title="افزایش ۵ دقیقه"
+            >
+              +۵د
+            </button>
           </div>
 
-          {/* Progress Bar */}
-          <div className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-indigo-500 rounded-full transition-all duration-1000"
-              style={{ width: `${timerProgress}%` }}
-            />
-          </div>
-
-          {/* Timer Adjusters (+/- 5 min) */}
+          {/* Preset Buttons */}
           <div className="flex items-center justify-between w-full pt-1 px-1">
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={subtractFiveMinutes}
-                className="p-1.5 px-2 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
-                title="کاهش ۵ دقیقه"
-              >
-                <Minus className="w-3 h-3" />
-                <span>۵- د</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={addFiveMinutes}
-                className="p-1.5 px-2 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
-                title="افزایش ۵ دقیقه"
-              >
-                <Plus className="w-3 h-3" />
-                <span>۵+ د</span>
-              </button>
-            </div>
-
-            {/* Presets */}
+            <span className="text-[10px] text-zinc-500 font-bold">زمان‌های آماده:</span>
             <div className="flex items-center gap-1">
               {[15, 25, 45].map((mins) => (
                 <button
@@ -485,44 +549,47 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              {/* Log Focus Button */}
               {elapsedFocusSeconds >= 30 && (
                 <button
                   type="button"
                   onClick={handleSaveFocusToTask}
-                  className="py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black flex items-center gap-1 shadow-sm transition-all cursor-pointer"
-                  title="ثبت دقایق تمرکز انجام‌شده برای این تسک"
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow-md transition-all cursor-pointer active:scale-95"
                 >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>ثبت {toPersianDigits(Math.round(elapsedFocusSeconds / 60))} دقیقه</span>
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>ثبت {toPersianDigits(Math.max(1, Math.round(elapsedFocusSeconds / 60)))} دقیقه تمرکز</span>
                 </button>
               )}
 
               {isSavedNotice && (
-                <span className="text-emerald-400 text-xs font-bold flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> ثبت شد!
+                <span className="text-[11px] text-emerald-400 font-bold animate-in fade-in">
+                  ✓ در تسک ذخیره شد
                 </span>
               )}
 
-              {/* Task Switcher */}
+              {/* Quick switch task */}
               {activeTasks.length > 1 && (
-                <select
-                  value={selectedTaskId}
-                  onChange={(e) => setSelectedTaskId(e.target.value)}
-                  className="bg-white/10 text-zinc-200 text-xs rounded-xl px-2.5 py-1.5 border border-white/15 outline-none cursor-pointer max-w-[130px] truncate"
-                >
-                  {activeTasks.map((t) => (
-                    <option key={t.id} value={t.id} className="bg-zinc-900 text-white">
-                      {t.title}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={selectedTaskId}
+                    onChange={(e) => {
+                      setSelectedTaskId(e.target.value);
+                      sounds.playPop();
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-xs font-bold text-zinc-300 outline-none cursor-pointer"
+                  >
+                    {activeTasks.map((t) => (
+                      <option key={t.id} value={t.id} className="bg-zinc-900 text-white">
+                        {t.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
           </div>
         ) : (
-          <div className="p-3 text-center text-xs text-zinc-400 bg-black/40 rounded-2xl border border-white/10">
-            تمامی تسک‌های زمان‌دار امروز انجام شده‌اند. از لحظات آرامش لذت ببرید 🌱
+          <div className="p-3 text-center rounded-2xl bg-black/40 border border-white/10 text-xs text-zinc-400">
+            برای ثبت هوشمند دقایق تمرکز، یک تسک فعال در امروز ایجاد نمایید.
           </div>
         )}
       </div>

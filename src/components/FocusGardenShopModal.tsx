@@ -452,6 +452,22 @@ export const FocusGardenShopModal: React.FC<FocusGardenShopModalProps> = ({
                     <div className="text-[10px] text-indigo-600 font-bold">+۵ الماس روزانه</div>
                   </div>
                 </div>
+
+                <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-500/30 flex items-center gap-2.5">
+                  <Sparkles className="w-5 h-5 text-amber-500 shrink-0" />
+                  <div>
+                    <div className="font-black text-slate-800 dark:text-white">جلسات تمرکز ۲۵د</div>
+                    <div className="text-[10px] text-amber-600 font-bold">+۱۵ الماس تمرکز</div>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-500/30 flex items-center gap-2.5">
+                  <Trophy className="w-5 h-5 text-rose-500 shrink-0" />
+                  <div>
+                    <div className="font-black text-slate-800 dark:text-white">چالش‌های قبیله</div>
+                    <div className="text-[10px] text-rose-600 font-bold">تا ۲۵۰+ الماس هفته</div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
