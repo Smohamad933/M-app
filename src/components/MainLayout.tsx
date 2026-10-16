@@ -1012,7 +1012,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(true)}
-                  className="lg:hidden p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer flex-shrink-0"
+                  className="lg:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 transition-colors cursor-pointer flex-shrink-0"
                   title="منوی اصلی"
                 >
                   <Menu className="w-4 h-4" />
@@ -1732,30 +1732,30 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div
-            className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="relative w-[82%] max-w-[320px] bg-white h-full p-4 sm:p-5 shadow-2xl flex flex-col justify-between z-10 animate-in slide-in-from-right duration-200 border-l border-slate-200">
+          <div className="relative w-[82%] max-w-[320px] bg-white dark:bg-[#1c1c1e] h-full p-4 sm:p-5 shadow-2xl flex flex-col justify-between z-10 animate-in slide-in-from-right duration-200 border-l border-black/[0.08] dark:border-white/[0.1]">
             <div className="flex flex-col min-h-0 flex-1">
               {/* Drawer Header */}
-              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-3.5 border-b border-black/[0.06] dark:border-white/[0.08]">
                 <div className="flex items-center gap-2.5">
                   {appLogo ? (
-                    <img src={appLogo} alt={appName} className="w-9 h-9 rounded-2xl object-cover shadow-xs border border-slate-100" />
+                    <img src={appLogo} alt={appName} className="w-9 h-9 rounded-2xl object-cover shadow-xs border border-slate-100 dark:border-zinc-800" />
                   ) : (
                     <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-xs">
                       <TaskMasterHexagon size={24} />
                     </div>
                   )}
                   <div>
-                    <div className="font-black text-sm text-slate-900 leading-tight">{appName}</div>
-                    <div className="text-[10px] text-slate-400 font-semibold">مدیریت زمان و فعالیت‌ها</div>
+                    <div className="font-black text-sm text-slate-900 dark:text-white leading-tight">{appName}</div>
+                    <div className="text-[10px] text-slate-400 dark:text-zinc-500 font-semibold">مدیریت زمان و فعالیت‌ها</div>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                   title="بستن منو"
                 >
                   <X className="w-4 h-4" />
@@ -1770,7 +1770,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                     setIsMobileMenuOpen(false);
                     setIsProfileModalOpen(true);
                   }}
-                  className="my-3.5 p-3 rounded-2xl bg-gradient-to-l from-slate-50 to-white border border-slate-200/80 text-right w-full flex items-center gap-3 hover:border-emerald-300 transition-all shadow-2xs cursor-pointer group"
+                  className="my-3.5 p-3 rounded-2xl bg-slate-50 dark:bg-[#252528] border border-black/[0.06] dark:border-white/[0.08] text-right w-full flex items-center gap-3 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all shadow-2xs cursor-pointer group"
                 >
                   <div className="relative">
                     <UserAvatar
@@ -1780,13 +1780,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                       size="w-10 h-10 rounded-full text-xs"
                       className="rounded-full ring-2 ring-emerald-500/20 shadow-2xs"
                     />
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-200" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-zinc-900 ring-1 ring-emerald-200" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-extrabold text-xs text-slate-900 truncate group-hover:text-emerald-700 transition-colors">
+                    <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                       {currentUser.name}
                     </div>
-                    <div className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
+                    <div className="text-[10px] text-slate-400 dark:text-zinc-400 font-medium truncate mt-0.5">
                       {currentUser.jobTitle || (isAdmin ? 'مدیر سیستم' : 'کاربر')}
                     </div>
                   </div>
@@ -1808,18 +1808,18 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                       onClick={() => handleMobileTabSelect(item.id)}
                       className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         isActive
-                          ? 'bg-emerald-500/10 text-emerald-900 border border-emerald-500/25 shadow-xs font-black'
-                          : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
+                          ? 'bg-emerald-500/10 text-emerald-900 dark:text-emerald-300 border border-emerald-500/25 shadow-xs font-black'
+                          : 'text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <Icon className={`w-4 h-4 ${isActive ? 'text-[#00b884] stroke-[2.5]' : 'text-slate-500 stroke-2'}`} />
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-[#00b884] stroke-[2.5]' : 'text-slate-500 dark:text-zinc-400 stroke-2'}`} />
                         <span>{item.label}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         {item.badge !== undefined && item.badge > 0 && (
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                            isActive ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-800'
+                            isActive ? 'bg-emerald-600 text-white' : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
                           }`}>
                             {toPersianDigits(item.badge)}
                           </span>
@@ -1834,14 +1834,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
 
                 {/* Secondary Items in Drawer when Simple Mode */}
                 {interfaceMode === 'simple' && secondaryNavItems.length > 0 && (
-                  <div className="pt-2 mt-1 border-t border-slate-100">
+                  <div className="pt-2 mt-1 border-t border-black/[0.04] dark:border-white/[0.06]">
                     <button
                       type="button"
                       onClick={() => setIsMoreToolsOpen(!isMoreToolsOpen)}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         isCurrentTabSecondary || isMoreToolsOpen
-                          ? 'bg-slate-100 text-slate-900'
-                          : 'text-slate-500 hover:text-slate-800'
+                          ? 'bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white'
+                          : 'text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-white'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -1853,7 +1853,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                     </button>
 
                     {isMoreToolsOpen && (
-                      <div className="mt-1 space-y-0.5 pr-2 border-r-2 border-indigo-200 mr-2 animate-in fade-in duration-150">
+                      <div className="mt-1 space-y-0.5 pr-2 border-r-2 border-indigo-200 dark:border-indigo-800 mr-2 animate-in fade-in duration-150">
                         {secondaryNavItems.map((item) => {
                           const isActive = activeTab === item.id;
                           const Icon = item.icon;
@@ -1864,12 +1864,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                               onClick={() => handleMobileTabSelect(item.id)}
                               className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                                 isActive
-                                  ? 'bg-indigo-50 text-indigo-900 font-bold border border-indigo-200/80'
-                                  : 'text-slate-600 hover:bg-slate-50'
+                                  ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-200 font-bold border border-indigo-200/80 dark:border-indigo-800/60'
+                                  : 'text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800'
                               }`}
                             >
                               <div className="flex items-center gap-2">
-                                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
                                 <span>{item.label}</span>
                               </div>
                               {isActive && <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />}
@@ -1884,7 +1884,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
             </div>
 
             {/* Drawer Footer */}
-            <div className="pt-3 mt-2 border-t border-slate-100 space-y-2 text-xs flex-shrink-0">
+            <div className="pt-3 mt-2 border-t border-black/[0.06] dark:border-white/[0.08] space-y-2 text-xs flex-shrink-0">
               {/* Instagram Studio for Admin in Mobile Drawer */}
               {isAdmin && (
                 <button
@@ -1900,7 +1900,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                       window.location.href = url.toString();
                     }
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-pink-700 bg-pink-50 border border-pink-200 font-bold text-xs transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-800 font-bold text-xs transition-colors cursor-pointer"
                 >
                   <span className="text-xs">📸</span>
                   <span>استودیو اسلایدهای اینستاگرام</span>
@@ -1915,7 +1915,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   sounds.playPop();
                   setIsRemindersModalOpen(true);
                 }}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-amber-800 bg-amber-50/80 border border-amber-200/80 font-bold text-xs transition-colors cursor-pointer"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-amber-800 dark:text-amber-200 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 font-bold text-xs transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2">
                   <Bell className="w-4 h-4 text-amber-600" />

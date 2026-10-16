@@ -1502,8 +1502,8 @@ export const UserManagementView: React.FC = () => {
           )}
 
           {/* Users List Table/Cards */}
-          <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 overflow-hidden shadow-sm">
-            <div className="px-5 py-3.5 border-b border-zinc-800/80 flex items-center justify-between">
+          <div className="bg-white dark:bg-[#1c1c1e] rounded-[32px] border border-black/[0.06] dark:border-white/[0.08] overflow-hidden shadow-xs">
+            <div className="px-5 py-4 border-b border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 {/* Select all (locked users excluded) */}
                 <input
@@ -1516,23 +1516,23 @@ export const UserManagementView: React.FC = () => {
                   className="w-4 h-4 accent-rose-600 rounded cursor-pointer"
                   title="انتخاب همه کاربران قابل انتخاب"
                 />
-                <span className="text-xs font-bold text-zinc-300">
+                <span className="text-xs font-black text-slate-800 dark:text-zinc-200">
                   فهرست کامل اعضای سیستم ({toPersianDigits(users.length)})
                 </span>
               </div>
-              <span className="text-[11px] text-zinc-400">
-                مشاهده لحظه‌ای عملکرد و انتصاب مستقیم تسک
+              <span className="text-[11px] text-slate-400 dark:text-zinc-400 font-medium">
+                پایش لحظه‌ای و انتصاب تسک
               </span>
             </div>
 
             {subNotice && (
-              <div className="p-3.5 bg-emerald-500/15 border-b border-emerald-500/30 text-emerald-300 text-xs font-bold text-center animate-in fade-in flex items-center justify-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-400" />
+              <div className="p-3.5 bg-emerald-500/10 border-b border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-bold text-center animate-in fade-in flex items-center justify-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-500" />
                 <span>{subNotice}</span>
               </div>
             )}
 
-            <div className="divide-y divide-zinc-800/60">
+            <div className="divide-y divide-black/[0.04] dark:divide-white/[0.06]">
               {[...users]
                 .filter((u) => {
                   const isPrem = u.role === 'admin' || (!!u.subscription?.plan && u.subscription.plan !== 'free');
@@ -1566,7 +1566,7 @@ export const UserManagementView: React.FC = () => {
                 return (
                   <div
                     key={u.id}
-                    className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-zinc-800/30 transition-colors"
+                    className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-slate-50 dark:hover:bg-zinc-800/40 transition-colors"
                   >
                     {/* User info */}
                     <div className="flex items-start gap-3.5 flex-1 min-w-0">
@@ -1594,7 +1594,7 @@ export const UserManagementView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setViewingPublicUser(u)}
-                            className="font-black text-sm text-white hover:text-emerald-400 transition-colors text-right cursor-pointer"
+                            className="font-black text-sm text-slate-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-right cursor-pointer"
                             title="مشاهده شناسنامه و کارت پروفایل کاربر"
                           >
                             {u.name}
