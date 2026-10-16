@@ -1,14 +1,15 @@
 import React, { useRef, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import { getDaysAround, getTodayISO, toPersianDigits, formatAppDate } from '../utils/persianDate';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
+import { sounds } from '../utils/sound';
 
 export const WeeklyStrip: React.FC = () => {
   const { selectedDate, setSelectedDate, tasks, calendarType, toggleCalendarType } = useTask();
   const scrollRef = useRef<HTMLDivElement>(null);
   const todayISO = getTodayISO();
 
-  // Generate 21 days
+  // Generate 21 days window around today
   const days = getDaysAround(todayISO, 4, 16);
 
   useEffect(() => {
@@ -21,35 +22,49 @@ export const WeeklyStrip: React.FC = () => {
   }, [selectedDate]);
 
   return (
-    <div className="w-full min-w-0 max-w-full overflow-hidden py-1">
-      <div className="flex items-center justify-between mb-2 px-1">
-        <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
-          <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
-          <span>{formatAppDate(selectedDate, calendarType, 'monthYear')}</span>
-          <span className="text-[11px] font-normal text-slate-400 mr-1">
+    <div className="w-full min-w-0 max-w-full overflow-hidden select-none" dir="rtl">
+      {/* Month Year & System Switcher */}
+      <div className="flex items-center justify-between mb-3 px-1">
+        <div className="flex items-center gap-2">
+          <CalendarIcon className="w-4 h-4 text-emerald-500" />
+          <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+            {formatAppDate(selectedDate, calendarType, 'monthYear')}
+          </span>
+          <span className="text-[11px] font-medium text-slate-400 dark:text-zinc-500">
             ({formatAppDate(selectedDate, calendarType, 'weekday')})
           </span>
-        </span>
+        </div>
+
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            onClick={toggleCalendarType}
-            className="text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-xl border border-indigo-200 flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+            onClick={() => {
+              sounds.playPop();
+              toggleCalendarType();
+            }}
+            className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 px-2.5 py-1 rounded-xl border border-indigo-200/80 dark:border-indigo-800/60 flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
             title="تغییر سیستم تقویم (شمسی / میلادی)"
           >
-            <span>{calendarType === 'jalali' ? '📅 شمسی' : '🌐 میلادی'}</span>
+            <RefreshCw className="w-3 h-3 text-indigo-500" />
+            <span>{calendarType === 'jalali' ? 'شمسی 📅' : 'میلادی 🌐'}</span>
           </button>
+
           {selectedDate !== todayISO && (
             <button
-              onClick={() => setSelectedDate(todayISO)}
-              className="text-[11px] font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1 cursor-pointer transition-colors bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200"
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setSelectedDate(todayISO);
+              }}
+              className="text-[11px] font-bold text-slate-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 cursor-pointer transition-all bg-slate-100 dark:bg-[#252528] px-2.5 py-1 rounded-xl border border-black/[0.04] dark:border-white/[0.06]"
             >
-              <span>برو به امروز</span>
+              <span>امروز</span>
             </button>
           )}
         </div>
       </div>
 
+      {/* Horizontal Scroll Days Strip */}
       <div
         ref={scrollRef}
         className="w-full flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 px-1"
@@ -67,56 +82,66 @@ export const WeeklyStrip: React.FC = () => {
             <button
               key={day.iso}
               data-selected={isSelected}
-              onClick={() => setSelectedDate(day.iso)}
-              className={`flex-shrink-0 flex flex-col items-center justify-center w-12 h-16 rounded-2xl transition-all duration-200 cursor-pointer ${
+              onClick={() => {
+                sounds.playPop();
+                setSelectedDate(day.iso);
+              }}
+              className={`flex-shrink-0 flex flex-col items-center justify-between py-2 w-12 h-18 rounded-2xl transition-all duration-200 cursor-pointer ${
                 isSelected
-                  ? 'bg-[#007aff] text-white shadow-md font-bold scale-105 shadow-blue-500/25'
-                  : 'bg-[#f2f2f7] dark:bg-[#2c2c2e]/60 text-slate-700 dark:text-zinc-200 hover:bg-slate-200 dark:hover:bg-[#2c2c2e] border border-black/[0.05] dark:border-white/[0.08]'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg scale-105 ring-2 ring-emerald-500/40 font-black'
+                  : isToday
+                  ? 'bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 border-2 border-emerald-500 shadow-xs'
+                  : 'bg-slate-50 hover:bg-slate-100 dark:bg-[#252528] dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-200 border border-black/[0.04] dark:border-white/[0.06]'
               }`}
             >
+              {/* Day Name */}
               <span
-                className={`text-[10px] font-bold ${
+                className={`text-[10px] font-bold tracking-tight ${
                   isSelected
-                    ? 'text-slate-300'
+                    ? 'text-white/80 dark:text-slate-900/80'
                     : isToday
-                    ? 'text-slate-900 font-extrabold'
-                    : 'text-slate-400'
+                    ? 'text-emerald-600 dark:text-emerald-400 font-black'
+                    : 'text-slate-400 dark:text-zinc-400'
                 }`}
               >
-                {calendarType === 'gregorian' ? day.date.toLocaleDateString('en-US', { weekday: 'short' }) : day.weekdayShort}
+                {calendarType === 'gregorian'
+                  ? day.date.toLocaleDateString('en-US', { weekday: 'short' })
+                  : day.weekdayShort}
               </span>
 
+              {/* Day Number */}
               <span
-                className={`text-base font-black my-0.5 ${
+                className={`text-sm sm:text-base font-black font-mono my-0.5 ${
                   isSelected
-                    ? 'text-white'
+                    ? 'text-white dark:text-slate-900'
                     : isToday
-                    ? 'text-slate-900'
-                    : 'text-slate-700'
+                    ? 'text-slate-900 dark:text-white font-black'
+                    : 'text-slate-800 dark:text-zinc-200'
                 }`}
               >
                 {calendarType === 'gregorian' ? day.date.getDate() : toPersianDigits(day.jalaliDay)}
               </span>
 
+              {/* Task Indicator Dot */}
               <div className="flex items-center justify-center h-2">
                 {hasTasks ? (
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
                       isSelected
-                        ? 'bg-[#00b884]'
+                        ? 'bg-emerald-400 ring-1 ring-white/50'
                         : allCompleted
-                        ? 'bg-[#00b884]'
-                        : 'bg-slate-300'
+                        ? 'bg-emerald-500'
+                        : 'bg-amber-500'
                     }`}
                   />
                 ) : isToday ? (
                   <span
-                    className={`w-1 h-1 rounded-full ${
-                      isSelected ? 'bg-white' : 'bg-[#f95738]'
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      isSelected ? 'bg-white' : 'bg-rose-500'
                     }`}
                   />
                 ) : (
-                  <span className="w-1 h-1" />
+                  <span className="w-1.5 h-1.5 opacity-0" />
                 )}
               </div>
             </button>
