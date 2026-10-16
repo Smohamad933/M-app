@@ -50,9 +50,11 @@ export const TaskList: React.FC = () => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
 
-      const priorityOrder = { high: 0, medium: 1, low: 2 };
-      if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
-        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      const priorityOrder: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
+      const aOrder = priorityOrder[a.priority] ?? 2;
+      const bOrder = priorityOrder[b.priority] ?? 2;
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
       }
 
       if (a.time && b.time) return a.time.localeCompare(b.time);

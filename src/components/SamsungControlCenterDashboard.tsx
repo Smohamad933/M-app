@@ -12,6 +12,8 @@ import { CalendarSyncModal } from './CalendarSyncModal';
 import { TribeChallengesModal } from './TribeChallengesModal';
 import { MonthlyReportCardModal } from './MonthlyReportCardModal';
 import { DataBackupModal } from './DataBackupModal';
+import { DailyBriefingModal } from './DailyBriefingModal';
+import { TaskTemplatesModal } from './TaskTemplatesModal';
 import { FocusGardenWidget } from './FocusGardenWidget';
 import { MicroHabitsWidget } from './MicroHabitsWidget';
 import { getUserGems } from '../utils/gemManager';
@@ -46,6 +48,7 @@ import {
   Database,
   Share2,
   ChevronDown,
+  Sun,
 } from 'lucide-react';
 
 export interface SamsungWidgetConfig {
@@ -239,6 +242,8 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
   const [isTribeModalOpen, setIsTribeModalOpen] = useState(false);
   const [isReportCardOpen, setIsReportCardOpen] = useState(false);
   const [isDataBackupOpen, setIsDataBackupOpen] = useState(false);
+  const [isDailyBriefingOpen, setIsDailyBriefingOpen] = useState(false);
+  const [isTaskTemplatesOpen, setIsTaskTemplatesOpen] = useState(false);
   const [isHeroToolsOpen, setIsHeroToolsOpen] = useState(false);
 
   // Gems synchronization
@@ -531,7 +536,37 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsDailyBriefingOpen(true);
+                }}
+                className="p-3.5 rounded-2xl bg-[#f2f2f7] dark:bg-[#2c2c2e]/60 hover:bg-[#e5e5ea] dark:hover:bg-[#2c2c2e] transition-all flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 group text-center"
+              >
+                <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+                  <Sun className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">مرور روز و شب</span>
+                <span className="text-[10px] text-slate-400 font-mono">تمرکز و جمع‌بندی</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsTaskTemplatesOpen(true);
+                }}
+                className="p-3.5 rounded-2xl bg-[#f2f2f7] dark:bg-[#2c2c2e]/60 hover:bg-[#e5e5ea] dark:hover:bg-[#2c2c2e] transition-all flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 group text-center"
+              >
+                <div className="p-2.5 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">قالب‌های آماده</span>
+                <span className="text-[10px] text-slate-400 font-mono">چک‌لیست سریع</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
@@ -551,7 +586,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
                 type="button"
                 onClick={() => {
                   sounds.playPop();
-                  setActiveTab('hourly');
+                  setActiveTab('planner');
                 }}
                 className="p-3.5 rounded-2xl bg-[#f2f2f7] dark:bg-[#2c2c2e]/60 hover:bg-[#e5e5ea] dark:hover:bg-[#2c2c2e] transition-all flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 group text-center"
               >
@@ -560,21 +595,6 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
                 </div>
                 <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">بلاک ۲۴ ساعته</span>
                 <span className="text-[10px] text-slate-400 font-mono">مدیریت زمان</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setIsCalendarSyncOpen(true);
-                }}
-                className="p-3.5 rounded-2xl bg-[#f2f2f7] dark:bg-[#2c2c2e]/60 hover:bg-[#e5e5ea] dark:hover:bg-[#2c2c2e] transition-all flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 group text-center"
-              >
-                <div className="p-2.5 rounded-xl bg-[#34c759]/15 text-[#34c759] group-hover:scale-110 transition-transform">
-                  <Calendar className="w-5 h-5" />
-                </div>
-                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">همگام‌سازی تقویم</span>
-                <span className="text-[10px] text-slate-400 font-mono">iCal / Google</span>
               </button>
 
               <button
@@ -1155,7 +1175,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
                   type="button"
                   onClick={() => {
                     sounds.playPop();
-                    setActiveTab('hourly');
+                    setActiveTab('planner');
                   }}
                   className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
                 >
@@ -1450,6 +1470,19 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
       {/* DATA BACKUP & RESTORE MODAL */}
       <DataBackupModal isOpen={isDataBackupOpen} onClose={() => setIsDataBackupOpen(false)} />
+
+      {/* DAILY BRIEFING & EVENING WRAP-UP MODAL */}
+      <DailyBriefingModal
+        isOpen={isDailyBriefingOpen}
+        onClose={() => setIsDailyBriefingOpen(false)}
+        onOpenCreateTask={() => onOpenCreateTask(selectedDate)}
+      />
+
+      {/* PRESET TASK TEMPLATES MODAL */}
+      <TaskTemplatesModal
+        isOpen={isTaskTemplatesOpen}
+        onClose={() => setIsTaskTemplatesOpen(false)}
+      />
     </div>
   );
 };

@@ -61,9 +61,9 @@ export const DashboardTaskList: React.FC<DashboardTaskListProps> = ({ onNavigate
     if (a.time) return -1;
     if (b.time) return 1;
 
-    // 3. Final tie-break: priority (high first)
-    const priorityOrder = { high: 0, medium: 1, low: 2 };
-    return priorityOrder[a.priority] - priorityOrder[b.priority];
+    // 3. Final tie-break: priority (urgent first, then high, medium, low)
+    const priorityOrder: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
+    return (priorityOrder[a.priority] ?? 2) - (priorityOrder[b.priority] ?? 2);
   });
 
   // Limit display to max 5 tasks on Dashboard

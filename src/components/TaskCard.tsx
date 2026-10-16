@@ -161,6 +161,16 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
               </span>
             )}
 
+            {task.isGoldenFocus && (
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 dark:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-black flex items-center gap-1 flex-shrink-0"
+                title="اولویت طلایی امروز"
+              >
+                <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                <span>طلایی</span>
+              </span>
+            )}
+
             {task.isRoutine && (
               <span
                 className="text-[10px] px-2 py-0.2 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 border border-indigo-200/60 font-bold flex items-center gap-1 flex-shrink-0"

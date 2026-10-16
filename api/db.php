@@ -2447,7 +2447,7 @@ class TaskRoozDB {
             'durationMinutes' => (int)($data['durationMinutes'] ?? $data['duration_minutes'] ?? 30),
             'completed' => !empty($data['completed']),
             'completedAt' => !empty($data['completed']) ? date('Y-m-d H:i:s') : null,
-            'priority' => in_array($data['priority'] ?? '', ['high', 'medium', 'low']) ? $data['priority'] : 'medium',
+            'priority' => in_array($data['priority'] ?? '', ['urgent', 'high', 'medium', 'low']) ? $data['priority'] : 'medium',
             'categoryId' => $data['categoryId'] ?? $data['category_id'] ?? 'cat-work',
             'isPinned' => !empty($data['isPinned'] ?? $data['is_pinned']),
             'focusMinutesSpent' => (int)($data['focusMinutesSpent'] ?? $data['focus_minutes_spent'] ?? 0),

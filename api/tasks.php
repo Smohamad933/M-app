@@ -221,7 +221,7 @@ if ($method === 'POST') {
         'date' => $date,
         'time' => $input['time'] ?? '',
         'durationMinutes' => (int)($input['durationMinutes'] ?? 0),
-        'priority' => in_array($input['priority'] ?? '', ['high', 'medium', 'low']) ? $input['priority'] : 'medium',
+        'priority' => in_array($input['priority'] ?? '', ['urgent', 'high', 'medium', 'low']) ? $input['priority'] : 'medium',
         'categoryId' => $input['categoryId'] ?? 'cat-work',
         'projectId' => $input['projectId'] ?? null,
         'isPinned' => !empty($input['isPinned']) ? 1 : 0,

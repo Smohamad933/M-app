@@ -11,7 +11,7 @@ export interface ReminderItem {
   createdAt: string;
 }
 
-export type Priority = 'high' | 'medium' | 'low';
+export type Priority = 'urgent' | 'high' | 'medium' | 'low';
 export type UserRole = 'admin' | 'user';
 
 export interface UserTimeline {
@@ -112,6 +112,7 @@ export interface Task {
   categoryId: string;
   subtasks: SubTask[];
   isPinned?: boolean;
+  isGoldenFocus?: boolean;
   focusMinutesSpent?: number;
   workLogs?: TaskWorkLog[];
   reminder?: boolean;
@@ -205,7 +206,7 @@ export type TabType =
   | 'friends'
   | 'messages';
 
-export type TaskViewMode = 'list' | 'kanban' | 'calendar';
+export type TaskViewMode = 'list' | 'kanban' | 'calendar' | 'eisenhower';
 
 export type FilterStatus = 'all' | 'pending' | 'completed' | 'starred' | 'urgent' | 'overdue';
 

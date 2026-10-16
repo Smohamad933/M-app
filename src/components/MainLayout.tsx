@@ -38,6 +38,9 @@ import { ProgressNewspaperStoryModal } from './ProgressNewspaperStoryModal';
 import { DailyStoryModal } from './DailyStoryModal';
 import { DeviceNotificationSettingsModal } from './DeviceNotificationSettingsModal';
 import { MandatoryNotificationPermissionModal } from './MandatoryNotificationPermissionModal';
+import { DailyBriefingModal } from './DailyBriefingModal';
+import { TaskTemplatesModal } from './TaskTemplatesModal';
+import { EisenhowerMatrixView } from './EisenhowerMatrixView';
 import {
   checkAndFireScheduledNotifications,
   getNotificationPermission,
@@ -213,6 +216,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
   const [isNewspaperStoryOpen, setIsNewspaperStoryOpen] = useState(false);
   const [isDailyStoryOpen, setIsDailyStoryOpen] = useState(false);
   const [isDeviceNotifModalOpen, setIsDeviceNotifModalOpen] = useState(false);
+  const [isDailyBriefingOpen, setIsDailyBriefingOpen] = useState(false);
+  const [isTaskTemplatesOpen, setIsTaskTemplatesOpen] = useState(false);
 
   // Mandatory Notification Permission Gate (First thing checked upon opening system)
   const [isNotificationGateOpen, setIsNotificationGateOpen] = useState(false);
@@ -1097,6 +1102,37 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
 
                       <button
                         type="button"
+                        onClick={() => { sounds.playPop(); setIsDailyBriefingOpen(true); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
+                      >
+                        <Sun className="w-4 h-4 text-amber-500" />
+                        <span>مرور و بستن روزانه کارها</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          sounds.playPop();
+                          setActiveTab('tasks');
+                          setTaskViewMode('eisenhower');
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
+                      >
+                        <LayoutGrid className="w-4 h-4 text-rose-500" />
+                        <span>ماتریس آیزنهاور ۲×۲</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => { sounds.playPop(); setIsTaskTemplatesOpen(true); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
+                      >
+                        <Sparkles className="w-4 h-4 text-indigo-500" />
+                        <span>قالب‌ها و چک‌لیست‌های آماده</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => { sounds.playPop(); setIsNewspaperStoryOpen(true); }}
                         className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
                       >
@@ -1534,48 +1570,85 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
               </div>
             )}
 
-            {/* TAB: TASKS (List & Kanban) */}
+            {/* TAB: TASKS (List & Kanban & Eisenhower) */}
             {activeTab === 'tasks' && (
               <div className="space-y-4 animate-in fade-in w-full min-w-0">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)] min-w-0 w-full overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#1c1c1e] p-4 rounded-3xl border border-slate-200/90 dark:border-white/[0.08] shadow-[0_4px_25px_rgba(0,0,0,0.03)] min-w-0 w-full overflow-hidden">
                   <div className="w-full min-w-0 overflow-hidden">
                     <WeeklyStrip />
                   </div>
 
-                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl self-end sm:self-center flex-shrink-0">
+                  <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0 flex-wrap">
                     <button
                       type="button"
-                      onClick={() => setTaskViewMode('list')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                        taskViewMode === 'list'
-                          ? 'bg-[#121212] text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      onClick={() => { sounds.playPop(); setIsDailyBriefingOpen(true); }}
+                      className="px-2.5 sm:px-3 py-1.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-amber-500/20"
+                      title="مرور صبحگاهی و جمع‌بندی شبانه"
                     >
-                      <List className="w-3.5 h-3.5" />
-                      <span>فهرست</span>
+                      <Sun className="w-3.5 h-3.5 text-amber-500" />
+                      <span className="hidden md:inline">مرور روزانه</span>
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => setTaskViewMode('kanban')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                        taskViewMode === 'kanban'
-                          ? 'bg-[#121212] text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      onClick={() => { sounds.playPop(); setIsTaskTemplatesOpen(true); }}
+                      className="px-2.5 sm:px-3 py-1.5 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-indigo-500/20"
+                      title="قالب‌ها و چک‌لیست‌های آماده"
                     >
-                      <Columns3 className="w-3.5 h-3.5" />
-                      <span>کانبان</span>
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                      <span className="hidden md:inline">قالب‌ها</span>
                     </button>
+
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl">
+                      <button
+                        type="button"
+                        onClick={() => setTaskViewMode('list')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                          taskViewMode === 'list'
+                            ? 'bg-[#121212] dark:bg-white text-white dark:text-slate-900 shadow-xs'
+                            : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <List className="w-3.5 h-3.5" />
+                        <span>فهرست</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setTaskViewMode('kanban')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                          taskViewMode === 'kanban'
+                            ? 'bg-[#121212] dark:bg-white text-white dark:text-slate-900 shadow-xs'
+                            : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <Columns3 className="w-3.5 h-3.5" />
+                        <span>کانبان</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setTaskViewMode('eisenhower')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                          taskViewMode === 'eisenhower'
+                            ? 'bg-[#121212] dark:bg-white text-white dark:text-slate-900 shadow-xs'
+                            : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                        <span>آیزنهاور</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-[0_4px_25px_rgba(0,0,0,0.03)]">
+                <div className="bg-white dark:bg-[#1c1c1e] p-4 sm:p-5 rounded-3xl border border-slate-200/90 dark:border-white/[0.08] shadow-[0_4px_25px_rgba(0,0,0,0.03)]">
                   <QuickAddBar />
                 </div>
 
-                {taskViewMode === 'list' ? <TaskList /> : <KanbanBoard />}
+                {taskViewMode === 'list' && <TaskList />}
+                {taskViewMode === 'kanban' && <KanbanBoard />}
+                {taskViewMode === 'eisenhower' && <EisenhowerMatrixView />}
               </div>
             )}
 
@@ -2177,6 +2250,19 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
             );
           } catch {}
         }}
+      />
+
+      {/* Daily Briefing & Evening Wrap-up Modal */}
+      <DailyBriefingModal
+        isOpen={isDailyBriefingOpen}
+        onClose={() => setIsDailyBriefingOpen(false)}
+        onOpenCreateTask={() => openCreateModal(selectedDate)}
+      />
+
+      {/* Preset & Custom Task Templates Modal */}
+      <TaskTemplatesModal
+        isOpen={isTaskTemplatesOpen}
+        onClose={() => setIsTaskTemplatesOpen(false)}
       />
     </div>
   );
