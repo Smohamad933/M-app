@@ -30,7 +30,7 @@ export const BottomNav: React.FC = () => {
 
   return (
     <nav className="fixed bottom-3 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[410px] z-40 lg:hidden max-h-screen landscape:hidden pointer-events-none select-none">
-      <div className="pointer-events-auto relative bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200/90 dark:border-slate-800 rounded-full shadow-[0_12px_36px_rgba(15,23,42,0.12)] px-2 py-1.5 flex items-center justify-between">
+      <div className="pointer-events-auto relative bg-white/80 dark:bg-[#1c1c1e]/85 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.12] rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.12)] px-2 py-1.5 flex items-center justify-between">
         {/* Right 2 Tabs in RTL (داشبورد، کارهای من) */}
         <div className="flex-1 flex items-center justify-around">
           {rightSideTabs.map((tab) => {

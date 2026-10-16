@@ -77,7 +77,7 @@ export const QuickAddBar: React.FC = () => {
     <div className="pt-2 pb-1">
       <form
         onSubmit={handleQuickAdd}
-        className="flex items-center gap-2 bg-[#f8fafc] p-1.5 pl-2.5 rounded-2xl border border-slate-200/80 shadow-2xs focus-within:border-slate-400 focus-within:bg-white transition-all"
+        className="flex items-center gap-2 bg-[#f2f2f7] dark:bg-[#2c2c2e]/60 p-1.5 pl-2.5 rounded-2xl border border-black/[0.06] dark:border-white/[0.08] shadow-xs focus-within:border-[#007aff] focus-within:bg-white dark:focus-within:bg-[#2c2c2e] transition-all"
       >
         <button
           type="button"

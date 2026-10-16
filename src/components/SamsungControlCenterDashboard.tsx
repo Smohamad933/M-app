@@ -398,11 +398,11 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
         const isHalf = colSpan <= 8;
         return (
           <div className={`grid gap-3.5 sm:gap-4 w-full h-full ${isHalf ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>
-            <div className="p-4 sm:p-5 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between hover:shadow-md transition-all">
-              <div className="flex items-center justify-between text-slate-500 mb-2">
+            <div className="p-4 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:shadow-md transition-all">
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-600 dark:text-zinc-400">تسک‌های امروز</span>
-                <div className="p-2 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300">
-                  <CheckSquare className="w-4 h-4 text-emerald-500" />
+                <div className="p-2 rounded-xl bg-[#34c759]/10 text-[#34c759]">
+                  <CheckSquare className="w-4 h-4" />
                 </div>
               </div>
               <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
@@ -413,10 +413,10 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
               </div>
             </div>
 
-            <div className="p-4 sm:p-5 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between hover:shadow-md transition-all">
-              <div className="flex items-center justify-between text-slate-500 mb-2">
+            <div className="p-4 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:shadow-md transition-all">
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-600 dark:text-zinc-400">نرخ پیشرفت</span>
-                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+                <div className="p-2 rounded-xl bg-[#007aff]/10 text-[#007aff]">
                   <TrendingUp className="w-4 h-4" />
                 </div>
               </div>
@@ -425,16 +425,16 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
               </div>
               <div className="w-full bg-slate-100 dark:bg-zinc-800 h-2 rounded-full mt-2 overflow-hidden">
                 <div
-                  className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                  className="bg-[#007aff] h-full rounded-full transition-all duration-500"
                   style={{ width: `${todayRate}%` }}
                 />
               </div>
             </div>
 
-            <div className="p-4 sm:p-5 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between hover:shadow-md transition-all">
-              <div className="flex items-center justify-between text-slate-500 mb-2">
+            <div className="p-4 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:shadow-md transition-all">
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-600 dark:text-zinc-400">تمرکز عمیق</span>
-                <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+                <div className="p-2 rounded-xl bg-[#ff9500]/10 text-[#ff9500]">
                   <Clock className="w-4 h-4" />
                 </div>
               </div>
@@ -446,10 +446,10 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
               </div>
             </div>
 
-            <div className="p-4 sm:p-5 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between hover:shadow-md transition-all">
-              <div className="flex items-center justify-between text-slate-500 mb-2">
+            <div className="p-4 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:shadow-md transition-all">
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-600 dark:text-zinc-400">زنجیره استریک</span>
-                <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
+                <div className="p-2 rounded-xl bg-[#ff3b30]/10 text-[#ff3b30]">
                   <Flame className="w-4 h-4" />
                 </div>
               </div>
@@ -472,25 +472,25 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
       case 'zen_standby':
         return (
-          <div className="p-5 sm:p-6 bg-gradient-to-br from-[#070b14] via-[#0d1424] to-[#05080e] text-white rounded-3xl border border-indigo-500/30 shadow-md flex flex-col justify-between h-full select-none relative overflow-hidden">
+          <div className="p-5 sm:p-6 bg-gradient-to-br from-[#1c1c1e] via-[#242426] to-[#121214] text-white rounded-[26px] border border-white/10 shadow-md flex flex-col justify-between h-full select-none relative overflow-hidden">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#34c759] animate-pulse" />
                 <h3 className="text-xs sm:text-sm font-black text-white">
-                  ساعت رومیزی و تمرکز ذهن
+                  ساعت رومیزی و تمرکز ذهن (StandBy)
                 </h3>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/10 text-amber-300 font-bold border border-white/10">
                 Zen Mode
               </span>
             </div>
 
             <div className="my-auto py-3 text-center space-y-1">
-              <div className="font-mono text-3xl sm:text-4xl font-black text-white">
+              <div className="font-mono text-4xl sm:text-5xl font-black text-white tracking-widest" dir="ltr">
                 {new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}
               </div>
               <p className="text-xs text-zinc-400">
-                مناسب قرار دادن گوشی روی استند میز کار با اصوات طبیعت و باران
+                مناسب استند میز کار با اصوات طبیعت و پس‌زمینه بدون حواس‌پرتی
               </p>
             </div>
 
@@ -500,17 +500,17 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
                 sounds.playPop();
                 setIsZenOpen(true);
               }}
-              className="w-full py-2.5 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-950/50 cursor-pointer active:scale-95"
+              className="w-full py-2.5 px-4 rounded-2xl bg-[#007aff] hover:bg-[#0071e3] text-white text-xs font-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-950/40 cursor-pointer active:scale-95"
             >
               <Maximize2 className="w-4 h-4" />
-              <span>ورود به حالت تمام‌صفحه رومیزی</span>
+              <span>ورود به حالت تمام‌صفحه رومیزی ۱۶:۹</span>
             </button>
           </div>
         );
 
       case 'calendar_sync':
         return (
-          <div className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full select-none">
+          <div className="p-5 sm:p-6 bg-white dark:bg-[#1c1c1e] rounded-[26px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between h-full select-none">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-indigo-500" />
@@ -545,7 +545,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
       case 'tribe_challenges':
         return (
-          <div className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full select-none">
+          <div className="p-5 sm:p-6 bg-white dark:bg-[#1c1c1e] rounded-[26px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between h-full select-none">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
               <div className="flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-amber-500" />
@@ -585,7 +585,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
       case 'monthly_report_card':
         return (
-          <div className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full select-none">
+          <div className="p-5 sm:p-6 bg-white dark:bg-[#1c1c1e] rounded-[26px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between h-full select-none">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
               <div className="flex items-center gap-2">
                 <Share2 className="w-4 h-4 text-indigo-500" />
@@ -620,7 +620,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
       case 'data_backup':
         return (
-          <div className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full select-none">
+          <div className="p-5 sm:p-6 bg-white dark:bg-[#1c1c1e] rounded-[26px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between h-full select-none">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
               <div className="flex items-center gap-2">
                 <Database className="w-4 h-4 text-emerald-500" />
@@ -693,7 +693,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
       case 'upcoming_tasks':
         return (
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-4 w-full h-full flex flex-col justify-between">
+          <div className="bg-white dark:bg-[#1c1c1e] rounded-3xl border border-slate-200/90 dark:border-zinc-800 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-4 w-full h-full flex flex-col justify-between">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
@@ -767,7 +767,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
       case 'weekly_strip':
         return (
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-3 w-full h-full flex flex-col justify-between">
+          <div className="bg-white dark:bg-[#1c1c1e] rounded-3xl border border-slate-200/90 dark:border-zinc-800 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-3 w-full h-full flex flex-col justify-between">
             <h3 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
               <CalendarDays className="w-4 h-4 text-indigo-500" />
               <span>تقویم روزهای هفته</span>
@@ -780,7 +780,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
       case 'productivity_tip':
         return (
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-3 w-full h-full flex flex-col justify-between">
+          <div className="bg-white dark:bg-[#1c1c1e] rounded-3xl border border-slate-200/90 dark:border-zinc-800 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-3 w-full h-full flex flex-col justify-between">
             <h3 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-[#00b884]" />
               <span>تکنیک بهره‌وری روز</span>
@@ -800,7 +800,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
       case 'colleagues_chat':
         return (
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-4 w-full h-full">
+          <div className="bg-white dark:bg-[#1c1c1e] rounded-3xl border border-slate-200/90 dark:border-zinc-800 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-4 w-full h-full">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-2xl bg-[#121212] dark:bg-zinc-800 text-white flex items-center justify-center shadow-xs">
@@ -940,7 +940,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
                   sounds.playPop();
                   setIsEditMode(true);
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 hover:text-black dark:hover:text-white font-bold text-xs shadow-xs transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-800 active:scale-95 group"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white dark:bg-[#1c1c1e] border border-slate-200/90 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 hover:text-black dark:hover:text-white font-bold text-xs shadow-xs transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-800 active:scale-95 group"
                 title="ویرایش آزادانه چیدمان و موقعیت المان‌های داشبورد"
               >
                 <Pencil className="w-3.5 h-3.5 text-indigo-500 group-hover:rotate-12 transition-transform" />
@@ -951,33 +951,35 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
         </div>
       </div>
 
-      {/* 2. SHARED HERO CARD (Greeting, Live Gems, Streak, Quick Actions) */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 text-white shadow-xl relative overflow-hidden flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 select-none animate-in fade-in">
-        <div className="space-y-1.5 relative z-10">
+      {/* 2. SHARED APPLE SPOTLIGHT HERO CARD */}
+      <div className="p-6 sm:p-7 rounded-[28px] bg-gradient-to-br from-[#1c1c1e] via-[#28282b] to-[#121214] text-white shadow-xl relative overflow-hidden flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 select-none border border-white/10 animate-in fade-in">
+        <div className="space-y-2 relative z-10 max-w-xl">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-bold text-emerald-100 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              {formatAppDate(selectedDate || new Date().toISOString().split('T')[0], calendarType, 'full')}
+            <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/25 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>{formatAppDate(selectedDate || new Date().toISOString().split('T')[0], calendarType, 'full')}</span>
             </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-amber-200 text-xs font-mono font-bold flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-amber-300 text-xs font-mono font-bold flex items-center gap-1 border border-white/10">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               {toPersianDigits(dashboardGems)} الماس
             </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-rose-200 text-xs font-mono font-bold flex items-center gap-1">
-              <Flame className="w-3.5 h-3.5 text-rose-300" />
+            <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-rose-300 text-xs font-mono font-bold flex items-center gap-1 border border-white/10">
+              <Flame className="w-3.5 h-3.5 text-rose-400" />
               {toPersianDigits(streak.currentStreak)} روز استریک
             </span>
           </div>
 
-          <h2 className="text-lg sm:text-xl font-black">
-            سلام {currentUser?.name || 'همراه گرامی'}، روز پرانرژی و موفقی داشته باشی ☀️
+          <h2 className="text-lg sm:text-2xl font-black tracking-tight">
+            سلام {currentUser?.name?.split('(')[0]?.trim() || currentUser?.name || 'همراه گرامی'}، روز پرانرژی و موفقی داشته باشی ☀️
           </h2>
-          <p className="text-xs text-emerald-100/90 font-medium">
-            {toPersianDigits(todayCompleted)} از {toPersianDigits(todayTotal)} تسک امروز انجام شده ({toPersianDigits(todayRate)}٪ موفقیت)
-          </p>
+          <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium">
+            <span>{toPersianDigits(todayCompleted)} از {toPersianDigits(todayTotal)} تسک امروز انجام شده</span>
+            <span className="text-zinc-500">•</span>
+            <span className="text-emerald-400 font-bold font-mono">{toPersianDigits(todayRate)}٪ پیشرفت</span>
+          </div>
         </div>
 
-        {/* Quick Action Dock - Streamlined & Responsive */}
+        {/* Quick Action Dock - Apple Control Center Style */}
         <div className="flex items-center gap-2 flex-wrap relative z-10 w-full lg:w-auto">
           <button
             type="button"
@@ -985,7 +987,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
               sounds.playPop();
               setIsZenOpen(true);
             }}
-            className="py-2 px-3.5 rounded-2xl bg-white/20 hover:bg-white/30 text-white text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+            className="py-2.5 px-4 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-sm active:scale-95 border border-white/10"
             title="حالت ساعت رومیزی تمام‌صفحه و تایمر تمرکز ۱۶:۹"
           >
             <Clock className="w-4 h-4 text-amber-300" />
@@ -998,10 +1000,10 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
               sounds.playPop();
               setIsTribeModalOpen(true);
             }}
-            className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+            className="py-2.5 px-4 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs active:scale-95 border border-white/10"
             title="چالش‌های گروهی و هفتگی با دوستان"
           >
-            <Trophy className="w-3.5 h-3.5 text-amber-300" />
+            <Trophy className="w-4 h-4 text-amber-300" />
             <span>چالش‌های قبیله</span>
           </button>
 
@@ -1011,10 +1013,10 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
               sounds.playPop();
               onOpenNewspaperStory();
             }}
-            className="py-2 px-3 rounded-2xl bg-white text-emerald-950 hover:bg-emerald-50 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
+            className="py-2.5 px-4 rounded-2xl bg-white text-zinc-900 hover:bg-zinc-100 text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-md active:scale-95"
             title="استوری پیشرفت و داستان روز"
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+            <Sparkles className="w-4 h-4 text-indigo-600" />
             <span>استوری روز</span>
           </button>
 
@@ -1023,7 +1025,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
             <button
               type="button"
               onClick={() => setIsHeroToolsOpen(!isHeroToolsOpen)}
-              className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+              className="py-2.5 px-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 border border-white/10"
               title="سایر امکانات و ابزارها"
             >
               <span>سایر ابزارها</span>
@@ -1032,7 +1034,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
 
             {isHeroToolsOpen && (
               <div
-                className="absolute left-0 mt-2 w-52 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-1.5 shadow-2xl z-50 text-slate-800 dark:text-zinc-100 animate-in fade-in zoom-in-95"
+                className="absolute left-0 mt-2 w-52 bg-white dark:bg-[#1c1c1e] border border-slate-200 dark:border-zinc-800 rounded-2xl p-1.5 shadow-2xl z-50 text-slate-800 dark:text-zinc-100 animate-in fade-in zoom-in-95"
                 onClick={() => setIsHeroToolsOpen(false)}
               >
                 <button
@@ -1092,7 +1094,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
       {isSimpleMode ? (
         <div className="space-y-5 animate-in fade-in">
           {/* Direct Quick Add Bar */}
-          <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 shadow-sm space-y-3">
+          <div className="p-4 rounded-3xl bg-white dark:bg-[#1c1c1e] border border-slate-200/90 dark:border-zinc-800 shadow-sm space-y-3">
             <span className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5">
               <Plus className="w-4 h-4 text-emerald-500" />
               <span>ثبت آسان و سریع کار جدید:</span>
@@ -1101,7 +1103,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
           </div>
 
           {/* Simple Today Task Checklist */}
-          <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 shadow-sm space-y-4">
+          <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#1c1c1e] border border-slate-200/90 dark:border-zinc-800 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
               <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <CheckSquare className="w-4 h-4 text-emerald-500" />

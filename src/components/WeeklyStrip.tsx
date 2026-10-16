@@ -70,8 +70,8 @@ export const WeeklyStrip: React.FC = () => {
               onClick={() => setSelectedDate(day.iso)}
               className={`flex-shrink-0 flex flex-col items-center justify-center w-12 h-16 rounded-2xl transition-all duration-200 cursor-pointer ${
                 isSelected
-                  ? 'bg-[#121212] text-white shadow-md font-bold scale-105'
-                  : 'bg-[#f8fafc] text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                  ? 'bg-[#007aff] text-white shadow-md font-bold scale-105 shadow-blue-500/25'
+                  : 'bg-[#f2f2f7] dark:bg-[#2c2c2e]/60 text-slate-700 dark:text-zinc-200 hover:bg-slate-200 dark:hover:bg-[#2c2c2e] border border-black/[0.05] dark:border-white/[0.08]'
               }`}
             >
               <span
