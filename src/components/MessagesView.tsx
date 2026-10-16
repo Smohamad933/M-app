@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { UserAvatar } from './UserAvatar';
 import { sounds } from '../utils/sound';
 import { toPersianDigits } from '../utils/persianDate';
+import { getUserGems, deductGems } from '../utils/gemManager';
 import type { User, DirectChatMessage } from '../types';
 import {
   MessageSquare,
@@ -16,11 +17,11 @@ import {
   Sparkles,
   CheckCircle2,
   Clock,
-  UserPlus,
   ArrowRight,
   X,
   ChevronDown,
   LogOut,
+  Gift,
 } from 'lucide-react';
 
 interface MessagesViewProps {
@@ -32,7 +33,15 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   initialChatUserId,
   onOpenPublicProfile,
 }) => {
-  const { currentUser, friends, users, setViewingPublicUser, setUserSubscription, setActiveTab, globalSettings } = useTask();
+  const {
+    currentUser,
+    friends,
+    users,
+    setViewingPublicUser,
+    setUserSubscription,
+    setActiveTab,
+    globalSettings,
+  } = useTask();
 
   const [activePartner, setActivePartner] = useState<User | null>(null);
   const [conversations, setConversations] = useState<any[]>([]);
@@ -42,8 +51,16 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [approvingMsgId, setApprovingMsgId] = useState<string | null>(null);
   const [isContactPickerOpen, setIsContactPickerOpen] = useState(false);
+  const [isGiftingOpen, setIsGiftingOpen] = useState(false);
+  const [giftingAmount, setGiftingAmount] = useState<number>(10);
+  const [giftFeedback, setGiftFeedback] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // User Gems
+  const userGems = useMemo(() => {
+    return getUserGems(currentUser?.id || 'guest');
+  }, [currentUser?.id, giftFeedback]);
 
   // Fetch summary of all conversations
   const loadConversations = async () => {
@@ -85,13 +102,11 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       loadConversations();
-    }, 5000);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
-  // Colleagues allowed for chat:
-  // ONLY accepted friends + users who already initiated a conversation + Admin for support
-  // No random users allowed!
+  // Allowed Partners (Friends + Active Conversations + Admin)
   const allowedPartners = useMemo(() => {
     const partnerMap = new Map<string, User>();
 
@@ -102,7 +117,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
       }
     });
 
-    // 2. Any user with whom a conversation already exists (e.g. subscription requests to admin or support)
+    // 2. Active conversations
     conversations.forEach((c) => {
       if (c.partnerId !== currentUser?.id && !partnerMap.has(c.partnerId)) {
         const found = users.find((u) => u.id === c.partnerId);
@@ -120,7 +135,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
       }
     });
 
-    // 3. For regular users, include Admin (Mohusyn) for support and subscription activation requests
+    // 3. Admin user for customer support
     if (currentUser?.role !== 'admin') {
       const adminUser = users.find((u) => u.role === 'admin' || u.id === 'usr_admin_mohusyn');
       if (adminUser && adminUser.id !== currentUser?.id && !partnerMap.has(adminUser.id)) {
@@ -153,7 +168,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       loadMessages();
-    }, 4000);
+    }, 3500);
     return () => clearInterval(interval);
   }, [activePartner?.id]);
 
@@ -162,16 +177,15 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const text = inputText.trim();
+  const handleSendMessage = async (textToSend?: string) => {
+    const text = (textToSend || inputText).trim();
     if (!text || !activePartner || isSending) return;
 
     sounds.playPop();
     setInputText('');
     setIsSending(true);
 
-    // Instant optimistic render in UI (0ms delay!)
+    // Instant optimistic render in UI
     const tempMsg: DirectChatMessage = {
       id: 'opt_' + Date.now(),
       senderId: currentUser?.id || 'me',
@@ -188,7 +202,6 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
       const sent = await api.sendDirectMessage(activePartner.id, text);
       if (sent && sent.id) {
         setMessages((prev) => prev.map((m) => (m.id === tempMsg.id ? sent : m)));
-        // Update conversations preview
         setConversations((prev) => {
           const existing = prev.find((c) => c.partnerId === activePartner.id);
           if (existing) {
@@ -229,7 +242,6 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
       await setUserSubscription(target.id, 'pro', planType, expiresAt);
       sounds.playComplete();
 
-      // Automatically send an official confirmation reply in the chat
       const confirmationText = `✅ اشتراک ویژه «${planLabel}» شما با موفقیت تأیید و در سیستم فعال گردید. هم‌اکنون به تمامی امکانات پروژه‌های تیمی، وظایف نامحدود و اتاق‌های تمرکز تسک‌روز دسترسی دارید! ⭐`;
       const reply = await api.sendDirectMessage(target.id, confirmationText);
       if (reply && reply.id) {
@@ -242,17 +254,23 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     }
   };
 
-  // Filter conversations / colleagues by search query
-  const filteredPartners = allowedPartners.filter((u) => {
-    if (u.id === currentUser?.id) return false;
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      (u.name || '').toLowerCase().includes(q) ||
-      (u.username || '').toLowerCase().includes(q) ||
-      String(u.numericId || '').includes(q)
-    );
-  });
+  // Quick gift gems inside chat
+  const handleGiftGemsInChat = async () => {
+    if (!activePartner) return;
+    if (userGems < giftingAmount) {
+      setGiftFeedback('موجودی الماس شما کافی نیست!');
+      setTimeout(() => setGiftFeedback(null), 2500);
+      return;
+    }
+
+    const deducted = deductGems(currentUser?.id || 'guest', giftingAmount);
+    if (deducted) {
+      sounds.playComplete();
+      setIsGiftingOpen(false);
+      const giftMessage = `🎁 به پاس همکاری و تلاش، ${toPersianDigits(giftingAmount)} الماس به عنوان هدیه برای شما ارسال شد! ✨💎`;
+      await handleSendMessage(giftMessage);
+    }
+  };
 
   const handleSendCardNumber = (planTitle: string) => {
     const subInfo = (globalSettings as any)?.subscriptionInfo;
@@ -264,234 +282,281 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     sounds.playPop();
   };
 
+  const filteredPartners = allowedPartners.filter((u) => {
+    if (u.id === currentUser?.id) return false;
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (u.name || '').toLowerCase().includes(q) ||
+      (u.username || '').toLowerCase().includes(q) ||
+      String(u.numericId || '').includes(q)
+    );
+  });
+
+  const quickReplies = [
+    'سلام و خسته نباشید 🌿',
+    'تسک با موفقیت انجام شد ✅',
+    'بررسی شد، موافقم 👍',
+    'برای فردا هماهنگ می‌کنیم ⏳',
+  ];
+
   return (
-    <div className="w-full space-y-4 animate-in fade-in pb-16" dir="rtl">
-      {/* Header Banner */}
-      <div className="p-4 sm:p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between gap-4 flex-wrap">
+    <div className="w-full space-y-4 animate-in fade-in pb-16 select-none" dir="rtl">
+      {/* 1. TOP BENTO BAR */}
+      <div className="p-4 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-xs">
-            <MessageSquare className="w-5 h-5 stroke-[2.5] text-emerald-400" />
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-500 text-white flex items-center justify-center shadow-[0_6px_20px_rgba(99,102,241,0.3)]">
+            <MessageSquare className="w-5 h-5 stroke-[2.4]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-black text-slate-900">
-                پیام‌ها و گفتگوی مستقیم با همکاران
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                پیام‌ها و گفتگوی کاری
               </h2>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-                گفتگوی امن P2P
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-[10px] font-bold">
+                ارتباط زنده P2P
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">
-              ارسال و دریافت پیام‌های لحظه‌ای ذخیره‌شده در پایگاه‌داده، هماهنگی پروژه‌ها و پیگیری امور
+            <p className="text-xs text-slate-400 dark:text-zinc-400 mt-0.5 font-medium">
+              گفتگوی مستقیم با اعضای تیم، اشتراک اسناد و هماهنگی سریع اهداف
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           {activePartner && (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setActivePartner(null);
-                }}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer md:hidden"
-              >
-                <ArrowRight className="w-3.5 h-3.5 text-slate-600" />
-                <span>لیست مخاطبین</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (onOpenPublicProfile) onOpenPublicProfile(activePartner);
-                  else setViewingPublicUser(activePartner);
-                }}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Eye className="w-3.5 h-3.5" />
-                <span>پروفایل همکار</span>
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                if (onOpenPublicProfile) onOpenPublicProfile(activePartner);
+                else setViewingPublicUser(activePartner);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>پروفایل {activePartner.name.split(' ')[0]}</span>
+            </button>
           )}
 
           <button
             type="button"
-            onClick={() => setActiveTab('tasks')}
-            className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition-colors flex items-center gap-1.5 cursor-pointer"
-            title="خروج از صفحه پیام‌ها و بازگشت به داشبورد"
+            onClick={() => {
+              sounds.playPop();
+              setActiveTab('tasks');
+            }}
+            className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/50 text-rose-700 dark:text-rose-300 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+            title="خروج از پیام‌ها و بازگشت به کارهای من"
           >
-            <LogOut className="w-3.5 h-3.5 text-rose-600" />
-            <span>خروج از پیام‌ها</span>
+            <LogOut className="w-3.5 h-3.5 text-rose-500" />
+            <span>خروج به کارهای من</span>
           </button>
         </div>
       </div>
 
-      {/* Main Messaging Container */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100vh-175px)] min-h-[500px]">
-        {/* Right Pane: Conversations & Colleagues List (4 cols) */}
+      {/* 2. MAIN MESSAGING WINDOW (TELEGRAM & APPLE STYLE) */}
+      <div className="bg-white dark:bg-[#1c1c1e] rounded-[32px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_4px_25px_rgba(0,0,0,0.03)] overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100vh-190px)] min-h-[520px]">
+        {/* RIGHT SIDE: CONVERSATIONS & CONTACTS (4 Cols) */}
         <div
           className={`${
             activePartner ? 'hidden md:flex' : 'flex'
-          } md:col-span-4 border-l border-slate-200 dark:border-zinc-800 flex-col h-full bg-slate-50/50 dark:bg-zinc-950/40`}
+          } md:col-span-4 border-l border-black/[0.06] dark:border-white/[0.08] flex-col h-full bg-slate-50/50 dark:bg-[#18181a] select-none`}
         >
-          {/* Search Bar */}
-          <div className="p-3.5 border-b border-slate-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+          {/* Search Contacts Bar */}
+          <div className="p-3.5 border-b border-black/[0.05] dark:border-white/[0.08] bg-white dark:bg-[#1c1c1e]">
             <div className="relative">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="جستجوی همکار در چت..."
-                className="w-full pr-9 pl-3 py-2 rounded-xl bg-slate-100 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 text-xs font-bold text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-slate-400"
+                placeholder="جستجوی همکار یا نام کاربری..."
+                className="w-full pr-9 pl-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-zinc-800/80 border border-black/[0.04] dark:border-white/[0.06] text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
-              <Search className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+              <Search className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="w-4 h-4 text-slate-400 hover:text-slate-600 absolute left-3 top-3 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* List of Colleagues / Chats */}
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-zinc-800/60 no-scrollbar">
+          {/* Conversations List */}
+          <div className="flex-1 overflow-y-auto divide-y divide-black/[0.03] dark:divide-white/[0.04]">
             {filteredPartners.length === 0 ? (
               <div className="p-8 text-center space-y-3">
-                <Users className="w-10 h-10 text-slate-300 dark:text-zinc-600 mx-auto" />
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800 text-slate-400 flex items-center justify-center mx-auto">
+                  <Users className="w-6 h-6" />
+                </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-slate-600 dark:text-zinc-300 font-bold">
-                    {searchQuery ? 'همکاری با این مشخصات یافت نشد' : 'گفتگو تنها با دوستان و همکاران تایید شده مجاز است'}
+                  <p className="text-xs text-slate-700 dark:text-zinc-200 font-bold">
+                    {searchQuery ? 'همکاری با این مشخصات یافت نشد' : 'هنوز همکار فعالی متصل نشده است'}
                   </p>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
                     {searchQuery
-                      ? 'املا یا نام کاربری جستجو شده را بررسی کنید'
-                      : 'جهت شروع گفتگوی مستقیم، ابتدا از بخش «همکاران و دوستان» درخواست دوستی ارسال و تایید نمایید.'}
+                      ? 'املا یا نام کاربری را بررسی کنید'
+                      : 'جهت شروع گفتگوی کاری، از بخش «همکاران و تیم» درخواست ارتباط ارسال فرمایید.'}
                   </p>
                 </div>
                 {!searchQuery && (
                   <button
                     type="button"
-                    onClick={() => setActiveTab('friends')}
-                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors flex items-center gap-1.5 mx-auto cursor-pointer shadow-xs active:scale-95"
+                    onClick={() => {
+                      sounds.playPop();
+                      setActiveTab('friends');
+                    }}
+                    className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
                   >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    <span>رفتن به شبکه همکاران و دوستان</span>
+                    یافتن همکار 🤝
                   </button>
                 )}
               </div>
             ) : (
-              filteredPartners.map((user) => {
-                const isSelected = activePartner?.id === user.id;
-                const convo = conversations.find((c) => c.partnerId === user.id);
-                const lastMsg = convo?.lastMessage;
-                const unread = convo?.unreadCount || 0;
+              filteredPartners.map((partner) => {
+                const isSelected = activePartner?.id === partner.id;
+                const conv = conversations.find((c) => c.partnerId === partner.id);
+                const lastText = conv?.lastMessage?.text || '';
+                const unreadCount = conv?.unreadCount || 0;
+                const lastTime = conv?.lastMessage?.createdAt
+                  ? conv.lastMessage.createdAt.slice(11, 16)
+                  : '';
 
                 return (
-                  <div
-                    key={user.id}
+                  <button
+                    key={partner.id}
+                    type="button"
                     onClick={() => {
                       sounds.playPop();
-                      setActivePartner(user);
+                      setActivePartner(partner);
                     }}
-                    className={`p-3.5 flex items-center gap-3 transition-colors cursor-pointer select-none ${
+                    className={`w-full p-3.5 flex items-center gap-3 transition-all cursor-pointer text-right group ${
                       isSelected
-                        ? 'bg-slate-200/70 dark:bg-zinc-800/90 border-r-4 border-slate-900 dark:border-emerald-500'
-                        : 'hover:bg-slate-100/70 dark:hover:bg-zinc-800/40'
+                        ? 'bg-indigo-50/80 dark:bg-indigo-950/30 border-r-4 border-indigo-600'
+                        : 'hover:bg-slate-100/60 dark:hover:bg-zinc-800/40'
                     }`}
                   >
                     <div className="relative flex-shrink-0">
-                      <UserAvatar user={user} size="md" className="w-11 h-11" />
-                      <span className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-zinc-900 absolute bottom-0 right-0" />
+                      <UserAvatar user={partner} size="md" className="w-12 h-12 rounded-2xl shadow-2xs" />
+                      <span className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1c1e] absolute bottom-0 right-0 shadow-xs" />
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1 mb-0.5">
-                        <span className="text-xs font-black text-slate-900 dark:text-white truncate">
-                          {user.name}
+                        <span className={`text-xs font-black truncate ${
+                          isSelected ? 'text-indigo-900 dark:text-indigo-200' : 'text-slate-900 dark:text-zinc-100'
+                        }`}>
+                          {partner.name}
                         </span>
-                        {user.numericId && (
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            #{user.numericId}
+                        {lastTime && (
+                          <span className="text-[10px] font-mono text-slate-400 flex-shrink-0">
+                            {toPersianDigits(lastTime)}
                           </span>
                         )}
                       </div>
 
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 truncate max-w-[170px]">
-                          {lastMsg ? lastMsg.text : `@${user.username}`}
+                        <p className={`text-[11px] truncate flex-1 ${
+                          unreadCount > 0
+                            ? 'font-black text-slate-900 dark:text-white'
+                            : 'text-slate-400 dark:text-zinc-400 font-medium'
+                        }`}>
+                          {lastText ? lastText : partner.jobTitle || `@${partner.username}`}
                         </p>
-                        {unread > 0 && (
-                          <span className="w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">
-                            {unread}
+
+                        {unreadCount > 0 && (
+                          <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-500 text-white font-mono font-black text-[9px] flex items-center justify-center flex-shrink-0">
+                            {toPersianDigits(unreadCount)}
                           </span>
                         )}
                       </div>
                     </div>
-                  </div>
+                  </button>
                 );
               })
             )}
           </div>
         </div>
 
-        {/* Left Pane: Active Conversation Thread & Input (8 cols) */}
+        {/* LEFT SIDE: ACTIVE CHAT STREAM & INPUT BAR (8 Cols) */}
         <div
           className={`${
             activePartner ? 'flex' : 'hidden md:flex'
-          } md:col-span-8 flex-col h-full bg-white dark:bg-zinc-900 relative`}
+          } md:col-span-8 flex-col h-full bg-white dark:bg-[#1c1c1e] relative`}
         >
           {activePartner ? (
             <>
-              {/* Active Partner Top Bar */}
-              <div className="p-3.5 px-4 sm:px-5 border-b border-slate-200/90 dark:border-zinc-800 flex items-center justify-between gap-2.5 bg-slate-50/70 dark:bg-zinc-950/40">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  {/* Back to Contacts List button (Fixes being stuck in chat) */}
+              {/* Chat Window Header */}
+              <div className="p-3.5 sm:p-4 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between gap-3 bg-white/90 dark:bg-[#1c1c1e]/90 backdrop-blur-md flex-shrink-0 z-10">
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Mobile Back Button */}
                   <button
                     type="button"
                     onClick={() => {
                       sounds.playPop();
                       setActivePartner(null);
                     }}
-                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-200/80 text-slate-700 text-xs font-bold border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                    title="بازگشت به لیست مخاطبین و انتخاب همکار دیگر"
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 md:hidden cursor-pointer"
+                    title="بازگشت به مخاطبین"
                   >
-                    <ArrowRight className="w-4 h-4 text-slate-700" />
-                    <span>مخاطبین</span>
+                    <ArrowRight className="w-4 h-4" />
                   </button>
 
-                  <UserAvatar user={activePartner} size="sm" className="w-9 h-9 flex-shrink-0" />
+                  <div className="relative flex-shrink-0">
+                    <UserAvatar user={activePartner} size="md" className="w-10 h-10 rounded-2xl shadow-xs" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1c1e] absolute -bottom-0.5 -right-0.5" />
+                  </div>
+
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
                         {activePartner.name}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono truncate hidden sm:inline">
-                        @{activePartner.username}
-                      </span>
+                      {activePartner.numericId && (
+                        <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 font-mono text-[9px] font-bold">
+                          #{activePartner.numericId}
+                        </span>
+                      )}
                     </div>
-                    {activePartner.jobTitle && (
-                      <span className="text-[10px] text-slate-500 dark:text-zinc-400 truncate block">
-                        {activePartner.jobTitle}
-                      </span>
-                    )}
+                    <span className="text-[11px] text-slate-400 font-medium truncate block">
+                      {activePartner.jobTitle || `@${activePartner.username}`}
+                    </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                  {/* Quick Contact Switcher Dropdown */}
+                {/* Header Quick Actions */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {/* Gift Gems Button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsGiftingOpen(true)}
+                    className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-amber-500/20"
+                    title="اهدای الماس به همکار"
+                  >
+                    <Gift className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">هدیه الماس</span>
+                  </button>
+
+                  {/* Switch Contact Dropdown */}
                   <div className="relative">
                     <button
                       type="button"
                       onClick={() => setIsContactPickerOpen((p) => !p)}
-                      className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                      title="تغییر سریع مخاطب گفتگو"
+                      className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                      title="انتخاب همکار دیگر"
                     >
-                      <Users className="w-3.5 h-3.5 text-indigo-600" />
-                      <span className="hidden md:inline">تغییر مخاطب</span>
-                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                      <Users className="w-3.5 h-3.5" />
+                      <span className="hidden lg:inline">تغییر مخاطب</span>
+                      <ChevronDown className="w-3 h-3 opacity-60" />
                     </button>
 
                     {isContactPickerOpen && (
-                      <div className="absolute left-0 top-full mt-1.5 w-64 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-xl z-50 p-2 space-y-1 max-h-72 overflow-y-auto">
+                      <div className="absolute left-0 top-full mt-2 w-60 bg-white dark:bg-[#252528] rounded-2xl border border-black/[0.08] dark:border-white/[0.1] shadow-2xl z-50 p-1.5 space-y-0.5 max-h-72 overflow-y-auto">
                         <div className="text-[10px] font-bold text-slate-400 px-2 py-1">
-                          انتخاب مخاطب برای گفتگو:
+                          گفتگو با همکار دیگر:
                         </div>
                         {allowedPartners.map((u) => (
                           <button
@@ -504,48 +569,34 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                             }}
                             className={`w-full p-2 rounded-xl flex items-center gap-2 text-right transition-colors cursor-pointer ${
                               u.id === activePartner.id
-                                ? 'bg-indigo-50 text-indigo-900 font-bold'
-                                : 'hover:bg-slate-100 text-slate-700'
+                                ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-bold'
+                                : 'hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300'
                             }`}
                           >
-                            <UserAvatar user={u} size="xs" className="w-7 h-7 flex-shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <div className="text-xs truncate font-bold">{u.name}</div>
-                              <div className="text-[10px] text-slate-400 truncate">@{u.username}</div>
-                            </div>
-                            {u.id === activePartner.id && <Check className="w-3.5 h-3.5 text-indigo-600" />}
+                            <UserAvatar user={u} size="xs" className="w-6 h-6 flex-shrink-0" />
+                            <span className="text-xs truncate flex-1">{u.name}</span>
+                            {u.id === activePartner.id && <Check className="w-3.5 h-3.5 text-indigo-500" />}
                           </button>
                         ))}
                       </div>
                     )}
                   </div>
-
-                  {/* Exit Chat Button */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('tasks')}
-                    className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
-                    title="خروج از بخش چت و بازگشت به داشبورد"
-                  >
-                    <X className="w-4 h-4 text-rose-600" />
-                    <span className="hidden sm:inline">خروج</span>
-                  </button>
                 </div>
               </div>
 
-              {/* Messages Bubbles Area */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 bg-slate-50/30 dark:bg-zinc-950/20">
+              {/* Message Stream Bubbles */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 bg-slate-50/50 dark:bg-[#151517]">
                 {messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500 flex items-center justify-center">
-                      <MessageSquare className="w-6 h-6" />
+                    <div className="w-14 h-14 rounded-3xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                      <Sparkles className="w-7 h-7" />
                     </div>
                     <div className="space-y-1">
-                      <h4 className="text-xs font-black text-slate-800 dark:text-zinc-200">
-                        هنوز پیامی با «{activePartner.name}» رد و بدل نشده است.
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                        گفتگو با «{activePartner.name}» آماده است! 🚀
                       </h4>
-                      <p className="text-[11px] text-slate-400 max-w-xs">
-                        اولین پیام خود را ارسال کنید تا ارتباط مستقیم کاری شما برقرار شود.
+                      <p className="text-xs text-slate-400 max-w-xs leading-relaxed font-medium">
+                        پیامی بنویسید یا از پاسخ‌های آماده زیر برای شروع سریع مکالمه کاری استفاده نمایید.
                       </p>
                     </div>
                   </div>
@@ -553,161 +604,170 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                   messages
                     .filter((m): m is DirectChatMessage => Boolean(m && typeof m === 'object' && m.id && m.senderId))
                     .map((m) => {
-                    const isMe = m.senderId === currentUser?.id;
-                    const timeStr = m.createdAt ? m.createdAt.slice(11, 16) : '';
+                      const isMe = m.senderId === currentUser?.id;
+                      const timeStr = m.createdAt ? m.createdAt.slice(11, 16) : '';
 
-                    const isSubRequest =
-                      m.text.includes('درخواست فعال‌سازی') ||
-                      m.text.includes('متقاضی ارتقا به طرح') ||
-                      m.text.includes('درخواست شماره کارت') ||
-                      (m.text.includes('پلن انتخابی:') && m.text.includes('اطلاعات کارت'));
+                      // Rich Card Detection (Subscription & Bank Details)
+                      const isSubRequest =
+                        m.text.includes('درخواست فعال‌سازی') ||
+                        m.text.includes('متقاضی ارتقا به طرح') ||
+                        m.text.includes('درخواست شماره کارت') ||
+                        (m.text.includes('پلن انتخابی:') && m.text.includes('اطلاعات کارت'));
 
-                    let detectedPlan: '1_month' | '3_months' | '6_months' = '1_month';
-                    let detectedPlanLabel = 'پلاس Plus (۱ ماهه)';
-                    if (m.text.includes('اولترا') || m.text.includes('Ultra') || m.text.includes('۶ ماهه')) {
-                      detectedPlan = '6_months';
-                      detectedPlanLabel = 'اولترا Ultra (۶ ماهه)';
-                    } else if (m.text.includes('پرو') || m.text.includes('Pro') || m.text.includes('۳ ماهه')) {
-                      detectedPlan = '3_months';
-                      detectedPlanLabel = 'پرو Pro (۳ ماهه)';
-                    }
+                      let detectedPlan: '1_month' | '3_months' | '6_months' = '1_month';
+                      let detectedPlanLabel = 'پلاس Plus (۱ ماهه)';
+                      if (m.text.includes('اولترا') || m.text.includes('Ultra') || m.text.includes('۶ ماهه')) {
+                        detectedPlan = '6_months';
+                        detectedPlanLabel = 'اولترا Ultra (۶ ماهه)';
+                      } else if (m.text.includes('پرو') || m.text.includes('Pro') || m.text.includes('۳ ماهه')) {
+                        detectedPlan = '3_months';
+                        detectedPlanLabel = 'پرو Pro (۳ ماهه)';
+                      }
 
-                    const targetUser = isMe ? currentUser : (users.find((u) => u.id === m.senderId) || activePartner);
-                    const targetUserInDirectory = users.find((u) => u.id === targetUser?.id) || targetUser;
-                    const isTargetPro =
-                      targetUserInDirectory?.role === 'admin' ||
-                      (!!targetUserInDirectory?.subscription?.plan && targetUserInDirectory.subscription.plan !== 'free');
+                      const isTargetPro =
+                        activePartner &&
+                        activePartner.subscription &&
+                        activePartner.subscription.plan !== 'free';
 
-                    return (
-                      <div
-                        key={m.id}
-                        className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
-                      >
-                        <UserAvatar
-                          name={isMe ? currentUser?.name : activePartner.name}
-                          avatar={isMe ? currentUser?.avatar : activePartner.avatar}
-                          size="xs"
-                          className="w-7 h-7 flex-shrink-0 rounded-full"
-                        />
-
+                      return (
                         <div
-                          className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3.5 text-xs leading-relaxed space-y-2 shadow-2xs ${
-                            isMe
-                              ? 'bg-slate-900 text-white rounded-bl-none'
-                              : 'bg-white text-slate-900 rounded-br-none border border-slate-200'
-                          }`}
+                          key={m.id}
+                          className={`flex items-end gap-2.5 ${isMe ? 'justify-start flex-row-reverse' : 'justify-start'}`}
                         >
-                          <p className="whitespace-pre-wrap font-medium select-text">{m.text}</p>
-
-                          {/* ACTIONABLE SUBSCRIPTION BUTTONS IN CHAT */}
-                          {isSubRequest && (
-                            <div className="mt-2.5 pt-2.5 border-t border-slate-200/50 space-y-2">
-                              {currentUser?.role === 'admin' ? (
-                                <div className="space-y-2">
-                                  {isTargetPro ? (
-                                    <div className="flex items-center gap-1.5 text-[11px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-200">
-                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                      <span>
-                                        اشتراک ویژه این کاربر فعال است ({targetUserInDirectory?.subscription?.planType === '6_months' ? 'اولترا' : targetUserInDirectory?.subscription?.planType === '3_months' ? 'پرو' : 'پلاس'}) ✅
-                                      </span>
-                                    </div>
-                                  ) : null}
-
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSendCardNumber(detectedPlanLabel)}
-                                      className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-bold transition-all border border-slate-300 cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
-                                    >
-                                      <span>ارسال شماره کارت به کاربر 💳</span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      disabled={approvingMsgId === m.id}
-                                      onClick={() => handleApproveSubscription(m, targetUserInDirectory!, detectedPlan, detectedPlanLabel)}
-                                      className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
-                                    >
-                                      <Sparkles className="w-3.5 h-3.5" />
-                                      <span>
-                                        {approvingMsgId === m.id ? 'در حال فعال‌سازی...' : `تأیید و فعال‌سازی فوری ${detectedPlanLabel} ⚡`}
-                                      </span>
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600">
-                                  {isTargetPro ? (
-                                    <>
-                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                      <span>اشتراک ویژه شما فعال است ✅</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Clock className="w-3.5 h-3.5 text-amber-500" />
-                                      <span>درخواست ثبت شده — در انتظار ارسال شماره کارت توسط مدیر...</span>
-                                    </>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                          {!isMe && (
+                            <UserAvatar user={activePartner} size="xs" className="w-7 h-7 rounded-xl flex-shrink-0 mb-1" />
                           )}
 
                           <div
-                            className={`flex items-center gap-1.5 text-[9px] pt-0.5 justify-end ${
-                              isMe ? 'text-zinc-400' : 'text-slate-400'
+                            className={`max-w-[85%] sm:max-w-md p-3.5 rounded-[22px] shadow-2xs space-y-1.5 transition-all text-right leading-relaxed ${
+                              isMe
+                                ? 'bg-gradient-to-tr from-slate-900 to-zinc-800 dark:from-emerald-600 dark:to-teal-600 text-white rounded-br-xs'
+                                : 'bg-white dark:bg-[#252528] text-slate-800 dark:text-zinc-100 border border-black/[0.05] dark:border-white/[0.08] rounded-bl-xs'
                             }`}
                           >
-                            <span>{timeStr ? toPersianDigits(timeStr) : ''}</span>
-                            {isMe && (
-                              <span title={m.read ? 'سین شد' : 'ارسال شد (سین نشده)'}>
-                                {m.read ? (
-                                  <CheckCheck className="w-3 h-3 text-emerald-400" />
+                            <p className="text-xs font-medium whitespace-pre-wrap break-words leading-relaxed">
+                              {m.text}
+                            </p>
+
+                            {/* Admin 1-Click Subscription Approval Badge */}
+                            {isSubRequest && (
+                              <div className="pt-2 border-t border-white/20 dark:border-white/10 space-y-2">
+                                {currentUser?.role === 'admin' && !isMe ? (
+                                  <div className="space-y-1.5">
+                                    <div className="text-[10px] font-bold text-amber-300">
+                                      طرح درخواستی: {detectedPlanLabel}
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <button
+                                        type="button"
+                                        disabled={approvingMsgId === m.id}
+                                        onClick={() =>
+                                          handleApproveSubscription(m, activePartner, detectedPlan, detectedPlanLabel)
+                                        }
+                                        className="px-3 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-[10px] font-black shadow-xs transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                      >
+                                        <Sparkles className="w-3 h-3" />
+                                        <span>تأیید و ارتقای حساب ⭐</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSendCardNumber(detectedPlanLabel)}
+                                        className="px-2.5 py-1 rounded-xl bg-white/20 hover:bg-white/30 text-white text-[10px] font-bold transition-all cursor-pointer"
+                                      >
+                                        ارسال شماره کارت
+                                      </button>
+                                    </div>
+                                  </div>
                                 ) : (
-                                  <Check className="w-3 h-3 text-zinc-400" />
+                                  <div className="text-[10px] font-bold flex items-center gap-1">
+                                    {isTargetPro ? (
+                                      <span className="text-emerald-400 flex items-center gap-1">
+                                        <CheckCircle2 className="w-3 h-3" />
+                                        <span>اشتراک ویژه شما فعال است ✅</span>
+                                      </span>
+                                    ) : (
+                                      <span className="text-amber-300 flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        <span>در انتظار بررسی مدیریت...</span>
+                                      </span>
+                                    )}
+                                  </div>
                                 )}
-                              </span>
+                              </div>
                             )}
+
+                            {/* Timestamp and Delivery Status */}
+                            <div
+                              className={`flex items-center gap-1.5 text-[9px] font-mono justify-end pt-0.5 ${
+                                isMe ? 'text-white/60' : 'text-slate-400'
+                              }`}
+                            >
+                              <span>{timeStr ? toPersianDigits(timeStr) : ''}</span>
+                              {isMe && (
+                                <span>
+                                  {m.read ? (
+                                    <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
+                                  ) : (
+                                    <Check className="w-3.5 h-3.5 text-white/50" />
+                                  )}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })
+                      );
+                    })
                 )}
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* Quick Reply Suggestions */}
+              <div className="px-4 py-2 border-t border-black/[0.04] dark:border-white/[0.06] bg-slate-50/70 dark:bg-[#1c1c1e] flex items-center gap-1.5 overflow-x-auto flex-shrink-0">
+                <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap pl-1">
+                  پاسخ سریع:
+                </span>
+                {quickReplies.map((reply, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleSendMessage(reply)}
+                    className="px-2.5 py-1 rounded-xl bg-white dark:bg-zinc-800 border border-black/[0.04] dark:border-white/[0.06] hover:border-black/20 text-[11px] font-bold text-slate-700 dark:text-zinc-200 transition-all cursor-pointer whitespace-nowrap hover:scale-102 active:scale-95 shadow-2xs"
+                  >
+                    {reply}
+                  </button>
+                ))}
+              </div>
+
               {/* Message Input Box */}
               <form
-                onSubmit={handleSendMessage}
-                className="p-3 sm:p-4 border-t border-slate-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSendMessage();
+                }}
+                className="p-3 sm:p-4 border-t border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#1c1c1e] flex items-center gap-2 flex-shrink-0"
               >
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  placeholder={`ارسال پیام به ${activePartner.name}...`}
-                  className="flex-1 px-4 py-3 rounded-2xl bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 text-xs font-bold text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-slate-800 dark:focus:border-emerald-500 shadow-inner"
-                />
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder={`پیام به ${activePartner.name}...`}
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-[#252528] border border-black/[0.06] dark:border-white/[0.08] text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
 
                 <button
                   type="submit"
                   disabled={!inputText.trim() || isSending}
-                  className="px-5 py-3 rounded-2xl bg-[#121212] hover:bg-black text-white text-xs font-black shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-5 py-3 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black shadow-md flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 flex-shrink-0"
                 >
-                  <Send className="w-4 h-4 stroke-[2.5]" />
+                  <Send className="w-4 h-4 stroke-[2.4]" />
                   <span className="hidden sm:inline">{isSending ? 'در حال ارسال...' : 'ارسال'}</span>
                 </button>
               </form>
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-4">
+            <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-4 select-none">
               <div className="w-16 h-16 rounded-3xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400">
                 <MessageSquare className="w-8 h-8" />
               </div>
@@ -715,30 +775,76 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                 <h4 className="text-sm font-black text-slate-800 dark:text-zinc-200">
                   هیچ گفتگویی انتخاب نشده است
                 </h4>
-                <p className="text-xs text-slate-400">
-                  از ستون سمت راست یکی از همکاران را انتخاب کنید تا تاریخچه پیام‌ها نمایش داده شود، یا از طریق دکمه‌های زیر بخش مورد نظرتان را باز کنید.
+                <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                  از ستون سمت راست یکی از همکاران را انتخاب فرمایید تا جریان مکالمات کاری فعال گردد.
                 </p>
-              </div>
-              <div className="flex items-center gap-2 pt-2 flex-wrap justify-center">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('tasks')}
-                  className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-black transition-colors cursor-pointer"
-                >
-                  بازگشت به داشبورد و وظایف
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('friends')}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition-colors cursor-pointer"
-                >
-                  لیست همکاران و دوستان
-                </button>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* 3. GEM GIFTING MINI MODAL */}
+      {isGiftingOpen && activePartner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-sm bg-white dark:bg-[#1c1c1e] rounded-[30px] border border-black/[0.08] dark:border-white/[0.12] p-6 space-y-4 shadow-2xl text-center">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+              <Gift className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                ارسال پاداش الماس در چت به «{activePartner.name}»
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                تعداد الماس مورد نظر برای قدردانی را انتخاب کنید:
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-2">
+              {[5, 10, 25, 50].map((amt) => (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => setGiftingAmount(amt)}
+                  className={`px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer font-mono ${
+                    giftingAmount === amt
+                      ? 'bg-amber-500 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300'
+                  }`}
+                >
+                  +{toPersianDigits(amt)} 💎
+                </button>
+              ))}
+            </div>
+
+            <div className="text-[11px] text-slate-400 font-medium">
+              موجودی شما: <span className="font-mono font-bold text-amber-500">{toPersianDigits(userGems)}</span> الماس
+            </div>
+
+            {giftFeedback && (
+              <div className="text-xs text-rose-500 font-bold">{giftFeedback}</div>
+            )}
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleGiftGemsInChat}
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+              >
+                ارسال پاداش
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsGiftingOpen(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 font-bold text-xs transition-colors cursor-pointer"
+              >
+                انصراف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
