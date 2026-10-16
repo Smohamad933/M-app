@@ -60,15 +60,31 @@ export interface SamsungWidgetConfig {
 export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
   {
     id: 'kpi_cards',
-    title: 'کارت‌های شاخص عملکرد (KPI)',
+    title: 'کارت‌های شاخص عملکرد اپل (KPI Activity)',
     subtitle: 'آمار تسک‌های امروز، نرخ پیشرفت، تمرکز عمیق و زنجیره استریک',
     colSpan: 12,
     visible: true,
     category: 'kpi',
   },
   {
+    id: 'upcoming_tasks',
+    title: 'برنامه و کارهای امروز (Apple Reminders)',
+    subtitle: 'تسک‌های اولویت‌دار روز، پین‌شده‌ها و نوار ثبت سریع',
+    colSpan: 8,
+    visible: true,
+    category: 'tasks',
+  },
+  {
+    id: 'zen_standby',
+    title: 'ساعت رومیزی و تمرکز ذهن (Apple StandBy)',
+    subtitle: 'نمای بزرگ ساعت رومیزی، تایمر و اصوات باران و آرامش',
+    colSpan: 4,
+    visible: true,
+    category: 'tools',
+  },
+  {
     id: 'focus_garden',
-    title: 'باغچه تمرکز و سطح افتخار (XP)',
+    title: 'باغچه تمرکز و پیشرفت (Focus Terrarium)',
     subtitle: 'پرورش گیاه مجازی با دقایق تمرکز و انجام تسک‌ها',
     colSpan: 6,
     visible: true,
@@ -76,17 +92,17 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
   },
   {
     id: 'micro_habits',
-    title: 'هاب عادات روزانه و استمرار',
+    title: 'هاب عادات روزانه و استمرار (Habits Matrix)',
     subtitle: 'پیگیری عادات کوچک و نقشه حرارتی ۲۸ روزه',
     colSpan: 6,
     visible: true,
     category: 'tools',
   },
   {
-    id: 'zen_standby',
-    title: 'حالت تمرکز رومیزی مینیمال (ساعت هوشمند)',
-    subtitle: 'نمای بزرگ ساعت رومیزی، تایمر و اصوات باران و آرامش',
-    colSpan: 6,
+    id: 'apple_shortcuts',
+    title: 'میانبرها و ابزارهای پرمیوم اپل (Control Center)',
+    subtitle: 'کارنامه ماهانه، بلاک‌بندی ۲۴ساعته، تقویم و پشتیبان‌گیری',
+    colSpan: 12,
     visible: true,
     category: 'tools',
   },
@@ -95,7 +111,7 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     title: 'خروجی تقویم و همگام‌سازی ابری',
     subtitle: 'خروجی استاندارد تقویم (.ics)، گوگل کلندر و اوت‌لوک',
     colSpan: 6,
-    visible: true,
+    visible: false,
     category: 'tools',
   },
   {
@@ -103,7 +119,7 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     title: 'چالش‌های گروهی و قبیله',
     subtitle: 'همکاری جمعی برای فتح اهداف، دریافت الماس و جوایز نایاب',
     colSpan: 6,
-    visible: true,
+    visible: false,
     category: 'tools',
   },
   {
@@ -111,7 +127,7 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     title: 'کارت وضعیت و کارنامه ماهانه',
     subtitle: 'استاتوس تصویری عملکرد ماهانه مناسب برای اشتراک‌گذاری',
     colSpan: 6,
-    visible: true,
+    visible: false,
     category: 'tools',
   },
   {
@@ -119,7 +135,7 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     title: 'پشتیبان‌گیری محلی و بازیابی اطلاعات',
     subtitle: 'دانلود نسخه پشتیبان آفلاین JSON و بازیابی آسان',
     colSpan: 6,
-    visible: true,
+    visible: false,
     category: 'tools',
   },
   {
@@ -127,7 +143,7 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     title: 'کارهای امروز و پیام امیدبخش',
     subtitle: 'فهرست کارهای فردی و تیمی به همراه نوار پیشرفت',
     colSpan: 6,
-    visible: true,
+    visible: false,
     category: 'tasks',
   },
   {
@@ -135,7 +151,7 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     title: 'تقویم تعاملی ماهانه',
     subtitle: 'نمای ماه با شمارنده تسک‌ها و پشتیبانی شمسی/میلادی',
     colSpan: 6,
-    visible: true,
+    visible: false,
     category: 'calendar',
   },
   {
@@ -143,7 +159,7 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     title: 'پیشرفت واقعی تسک‌ها در ۷ روز',
     subtitle: 'نمودار میله‌ای مقایسه‌ای انجام کارها در طول هفته',
     colSpan: 6,
-    visible: true,
+    visible: false,
     category: 'kpi',
   },
   {
@@ -151,15 +167,7 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     title: 'زمان‌بندی گانت تسک‌های امروز',
     subtitle: 'خط زمان زنده و تقسیم‌بندی ساعتی کارهای زمان‌دار',
     colSpan: 6,
-    visible: true,
-    category: 'tasks',
-  },
-  {
-    id: 'upcoming_tasks',
-    title: 'برنامه‌ی پیشِ رو و ثبت سریع',
-    subtitle: 'تسک‌های اولویت‌دار روز، پین‌شده‌ها و نوار ثبت سریع',
-    colSpan: 8,
-    visible: true,
+    visible: false,
     category: 'tasks',
   },
   {
@@ -167,7 +175,7 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     title: 'استوری روزنامه و داستان روز',
     subtitle: 'مقایسه عملکرد با مفاخر و ثبت ژورنال روزانه',
     colSpan: 4,
-    visible: true,
+    visible: false,
     category: 'tools',
   },
   {
@@ -175,7 +183,7 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     title: 'تقویم روزهای هفته',
     subtitle: 'نوار افقی انتخاب و مرور سریع روزهای هفته جاری',
     colSpan: 6,
-    visible: true,
+    visible: false,
     category: 'calendar',
   },
   {
@@ -183,7 +191,7 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     title: 'تکنیک بهره‌وری روز و پومودورو',
     subtitle: 'نکات روزانه مدیریت زمان و دکمه شروع سریع تمرکز',
     colSpan: 6,
-    visible: true,
+    visible: false,
     category: 'tools',
   },
   {
@@ -191,7 +199,7 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     title: 'یادداشت‌های روزانه و ایده‌ها',
     subtitle: 'همگام‌سازی بلادرنگ با افزونه نیوتَب مرورگر',
     colSpan: 12,
-    visible: true,
+    visible: false,
     category: 'tools',
   },
   {
@@ -199,7 +207,7 @@ export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
     title: 'پیام‌ها و گفتگوی مستقیم با همکاران',
     subtitle: 'مکالمه سریع و پیام‌رسانی کاری با اعضای تیم',
     colSpan: 12,
-    visible: true,
+    visible: false,
     category: 'chat',
   },
 ];
@@ -247,8 +255,8 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
   // Simple Mode is directly controlled by the sidebar interfaceMode toggle!
   const isSimpleMode = interfaceMode === 'simple';
 
-  // Modular Layout Persistence
-  const storageKey = `taskrooz_dashboard_layout_${userKey}`;
+  // Modular Layout Persistence - Apple HIG v5
+  const storageKey = `taskrooz_apple_hig_v5_${userKey}`;
 
   const [widgets, setWidgets] = useState<SamsungWidgetConfig[]>(() => {
     try {
@@ -505,6 +513,100 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
               <Maximize2 className="w-4 h-4" />
               <span>ورود به حالت تمام‌صفحه رومیزی ۱۶:۹</span>
             </button>
+          </div>
+        );
+
+      case 'apple_shortcuts':
+        return (
+          <div className="p-5 sm:p-6 bg-white dark:bg-[#1c1c1e] rounded-[26px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between w-full select-none">
+            <div className="flex items-center justify-between pb-3 border-b border-black/[0.05] dark:border-white/[0.08] mb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#007aff]" />
+                <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white">
+                  میانبرها و ابزارهای پرمیوم اپل
+                </h3>
+              </div>
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#007aff]/10 text-[#007aff] font-bold">
+                دسترسی سریع
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsReportCardOpen(true);
+                }}
+                className="p-3.5 rounded-2xl bg-[#f2f2f7] dark:bg-[#2c2c2e]/60 hover:bg-[#e5e5ea] dark:hover:bg-[#2c2c2e] transition-all flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 group text-center"
+              >
+                <div className="p-2.5 rounded-xl bg-[#5856d6]/15 text-[#5856d6] group-hover:scale-110 transition-transform">
+                  <Share2 className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">کارنامه ماهانه</span>
+                <span className="text-[10px] text-slate-400 font-mono">استوری ۹:۱۶</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setActiveTab('hourly');
+                }}
+                className="p-3.5 rounded-2xl bg-[#f2f2f7] dark:bg-[#2c2c2e]/60 hover:bg-[#e5e5ea] dark:hover:bg-[#2c2c2e] transition-all flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 group text-center"
+              >
+                <div className="p-2.5 rounded-xl bg-[#007aff]/15 text-[#007aff] group-hover:scale-110 transition-transform">
+                  <CalendarDays className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">بلاک ۲۴ ساعته</span>
+                <span className="text-[10px] text-slate-400 font-mono">مدیریت زمان</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsCalendarSyncOpen(true);
+                }}
+                className="p-3.5 rounded-2xl bg-[#f2f2f7] dark:bg-[#2c2c2e]/60 hover:bg-[#e5e5ea] dark:hover:bg-[#2c2c2e] transition-all flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 group text-center"
+              >
+                <div className="p-2.5 rounded-xl bg-[#34c759]/15 text-[#34c759] group-hover:scale-110 transition-transform">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">همگام‌سازی تقویم</span>
+                <span className="text-[10px] text-slate-400 font-mono">iCal / Google</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsTribeModalOpen(true);
+                }}
+                className="p-3.5 rounded-2xl bg-[#f2f2f7] dark:bg-[#2c2c2e]/60 hover:bg-[#e5e5ea] dark:hover:bg-[#2c2c2e] transition-all flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 group text-center"
+              >
+                <div className="p-2.5 rounded-xl bg-[#ff9500]/15 text-[#ff9500] group-hover:scale-110 transition-transform">
+                  <Trophy className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">چالش‌های قبیله</span>
+                <span className="text-[10px] text-slate-400 font-mono">جوایز الماس</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsDataBackupOpen(true);
+                }}
+                className="p-3.5 rounded-2xl bg-[#f2f2f7] dark:bg-[#2c2c2e]/60 hover:bg-[#e5e5ea] dark:hover:bg-[#2c2c2e] transition-all flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 group text-center"
+              >
+                <div className="p-2.5 rounded-xl bg-[#30b0c7]/15 text-[#30b0c7] group-hover:scale-110 transition-transform">
+                  <Database className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">پشتیبان‌گیری</span>
+                <span className="text-[10px] text-slate-400 font-mono">فایل آفلاین JSON</span>
+              </button>
+            </div>
           </div>
         );
 
