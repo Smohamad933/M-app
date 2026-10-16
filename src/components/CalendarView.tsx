@@ -35,7 +35,7 @@ export const CalendarView: React.FC = () => {
       setViewYear(jy);
       setViewMonth(jm);
     }
-  }, [calendarType]);
+  }, [calendarType, selectedDate]);
 
   const handlePrevMonth = () => {
     if (viewMonth === 1) {
