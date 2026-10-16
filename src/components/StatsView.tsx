@@ -3,17 +3,19 @@ import { useTask } from '../context/TaskContext';
 import { toPersianDigits, getTodayISO, PERSIAN_WEEKDAYS_SHORT, formatAppDate } from '../utils/persianDate';
 import {
   Flame,
-  CheckCircle,
+  CheckCircle2,
   Timer,
   Trophy,
   TrendingUp,
   Lightbulb,
   Award,
   CalendarDays,
+  Target,
+  Zap,
 } from 'lucide-react';
 
 export const StatsView: React.FC = () => {
-  const { tasks, streak } = useTask();
+  const { tasks, streak, calendarType } = useTask();
 
   const totalTasks = tasks.length;
   const totalCompleted = tasks.filter((t) => t.completed).length;
@@ -35,6 +37,7 @@ export const StatsView: React.FC = () => {
       dayLabel,
       count: dayDone,
       isToday: iso === getTodayISO(),
+      iso,
     };
   });
 
@@ -57,95 +60,150 @@ export const StatsView: React.FC = () => {
 
   const productivityTips = [
     {
-      title: 'قانون ۲ دقیقه',
+      title: 'قانون ۲ دقیقه (Two-Minute Rule)',
       text: 'اگر انجام کاری کمتر از ۲ دقیقه زمان می‌برد، فوراً انجامش بده و در فهرست کارهای بعدی قرار نده.',
     },
     {
-      title: 'اولویت‌بندی قورباغه‌ات را قورت بده',
+      title: 'قورباغه‌ات را اول وقت قورت بده',
       text: 'سخت‌ترین و کلیدی‌ترین کار روزت را صبح اول وقت، قبل از شروع هر کار دیگری به پایان برسان.',
     },
     {
-      title: 'تمرکز عمیق بدون وقفه',
-      text: 'در فواصل ۲۵ دقیقه‌ای پومودورو، تمام اعلان‌ها و نوتیفیکیشن‌ها را قطع کنید.',
+      title: 'تمرکز عمیق بدون وقفه (Deep Work)',
+      text: 'در فواصل ۲۵ دقیقه‌ای پومودورو، تمام اعلان‌ها و نوتیفیکیشن‌های موبایل و وب را قطع کنید.',
+    },
+    {
+      title: 'قانون ۸۰/۲۰ پارتو',
+      text: '۸۰ درصد دستاوردهای حرفه‌ای شما حاصل ۲۰ درصد از مهم‌ترین تلاش‌های متمرکزتان هستند.',
     },
   ];
 
   return (
-    <div className="space-y-5 animate-in fade-in pb-16 select-none" dir="rtl">
-      {/* Header Banner */}
-      <div className="bg-white dark:bg-[#1c1c1e] p-5 sm:p-6 rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
-        <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-          آمار عملکرد و بهره‌وری
-        </h2>
-        <p className="text-xs text-slate-400 dark:text-zinc-400 mt-0.5 font-medium">
-          تحلیل دستاوردهای روزانه، ساعات تمرکز و استریک فعالیت شما
-        </p>
+    <div className="space-y-6 animate-in fade-in pb-20 select-none w-full" dir="rtl">
+      {/* 1. Header Banner */}
+      <div className="p-5 sm:p-6 bg-white dark:bg-[#1c1c1e] rounded-[32px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Award className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                گزارش عملکرد، راندمان و آمار فعالیت
+              </h2>
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                تحلیل جامع
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 dark:text-zinc-400 mt-0.5 font-medium">
+              پایش دستاوردهای روزانه، ساعات تمرکز عمیق، استریک فعالیت و نقشه پیوستگی ۶۰ روزه
+            </p>
+          </div>
+        </div>
+
+        <div className="text-xs text-slate-500 dark:text-zinc-400 font-bold bg-slate-50 dark:bg-[#252528] px-3.5 py-2 rounded-2xl border border-black/[0.04] dark:border-white/[0.06]">
+          <span>امروز: </span>
+          <span className="text-slate-900 dark:text-white font-black">{formatAppDate(getTodayISO(), calendarType, 'full')}</span>
+        </div>
       </div>
 
-      {/* Streak Hero Card */}
-      <div className="p-6 bg-[#121212] text-white rounded-[28px] shadow-md space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-black px-3 py-1 rounded-full bg-white/10 text-white border border-white/10 flex items-center gap-1.5">
-            <Flame className="w-4 h-4 text-[#f95738] fill-[#f95738] animate-pulse" />
-            استریک فعالیت روزانه
+      {/* 2. Streak Hero Bento Box */}
+      <div className="p-6 sm:p-8 bg-gradient-to-br from-slate-900 via-[#1c1c1e] to-black text-white rounded-[32px] shadow-lg border border-white/10 space-y-4 relative overflow-hidden">
+        {/* Animated Glow Lights */}
+        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
+
+        <div className="flex items-center justify-between flex-wrap gap-2 relative z-10">
+          <span className="text-xs font-black px-3.5 py-1.5 rounded-2xl bg-white/10 text-white border border-white/10 flex items-center gap-2 shadow-xs">
+            <Flame className="w-4 h-4 text-amber-400 fill-amber-400 animate-pulse" />
+            <span>استریک فعالیت روزانه</span>
           </span>
-          <span className="text-xs text-slate-300 font-bold flex items-center gap-1">
+          <span className="text-xs text-amber-300 font-black flex items-center gap-1.5 bg-amber-500/10 px-3 py-1 rounded-xl border border-amber-500/20">
             <Trophy className="w-3.5 h-3.5 text-amber-400" />
-            بهترین رکورد: {toPersianDigits(streak.bestStreak)} روز
+            <span>بهترین رکورد شما: {toPersianDigits(streak.bestStreak)} روز</span>
           </span>
         </div>
 
-        <div className="flex items-baseline gap-2 pt-2">
-          <span className="text-5xl font-black text-white">
+        <div className="flex items-baseline gap-2 pt-2 relative z-10">
+          <span className="text-5xl sm:text-6xl font-black text-white font-mono tracking-tight">
             {toPersianDigits(streak.currentStreak)}
           </span>
-          <span className="text-base font-bold text-slate-300">روز متوالی</span>
+          <span className="text-base sm:text-lg font-black text-slate-300">روز پیوسته و مداوم</span>
         </div>
 
-        <p className="text-xs text-slate-400 leading-relaxed max-w-sm font-medium">
-          پیوستگی کلید موفقیت است؛ انجام مداوم کارهای کوچک نتایج بزرگی در طول زمان می‌سازد.
+        <p className="text-xs text-slate-300 leading-relaxed max-w-md font-medium relative z-10">
+          پیوستگی مداوم کلید اصلی تسلط و بهره‌وری است. با ثبت و انجام حداقل ۱ کار در هر روز، آتش استریک خود را روشن نگه دارید.
         </p>
       </div>
 
-      {/* 3 Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="p-4 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-2xl sm:rounded-3xl border border-black/[0.06] dark:border-white/[0.08] shadow-sm text-center space-y-1">
-          <div className="w-9 h-9 rounded-2xl bg-[#00b884]/15 text-[#00895f] flex items-center justify-center mx-auto mb-2">
-            <CheckCircle className="w-5 h-5" />
+      {/* 3. 4 Top Metric KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="p-5 bg-white dark:bg-[#1c1c1e] rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 dark:text-zinc-400">تسک‌های انجام‌شده</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">
+          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
             {toPersianDigits(totalCompleted)}
           </div>
-          <div className="text-xs text-slate-400 font-bold">تسک‌های انجام‌شده</div>
+          <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
+            از مجموع {toPersianDigits(totalTasks)} تسک
+          </div>
         </div>
 
-        <div className="p-4 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-2xl sm:rounded-3xl border border-black/[0.06] dark:border-white/[0.08] shadow-sm text-center space-y-1">
-          <div className="w-9 h-9 rounded-2xl bg-[#007aff]/15 text-[#007aff] flex items-center justify-center mx-auto mb-2">
-            <TrendingUp className="w-5 h-5" />
+        <div className="p-5 bg-white dark:bg-[#1c1c1e] rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 dark:text-zinc-400">نرخ بهره‌وری کلی</span>
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">
+          <div className="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
             {toPersianDigits(overallRate)}٪
           </div>
-          <div className="text-xs text-slate-400 font-bold">نرخ بهره‌وری</div>
+          <div className="text-[11px] text-slate-400 dark:text-zinc-500 font-bold">
+            نرخ تحقق برنامه‌ها
+          </div>
         </div>
 
-        <div className="p-4 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-2xl sm:rounded-3xl border border-black/[0.06] dark:border-white/[0.08] shadow-sm text-center space-y-1">
-          <div className="w-9 h-9 rounded-2xl bg-[#f95738]/15 text-[#f95738] flex items-center justify-center mx-auto mb-2">
-            <Timer className="w-5 h-5" />
+        <div className="p-5 bg-white dark:bg-[#1c1c1e] rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 dark:text-zinc-400">ساعات تمرکز عمیق</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <Timer className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">
-            {toPersianDigits(Math.round(totalFocusMinutes / 60))}
+          <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono">
+            {toPersianDigits(Math.round(totalFocusMinutes / 60))} <span className="text-xs font-normal">ساعت</span>
           </div>
-          <div className="text-xs text-slate-400 font-bold">ساعت تمرکز</div>
+          <div className="text-[11px] text-slate-400 dark:text-zinc-500 font-bold">
+            {toPersianDigits(totalFocusMinutes)} دقیقه پومودورو
+          </div>
+        </div>
+
+        <div className="p-5 bg-white dark:bg-[#1c1c1e] rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 dark:text-zinc-400">ثبت بر اساس ددلاین</span>
+            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+              <Target className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-purple-600 dark:text-purple-400 font-mono">
+            {toPersianDigits(tasks.filter((t) => t.time).length)}
+          </div>
+          <div className="text-[11px] text-slate-400 dark:text-zinc-500 font-bold">
+            وظایف زمان‌بندی‌شده
+          </div>
         </div>
       </div>
 
-      {/* 60-Day Productivity Heatmap */}
-      <div className="p-5 sm:p-6 bg-white dark:bg-[#1c1c1e] rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-              <CalendarDays className="w-4 h-4" />
+      {/* 4. 60-Day Productivity Heatmap */}
+      <div className="p-5 sm:p-7 bg-white dark:bg-[#1c1c1e] rounded-[32px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-black/[0.04] dark:border-white/[0.06]">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <CalendarDays className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
@@ -157,31 +215,31 @@ export const StatsView: React.FC = () => {
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold">
             <span>کمتر</span>
-            <span className="w-2.5 h-2.5 rounded-sm bg-slate-100 dark:bg-zinc-800" />
-            <span className="w-2.5 h-2.5 rounded-sm bg-emerald-300 dark:bg-emerald-800/60" />
-            <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />
-            <span className="w-2.5 h-2.5 rounded-sm bg-emerald-600 dark:bg-emerald-400" />
+            <span className="w-3 h-3 rounded-md bg-slate-100 dark:bg-[#252528]" />
+            <span className="w-3 h-3 rounded-md bg-emerald-300 dark:bg-emerald-800/60" />
+            <span className="w-3 h-3 rounded-md bg-emerald-500" />
+            <span className="w-3 h-3 rounded-md bg-emerald-600 dark:bg-emerald-400" />
             <span>بیشتر</span>
           </div>
         </div>
 
-        <div className="pt-2 overflow-x-auto pb-1">
-          <div className="grid grid-rows-6 grid-flow-col gap-1.5 min-w-[500px]">
+        <div className="pt-2 overflow-x-auto pb-2 no-scrollbar">
+          <div className="grid grid-rows-6 grid-flow-col gap-2 min-w-[580px]">
             {sixtyDaysData.map((d, i) => {
-              let bg = 'bg-slate-100 dark:bg-zinc-800/80';
+              let bg = 'bg-slate-100 dark:bg-[#252528]';
               if (d.count >= 5) bg = 'bg-emerald-600 dark:bg-emerald-400';
               else if (d.count >= 3) bg = 'bg-emerald-500';
-              else if (d.count >= 1) bg = 'bg-emerald-300 dark:bg-emerald-700';
+              else if (d.count >= 1) bg = 'bg-emerald-300 dark:bg-emerald-700/80';
 
               return (
                 <div
                   key={i}
-                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-md transition-all hover:scale-125 cursor-pointer relative group ${bg} ${
-                    d.isToday ? 'ring-2 ring-emerald-400 ring-offset-1 dark:ring-offset-[#1c1c1e]' : ''
+                  className={`w-4 h-4 rounded-lg transition-all hover:scale-125 cursor-pointer relative group ${bg} ${
+                    d.isToday ? 'ring-2 ring-emerald-400 ring-offset-2 dark:ring-offset-[#1c1c1e]' : ''
                   }`}
-                  title={`${formatAppDate(d.iso)}: ${toPersianDigits(d.count)} تسک انجام‌شده`}
+                  title={`${d.iso}: ${toPersianDigits(d.count)} تسک انجام‌شده`}
                 />
               );
             })}
@@ -189,30 +247,30 @@ export const StatsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Weekly Activity Chart */}
-      <div className="p-5 sm:p-6 bg-white dark:bg-[#1c1c1e] rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-            <Award className="w-4 h-4 text-[#00b884]" />
-            <span>فعالیت هفتگی</span>
+      {/* 5. Weekly Activity Chart */}
+      <div className="p-5 sm:p-7 bg-white dark:bg-[#1c1c1e] rounded-[32px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-black/[0.04] dark:border-white/[0.06]">
+          <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <Award className="w-4 h-4 text-emerald-500" />
+            <span>نمودار فعالیت هفتگی (۷ روز اخیر)</span>
           </h3>
-          <span className="text-[11px] text-slate-400 font-bold font-mono">۷ روز اخیر</span>
+          <span className="text-[11px] text-slate-400 font-bold font-mono">میانگین روزانه</span>
         </div>
 
-        <div className="h-36 flex items-end justify-between gap-2 sm:gap-3 pt-4 px-2">
+        <div className="h-40 flex items-end justify-between gap-3 pt-4 px-2">
           {weekDaysData.map((d, idx) => {
-            const heightPercent = Math.max((d.count / maxCount) * 100, 10);
+            const heightPercent = Math.max((d.count / maxCount) * 100, 12);
             return (
-              <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                <span className="text-[10px] font-black text-slate-400">
+              <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+                <span className="text-[10px] font-black text-slate-400 font-mono">
                   {toPersianDigits(d.count)}
                 </span>
-                <div className="w-full max-w-[32px] bg-slate-100 dark:bg-zinc-800 pattern-hatched rounded-2xl h-full flex items-end overflow-hidden p-0.5">
+                <div className="w-full max-w-[36px] bg-slate-100 dark:bg-[#252528] rounded-2xl h-full flex items-end overflow-hidden p-1">
                   <div
                     className={`w-full rounded-xl transition-all duration-500 ${
                       d.isToday
-                        ? 'bg-[#121212] dark:bg-white shadow-xs'
-                        : 'bg-[#00b884]'
+                        ? 'bg-slate-900 dark:bg-white shadow-xs'
+                        : 'bg-emerald-500'
                     }`}
                     style={{ height: `${heightPercent}%` }}
                   />
@@ -230,21 +288,22 @@ export const StatsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Productivity Tips */}
+      {/* 6. Productivity Tips */}
       <div className="space-y-3">
-        <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+        <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-2 px-1">
           <Lightbulb className="w-4 h-4 text-amber-500" />
-          <span>توصیه‌های بهبود مدیریت زمان</span>
+          <span>اصول طلایی بهره‌وری و مدیریت زمان</span>
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           {productivityTips.map((tip, i) => (
             <div
               key={i}
-              className="p-4 bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.06] dark:border-white/[0.08] shadow-2xs space-y-1.5 hover:border-slate-300 dark:hover:border-zinc-700 transition-colors"
+              className="p-5 bg-white dark:bg-[#1c1c1e] rounded-[26px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs space-y-1.5 hover:border-black/20 dark:hover:border-white/20 transition-all"
             >
-              <h4 className="text-xs font-black text-slate-800 dark:text-zinc-200">
-                💡 {tip.title}
+              <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-500" />
+                <span>{tip.title}</span>
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium">
                 {tip.text}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTask } from '../context/TaskContext';
-import { Plus, Mic, MicOff, Send } from 'lucide-react';
+import { Plus, Mic, MicOff, Sparkles } from 'lucide-react';
+import { sounds } from '../utils/sound';
 
 export const QuickAddBar: React.FC = () => {
   const { addTask, selectedDate, categories } = useTask();
@@ -12,6 +13,7 @@ export const QuickAddBar: React.FC = () => {
     if (e) e.preventDefault();
     if (!text.trim()) return;
 
+    sounds.playPop();
     await addTask({
       title: text.trim(),
       date: selectedDate,
@@ -56,7 +58,7 @@ export const QuickAddBar: React.FC = () => {
 
       recognition.onerror = () => {
         setIsListening(false);
-        setVoiceNotice('خطا در دریافت صدا یا دسترسی میکروفون داده نشد.');
+        setVoiceNotice('خطا در دریافت صدا یا عدم دسترسی میکروفون.');
         setTimeout(() => setVoiceNotice(null), 3000);
       };
 
@@ -74,18 +76,18 @@ export const QuickAddBar: React.FC = () => {
   };
 
   return (
-    <div className="pt-2 pb-1">
+    <div className="w-full select-none" dir="rtl">
       <form
         onSubmit={handleQuickAdd}
-        className="flex items-center gap-2 bg-[#f2f2f7] dark:bg-[#2c2c2e]/60 p-1.5 pl-2.5 rounded-2xl border border-black/[0.06] dark:border-white/[0.08] shadow-xs focus-within:border-[#007aff] focus-within:bg-white dark:focus-within:bg-[#2c2c2e] transition-all"
+        className="flex items-center gap-2 bg-slate-100/80 dark:bg-[#252528] p-1.5 pl-2.5 rounded-2xl border border-black/[0.04] dark:border-white/[0.06] shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500/40 focus-within:bg-white dark:focus-within:bg-zinc-800 transition-all"
       >
         <button
           type="button"
           onClick={toggleVoiceInput}
-          className={`p-2 rounded-xl transition-all cursor-pointer ${
+          className={`p-2.5 rounded-xl transition-all cursor-pointer ${
             isListening
               ? 'bg-rose-500 text-white animate-pulse'
-              : 'text-slate-400 hover:text-slate-700 hover:bg-slate-200/60'
+              : 'text-slate-400 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-zinc-700/60'
           }`}
           title="تایپ صوتی تسک"
         >
@@ -96,32 +98,24 @@ export const QuickAddBar: React.FC = () => {
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="افزودن سریع تسک جدید... (اینتر بزنید)"
-          className="flex-1 bg-transparent text-xs text-slate-800 placeholder-slate-400 outline-hidden font-bold"
+          placeholder="افزودن سریع تسک جدید... (نام کار را بنویسید و اینتر بزنید)"
+          className="flex-1 bg-transparent text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 outline-none font-bold px-1"
         />
 
-        {text.trim() ? (
-          <button
-            type="submit"
-            className="p-2 bg-[#121212] hover:bg-black text-white rounded-xl shadow-xs transition-colors cursor-pointer"
-            title="ثبت تسک"
-          >
-            <Send className="w-3.5 h-3.5 rotate-180" />
-          </button>
-        ) : (
-          <button
-            type="submit"
-            disabled
-            className="p-2 text-slate-300 rounded-xl cursor-not-allowed"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        )}
+        <button
+          type="submit"
+          disabled={!text.trim()}
+          className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-slate-900 text-xs font-black transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer flex items-center gap-1.5 shadow-xs active:scale-95"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span className="hidden sm:inline">ثبت کار</span>
+        </button>
       </form>
 
       {voiceNotice && (
-        <div className="mt-1 px-2 text-[10px] font-semibold text-slate-500 animate-in fade-in">
-          {voiceNotice}
+        <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 px-3 animate-in fade-in flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 animate-spin-slow" />
+          <span>{voiceNotice}</span>
         </div>
       )}
     </div>
