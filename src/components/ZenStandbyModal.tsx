@@ -451,6 +451,45 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
         .zen-blob-2 {
           animation: zenBlobTwo 28s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
         }
+
+        /* Responsive Mobile Landscape Optimization (< 520px Viewport Height) */
+        @media (max-height: 520px) {
+          .zen-centerpiece {
+            padding-top: 4px !important;
+            padding-bottom: 4px !important;
+            gap: 12px !important;
+          }
+          .zen-card {
+            padding: 10px 14px !important;
+            min-height: 0 !important;
+            border-radius: 24px !important;
+          }
+          .zen-clock-digits {
+            font-size: 2.25rem !important;
+            line-height: 1 !important;
+          }
+          .zen-colon {
+            font-size: 2rem !important;
+            padding-left: 6px !important;
+            padding-right: 6px !important;
+          }
+          .zen-timer-digits {
+            font-size: 1.75rem !important;
+            padding: 4px 12px !important;
+          }
+          .zen-sub-info {
+            margin-top: 6px !important;
+            gap: 6px !important;
+          }
+          .zen-sub-info div {
+            padding: 2px 8px !important;
+            font-size: 10px !important;
+          }
+          .zen-bottom-bar {
+            padding-top: 2px !important;
+            padding-bottom: 2px !important;
+          }
+        }
       `}</style>
 
       {/* 2 LIVING ANIMATED BLURRED MESH BLOBS FLOATING BEHIND */}
@@ -582,57 +621,57 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
       </div>
 
       {/* 2. MAIN CENTERPIECE: 16:9 APPLE STANDBY CLOCK & FOCUS TIMER */}
-      <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col landscape:flex-row items-stretch justify-center gap-5 sm:gap-8 lg:gap-10 my-auto z-10 py-3 sm:py-6">
+      <div className="zen-centerpiece w-full max-w-6xl mx-auto flex-1 flex flex-col landscape:flex-row items-stretch justify-center gap-4 sm:gap-6 lg:gap-8 my-auto z-10 py-2 sm:py-4 lg:py-6">
         {/* RIGHT SIDE (IN RTL): THE DIGITAL APPLE STANDBY CLOCK */}
-        <div className="flex flex-col items-center justify-center text-center p-6 sm:p-8 lg:p-12 rounded-[36px] bg-black/40 border border-white/10 backdrop-blur-2xl shadow-2xl relative overflow-hidden flex-1 w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[400px]">
+        <div className="zen-card flex flex-col items-center justify-center text-center p-5 sm:p-7 lg:p-10 rounded-[32px] sm:rounded-[36px] bg-black/40 border border-white/10 backdrop-blur-2xl shadow-2xl relative overflow-hidden flex-1 w-full min-h-[220px] sm:min-h-[300px] lg:min-h-[360px]">
           <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
-          {/* LTR Digital Clock Numbers with Glow - Balanced Apple Standby Layout */}
+          {/* Clock Digits Display - Dedicated Safe Proportions */}
           <div
             dir="ltr"
             style={{ direction: 'ltr', unicodeBidi: 'bidi-override' }}
-            className="flex items-center justify-center select-none w-full tabular-nums my-auto"
+            className="flex items-center justify-center select-none w-full my-auto"
           >
             {/* Hours */}
-            <span className="font-mono font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-white drop-shadow-[0_0_35px_rgba(255,255,255,0.25)] leading-none inline-block">
+            <span className="zen-clock-digits font-mono font-black text-4xl sm:text-5xl lg:text-7xl xl:text-8xl text-white drop-shadow-[0_0_35px_rgba(255,255,255,0.25)] leading-none inline-flex items-center justify-center min-w-[1.8ch] text-center">
               {toPersianDigits(hours)}
             </span>
 
-            {/* Blinking Colon with Theme Accent */}
-            <span className={`font-mono font-black text-5xl sm:text-6xl md:text-7xl lg:text-8xl ${currentTheme.accent} animate-pulse mx-2 sm:mx-3 lg:mx-4 leading-none inline-block drop-shadow-[0_0_20px_currentColor] opacity-90`}>
+            {/* Blinking Colon with Safe Padding */}
+            <span className={`zen-colon font-mono font-black text-3xl sm:text-4xl lg:text-6xl xl:text-7xl ${currentTheme.accent} animate-pulse px-2 sm:px-3 lg:px-4 leading-none inline-flex items-center justify-center select-none drop-shadow-[0_0_20px_currentColor] opacity-90`}>
               :
             </span>
 
             {/* Minutes */}
-            <span className="font-mono font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-white drop-shadow-[0_0_35px_rgba(255,255,255,0.25)] leading-none inline-block">
+            <span className="zen-clock-digits font-mono font-black text-4xl sm:text-5xl lg:text-7xl xl:text-8xl text-white drop-shadow-[0_0_35px_rgba(255,255,255,0.25)] leading-none inline-flex items-center justify-center min-w-[1.8ch] text-center">
               {toPersianDigits(minutes)}
             </span>
-
-            {/* Seconds Frosted Pill Badge */}
-            <div className="ml-2.5 sm:ml-4 lg:ml-5 flex flex-col items-start justify-center">
-              <div className={`px-2 sm:px-2.5 py-1 rounded-xl bg-white/10 border border-white/15 backdrop-blur-md flex items-center gap-0.5 ${currentTheme.accent} font-mono font-bold text-xs sm:text-sm md:text-base tabular-nums shadow-sm`}>
-                <span className="opacity-50 text-[10px] sm:text-xs">:</span>
-                <span>{toPersianDigits(seconds)}</span>
-              </div>
-            </div>
           </div>
 
-          {/* Persian Date Capsule */}
-          <div className="mt-5 sm:mt-6 px-4 sm:px-6 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-2 text-xs sm:text-sm font-bold text-zinc-300 shadow-sm">
-            <Calendar className={`w-4 h-4 ${currentTheme.accent}`} />
-            <span className="font-sans">
-              {currentTime.toLocaleDateString('fa-IR', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
-            </span>
+          {/* Persian Date & Live Seconds Capsules */}
+          <div className="zen-sub-info mt-3 sm:mt-5 lg:mt-6 flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+            {/* Live Seconds Pill */}
+            <div className={`px-2.5 sm:px-3 py-1 rounded-xl bg-white/10 border border-white/15 backdrop-blur-md flex items-center gap-1.5 ${currentTheme.accent} font-mono font-bold text-xs sm:text-sm shadow-xs`}>
+              <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
+              <span>{toPersianDigits(seconds)} ثانیه</span>
+            </div>
+
+            {/* Persian Date Capsule */}
+            <div className="px-3 sm:px-4 py-1 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-1.5 text-xs sm:text-sm font-bold text-zinc-300 shadow-xs">
+              <Calendar className={`w-3.5 h-3.5 ${currentTheme.accent}`} />
+              <span className="font-sans">
+                {currentTime.toLocaleDateString('fa-IR', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                })}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* LEFT SIDE (IN RTL): FOCUS TIMER CONTROLS */}
-        <div className="flex flex-col items-center justify-between p-6 sm:p-8 lg:p-10 rounded-[36px] bg-black/40 border border-white/10 backdrop-blur-2xl shadow-2xl flex-1 w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[400px] space-y-4 relative overflow-hidden">
+        <div className="zen-card flex flex-col items-center justify-between p-5 sm:p-7 lg:p-10 rounded-[32px] sm:rounded-[36px] bg-black/40 border border-white/10 backdrop-blur-2xl shadow-2xl flex-1 w-full min-h-[220px] sm:min-h-[300px] lg:min-h-[360px] space-y-3 sm:space-y-4 relative overflow-hidden">
           <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
           <div className="flex items-center justify-between w-full">
@@ -648,11 +687,11 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
           </div>
 
           {/* Countdown Display with Steppers */}
-          <div className="flex items-center justify-center gap-3 sm:gap-4 lg:gap-5 w-full my-auto" dir="ltr">
+          <div className="flex items-center justify-center gap-2.5 sm:gap-4 w-full my-auto" dir="ltr">
             <button
               type="button"
               onClick={() => handleAdjustTimer(-5)}
-              className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-mono font-bold text-xs sm:text-sm transition-all flex items-center justify-center border border-white/10 shadow-sm cursor-pointer"
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-mono font-bold text-xs sm:text-sm transition-all flex items-center justify-center border border-white/10 shadow-sm cursor-pointer"
               title="کاهش ۵ دقیقه"
             >
               -۵د
@@ -660,7 +699,7 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
 
             <div
               style={{ direction: 'ltr', unicodeBidi: 'bidi-override' }}
-              className="font-mono font-black text-4xl sm:text-5xl lg:text-6xl text-white tracking-widest tabular-nums px-5 sm:px-8 py-2.5 sm:py-3 rounded-2xl bg-white/5 border border-white/10 shadow-inner drop-shadow-md select-none"
+              className="zen-timer-digits font-mono font-black text-3xl sm:text-4xl lg:text-5xl text-white tracking-wider tabular-nums px-4 sm:px-6 py-2 sm:py-2.5 rounded-2xl bg-white/5 border border-white/10 shadow-inner drop-shadow-md select-none"
             >
               {toPersianDigits(timerMin)}:{toPersianDigits(timerSec)}
             </div>
@@ -668,7 +707,7 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
             <button
               type="button"
               onClick={() => handleAdjustTimer(+5)}
-              className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-mono font-bold text-xs sm:text-sm transition-all flex items-center justify-center border border-white/10 shadow-sm cursor-pointer"
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-mono font-bold text-xs sm:text-sm transition-all flex items-center justify-center border border-white/10 shadow-sm cursor-pointer"
               title="افزایش ۵ دقیقه"
             >
               +۵د
@@ -676,9 +715,9 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
           </div>
 
           {/* Preset Pills */}
-          <div className="flex items-center justify-between w-full pt-1">
-            <span className="text-[11px] text-zinc-400 font-bold">زمان‌های آماده:</span>
-            <div className="flex items-center gap-1.5">
+          <div className="flex items-center justify-between w-full pt-0.5">
+            <span className="text-[11px] text-zinc-400 font-bold hidden sm:inline">زمان‌های آماده:</span>
+            <div className="flex items-center gap-1.5 justify-center w-full sm:w-auto">
               {[15, 25, 45, 60].map((mins) => (
                 <button
                   key={mins}
@@ -702,14 +741,14 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
           </div>
 
           {/* Main Action Buttons */}
-          <div className="flex items-center gap-3 w-full pt-1">
+          <div className="flex items-center gap-2.5 sm:gap-3 w-full pt-0.5">
             <button
               type="button"
               onClick={() => {
                 sounds.playPop();
                 setIsRunning(!isRunning);
               }}
-              className={`flex-1 py-3 px-5 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl active:scale-95 ${
+              className={`flex-1 py-2.5 sm:py-3 px-4 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl active:scale-95 ${
                 isRunning
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
                   : currentTheme.button
@@ -726,7 +765,7 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
                 setIsRunning(false);
                 setTimerSeconds(initialSeconds);
               }}
-              className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white border border-white/10 transition-all cursor-pointer active:scale-95"
+              className="p-2.5 sm:p-3 rounded-2xl bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white border border-white/10 transition-all cursor-pointer active:scale-95"
               title="شروع مجدد تایمر"
             >
               <RotateCcw className="w-4 h-4" />
