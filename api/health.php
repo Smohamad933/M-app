@@ -29,11 +29,7 @@ echo json_encode([
         'installed' => $db->isInstalled(),
         'engine' => $db->mode,
         'mysql_connected' => $isMysqlConnected,
-        'db_host' => DB_HOST,
-        'db_name' => DB_NAME,
-        'db_user' => DB_USER,
         'tables_count' => count($dbTables),
-        'tables' => $dbTables,
     ],
     'counts' => [
         'users' => count($users),
@@ -43,7 +39,6 @@ echo json_encode([
     'super_admin' => [
         'username' => 'Mohusyn',
         'status' => 'active',
-        'default_pass' => 'Smosh1387',
     ],
     'registered_usernames' => array_map(function($u) { return $u['username']; }, $users),
 ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
