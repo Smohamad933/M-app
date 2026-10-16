@@ -582,30 +582,45 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
       </div>
 
       {/* 2. MAIN CENTERPIECE: 16:9 APPLE STANDBY CLOCK & FOCUS TIMER */}
-      <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col landscape:flex-row items-center justify-center gap-5 sm:gap-10 my-auto z-10 py-2">
+      <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col landscape:flex-row items-stretch justify-center gap-5 sm:gap-8 lg:gap-10 my-auto z-10 py-3 sm:py-6">
         {/* RIGHT SIDE (IN RTL): THE DIGITAL APPLE STANDBY CLOCK */}
-        <div className="flex flex-col items-center justify-center text-center p-6 sm:p-10 rounded-[36px] bg-black/40 border border-white/10 backdrop-blur-2xl shadow-2xl relative overflow-hidden flex-1 max-w-lg w-full">
+        <div className="flex flex-col items-center justify-center text-center p-6 sm:p-8 lg:p-12 rounded-[36px] bg-black/40 border border-white/10 backdrop-blur-2xl shadow-2xl relative overflow-hidden flex-1 w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[400px]">
           <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
-          {/* LTR Digital Clock Numbers with Glow */}
+          {/* LTR Digital Clock Numbers with Glow - Balanced Apple Standby Layout */}
           <div
             dir="ltr"
-            style={{ direction: 'ltr', unicodeBidi: 'isolate' }}
-            className="font-mono font-black text-6xl sm:text-7xl md:text-8xl text-white tracking-wider flex items-baseline justify-center select-none tabular-nums drop-shadow-[0_0_35px_rgba(255,255,255,0.25)]"
+            style={{ direction: 'ltr', unicodeBidi: 'bidi-override' }}
+            className="flex items-center justify-center select-none w-full tabular-nums my-auto"
           >
-            <span className="w-[1.2ch] text-center inline-block">{toPersianDigits(hours)}</span>
-            <span className="opacity-80 animate-pulse mx-1 sm:mx-2 text-white">:</span>
-            <span className="w-[1.2ch] text-center inline-block">{toPersianDigits(minutes)}</span>
-            <span className="text-2xl sm:text-4xl text-white/50 font-normal ml-2 sm:ml-3 inline-flex items-baseline">
-              <span className="opacity-40 mr-0.5">:</span>
-              <span className="w-[1.2ch] text-center inline-block">{toPersianDigits(seconds)}</span>
+            {/* Hours */}
+            <span className="font-mono font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-white drop-shadow-[0_0_35px_rgba(255,255,255,0.25)] leading-none inline-block">
+              {toPersianDigits(hours)}
             </span>
+
+            {/* Blinking Colon with Theme Accent */}
+            <span className={`font-mono font-black text-5xl sm:text-6xl md:text-7xl lg:text-8xl ${currentTheme.accent} animate-pulse mx-2 sm:mx-3 lg:mx-4 leading-none inline-block drop-shadow-[0_0_20px_currentColor] opacity-90`}>
+              :
+            </span>
+
+            {/* Minutes */}
+            <span className="font-mono font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-white drop-shadow-[0_0_35px_rgba(255,255,255,0.25)] leading-none inline-block">
+              {toPersianDigits(minutes)}
+            </span>
+
+            {/* Seconds Frosted Pill Badge */}
+            <div className="ml-2.5 sm:ml-4 lg:ml-5 flex flex-col items-start justify-center">
+              <div className={`px-2 sm:px-2.5 py-1 rounded-xl bg-white/10 border border-white/15 backdrop-blur-md flex items-center gap-0.5 ${currentTheme.accent} font-mono font-bold text-xs sm:text-sm md:text-base tabular-nums shadow-sm`}>
+                <span className="opacity-50 text-[10px] sm:text-xs">:</span>
+                <span>{toPersianDigits(seconds)}</span>
+              </div>
+            </div>
           </div>
 
           {/* Persian Date Capsule */}
-          <div className="mt-4 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-2 text-xs sm:text-sm font-bold text-zinc-300">
-            <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-            <span>
+          <div className="mt-5 sm:mt-6 px-4 sm:px-6 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-2 text-xs sm:text-sm font-bold text-zinc-300 shadow-sm">
+            <Calendar className={`w-4 h-4 ${currentTheme.accent}`} />
+            <span className="font-sans">
               {currentTime.toLocaleDateString('fa-IR', {
                 weekday: 'long',
                 day: 'numeric',
@@ -617,7 +632,7 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
         </div>
 
         {/* LEFT SIDE (IN RTL): FOCUS TIMER CONTROLS */}
-        <div className="flex flex-col items-center justify-between p-6 sm:p-8 rounded-[36px] bg-black/40 border border-white/10 backdrop-blur-2xl shadow-2xl w-full max-w-sm sm:max-w-md space-y-4 relative overflow-hidden">
+        <div className="flex flex-col items-center justify-between p-6 sm:p-8 lg:p-10 rounded-[36px] bg-black/40 border border-white/10 backdrop-blur-2xl shadow-2xl flex-1 w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[400px] space-y-4 relative overflow-hidden">
           <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
           <div className="flex items-center justify-between w-full">
@@ -633,19 +648,19 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
           </div>
 
           {/* Countdown Display with Steppers */}
-          <div className="flex items-center justify-center gap-3 sm:gap-4 w-full" dir="ltr">
+          <div className="flex items-center justify-center gap-3 sm:gap-4 lg:gap-5 w-full my-auto" dir="ltr">
             <button
               type="button"
               onClick={() => handleAdjustTimer(-5)}
-              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-mono font-bold text-xs sm:text-sm transition-all flex items-center justify-center border border-white/10 shadow-sm cursor-pointer"
+              className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-mono font-bold text-xs sm:text-sm transition-all flex items-center justify-center border border-white/10 shadow-sm cursor-pointer"
               title="کاهش ۵ دقیقه"
             >
               -۵د
             </button>
 
             <div
-              style={{ direction: 'ltr' }}
-              className="font-mono font-black text-4xl sm:text-5xl text-white tracking-widest tabular-nums px-5 py-2 rounded-2xl bg-white/5 border border-white/10 shadow-inner drop-shadow-md select-none"
+              style={{ direction: 'ltr', unicodeBidi: 'bidi-override' }}
+              className="font-mono font-black text-4xl sm:text-5xl lg:text-6xl text-white tracking-widest tabular-nums px-5 sm:px-8 py-2.5 sm:py-3 rounded-2xl bg-white/5 border border-white/10 shadow-inner drop-shadow-md select-none"
             >
               {toPersianDigits(timerMin)}:{toPersianDigits(timerSec)}
             </div>
@@ -653,7 +668,7 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
             <button
               type="button"
               onClick={() => handleAdjustTimer(+5)}
-              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-mono font-bold text-xs sm:text-sm transition-all flex items-center justify-center border border-white/10 shadow-sm cursor-pointer"
+              className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-mono font-bold text-xs sm:text-sm transition-all flex items-center justify-center border border-white/10 shadow-sm cursor-pointer"
               title="افزایش ۵ دقیقه"
             >
               +۵د
