@@ -234,14 +234,14 @@ export const CalendarView: React.FC = () => {
       {/* 2. CALENDAR MONTH GRID (APPLE BENTO TILES) */}
       <div
         dir={isGregorian ? 'ltr' : 'rtl'}
-        className="p-5 sm:p-7 bg-white dark:bg-[#1c1c1e] rounded-[32px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_14px_rgba(0,0,0,0.02)] transition-all"
+        className="p-3 sm:p-6 bg-white dark:bg-[#1c1c1e] rounded-[28px] sm:rounded-[32px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_14px_rgba(0,0,0,0.02)] transition-all overflow-hidden"
       >
         {/* Weekday Headers */}
-        <div className="grid grid-cols-7 gap-2 text-center mb-4 pb-2 border-b border-black/[0.04] dark:border-white/[0.06]">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center mb-3 pb-2 border-b border-black/[0.04] dark:border-white/[0.06]">
           {weekdayHeaders.map((wd, i) => (
             <span
               key={i}
-              className={`text-xs font-black tracking-normal ${
+              className={`text-[11px] sm:text-xs font-black tracking-normal truncate ${
                 (isGregorian ? i === 0 : i === 6)
                   ? 'text-rose-500 dark:text-rose-400 font-black'
                   : 'text-slate-400 dark:text-zinc-500'
@@ -253,10 +253,10 @@ export const CalendarView: React.FC = () => {
         </div>
 
         {/* Days Cells Grid */}
-        <div className="grid grid-cols-7 gap-2 sm:gap-3">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2.5">
           {/* Empty Offset Slots */}
           {Array.from({ length: firstDayOffset }).map((_, i) => (
-            <div key={`empty-${i}`} className="h-14 sm:h-20 rounded-2xl bg-transparent opacity-0 pointer-events-none" />
+            <div key={`empty-${i}`} className="h-13 sm:h-20 rounded-xl sm:rounded-2xl bg-transparent opacity-0 pointer-events-none" />
           ))}
 
           {/* Month Days Tiles */}
@@ -271,16 +271,16 @@ export const CalendarView: React.FC = () => {
                   sounds.playPop();
                   setSelectedDate(item.iso);
                 }}
-                className={`h-14 sm:h-20 rounded-2xl sm:rounded-[22px] flex flex-col items-center justify-between p-2 sm:p-2.5 relative transition-all cursor-pointer ${
+                className={`h-13 sm:h-20 rounded-xl sm:rounded-[22px] flex flex-col items-center justify-between p-1 sm:p-2.5 relative transition-all cursor-pointer ${
                   item.isSelected
-                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black shadow-lg scale-104 z-10 ring-2 ring-emerald-500/40'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black shadow-lg scale-102 z-10 ring-2 ring-emerald-500/40'
                     : item.isToday
                     ? 'bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 font-black border-2 border-emerald-500 shadow-xs'
                     : 'bg-slate-50/70 hover:bg-slate-100 dark:bg-[#252528] dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 border border-black/[0.04] dark:border-white/[0.06]'
                 }`}
               >
                 {/* Day Number */}
-                <div className="flex items-center justify-between w-full">
+                <div className="flex items-center justify-between w-full px-0.5">
                   <span className="text-xs sm:text-sm font-black font-mono">
                     {item.displayDay}
                   </span>
@@ -288,7 +288,7 @@ export const CalendarView: React.FC = () => {
                   {/* Task Indicator Dot */}
                   {hasTasks && (
                     <span
-                      className={`w-2 h-2 rounded-full ${
+                      className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0 ${
                         item.isSelected
                           ? 'bg-emerald-400 ring-2 ring-white/30'
                           : item.allDone
@@ -299,10 +299,10 @@ export const CalendarView: React.FC = () => {
                   )}
                 </div>
 
-                {/* Mini Task Pill for Larger Screens */}
+                {/* Mini Task Pill */}
                 {hasTasks && (
                   <div
-                    className={`w-full text-center py-0.5 rounded-lg text-[9px] sm:text-[10px] font-mono font-bold truncate transition-colors ${
+                    className={`w-full text-center py-0.5 rounded-md sm:rounded-lg text-[8.5px] sm:text-[10px] font-mono font-bold truncate transition-colors ${
                       item.isSelected
                         ? 'bg-white/15 dark:bg-black/10 text-white dark:text-slate-900'
                         : item.allDone

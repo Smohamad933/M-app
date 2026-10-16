@@ -304,14 +304,14 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
 
       {/* Expanded description */}
       {expanded && task.description && (
-        <div className="mt-2.5 mr-8 text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200/70 leading-relaxed shadow-2xs">
+        <div className="mt-2.5 mr-0 sm:mr-7 text-xs text-slate-700 dark:text-zinc-300 bg-slate-50 dark:bg-zinc-800/80 p-3 rounded-xl border border-black/[0.04] dark:border-white/[0.06] leading-relaxed shadow-2xs break-words">
           {task.description}
         </div>
       )}
 
       {/* Subtasks checklist if present */}
       {totalSubtasks > 0 && (
-        <div className="mt-2 mr-8">
+        <div className="mt-2 mr-0 sm:mr-7">
           <div
             onClick={() => setExpanded(!expanded)}
             className="flex items-center justify-between text-[11px] text-slate-500 py-1 cursor-pointer select-none"
@@ -360,8 +360,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       )}
 
       {/* Bottom row: Badges, Category, Time, Focus Trigger */}
-      <div className="mt-3 mr-8 flex items-center justify-between flex-wrap gap-2 pt-2.5 border-t border-slate-100">
-        <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="mt-2.5 mr-0 sm:mr-7 flex items-center justify-between flex-wrap gap-1.5 pt-2 border-t border-black/[0.04] dark:border-white/[0.06]">
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
           {/* User badge for admin or for team project tasks */}
           {(currentUser?.role === 'admin' || task.projectId) && assignedName && (
             <span

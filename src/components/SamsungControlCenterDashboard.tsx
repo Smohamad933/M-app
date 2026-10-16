@@ -410,33 +410,33 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
       case 'kpi_cards': {
         const isHalf = colSpan <= 8;
         return (
-          <div className={`grid gap-3.5 sm:gap-4 w-full h-full ${isHalf ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>
-            <div className="p-4 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-600 dark:text-zinc-400">تسک‌های امروز</span>
-                <div className="p-2 rounded-xl bg-[#34c759]/10 text-[#34c759]">
-                  <CheckSquare className="w-4 h-4" />
+          <div className={`grid gap-2.5 sm:gap-4 w-full h-full ${isHalf ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>
+            <div className="p-3.5 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[22px] sm:rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:shadow-md transition-all min-w-0">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                <span className="text-[11px] sm:text-xs font-bold text-slate-600 dark:text-zinc-400 truncate">تسک‌های امروز</span>
+                <div className="p-1.5 sm:p-2 rounded-xl bg-[#34c759]/10 text-[#34c759] shrink-0">
+                  <CheckSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              <div className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
                 {toPersianDigits(todayTotal)}
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 font-bold">
-                {toPersianDigits(todayCompleted)} تسک تکمیل‌شده
+              <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-zinc-400 mt-1 font-bold truncate">
+                {toPersianDigits(todayCompleted)} تسک انجام شد
               </div>
             </div>
 
-            <div className="p-4 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-600 dark:text-zinc-400">نرخ پیشرفت</span>
-                <div className="p-2 rounded-xl bg-[#007aff]/10 text-[#007aff]">
-                  <TrendingUp className="w-4 h-4" />
+            <div className="p-3.5 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[22px] sm:rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:shadow-md transition-all min-w-0">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                <span className="text-[11px] sm:text-xs font-bold text-slate-600 dark:text-zinc-400 truncate">نرخ پیشرفت</span>
+                <div className="p-1.5 sm:p-2 rounded-xl bg-[#007aff]/10 text-[#007aff] shrink-0">
+                  <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              <div className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
                 {toPersianDigits(todayRate)}٪
               </div>
-              <div className="w-full bg-slate-100 dark:bg-zinc-800 h-2 rounded-full mt-2 overflow-hidden">
+              <div className="w-full bg-slate-100 dark:bg-zinc-800 h-1.5 sm:h-2 rounded-full mt-2 overflow-hidden">
                 <div
                   className="bg-[#007aff] h-full rounded-full transition-all duration-500"
                   style={{ width: `${todayRate}%` }}
@@ -444,33 +444,33 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
               </div>
             </div>
 
-            <div className="p-4 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-600 dark:text-zinc-400">تمرکز عمیق</span>
-                <div className="p-2 rounded-xl bg-[#ff9500]/10 text-[#ff9500]">
-                  <Clock className="w-4 h-4" />
+            <div className="p-3.5 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[22px] sm:rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:shadow-md transition-all min-w-0">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                <span className="text-[11px] sm:text-xs font-bold text-slate-600 dark:text-zinc-400 truncate">تمرکز عمیق</span>
+                <div className="p-1.5 sm:p-2 rounded-xl bg-[#ff9500]/10 text-[#ff9500] shrink-0">
+                  <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              <div className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
                 {toPersianDigits(totalFocusMinutes)}
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 font-bold">
-                دقیقه در پومودورو
+              <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-zinc-400 mt-1 font-bold truncate">
+                دقیقه پومودورو
               </div>
             </div>
 
-            <div className="p-4 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-600 dark:text-zinc-400">زنجیره استریک</span>
-                <div className="p-2 rounded-xl bg-[#ff3b30]/10 text-[#ff3b30]">
-                  <Flame className="w-4 h-4" />
+            <div className="p-3.5 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[22px] sm:rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:shadow-md transition-all min-w-0">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                <span className="text-[11px] sm:text-xs font-bold text-slate-600 dark:text-zinc-400 truncate">استمرار روزانه</span>
+                <div className="p-1.5 sm:p-2 rounded-xl bg-[#ff3b30]/10 text-[#ff3b30] shrink-0">
+                  <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              <div className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono truncate">
                 {toPersianDigits(streak.currentStreak)} {getText('streakLabel')}
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 font-bold">
-                بهترین رکورد: {toPersianDigits(streak.bestStreak)} {getText('streakLabel')}
+              <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-zinc-400 mt-1 font-bold truncate">
+                رکورد: {toPersianDigits(streak.bestStreak)} {getText('streakLabel')}
               </div>
             </div>
           </div>

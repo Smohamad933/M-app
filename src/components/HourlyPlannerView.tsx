@@ -305,78 +305,78 @@ export const HourlyPlannerView: React.FC = () => {
       </div>
 
       {/* 2. TOP METRIC KPI CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white dark:bg-[#1c1c1e] rounded-[24px] p-4 sm:p-5 border border-black/[0.06] dark:border-white/[0.08] shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-[11px] text-slate-400 dark:text-zinc-400 font-bold block">کل تسک‌های روز</span>
-            <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1 block font-mono">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="bg-white dark:bg-[#1c1c1e] rounded-[24px] p-3.5 sm:p-5 border border-black/[0.06] dark:border-white/[0.08] shadow-sm flex items-center justify-between min-w-0">
+          <div className="min-w-0 flex-1">
+            <span className="text-[10.5px] sm:text-[11px] text-slate-400 dark:text-zinc-400 font-bold block truncate">کل تسک‌های روز</span>
+            <span className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white mt-0.5 sm:mt-1 block font-mono">
               {toPersianDigits(totalDayTasks)}
             </span>
           </div>
-          <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-[#252528] flex items-center justify-center text-slate-700 dark:text-zinc-300">
-            <Layers className="w-5 h-5" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-slate-100 dark:bg-[#252528] flex items-center justify-center text-slate-700 dark:text-zinc-300 shrink-0 mr-1">
+            <Layers className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#1c1c1e] rounded-[24px] p-4 sm:p-5 border border-black/[0.06] dark:border-white/[0.08] shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-[11px] text-slate-400 dark:text-zinc-400 font-bold block">کارهای زمان‌بندی‌شده</span>
-            <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block font-mono">
+        <div className="bg-white dark:bg-[#1c1c1e] rounded-[24px] p-3.5 sm:p-5 border border-black/[0.06] dark:border-white/[0.08] shadow-sm flex items-center justify-between min-w-0">
+          <div className="min-w-0 flex-1">
+            <span className="text-[10.5px] sm:text-[11px] text-slate-400 dark:text-zinc-400 font-bold block truncate">زمان‌بندی‌شده</span>
+            <span className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5 sm:mt-1 block font-mono">
               {toPersianDigits(timedTasks.length)}
             </span>
           </div>
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-            <Clock className="w-5 h-5" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mr-1">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#1c1c1e] rounded-[24px] p-4 sm:p-5 border border-black/[0.06] dark:border-white/[0.08] shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-[11px] text-slate-400 dark:text-zinc-400 font-bold block">پیشرفت و بازدهی</span>
-            <span className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1 block font-mono">
+        <div className="bg-white dark:bg-[#1c1c1e] rounded-[24px] p-3.5 sm:p-5 border border-black/[0.06] dark:border-white/[0.08] shadow-sm flex items-center justify-between min-w-0">
+          <div className="min-w-0 flex-1">
+            <span className="text-[10.5px] sm:text-[11px] text-slate-400 dark:text-zinc-400 font-bold block truncate">پیشرفت و بازدهی</span>
+            <span className="text-lg sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5 sm:mt-1 block font-mono">
               {toPersianDigits(completionRate)}٪
             </span>
           </div>
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mr-1">
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#1c1c1e] rounded-[24px] p-4 sm:p-5 border border-black/[0.06] dark:border-white/[0.08] shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-[11px] text-slate-400 dark:text-zinc-400 font-bold block">ساعت رسمی ایران</span>
-            <span className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 mt-1 block font-mono" dir="ltr">
+        <div className="bg-white dark:bg-[#1c1c1e] rounded-[24px] p-3.5 sm:p-5 border border-black/[0.06] dark:border-white/[0.08] shadow-sm flex items-center justify-between min-w-0">
+          <div className="min-w-0 flex-1">
+            <span className="text-[10.5px] sm:text-[11px] text-slate-400 dark:text-zinc-400 font-bold block truncate">ساعت رسمی ایران</span>
+            <span className="text-sm sm:text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5 sm:mt-1 block font-mono truncate" dir="ltr">
               {toPersianDigits(String(currentHour).padStart(2, '0'))}:{toPersianDigits(String(currentMinute).padStart(2, '0'))}:{toPersianDigits(String(currentSecond).padStart(2, '0'))}
             </span>
           </div>
-          <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-            <Zap className="w-5 h-5" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 mr-1">
+            <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
       </div>
 
       {/* 3. DAYLIGHT PHASES CAPSULES */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
         <button
           type="button"
           onClick={() => {
             sounds.playPop();
             setPhaseFilter(phaseFilter === 'morning' ? 'all' : 'morning');
           }}
-          className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+          className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between min-w-0 ${
             phaseFilter === 'morning'
               ? 'bg-amber-500/15 border-amber-500/40 text-amber-900 dark:text-amber-200 shadow-sm'
               : 'bg-white dark:bg-[#1c1c1e] border-black/[0.06] dark:border-white/[0.08] text-slate-700 dark:text-zinc-300 hover:border-amber-400/50'
           }`}
         >
-          <div className="flex items-center gap-2">
-            <Sunrise className="w-4 h-4 text-amber-500" />
-            <div className="text-right">
-              <span className="text-xs font-black block">صبحگاه</span>
-              <span className="text-[10px] text-slate-400 font-mono">۰۶ تا ۱۲</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <Sunrise className="w-4 h-4 text-amber-500 shrink-0" />
+            <div className="text-right min-w-0">
+              <span className="text-xs font-black block truncate">صبحگاه</span>
+              <span className="text-[9.5px] sm:text-[10px] text-slate-400 font-mono block">۰۶ تا ۱۲</span>
             </div>
           </div>
-          <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-xs font-black">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-[11px] sm:text-xs font-black shrink-0">
             {toPersianDigits(phaseCounts.morning)}
           </span>
         </button>
@@ -387,20 +387,20 @@ export const HourlyPlannerView: React.FC = () => {
             sounds.playPop();
             setPhaseFilter(phaseFilter === 'noon' ? 'all' : 'noon');
           }}
-          className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+          className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between min-w-0 ${
             phaseFilter === 'noon'
               ? 'bg-orange-500/15 border-orange-500/40 text-orange-900 dark:text-orange-200 shadow-sm'
               : 'bg-white dark:bg-[#1c1c1e] border-black/[0.06] dark:border-white/[0.08] text-slate-700 dark:text-zinc-300 hover:border-orange-400/50'
           }`}
         >
-          <div className="flex items-center gap-2">
-            <Sun className="w-4 h-4 text-orange-500" />
-            <div className="text-right">
-              <span className="text-xs font-black block">نیمروز</span>
-              <span className="text-[10px] text-slate-400 font-mono">۱۲ تا ۱۶</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <Sun className="w-4 h-4 text-orange-500 shrink-0" />
+            <div className="text-right min-w-0">
+              <span className="text-xs font-black block truncate">نیمروز</span>
+              <span className="text-[9.5px] sm:text-[10px] text-slate-400 font-mono block">۱۲ تا ۱۶</span>
             </div>
           </div>
-          <span className="px-2 py-0.5 rounded-lg bg-orange-500/20 text-orange-700 dark:text-orange-300 font-mono text-xs font-black">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-orange-500/20 text-orange-700 dark:text-orange-300 font-mono text-[11px] sm:text-xs font-black shrink-0">
             {toPersianDigits(phaseCounts.noon)}
           </span>
         </button>
@@ -411,20 +411,20 @@ export const HourlyPlannerView: React.FC = () => {
             sounds.playPop();
             setPhaseFilter(phaseFilter === 'evening' ? 'all' : 'evening');
           }}
-          className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+          className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between min-w-0 ${
             phaseFilter === 'evening'
               ? 'bg-rose-500/15 border-rose-500/40 text-rose-900 dark:text-rose-200 shadow-sm'
               : 'bg-white dark:bg-[#1c1c1e] border-black/[0.06] dark:border-white/[0.08] text-slate-700 dark:text-zinc-300 hover:border-rose-400/50'
           }`}
         >
-          <div className="flex items-center gap-2">
-            <Sunset className="w-4 h-4 text-rose-500" />
-            <div className="text-right">
-              <span className="text-xs font-black block">عصرگاه</span>
-              <span className="text-[10px] text-slate-400 font-mono">۱۶ تا ۲۰</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <Sunset className="w-4 h-4 text-rose-500 shrink-0" />
+            <div className="text-right min-w-0">
+              <span className="text-xs font-black block truncate">عصرگاه</span>
+              <span className="text-[9.5px] sm:text-[10px] text-slate-400 font-mono block">۱۶ تا ۲۰</span>
             </div>
           </div>
-          <span className="px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-700 dark:text-rose-300 font-mono text-xs font-black">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-700 dark:text-rose-300 font-mono text-[11px] sm:text-xs font-black shrink-0">
             {toPersianDigits(phaseCounts.evening)}
           </span>
         </button>
@@ -435,20 +435,20 @@ export const HourlyPlannerView: React.FC = () => {
             sounds.playPop();
             setPhaseFilter(phaseFilter === 'night' ? 'all' : 'night');
           }}
-          className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+          className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between min-w-0 ${
             phaseFilter === 'night'
               ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-900 dark:text-indigo-200 shadow-sm'
               : 'bg-white dark:bg-[#1c1c1e] border-black/[0.06] dark:border-white/[0.08] text-slate-700 dark:text-zinc-300 hover:border-indigo-400/50'
           }`}
         >
-          <div className="flex items-center gap-2">
-            <Moon className="w-4 h-4 text-indigo-500" />
-            <div className="text-right">
-              <span className="text-xs font-black block">شبانگاه</span>
-              <span className="text-[10px] text-slate-400 font-mono">۲۰ تا ۲۴</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <Moon className="w-4 h-4 text-indigo-500 shrink-0" />
+            <div className="text-right min-w-0">
+              <span className="text-xs font-black block truncate">شبانگاه</span>
+              <span className="text-[9.5px] sm:text-[10px] text-slate-400 font-mono block">۲۰ تا ۲۴</span>
             </div>
           </div>
-          <span className="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-mono text-xs font-black">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-mono text-[11px] sm:text-xs font-black shrink-0">
             {toPersianDigits(phaseCounts.night)}
           </span>
         </button>

@@ -347,48 +347,48 @@ export const FocusTimer: React.FC = () => {
       {focusType === 'group' ? (
         <GroupFocusRoom />
       ) : (
-        <div className="rounded-[36px] bg-white dark:bg-[#1c1c1e] border border-black/[0.06] dark:border-white/[0.08] p-6 sm:p-8 shadow-[0_4px_30px_rgba(0,0,0,0.03)] flex flex-col items-center space-y-6 relative overflow-hidden">
+        <div className="rounded-[32px] sm:rounded-[36px] bg-white dark:bg-[#1c1c1e] border border-black/[0.06] dark:border-white/[0.08] p-4 sm:p-8 shadow-[0_4px_30px_rgba(0,0,0,0.03)] flex flex-col items-center space-y-5 sm:space-y-6 relative overflow-hidden">
           {/* Subtle Aurora Ambient Lights */}
           <div className="absolute -top-24 -right-24 w-60 h-60 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-24 w-60 h-60 rounded-full bg-indigo-500/10 dark:bg-indigo-500/15 blur-3xl pointer-events-none" />
 
           {/* Mode Switcher Pills: Focus, Short Break, Long Break */}
-          <div className="w-full flex items-center p-1.5 bg-slate-100 dark:bg-[#252528] rounded-2xl border border-black/[0.04] dark:border-white/[0.06] gap-1 z-10">
+          <div className="w-full flex items-center p-1 sm:p-1.5 bg-slate-100 dark:bg-[#252528] rounded-2xl border border-black/[0.04] dark:border-white/[0.06] gap-1 z-10">
             <button
               onClick={() => handleModeChange('focus')}
-              className={`flex-1 py-2 px-2 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 px-1 sm:px-2 text-[11px] sm:text-xs font-black rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 ${
                 mode === 'focus'
                   ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-emerald-400 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Zap className="w-3.5 h-3.5 text-emerald-500" />
+              <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-500 shrink-0" />
               <span>تمرکز عمیق</span>
               <span className="text-[10px] font-mono opacity-80">({toPersianDigits(focusDurationMin)}د)</span>
             </button>
 
             <button
               onClick={() => handleModeChange('shortBreak')}
-              className={`flex-1 py-2 px-2 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 px-1 sm:px-2 text-[11px] sm:text-xs font-black rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 ${
                 mode === 'shortBreak'
                   ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-amber-400 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Coffee className="w-3.5 h-3.5 text-amber-500" />
+              <Coffee className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-500 shrink-0" />
               <span>استراحت کوتاه</span>
               <span className="text-[10px] font-mono opacity-80">({toPersianDigits(shortBreakDurationMin)}د)</span>
             </button>
 
             <button
               onClick={() => handleModeChange('longBreak')}
-              className={`flex-1 py-2 px-2 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 px-1 sm:px-2 text-[11px] sm:text-xs font-black rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 ${
                 mode === 'longBreak'
                   ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-purple-400 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-500 shrink-0" />
               <span>استراحت بلند</span>
               <span className="text-[10px] font-mono opacity-80">({toPersianDigits(longBreakDurationMin)}د)</span>
             </button>
@@ -496,7 +496,7 @@ export const FocusTimer: React.FC = () => {
           </div>
 
           {/* High-End Circular Radial Chronometer */}
-          <div className="relative w-64 h-64 sm:w-76 sm:h-76 flex items-center justify-center my-3 z-10">
+          <div className="relative w-56 h-56 sm:w-72 sm:h-72 flex items-center justify-center my-2 sm:my-3 z-10">
             <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 280 280">
               <circle
                 cx="140"
@@ -526,11 +526,11 @@ export const FocusTimer: React.FC = () => {
             </svg>
 
             <div className="absolute flex flex-col items-center justify-center text-center">
-              <span className="text-5xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-wider font-mono">
+              <span className="text-4xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-wider font-mono">
                 {toPersianDigits(formattedTime)}
               </span>
 
-              <span className="text-xs font-bold text-slate-500 dark:text-zinc-400 mt-1.5">
+              <span className="text-xs font-bold text-slate-500 dark:text-zinc-400 mt-1 sm:mt-1.5">
                 {mode === 'focus'
                   ? isRunning
                     ? 'تمرکز عمیق و پربازده ⚡'
@@ -539,7 +539,7 @@ export const FocusTimer: React.FC = () => {
               </span>
 
               {isRunning && mode === 'focus' && (
-                <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black animate-pulse">
+                <div className="mt-2 sm:mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black animate-pulse">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   <span>در حال ثبت لحظه‌ای زمان</span>
                 </div>
@@ -548,10 +548,10 @@ export const FocusTimer: React.FC = () => {
           </div>
 
           {/* Ambient White Noise Selector */}
-          <div className="z-10 flex items-center gap-1.5 bg-slate-50 dark:bg-[#252528] p-1.5 rounded-2xl border border-black/[0.04] dark:border-white/[0.06] text-xs font-bold text-slate-600 dark:text-zinc-300">
-            <span className="flex items-center gap-1 pl-2 text-slate-400">
+          <div className="z-10 flex items-center gap-1.5 bg-slate-50 dark:bg-[#252528] p-1.5 rounded-2xl border border-black/[0.04] dark:border-white/[0.06] text-xs font-bold text-slate-600 dark:text-zinc-300 flex-wrap justify-center">
+            <span className="flex items-center gap-1 pl-1.5 text-slate-400">
               <Waves className="w-3.5 h-3.5" />
-              <span>صدای محیط:</span>
+              <span>صدا:</span>
             </span>
             <button
               type="button"
@@ -599,19 +599,19 @@ export const FocusTimer: React.FC = () => {
                 ambientSound === 'white' ? 'bg-purple-600 text-white font-black' : 'hover:bg-slate-200'
               }`}
             >
-              📻 نویز سفید
+              📻 نویز
             </button>
           </div>
 
           {/* Action Buttons: Play/Pause, Reset, Mute */}
-          <div className="flex items-center gap-3 z-10 w-full max-w-sm">
+          <div className="flex items-center gap-2.5 sm:gap-3 z-10 w-full max-w-sm">
             <button
               type="button"
               onClick={() => {
                 sounds.playPop();
                 setSoundEnabled(!soundEnabled);
               }}
-              className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+              className={`p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer shrink-0 ${
                 soundEnabled
                   ? 'border-black/[0.08] dark:border-white/[0.1] text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800'
                   : 'border-black/[0.04] text-slate-400 opacity-50'
@@ -624,7 +624,7 @@ export const FocusTimer: React.FC = () => {
             <button
               type="button"
               onClick={toggleTimer}
-              className={`flex-1 py-4 px-6 rounded-2xl font-black text-sm text-white shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 py-3.5 sm:py-4 px-4 sm:px-6 rounded-2xl font-black text-sm text-white shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
                 isRunning
                   ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/25'
                   : 'bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-100 dark:text-slate-900 shadow-emerald-500/20'
@@ -646,7 +646,7 @@ export const FocusTimer: React.FC = () => {
             <button
               type="button"
               onClick={resetTimer}
-              className="p-3.5 rounded-2xl border border-black/[0.08] dark:border-white/[0.1] text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer"
+              className="p-3 sm:p-3.5 rounded-2xl border border-black/[0.08] dark:border-white/[0.1] text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer shrink-0"
               title="شروع مجدد تایمر"
             >
               <RotateCcw className="w-5 h-5" />
@@ -654,40 +654,40 @@ export const FocusTimer: React.FC = () => {
           </div>
 
           {/* Bottom Bento Stats Card */}
-          <div className="w-full pt-4 border-t border-black/[0.06] dark:border-white/[0.08] grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center z-10">
+          <div className="w-full pt-4 border-t border-black/[0.06] dark:border-white/[0.08] grid grid-cols-2 sm:grid-cols-4 gap-2 text-center z-10">
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#252528] border border-black/[0.04] dark:border-white/[0.06]">
-              <span className="text-lg font-black text-slate-900 dark:text-white font-mono block">
+              <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-mono block">
                 {toPersianDigits(completedSessions)}
               </span>
-              <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-400">
-                پومودوروی کامل
+              <span className="text-[10.5px] sm:text-[11px] font-bold text-slate-400 dark:text-zinc-400 truncate block">
+                پومودورو
               </span>
             </div>
 
             <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-              <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono block">
+              <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono block">
                 {toPersianDigits(liveSavedMinutes + (activeTask?.focusMinutesSpent || 0))} د
               </span>
-              <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                زمان تمرکز ذخیره
+              <span className="text-[10.5px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-300 truncate block">
+                دقایق تمرکز
               </span>
             </div>
 
             <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-              <span className="text-lg font-black text-amber-600 dark:text-amber-400 font-mono block">
+              <span className="text-base sm:text-lg font-black text-amber-600 dark:text-amber-400 font-mono block">
                 {toPersianDigits(completedSessions * 10)} 💎
               </span>
-              <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                الماس پاداش
+              <span className="text-[10.5px] sm:text-[11px] font-bold text-amber-700 dark:text-amber-300 truncate block">
+                الماس کسب‌شده
               </span>
             </div>
 
             <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
-              <span className="text-lg font-black text-indigo-600 dark:text-indigo-400 font-mono block">
+              <span className="text-base sm:text-lg font-black text-indigo-600 dark:text-indigo-400 font-mono block">
                 {completedSessions > 0 ? '۱۰۰٪' : '۰٪'}
               </span>
-              <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
-                نرخ تکمیل
+              <span className="text-[10.5px] sm:text-[11px] font-bold text-indigo-700 dark:text-indigo-300 truncate block">
+                نرخ موفقیت
               </span>
             </div>
           </div>

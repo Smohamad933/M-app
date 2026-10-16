@@ -1231,29 +1231,29 @@ export const UserManagementView: React.FC = () => {
       {adminTab === 'users' && (
         <div className="space-y-6 animate-in fade-in">
           {/* Stats summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="p-5 bg-white dark:bg-[#1c1c1e] rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs">
-              <div className="text-xs font-bold text-slate-400 dark:text-zinc-400 mb-1">کل کاربران ثبت‌شده</div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">{toPersianDigits(users.length)}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+            <div className="p-3.5 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[24px] sm:rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs min-w-0">
+              <div className="text-[11px] sm:text-xs font-bold text-slate-400 dark:text-zinc-400 mb-1 truncate">کل کاربران ثبت‌شده</div>
+              <div className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">{toPersianDigits(users.length)}</div>
             </div>
 
-            <div className="p-5 bg-white dark:bg-[#1c1c1e] rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs">
-              <div className="text-xs font-bold text-slate-400 dark:text-zinc-400 mb-1">اشتراک‌های ویژه ⭐</div>
-              <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono">
+            <div className="p-3.5 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[24px] sm:rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs min-w-0">
+              <div className="text-[11px] sm:text-xs font-bold text-slate-400 dark:text-zinc-400 mb-1 truncate">اشتراک‌های ویژه ⭐</div>
+              <div className="text-xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono">
                 {toPersianDigits(users.filter((u) => u.role === 'admin' || (!!u.subscription?.plan && u.subscription.plan !== 'free')).length)}
               </div>
             </div>
 
-            <div className="p-5 bg-white dark:bg-[#1c1c1e] rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs">
-              <div className="text-xs font-bold text-slate-400 dark:text-zinc-400 mb-1">کاربران پلن رایگان</div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-600 dark:text-zinc-300 font-mono">
+            <div className="p-3.5 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[24px] sm:rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs min-w-0">
+              <div className="text-[11px] sm:text-xs font-bold text-slate-400 dark:text-zinc-400 mb-1 truncate">کاربران رایگان</div>
+              <div className="text-xl sm:text-3xl font-black text-slate-600 dark:text-zinc-300 font-mono">
                 {toPersianDigits(users.filter((u) => u.role !== 'admin' && (!u.subscription?.plan || u.subscription.plan === 'free')).length)}
               </div>
             </div>
 
-            <div className="p-5 bg-white dark:bg-[#1c1c1e] rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs">
-              <div className="text-xs font-bold text-slate-400 dark:text-zinc-400 mb-1">میانگین پیشرفت تیم</div>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+            <div className="p-3.5 sm:p-5 bg-white dark:bg-[#1c1c1e] rounded-[24px] sm:rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs min-w-0">
+              <div className="text-[11px] sm:text-xs font-bold text-slate-400 dark:text-zinc-400 mb-1 truncate">میانگین پیشرفت تیم</div>
+              <div className="text-xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
                 {toPersianDigits(
                   users.length > 0
                     ? Math.round(users.reduce((acc, u) => acc + (u.progressPercent || 0), 0) / users.length)
