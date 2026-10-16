@@ -997,9 +997,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
       </aside>
 
       {/* 2. MAIN CONTENT AREA - STAYS SOLID & INDEPENDENT */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen bg-[#f4f7fa] overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-screen bg-[#f8fafc] dark:bg-[#090d16] text-slate-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300">
         {/* Top Header Bar - 100% FIXED AT TOP */}
-        <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 py-2 sm:py-3 z-20 flex-shrink-0 flex flex-col gap-2 max-w-full shadow-2xs">
+        <header className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-slate-200/70 dark:border-white/10 px-3 sm:px-6 py-2.5 sm:py-3 z-20 flex-shrink-0 flex flex-col gap-2 max-w-full shadow-xs">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
               {/* Left/Start Actions on Mobile & Desktop Search Bar */}
               <div className="flex items-center gap-2 flex-1 min-w-0">

@@ -1,213 +1,45 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTask } from '../context/TaskContext';
-import { toPersianDigits, formatAppDate } from '../utils/persianDate';
+import { toPersianDigits, formatAppDate, getTodayISO } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
-import { TaskMasterBentoWidgets } from './TaskMasterBentoWidgets';
-import { QuickAddBar } from './QuickAddBar';
-import { DashboardTaskList } from './DashboardTaskList';
 import { WeeklyStrip } from './WeeklyStrip';
-import { UserAvatar } from './UserAvatar';
 import { ZenStandbyModal } from './ZenStandbyModal';
 import { CalendarSyncModal } from './CalendarSyncModal';
 import { TribeChallengesModal } from './TribeChallengesModal';
 import { MonthlyReportCardModal } from './MonthlyReportCardModal';
 import { DataBackupModal } from './DataBackupModal';
+import { FocusGardenShopModal } from './FocusGardenShopModal';
 import { FocusGardenWidget } from './FocusGardenWidget';
 import { MicroHabitsWidget } from './MicroHabitsWidget';
 import { getUserGems } from '../utils/gemManager';
+import type { Priority } from '../types';
 import {
-  SlidersHorizontal,
-  Pencil,
-  ArrowUp,
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  Maximize2,
-  Eye,
-  EyeOff,
-  Plus,
-  RotateCcw,
   Check,
-  GripVertical,
-  CheckSquare,
   Clock,
-  TrendingUp,
-  Flame,
-  Newspaper,
-  Feather,
-  CheckCircle2,
-  MessageSquare,
-  ArrowUpRight,
-  CalendarDays,
-  Calendar,
   Sparkles,
-  Download,
-  Trophy,
-  Database,
+  Flame,
+  Plus,
+  Play,
+  Pause,
+  RotateCcw,
+  Maximize2,
   Share2,
+  Calendar,
+  CalendarDays,
+  Database,
+  Trophy,
+  Star,
+  Trash2,
   ChevronDown,
+  Timer,
+  Feather,
+  TrendingUp,
 } from 'lucide-react';
 
-export interface SamsungWidgetConfig {
-  id: string;
-  title: string;
-  subtitle: string;
-  colSpan: 12 | 8 | 6 | 4 | 3;
-  visible: boolean;
-  category: 'kpi' | 'tasks' | 'calendar' | 'tools' | 'chat';
-}
-
-export const DEFAULT_SAMSUNG_WIDGETS: SamsungWidgetConfig[] = [
-  {
-    id: 'kpi_cards',
-    title: 'کارت‌های شاخص عملکرد (KPI)',
-    subtitle: 'آمار تسک‌های امروز، نرخ پیشرفت، تمرکز عمیق و زنجیره استریک',
-    colSpan: 12,
-    visible: true,
-    category: 'kpi',
-  },
-  {
-    id: 'focus_garden',
-    title: 'باغچه تمرکز و سطح افتخار (XP)',
-    subtitle: 'پرورش گیاه مجازی با دقایق تمرکز و انجام تسک‌ها',
-    colSpan: 6,
-    visible: true,
-    category: 'tools',
-  },
-  {
-    id: 'micro_habits',
-    title: 'هاب عادات روزانه و استمرار',
-    subtitle: 'پیگیری عادات کوچک و نقشه حرارتی ۲۸ روزه',
-    colSpan: 6,
-    visible: true,
-    category: 'tools',
-  },
-  {
-    id: 'zen_standby',
-    title: 'حالت تمرکز رومیزی مینیمال (ساعت هوشمند)',
-    subtitle: 'نمای بزرگ ساعت رومیزی، تایمر و اصوات باران و آرامش',
-    colSpan: 6,
-    visible: true,
-    category: 'tools',
-  },
-  {
-    id: 'calendar_sync',
-    title: 'خروجی تقویم و همگام‌سازی ابری',
-    subtitle: 'خروجی استاندارد تقویم (.ics)، گوگل کلندر و اوت‌لوک',
-    colSpan: 6,
-    visible: true,
-    category: 'tools',
-  },
-  {
-    id: 'tribe_challenges',
-    title: 'چالش‌های گروهی و قبیله',
-    subtitle: 'همکاری جمعی برای فتح اهداف، دریافت الماس و جوایز نایاب',
-    colSpan: 6,
-    visible: true,
-    category: 'tools',
-  },
-  {
-    id: 'monthly_report_card',
-    title: 'کارت وضعیت و کارنامه ماهانه',
-    subtitle: 'استاتوس تصویری عملکرد ماهانه مناسب برای اشتراک‌گذاری',
-    colSpan: 6,
-    visible: true,
-    category: 'tools',
-  },
-  {
-    id: 'data_backup',
-    title: 'پشتیبان‌گیری محلی و بازیابی اطلاعات',
-    subtitle: 'دانلود نسخه پشتیبان آفلاین JSON و بازیابی آسان',
-    colSpan: 6,
-    visible: true,
-    category: 'tools',
-  },
-  {
-    id: 'bento_tasks',
-    title: 'کارهای امروز و پیام امیدبخش',
-    subtitle: 'فهرست کارهای فردی و تیمی به همراه نوار پیشرفت',
-    colSpan: 6,
-    visible: true,
-    category: 'tasks',
-  },
-  {
-    id: 'bento_calendar',
-    title: 'تقویم تعاملی ماهانه',
-    subtitle: 'نمای ماه با شمارنده تسک‌ها و پشتیبانی شمسی/میلادی',
-    colSpan: 6,
-    visible: true,
-    category: 'calendar',
-  },
-  {
-    id: 'bento_progress',
-    title: 'پیشرفت واقعی تسک‌ها در ۷ روز',
-    subtitle: 'نمودار میله‌ای مقایسه‌ای انجام کارها در طول هفته',
-    colSpan: 6,
-    visible: true,
-    category: 'kpi',
-  },
-  {
-    id: 'bento_timeline',
-    title: 'زمان‌بندی گانت تسک‌های امروز',
-    subtitle: 'خط زمان زنده و تقسیم‌بندی ساعتی کارهای زمان‌دار',
-    colSpan: 6,
-    visible: true,
-    category: 'tasks',
-  },
-  {
-    id: 'upcoming_tasks',
-    title: 'برنامه‌ی پیشِ رو و ثبت سریع',
-    subtitle: 'تسک‌های اولویت‌دار روز، پین‌شده‌ها و نوار ثبت سریع',
-    colSpan: 8,
-    visible: true,
-    category: 'tasks',
-  },
-  {
-    id: 'story_newspaper',
-    title: 'استوری روزنامه و داستان روز',
-    subtitle: 'مقایسه عملکرد با مفاخر و ثبت ژورنال روزانه',
-    colSpan: 4,
-    visible: true,
-    category: 'tools',
-  },
-  {
-    id: 'weekly_strip',
-    title: 'تقویم روزهای هفته',
-    subtitle: 'نوار افقی انتخاب و مرور سریع روزهای هفته جاری',
-    colSpan: 6,
-    visible: true,
-    category: 'calendar',
-  },
-  {
-    id: 'productivity_tip',
-    title: 'تکنیک بهره‌وری روز و پومودورو',
-    subtitle: 'نکات روزانه مدیریت زمان و دکمه شروع سریع تمرکز',
-    colSpan: 6,
-    visible: true,
-    category: 'tools',
-  },
-  {
-    id: 'bento_notes',
-    title: 'یادداشت‌های روزانه و ایده‌ها',
-    subtitle: 'همگام‌سازی بلادرنگ با افزونه نیوتَب مرورگر',
-    colSpan: 12,
-    visible: true,
-    category: 'tools',
-  },
-  {
-    id: 'colleagues_chat',
-    title: 'پیام‌ها و گفتگوی مستقیم با همکاران',
-    subtitle: 'مکالمه سریع و پیام‌رسانی کاری با اعضای تیم',
-    colSpan: 12,
-    visible: true,
-    category: 'chat',
-  },
-];
-
 interface SamsungControlCenterDashboardProps {
-  onOpenCreateTask: (date?: string) => void;
+  onOpenCreateTask?: (date?: string) => void;
   onOpenNewspaperStory: () => void;
-  onOpenDailyStory: () => void;
+  onOpenDailyStory?: () => void;
   onOpenPublicProfile: (user: any) => void;
   onStartDirectChat: (friend: any) => void;
   setActiveTab: (tab: any) => void;
@@ -218,19 +50,30 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
   onOpenCreateTask,
   onOpenNewspaperStory,
   onOpenDailyStory,
-  onOpenPublicProfile,
-  onStartDirectChat,
   setActiveTab,
-  interfaceMode = 'advanced',
 }) => {
-  const { tasks, currentUser, selectedDate, streak, getText, friends, calendarType } = useTask();
+  const {
+    tasks,
+    currentUser,
+    selectedDate,
+    streak,
+    calendarType,
+    categories,
+    addTask,
+    updateTask,
+    deleteTask,
+    toggleTaskComplete,
+    togglePin,
+    openCreateModal,
+  } = useTask();
 
-  // Modals
+  // Modals state
   const [isZenOpen, setIsZenOpen] = useState(false);
   const [isCalendarSyncOpen, setIsCalendarSyncOpen] = useState(false);
   const [isTribeModalOpen, setIsTribeModalOpen] = useState(false);
   const [isReportCardOpen, setIsReportCardOpen] = useState(false);
   const [isDataBackupOpen, setIsDataBackupOpen] = useState(false);
+  const [isGardenShopOpen, setIsGardenShopOpen] = useState(false);
   const [isHeroToolsOpen, setIsHeroToolsOpen] = useState(false);
 
   // Gems synchronization
@@ -244,357 +87,786 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
     return () => window.removeEventListener('taskrooz_garden_updated', handleUpdate);
   }, [userKey]);
 
-  // Simple Mode is directly controlled by the sidebar interfaceMode toggle!
-  const isSimpleMode = interfaceMode === 'simple';
+  // Focus Station state (Minimal in-dashboard timer synced with selected task)
+  const [focusTaskId, setFocusTaskId] = useState<string | null>(null);
+  const [focusSeconds, setFocusSeconds] = useState<number>(25 * 60);
+  const [isFocusRunning, setIsFocusRunning] = useState<boolean>(false);
 
-  // Modular Layout Persistence
-  const storageKey = `taskrooz_dashboard_layout_${userKey}`;
+  // Task filter tabs
+  const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'completed' | 'starred'>('all');
 
-  const [widgets, setWidgets] = useState<SamsungWidgetConfig[]>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed: SamsungWidgetConfig[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const existingIds = new Set(parsed.map((w) => w.id));
-          const missing = DEFAULT_SAMSUNG_WIDGETS.filter((w) => !existingIds.has(w.id));
-          return [...parsed, ...missing];
-        }
-      }
-    } catch {}
-    return DEFAULT_SAMSUNG_WIDGETS;
-  });
+  // Quick Add input state (Amie-style fast input)
+  const [quickTitle, setQuickTitle] = useState('');
+  const [quickPriority, setQuickPriority] = useState<Priority>('medium');
+  const [quickDuration, setQuickDuration] = useState<number>(25);
+  const [isSubmittingTask, setIsSubmittingTask] = useState(false);
 
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [showHiddenTray, setShowHiddenTray] = useState(false);
+  // Selected date ISO
+  const activeDate = selectedDate || getTodayISO();
 
+  // Tasks for current selected date
+  const dateTasks = useMemo(() => {
+    return tasks.filter((t) => t.date === activeDate);
+  }, [tasks, activeDate]);
+
+  // Filtered task stream
+  const filteredTasks = useMemo(() => {
+    let list = [...dateTasks];
+
+    if (taskFilter === 'pending') {
+      list = list.filter((t) => !t.completed);
+    } else if (taskFilter === 'completed') {
+      list = list.filter((t) => t.completed);
+    } else if (taskFilter === 'starred') {
+      list = list.filter((t) => t.isPinned);
+    }
+
+    // Sort: Pinned first, then incomplete first, then by time
+    return list.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      if (!a.completed && b.completed) return -1;
+      if (a.completed && !b.completed) return 1;
+      return (a.time || '99:99').localeCompare(b.time || '99:99');
+    });
+  }, [dateTasks, taskFilter]);
+
+  // Daily statistics
+  const totalCount = dateTasks.length;
+  const completedCount = dateTasks.filter((t) => t.completed).length;
+  const pendingCount = totalCount - completedCount;
+  const starredCount = dateTasks.filter((t) => t.isPinned).length;
+  const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  // Active focus task object
+  const activeFocusTask = useMemo(() => {
+    return tasks.find((t) => t.id === focusTaskId) || null;
+  }, [tasks, focusTaskId]);
+
+  // Focus station timer countdown loop
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed: SamsungWidgetConfig[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const existingIds = new Set(parsed.map((w) => w.id));
-          const missing = DEFAULT_SAMSUNG_WIDGETS.filter((w) => !existingIds.has(w.id));
-          setWidgets([...parsed, ...missing]);
-          return;
+    if (!isFocusRunning) return;
+    const interval = setInterval(() => {
+      setFocusSeconds((prev) => {
+        if (prev <= 1) {
+          setIsFocusRunning(false);
+          sounds.playComplete();
+          if (activeFocusTask) {
+            updateTask({
+              ...activeFocusTask,
+              focusMinutesSpent: (activeFocusTask.focusMinutesSpent || 0) + 25,
+            });
+          }
+          return 0;
         }
-      }
-    } catch {}
-    setWidgets(DEFAULT_SAMSUNG_WIDGETS);
-  }, [userKey]);
+        return prev - 1;
+      });
+    }, 1000);
 
-  // Persist widgets layout
-  const saveLayout = (updated: SamsungWidgetConfig[]) => {
-    setWidgets(updated);
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-    } catch {}
-  };
+    return () => clearInterval(interval);
+  }, [isFocusRunning, activeFocusTask, updateTask]);
 
-  // Movement operations
-  const moveUp = (index: number) => {
-    if (index <= 0) return;
+  // Adjust station timer by +/- 5 minutes
+  const handleAdjustStationTimer = (minutes: number) => {
     sounds.playPop();
-    const next = [...widgets];
-    const target = index >= 2 ? index - 2 : index - 1;
-    const [item] = next.splice(index, 1);
-    next.splice(target, 0, item);
-    saveLayout(next);
+    setFocusSeconds((prev) => Math.max(60, prev + minutes * 60));
   };
 
-  const moveDown = (index: number) => {
-    if (index >= widgets.length - 1) return;
-    sounds.playPop();
-    const next = [...widgets];
-    const target = index + 2 < next.length ? index + 2 : index + 1;
-    const [item] = next.splice(index, 1);
-    next.splice(target, 0, item);
-    saveLayout(next);
-  };
-
-  const moveLeft = (index: number) => {
-    if (index >= widgets.length - 1) return;
-    sounds.playPop();
-    const next = [...widgets];
-    const [item] = next.splice(index, 1);
-    next.splice(index + 1, 0, item);
-    saveLayout(next);
-  };
-
-  const moveRight = (index: number) => {
-    if (index <= 0) return;
-    sounds.playPop();
-    const next = [...widgets];
-    const [item] = next.splice(index, 1);
-    next.splice(index - 1, 0, item);
-    saveLayout(next);
-  };
-
-  const setWidgetWidth = (index: number, span: 12 | 8 | 6 | 4) => {
-    sounds.playPop();
-    const next = [...widgets];
-    next[index].colSpan = span;
-    saveLayout(next);
-  };
-
-  const toggleVisibility = (index: number) => {
-    sounds.playPop();
-    const next = [...widgets];
-    next[index].visible = !next[index].visible;
-    saveLayout(next);
-  };
-
-  const unhideWidget = (id: string) => {
-    sounds.playComplete();
-    const next = widgets.map((w) => (w.id === id ? { ...w, visible: true } : w));
-    saveLayout(next);
-  };
-
-  const handleReset = () => {
-    sounds.playPop();
-    saveLayout(DEFAULT_SAMSUNG_WIDGETS);
-  };
-
-  // HTML5 Drag and Drop Handlers
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    try {
-      e.dataTransfer.setData('text/plain', String(index));
-    } catch {}
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
+  // Quick add task submit
+  const handleQuickAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    const trimmed = quickTitle.trim();
+    if (!trimmed || isSubmittingTask) return;
+
+    setIsSubmittingTask(true);
+    sounds.playPop();
+
+    try {
+      const defaultCat = categories[0]?.id || 'cat-work';
+      await addTask({
+        title: trimmed,
+        date: activeDate,
+        priority: quickPriority,
+        categoryId: defaultCat,
+        durationMinutes: quickDuration,
+        completed: false,
+        subtasks: [],
+      });
+      setQuickTitle('');
+      sounds.playComplete();
+    } catch (err) {
+      console.error('Failed to quick-add task', err);
+    } finally {
+      setIsSubmittingTask(false);
+    }
   };
 
-  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === targetIndex) return;
-    sounds.playComplete();
-    const next = [...widgets];
-    const [moved] = next.splice(draggedIndex, 1);
-    next.splice(targetIndex, 0, moved);
-    setDraggedIndex(null);
-    saveLayout(next);
+  // Greeting based on time of day
+  const greetingText = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 11) return 'صبح بخیر ☀️';
+    if (hour < 16) return 'ظهر بخیر 🌤️';
+    if (hour < 19) return 'عصر بخیر 🌅';
+    return 'شب بخیر 🌙';
+  }, []);
+
+  // Format station timer display
+  const stationMin = Math.floor(focusSeconds / 60).toString().padStart(2, '0');
+  const stationSec = (focusSeconds % 60).toString().padStart(2, '0');
+
+  const handleOpenDetailedModal = () => {
+    if (onOpenCreateTask) {
+      onOpenCreateTask(activeDate);
+    } else {
+      openCreateModal(activeDate);
+    }
   };
 
-  // Stats calculation
-  const todayTasks = tasks.filter((t) => t.date === (selectedDate || new Date().toISOString().split('T')[0]));
-  const todayTotal = todayTasks.length;
-  const todayCompleted = todayTasks.filter((t) => t.completed).length;
-  const todayRate = todayTotal > 0 ? Math.round((todayCompleted / todayTotal) * 100) : 0;
-  const totalFocusMinutes = tasks.reduce((sum, t) => sum + (t.focusMinutesSpent || 0), 0);
+  return (
+    <div className="space-y-6 w-full min-w-0 select-none pb-12 animate-in fade-in duration-300" dir="rtl">
+      {/* ─────────────────────────────────────────────────────────────
+          1. ULTRA-PREMIUM APPLE & AMIE HERO CARD (Momentum & Status)
+      ───────────────────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-slate-900 via-zinc-900 to-black text-white shadow-2xl border border-white/10 backdrop-blur-2xl">
+        {/* Soft luxury ambient aura in background */}
+        <div className="absolute -top-24 -left-24 w-72 h-72 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
 
-  const hiddenWidgets = widgets.filter((w) => !w.visible);
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+          {/* Right/Hero side: Greeting & Day Progress */}
+          <div className="space-y-3 max-w-xl">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold text-emerald-400 bg-emerald-950/70 border border-emerald-500/30 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{greetingText}</span>
+              </span>
 
-  // Component Renderer for each modular widget
-  const renderWidgetContent = (id: string, colSpan: number = 12) => {
-    switch (id) {
-      case 'kpi_cards': {
-        const isHalf = colSpan <= 8;
-        return (
-          <div className={`grid gap-3 sm:gap-4 w-full h-full min-h-[300px] ${isHalf ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>
-            <div className="p-4 sm:p-5 bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between">
-              <div className="flex items-center justify-between text-slate-500 mb-1.5">
-                <span className="text-xs font-bold">تسک‌های امروز</span>
-                <CheckSquare className="w-4 h-4 text-slate-400" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                {toPersianDigits(todayTotal)}
-              </div>
-              <div className="text-[11px] text-slate-500 mt-1 font-bold">
-                {toPersianDigits(todayCompleted)} تسک تکمیل‌شده
-              </div>
-            </div>
-
-            <div className="p-4 sm:p-5 bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between">
-              <div className="flex items-center justify-between text-slate-500 mb-1.5">
-                <span className="text-xs font-bold">نرخ پیشرفت</span>
-                <TrendingUp className="w-4 h-4 text-[#00b884]" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                {toPersianDigits(todayRate)}٪
-              </div>
-              <div className="w-full bg-slate-200/70 dark:bg-zinc-800 h-2 rounded-full mt-2 overflow-hidden">
-                <div
-                  className="bg-[#00b884] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${todayRate}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="p-4 sm:p-5 bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between">
-              <div className="flex items-center justify-between text-slate-500 mb-1.5">
-                <span className="text-xs font-bold">تمرکز عمیق</span>
-                <Clock className="w-4 h-4 text-amber-500" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                {toPersianDigits(totalFocusMinutes)}
-              </div>
-              <div className="text-[11px] text-slate-500 mt-1 font-bold">
-                دقیقه در پومودورو
-              </div>
-            </div>
-
-            <div className="p-4 sm:p-5 bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between">
-              <div className="flex items-center justify-between text-slate-500 mb-1.5">
-                <span className="text-xs font-bold">زنجیره استریک</span>
-                <Flame className="w-4 h-4 text-[#f95738]" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                {toPersianDigits(streak.currentStreak)} {getText('streakLabel')}
-              </div>
-              <div className="text-[11px] text-slate-500 mt-1 font-bold">
-                بهترین رکورد: {toPersianDigits(streak.bestStreak)} {getText('streakLabel')}
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      case 'focus_garden':
-        return <FocusGardenWidget />;
-
-      case 'micro_habits':
-        return <MicroHabitsWidget />;
-
-      case 'zen_standby':
-        return (
-          <div className="p-5 sm:p-6 bg-gradient-to-br from-[#070b14] via-[#0d1424] to-[#05080e] text-white rounded-3xl border border-indigo-500/30 shadow-md flex flex-col justify-between h-full select-none relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <h3 className="text-xs sm:text-sm font-black text-white">
-                  ساعت رومیزی و تمرکز ذهن
-                </h3>
-              </div>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
-                Zen Mode
+              <span className="text-xs font-mono font-medium text-zinc-300 bg-white/10 px-3 py-1 rounded-full border border-white/10">
+                {formatAppDate(activeDate, calendarType, 'full')}
               </span>
             </div>
 
-            <div className="my-auto py-3 text-center space-y-1">
-              <div className="font-mono text-3xl sm:text-4xl font-black text-white">
-                {new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight leading-snug">
+              سلام {currentUser?.name || 'همراه گرامی'}، روز پرانرژی و موفقی داشته باشی ✨
+            </h1>
+
+            {/* Apple-style Progress Capsule */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-xs text-zinc-300 font-bold">
+                <span className="flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>
+                    {toPersianDigits(completedCount)} از {toPersianDigits(totalCount)} تسک امروز انجام شده
+                  </span>
+                </span>
+                <span className="font-mono text-emerald-400 font-black">{toPersianDigits(completionRate)}٪</span>
               </div>
-              <p className="text-xs text-zinc-400">
-                مناسب قرار دادن گوشی روی استند میز کار با اصوات طبیعت و باران
-              </p>
+
+              {/* Smooth progress bar */}
+              <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden p-0.5 border border-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-400 to-indigo-400 transition-all duration-700 ease-out shadow-[0_0_12px_rgba(16,185,129,0.5)]"
+                  style={{ width: `${completionRate}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Left side: Luxury Action Pills */}
+          <div className="flex items-center gap-2.5 flex-wrap w-full lg:w-auto justify-start lg:justify-end">
+            {/* Live Gems Pill */}
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setIsGardenShopOpen(true);
+              }}
+              className="px-3.5 py-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-amber-400/40 text-amber-300 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 group"
+              title="موجودی الماس‌های شما و ورود به فروشگاه باغچه"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse group-hover:rotate-12 transition-transform" />
+              <span className="font-mono">{toPersianDigits(dashboardGems)}</span>
+              <span>الماس</span>
+            </button>
+
+            {/* Daily Streak Pill */}
+            <div
+              className="px-3.5 py-2 rounded-2xl bg-white/10 border border-rose-500/30 text-rose-300 text-xs font-black flex items-center gap-1.5 shadow-sm"
+              title={`زنجیره استمرار: ${toPersianDigits(streak.currentStreak)} روز`}
+            >
+              <Flame className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+              <span className="font-mono">{toPersianDigits(streak.currentStreak)}</span>
+              <span>روز استریک</span>
             </div>
 
+            {/* Zen Standby Fullscreen Launcher */}
             <button
               type="button"
               onClick={() => {
                 sounds.playPop();
                 setIsZenOpen(true);
               }}
-              className="w-full py-2.5 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-950/50 cursor-pointer active:scale-95"
+              className="px-3.5 py-2 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/50 text-emerald-300 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+              title="ساعت رومیزی ۱۶:۹ تمام صفحه و تایمر تمرکز"
             >
-              <Maximize2 className="w-4 h-4" />
-              <span>ورود به حالت تمام‌صفحه رومیزی</span>
+              <Clock className="w-3.5 h-3.5 text-emerald-400" />
+              <span>ساعت رومیزی ۱۶:۹</span>
+            </button>
+
+            {/* Tribe Challenges Pill */}
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setIsTribeModalOpen(true);
+              }}
+              className="px-3.5 py-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+              title="چالش‌های گروهی و هفتگی با دوستان"
+            >
+              <Trophy className="w-3.5 h-3.5 text-amber-300" />
+              <span>چالش‌های قبیله</span>
+            </button>
+
+            {/* Secondary Tools Menu in Hero */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsHeroToolsOpen(!isHeroToolsOpen)}
+                className="px-3 py-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                title="سایر امکانات و ابزارها"
+              >
+                <span>امکانات بیشتر</span>
+                <ChevronDown className="w-3 h-3 opacity-70" />
+              </button>
+
+              {isHeroToolsOpen && (
+                <div
+                  className="absolute left-0 mt-2 w-56 bg-zinc-900 border border-white/15 rounded-2xl p-1.5 shadow-2xl z-50 text-zinc-200 animate-in fade-in zoom-in-95 backdrop-blur-xl"
+                  onClick={() => setIsHeroToolsOpen(false)}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      onOpenNewspaperStory();
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors cursor-pointer text-right"
+                  >
+                    <Sparkles className="w-4 h-4 text-emerald-400" />
+                    <span>استوری پیشرفت و روزنامه</span>
+                  </button>
+
+                  {onOpenDailyStory && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        sounds.playPop();
+                        onOpenDailyStory();
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors cursor-pointer text-right"
+                    >
+                      <Feather className="w-4 h-4 text-amber-400" />
+                      <span>داستان روز و خاطره‌نگاری</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      setIsReportCardOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors cursor-pointer text-right"
+                  >
+                    <Share2 className="w-4 h-4 text-indigo-400" />
+                    <span>کارنامه ماهانه (استوری ۹:۱۶)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      setActiveTab('hourly');
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors cursor-pointer text-right"
+                  >
+                    <CalendarDays className="w-4 h-4 text-sky-400" />
+                    <span>بلاک‌بندی ۲۴ ساعته</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      setIsDataBackupOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors cursor-pointer text-right"
+                  >
+                    <Database className="w-4 h-4 text-teal-400" />
+                    <span>پشتیبان‌گیری و بازیابی داده</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playPop();
+                      setIsCalendarSyncOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors cursor-pointer text-right"
+                  >
+                    <Calendar className="w-4 h-4 text-amber-400" />
+                    <span>خروجی و همگام‌سازی تقویم</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────────
+          2. TWO-COLUMN TASK-FOCUSED WORKSPACE ARCHITECTURE
+      ───────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* ═══════════════════════════════════════════════════════════
+            MAIN COLUMN: TASK STREAM & WORKFLOW (Col Span 8 on Desktop)
+        ═══════════════════════════════════════════════════════════ */}
+        <div className="lg:col-span-8 space-y-5">
+          {/* A. Amie-Style Calendar Strip */}
+          <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 rounded-3xl p-3.5 shadow-sm">
+            <WeeklyStrip />
+          </div>
+
+          {/* B. Amie-Style Smart Quick Add Bar */}
+          <form
+            onSubmit={handleQuickAdd}
+            className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border border-slate-200/90 dark:border-white/10 rounded-3xl p-4 shadow-sm space-y-3 transition-all focus-within:shadow-md focus-within:border-emerald-500/50"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+              </div>
+
+              <input
+                type="text"
+                value={quickTitle}
+                onChange={(e) => setQuickTitle(e.target.value)}
+                placeholder="افزودن کار جدید برای امروز... (کلید Enter برای ثبت سریع)"
+                className="flex-1 bg-transparent text-sm text-slate-800 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 outline-none font-bold"
+              />
+
+              <button
+                type="submit"
+                disabled={!quickTitle.trim() || isSubmittingTask}
+                className="px-4 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white font-black text-xs shadow-sm transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0"
+              >
+                <span>ثبت</span>
+                <Check className="w-3.5 h-3.5 stroke-[3]" />
+              </button>
+            </div>
+
+            {/* Quick selectors: Priority & Duration pills */}
+            <div className="flex items-center justify-between gap-2 flex-wrap pt-1 border-t border-slate-100 dark:border-zinc-800/80 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold">اولویت:</span>
+                {(['low', 'medium', 'high'] as Priority[]).map((p) => {
+                  const isSel = quickPriority === p;
+                  const label = p === 'high' ? 'فوری 🔴' : p === 'medium' ? 'مهم 🟡' : 'عادی 🟢';
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setQuickPriority(p)}
+                      className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
+                        isSel
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-zinc-900 shadow-2xs'
+                          : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-700'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold">زمان تخمینی:</span>
+                {[15, 25, 45].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => setQuickDuration(mins)}
+                    className={`px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                      quickDuration === mins
+                        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300/60'
+                        : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-700'
+                    }`}
+                  >
+                    {toPersianDigits(mins)} دقیقه
+                  </button>
+                ))}
+              </div>
+            </div>
+          </form>
+
+          {/* C. Filter Tabs */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setTaskFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  taskFilter === 'all'
+                    ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200'
+                }`}
+              >
+                همه ({toPersianDigits(totalCount)})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTaskFilter('pending')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  taskFilter === 'pending'
+                    ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200'
+                }`}
+              >
+                در انتظار انجام ({toPersianDigits(pendingCount)})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTaskFilter('completed')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  taskFilter === 'completed'
+                    ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                    : 'text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200'
+                }`}
+              >
+                تکمیل‌شده ({toPersianDigits(completedCount)})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTaskFilter('starred')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  taskFilter === 'starred'
+                    ? 'bg-white dark:bg-zinc-800 text-amber-600 dark:text-amber-400 shadow-xs'
+                    : 'text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200'
+                }`}
+              >
+                ستاره‌دار ({toPersianDigits(starredCount)})
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('tasks')}
+              className="text-xs font-bold text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <span>مشاهده در بخش تسک‌ها</span>
+              <span>←</span>
             </button>
           </div>
-        );
 
-      case 'calendar_sync':
-        return (
-          <div className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full select-none">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-indigo-500" />
-                <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white">
-                  خروجی تقویم و همگام‌سازی
+          {/* D. Task Item Stream */}
+          <div className="space-y-2.5">
+            {filteredTasks.length === 0 ? (
+              <div className="p-10 rounded-3xl bg-white/70 dark:bg-zinc-900/70 border border-slate-200/80 dark:border-white/10 text-center space-y-3 backdrop-blur-xl">
+                <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
+                  <Sparkles className="w-7 h-7" />
+                </div>
+                <h3 className="text-sm font-black text-slate-800 dark:text-zinc-200">
+                  {taskFilter === 'completed'
+                    ? 'هنوز تسکی تکمیل نشده است'
+                    : 'هیچ تسکی برای این بخش وجود ندارد!'}
                 </h3>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-sm mx-auto">
+                  با ثبت کارهای روزانه از فرم بالا یا کلیک روی افزودن کار جدید، برنامه امروزتان را مشخص کنید.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleOpenDetailedModal}
+                  className="px-4 py-2 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm inline-flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>افزودن کار با جزئیات</span>
+                </button>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-bold">
-                .ICS / Google
+            ) : (
+              filteredTasks.map((t) => {
+                const category = categories.find((c) => c.id === t.categoryId);
+                const isSelectedForFocus = focusTaskId === t.id;
+
+                return (
+                  <div
+                    key={t.id}
+                    className={`group relative p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 ${
+                      t.completed
+                        ? 'bg-slate-50/70 dark:bg-zinc-900/40 border-slate-200/60 dark:border-zinc-800/60 opacity-75'
+                        : isSelectedForFocus
+                        ? 'bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-400/80 dark:border-emerald-500/40 shadow-sm'
+                        : 'bg-white/90 dark:bg-zinc-900/90 border-slate-200/80 dark:border-white/10 hover:border-slate-300 dark:hover:border-zinc-700 shadow-2xs hover:shadow-sm'
+                    }`}
+                  >
+                    {/* Checkbox + Title + Badges */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {/* Apple-style circular fluid checkbox */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          sounds.playComplete();
+                          toggleTaskComplete(t.id);
+                        }}
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer shrink-0 active:scale-90 ${
+                          t.completed
+                            ? 'bg-emerald-500 border-emerald-500 text-white shadow-xs'
+                            : 'border-slate-300 dark:border-zinc-600 hover:border-emerald-500 dark:hover:border-emerald-400'
+                        }`}
+                        title={t.completed ? 'علامت‌گذاری به عنوان انجام‌نشده' : 'تکمیل تسک'}
+                      >
+                        {t.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </button>
+
+                      {/* Title & Metadata */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={`text-xs sm:text-sm font-black truncate transition-all ${
+                              t.completed
+                                ? 'line-through text-slate-400 dark:text-zinc-500'
+                                : 'text-slate-900 dark:text-zinc-100'
+                            }`}
+                          >
+                            {t.title}
+                          </span>
+
+                          {t.isPinned && (
+                            <span className="text-[10px] text-amber-500 font-bold inline-flex items-center gap-0.5">
+                              <Star className="w-3 h-3 fill-amber-500" />
+                              <span>پین</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Secondary Pills */}
+                        <div className="flex items-center gap-2 flex-wrap mt-1 text-[10px]">
+                          {category && (
+                            <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 font-bold">
+                              {category.name}
+                            </span>
+                          )}
+
+                          {t.priority === 'high' && (
+                            <span className="px-2 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-black border border-rose-200/50">
+                              فوری
+                            </span>
+                          )}
+
+                          {t.time && (
+                            <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 font-mono">
+                              {toPersianDigits(t.time)}
+                            </span>
+                          )}
+
+                          {t.durationMinutes && (
+                            <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 font-mono">
+                              {toPersianDigits(t.durationMinutes)} دقیقه
+                            </span>
+                          )}
+
+                          {(t.focusMinutesSpent || 0) > 0 && (
+                            <span className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-mono font-bold">
+                              ⏱️ {toPersianDigits(t.focusMinutesSpent || 0)}د تمرکز
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions Dock */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {/* Start Focus with this task */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          sounds.playPop();
+                          setFocusTaskId(t.id);
+                          setFocusSeconds((t.durationMinutes || 25) * 60);
+                          setIsFocusRunning(true);
+                        }}
+                        className={`p-2 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1 ${
+                          isSelectedForFocus
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300'
+                        }`}
+                        title="اتصال این تسک به تایمر تمرکز"
+                      >
+                        <Timer className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">تمرکز</span>
+                      </button>
+
+                      {/* Pin Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          sounds.playPop();
+                          togglePin(t.id);
+                        }}
+                        className={`p-2 rounded-xl transition-all cursor-pointer ${
+                          t.isPinned
+                            ? 'text-amber-500 bg-amber-50 dark:bg-amber-950/30'
+                            : 'text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200'
+                        }`}
+                        title={t.isPinned ? 'حذف پین' : 'پین کردن در بالا'}
+                      >
+                        <Star className={`w-3.5 h-3.5 ${t.isPinned ? 'fill-amber-500' : ''}`} />
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          sounds.playPop();
+                          deleteTask(t.id);
+                        }}
+                        className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all cursor-pointer"
+                        title="حذف تسک"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* ═══════════════════════════════════════════════════════════
+            SECONDARY SIDEBAR DOCK (Col Span 4 on Desktop)
+        ═══════════════════════════════════════════════════════════ */}
+        <div className="lg:col-span-4 space-y-5">
+          {/* 1. Minimal In-Dashboard Focus Station */}
+          <div className="bg-gradient-to-br from-zinc-900 to-black text-white rounded-3xl p-5 border border-white/10 shadow-xl space-y-4 backdrop-blur-2xl">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-emerald-400 flex items-center gap-1.5">
+                <Timer className="w-4 h-4 text-emerald-400" />
+                <span>ایستگاه تمرکز عمیق (Focus)</span>
+              </span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsZenOpen(true);
+                }}
+                className="text-[11px] font-bold text-zinc-400 hover:text-white transition-colors cursor-pointer flex items-center gap-1"
+                title="باز کردن ساعت رومیزی تمام‌صفحه"
+              >
+                <span>ساعت رومیزی</span>
+                <Maximize2 className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Currently targeted task */}
+            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-xs">
+              <span className="text-[10px] text-zinc-400 block mb-0.5">تسک فعال برای تمرکز:</span>
+              <span className="font-bold text-white truncate block">
+                {activeFocusTask ? activeFocusTask.title : 'جلسه تمرکز آزاد (انتخاب نشده)'}
               </span>
             </div>
 
-            <div className="py-2 space-y-1">
-              <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed font-medium">
-                تسک‌ها و برنامه‌های زمان‌دار خود را با یک کلیک به تقویم رسمی تلفن همراه، Google Calendar و Outlook منتقل کنید.
-              </p>
+            {/* Live Digits & Steppers */}
+            <div className="flex items-center justify-center gap-3 py-2" dir="ltr">
+              <button
+                type="button"
+                onClick={() => handleAdjustStationTimer(-5)}
+                className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-200 text-xs font-mono font-bold transition-all cursor-pointer active:scale-95 flex items-center justify-center"
+                title="کاهش ۵ دقیقه"
+              >
+                -۵د
+              </button>
+
+              <div className="font-mono font-black text-4xl text-white tracking-widest tabular-nums px-4 py-1.5 bg-white/5 rounded-2xl border border-white/10 shadow-inner">
+                {stationMin}:{stationSec}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleAdjustStationTimer(+5)}
+                className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-200 text-xs font-mono font-bold transition-all cursor-pointer active:scale-95 flex items-center justify-center"
+                title="افزایش ۵ دقیقه"
+              >
+                +۵د
+              </button>
             </div>
+
+            {/* Play / Pause / Reset Action Controls */}
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsFocusRunning(!isFocusRunning);
+                }}
+                className={`flex-1 py-2.5 px-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-95 ${
+                  isFocusRunning
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
+                    : 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-emerald-950/40'
+                }`}
+              >
+                {isFocusRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
+                <span>{isFocusRunning ? 'توقف موقت' : 'شروع تمرکز'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playPop();
+                  setIsFocusRunning(false);
+                  setFocusSeconds(25 * 60);
+                }}
+                className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-zinc-300 transition-all cursor-pointer"
+                title="شروع مجدد تایمر"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* 2. Micro-Habits Widget (عادت‌های ریز روزانه) */}
+          <div className="rounded-3xl shadow-sm border border-slate-200/80 dark:border-white/10 overflow-hidden bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl">
+            <MicroHabitsWidget />
+          </div>
+
+          {/* 3. Focus Garden Terrarium & Shop Shortcut */}
+          <div className="rounded-3xl shadow-sm border border-slate-200/80 dark:border-white/10 overflow-hidden bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl">
+            <FocusGardenWidget />
+          </div>
+
+          {/* 4. Luxury Tools Capsule */}
+          <div className="p-4 rounded-3xl bg-white/80 dark:bg-zinc-900/80 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2 backdrop-blur-xl">
+            <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 px-2 block">
+              دسترسی سریع به ابزارها:
+            </span>
 
             <button
               type="button"
               onClick={() => {
                 sounds.playPop();
-                setIsCalendarSyncOpen(true);
+                onOpenNewspaperStory();
               }}
-              className="w-full py-2.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
+              className="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer text-slate-800 dark:text-zinc-200 text-xs font-bold"
             >
-              <Download className="w-4 h-4 text-indigo-500" />
-              <span>دانلود فایل تقویم و تنظیمات همگام‌سازی</span>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-500" />
+                <span>استوری پیشرفت و روزنامه</span>
+              </div>
+              <span className="text-[10px] text-slate-400">مشاهده →</span>
             </button>
-          </div>
-        );
-
-      case 'tribe_challenges':
-        return (
-          <div className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full select-none">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-amber-500" />
-                <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white">
-                  چالش‌های هفتگی قبیله
-                </h3>
-              </div>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-bold">
-                ۳ چالش فعال
-              </span>
-            </div>
-
-            <div className="py-2 space-y-2">
-              <div className="text-xs text-slate-600 dark:text-zinc-300 font-medium">
-                در ماراتن ۱۰۰۰ دقیقه تمرکز جمعی و بستن ۵۰ تسک هفتگی با دوستان مشارکت کنید و الماس بگیرید.
-              </div>
-              <div className="w-full bg-slate-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
-                <div className="bg-amber-500 h-full rounded-full" style={{ width: '68%' }} />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setIsTribeModalOpen(true);
-                }}
-                className="flex-1 py-2.5 px-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-              >
-                <Trophy className="w-4 h-4" />
-                <span>مشاهده چالش‌ها و جوایز</span>
-              </button>
-            </div>
-          </div>
-        );
-
-      case 'monthly_report_card':
-        return (
-          <div className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full select-none">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
-              <div className="flex items-center gap-2">
-                <Share2 className="w-4 h-4 text-indigo-500" />
-                <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white">
-                  کارنامه ماهانه عملکرد (Story)
-                </h3>
-              </div>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold">
-                ۱۰۸۰×۱۹۲۰
-              </span>
-            </div>
-
-            <div className="py-2 space-y-1">
-              <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed font-medium">
-                کارنامه تصویری با کیفیت بالا شامل مجموع تسک‌ها، ساعات تمرکز، استریک و سطح باغچه جهت اشتراک‌گذاری در استوری.
-              </p>
-            </div>
 
             <button
               type="button"
@@ -602,34 +874,14 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
                 sounds.playPop();
                 setIsReportCardOpen(true);
               }}
-              className="w-full py-2.5 px-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
+              className="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer text-slate-800 dark:text-zinc-200 text-xs font-bold"
             >
-              <Download className="w-4 h-4" />
-              <span>مشاهده و دانلود کارت استوری ماهانه</span>
-            </button>
-          </div>
-        );
-
-      case 'data_backup':
-        return (
-          <div className="p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full select-none">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
               <div className="flex items-center gap-2">
-                <Database className="w-4 h-4 text-emerald-500" />
-                <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white">
-                  پشتیبان‌گیری و بازیابی محلی
-                </h3>
+                <Share2 className="w-4 h-4 text-indigo-500" />
+                <span>کارنامه تصویری ماهانه (۹:۱۶)</span>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold">
-                JSON آفلاین
-              </span>
-            </div>
-
-            <div className="py-2 space-y-1">
-              <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed font-medium">
-                دانلود یک‌کلیکه تمام تسک‌ها، پروژه‌ها، عادات و وضعیت باغچه در فایل امن JSON و بازیابی آسان در هر زمان.
-              </p>
-            </div>
+              <span className="text-[10px] text-slate-400">دانلود →</span>
+            </button>
 
             <button
               type="button"
@@ -637,707 +889,51 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
                 sounds.playPop();
                 setIsDataBackupOpen(true);
               }}
-              className="w-full py-2.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
+              className="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer text-slate-800 dark:text-zinc-200 text-xs font-bold"
             >
-              <Database className="w-4 h-4 text-emerald-500" />
-              <span>مدیریت بکاپ و بازیابی اطلاعات</span>
+              <div className="flex items-center gap-2">
+                <Database className="w-4 h-4 text-teal-500" />
+                <span>پشتیبان‌گیری و بازیابی داده</span>
+              </div>
+              <span className="text-[10px] text-slate-400">JSON →</span>
             </button>
-          </div>
-        );
 
-      case 'bento_tasks':
-        return (
-          <TaskMasterBentoWidgets
-            widgetType="tasks"
-            onSeeAllTasks={() => setActiveTab('tasks')}
-            onOpenCreateTask={() => onOpenCreateTask(selectedDate)}
-          />
-        );
-
-      case 'bento_calendar':
-        return (
-          <TaskMasterBentoWidgets
-            widgetType="calendar"
-            onSeeAllTasks={() => setActiveTab('tasks')}
-          />
-        );
-
-      case 'bento_progress':
-        return (
-          <TaskMasterBentoWidgets
-            widgetType="progress"
-          />
-        );
-
-      case 'bento_timeline':
-        return (
-          <TaskMasterBentoWidgets
-            widgetType="timeline"
-          />
-        );
-
-      case 'bento_notes':
-        return (
-          <TaskMasterBentoWidgets
-            widgetType="notes"
-          />
-        );
-
-      case 'upcoming_tasks':
-        return (
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-4 w-full h-full flex flex-col justify-between">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <CheckSquare className="w-4 h-4 text-emerald-500" />
-                  <span>برنامه‌ی پیشِ رو و کارهای روز</span>
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-                  اول پین‌شده‌ها، سپس به ترتیب روز — تسک‌های زودتر در صدر
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('tasks')}
-                className="text-xs font-bold text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-              >
-                مشاهده همه در بخش تسک‌ها →
-              </button>
-            </div>
-
-            <QuickAddBar />
-            <div className="flex-1">
-              <DashboardTaskList onNavigateToTasks={() => setActiveTab('tasks')} />
-            </div>
-          </div>
-        );
-
-      case 'story_newspaper':
-        return (
-          <div className="bg-gradient-to-br from-amber-50/90 via-amber-100/40 to-yellow-50 dark:from-amber-950/20 dark:via-zinc-900 dark:to-zinc-900 rounded-3xl border border-amber-200/90 dark:border-amber-900/40 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-3 w-full h-full flex flex-col justify-between">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black text-amber-950 dark:text-amber-200 flex items-center gap-1.5">
-                  <Newspaper className="w-4 h-4 text-amber-700 dark:text-amber-400" />
-                  استوری روزنامه و وقایع روز
-                </h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-bold">
-                  ویژه پیشرفت
-                </span>
-              </div>
-              <p className="text-xs text-amber-900/80 dark:text-amber-300/80 leading-relaxed font-medium">
-                📰 تلاش امروزتان را با مفاخر و سلبریتی‌های حوزه کاری‌تان بسنجید و «داستان امروز» را ثبت کنید.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  onOpenNewspaperStory();
-                }}
-                className="py-2.5 px-3 bg-amber-800 hover:bg-amber-900 text-white rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-              >
-                <Newspaper className="w-3.5 h-3.5" />
-                <span>استوری روزنامه</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  onOpenDailyStory();
-                }}
-                className="py-2.5 px-3 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 border border-amber-300 dark:border-amber-800 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-              >
-                <Feather className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>داستان روز</span>
-              </button>
-            </div>
-          </div>
-        );
-
-      case 'weekly_strip':
-        return (
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-3 w-full h-full flex flex-col justify-between">
-            <h3 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-              <CalendarDays className="w-4 h-4 text-indigo-500" />
-              <span>تقویم روزهای هفته</span>
-            </h3>
-            <div className="w-full min-w-0 overflow-hidden">
-              <WeeklyStrip />
-            </div>
-          </div>
-        );
-
-      case 'productivity_tip':
-        return (
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-3 w-full h-full flex flex-col justify-between">
-            <h3 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-[#00b884]" />
-              <span>تکنیک بهره‌وری روز</span>
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
-              💡 <strong>تکنیک بلوک‌های زمانی:</strong> کارهای بزرگ را به بخش‌های ۲۵ دقیقه‌ای تقسیم کنید و پس از هر بلوک، ۵ دقیقه به مغزتان استراحت دهید.
-            </p>
             <button
               type="button"
-              onClick={() => setActiveTab('focus')}
-              className="w-full py-2.5 bg-[#121212] hover:bg-black dark:bg-white dark:text-zinc-900 text-white rounded-2xl text-xs font-extrabold transition-colors cursor-pointer shadow-xs"
+              onClick={() => {
+                sounds.playPop();
+                setIsCalendarSyncOpen(true);
+              }}
+              className="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer text-slate-800 dark:text-zinc-200 text-xs font-bold"
             >
-              شروع جلسه پومودورو
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-sky-500" />
+                <span>خروجی و همگام‌سازی تقویم</span>
+              </div>
+              <span className="text-[10px] text-slate-400">iCal →</span>
             </button>
-          </div>
-        );
-
-      case 'colleagues_chat':
-        return (
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/90 dark:border-zinc-800 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-4 w-full h-full">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-[#121212] dark:bg-zinc-800 text-white flex items-center justify-center shadow-xs">
-                  <MessageSquare className="w-4 h-4 text-[#00b884]" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                    پیام‌ها و گفتگوی مستقیم با همکاران
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-                    ارتباط لحظه‌ای و پیام‌رسانی کاری با اعضای تیم
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('messages')}
-                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-              >
-                <span>ورود به بخش پیام‌ها</span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
-              </button>
-            </div>
-
-            {friends.length === 0 ? (
-              <div className="p-6 text-center border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl bg-slate-50/50 dark:bg-zinc-950/50 space-y-2">
-                <p className="text-xs text-slate-500 dark:text-zinc-400 font-bold">
-                  هنوز با همکاری گفتگو نکرده‌اید.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('messages')}
-                  className="px-4 py-2 bg-[#121212] hover:bg-black dark:bg-white dark:text-zinc-900 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs"
-                >
-                  شروع گفتگوی جدید با همکاران 💬
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {friends.slice(0, 6).map((f) => (
-                  <div
-                    key={f.id}
-                    onClick={() => onStartDirectChat(f)}
-                    className="p-3.5 rounded-2xl border border-slate-200/90 dark:border-zinc-800 hover:border-slate-400 dark:hover:border-zinc-600 bg-slate-50/60 dark:bg-zinc-950/60 hover:bg-white dark:hover:bg-zinc-850 transition-all flex items-center justify-between gap-3 cursor-pointer group shadow-2xs"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className="relative flex-shrink-0 cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenPublicProfile(f);
-                        }}
-                        title="مشاهده پروفایل"
-                      >
-                        <UserAvatar user={f} size="sm" className="w-10 h-10 shadow-xs" />
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white dark:border-zinc-900 absolute bottom-0 right-0" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-black text-slate-900 dark:text-white group-hover:text-black dark:group-hover:text-white truncate">
-                          {f.name}
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-mono truncate">
-                          @{f.username}
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="p-2 rounded-xl bg-white dark:bg-zinc-800 group-hover:bg-[#121212] dark:group-hover:bg-white text-slate-600 dark:text-zinc-300 group-hover:text-white dark:group-hover:text-zinc-900 border border-slate-200 dark:border-zinc-700 transition-colors shadow-2xs"
-                      title="چت مستقیم"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  const getColSpanClass = (span: number) => {
-    switch (span) {
-      case 12:
-        return 'col-span-12';
-      case 8:
-        return 'col-span-12 lg:col-span-8';
-      case 6:
-        return 'col-span-12 lg:col-span-6';
-      case 4:
-        return 'col-span-12 md:col-span-6 lg:col-span-4';
-      case 3:
-        return 'col-span-12 sm:col-span-6 lg:col-span-3';
-      default:
-        return 'col-span-12';
-    }
-  };
-
-  return (
-    <div className="space-y-5 animate-in fade-in w-full min-w-0 select-none" dir="rtl">
-      {/* 1. TOP HEADER & CONTROLS */}
-      <div className="flex items-center justify-between pb-1 flex-wrap gap-2.5">
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-black text-slate-700 dark:text-zinc-300">
-            داشبورد ماژولار و دسترسی سریع
-          </span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200/50">
-            {isSimpleMode ? 'حالت ساده' : 'چیدمان آزاد'}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {!isSimpleMode && (
-            isEditMode ? (
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playComplete();
-                  setIsEditMode(false);
-                }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-95"
-              >
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>پایان و ذخیره چیدمان</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  sounds.playPop();
-                  setIsEditMode(true);
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 hover:text-black dark:hover:text-white font-bold text-xs shadow-xs transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-800 active:scale-95 group"
-                title="ویرایش آزادانه چیدمان و موقعیت المان‌های داشبورد"
-              >
-                <Pencil className="w-3.5 h-3.5 text-indigo-500 group-hover:rotate-12 transition-transform" />
-                <span>ویرایش چیدمان داشبورد</span>
-              </button>
-            )
-          )}
-        </div>
-      </div>
-
-      {/* 2. SHARED HERO CARD (Greeting, Live Gems, Streak, Quick Actions) */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 text-white shadow-xl relative overflow-hidden flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 select-none animate-in fade-in">
-        <div className="space-y-1.5 relative z-10">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-bold text-emerald-100 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              {formatAppDate(selectedDate || new Date().toISOString().split('T')[0], calendarType, 'full')}
-            </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-amber-200 text-xs font-mono font-bold flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              {toPersianDigits(dashboardGems)} الماس
-            </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-rose-200 text-xs font-mono font-bold flex items-center gap-1">
-              <Flame className="w-3.5 h-3.5 text-rose-300" />
-              {toPersianDigits(streak.currentStreak)} روز استریک
-            </span>
-          </div>
-
-          <h2 className="text-lg sm:text-xl font-black">
-            سلام {currentUser?.name || 'همراه گرامی'}، روز پرانرژی و موفقی داشته باشی ☀️
-          </h2>
-          <p className="text-xs text-emerald-100/90 font-medium">
-            {toPersianDigits(todayCompleted)} از {toPersianDigits(todayTotal)} تسک امروز انجام شده ({toPersianDigits(todayRate)}٪ موفقیت)
-          </p>
-        </div>
-
-        {/* Quick Action Dock - Streamlined & Responsive */}
-        <div className="flex items-center gap-2 flex-wrap relative z-10 w-full lg:w-auto">
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playPop();
-              setIsZenOpen(true);
-            }}
-            className="py-2 px-3.5 rounded-2xl bg-white/20 hover:bg-white/30 text-white text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
-            title="حالت ساعت رومیزی تمام‌صفحه و تایمر تمرکز ۱۶:۹"
-          >
-            <Clock className="w-4 h-4 text-amber-300" />
-            <span>ساعت رومیزی و تمرکز</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playPop();
-              setIsTribeModalOpen(true);
-            }}
-            className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-            title="چالش‌های گروهی و هفتگی با دوستان"
-          >
-            <Trophy className="w-3.5 h-3.5 text-amber-300" />
-            <span>چالش‌های قبیله</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playPop();
-              onOpenNewspaperStory();
-            }}
-            className="py-2 px-3 rounded-2xl bg-white text-emerald-950 hover:bg-emerald-50 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
-            title="استوری پیشرفت و داستان روز"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            <span>استوری روز</span>
-          </button>
-
-          {/* Secondary Tools Dropdown in Hero */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsHeroToolsOpen(!isHeroToolsOpen)}
-              className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-              title="سایر امکانات و ابزارها"
-            >
-              <span>سایر ابزارها</span>
-              <ChevronDown className="w-3 h-3 opacity-80" />
-            </button>
-
-            {isHeroToolsOpen && (
-              <div
-                className="absolute left-0 mt-2 w-52 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-1.5 shadow-2xl z-50 text-slate-800 dark:text-zinc-100 animate-in fade-in zoom-in-95"
-                onClick={() => setIsHeroToolsOpen(false)}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playPop();
-                    setIsReportCardOpen(true);
-                  }}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
-                >
-                  <Share2 className="w-4 h-4 text-indigo-500" />
-                  <span>کارنامه ماهانه (استوری)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playPop();
-                    setActiveTab('hourly');
-                  }}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
-                >
-                  <CalendarDays className="w-4 h-4 text-emerald-500" />
-                  <span>بلاک‌بندی ۲۴ساعته</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playPop();
-                    setIsDataBackupOpen(true);
-                  }}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
-                >
-                  <Database className="w-4 h-4 text-teal-500" />
-                  <span>پشتیبان‌گیری و بازیابی داده</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playPop();
-                    setIsCalendarSyncOpen(true);
-                  }}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
-                >
-                  <Calendar className="w-4 h-4 text-sky-500" />
-                  <span>خروجی و همگام‌سازی تقویم</span>
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      {/* 3. MODE-SPECIFIC BODY */}
-      {isSimpleMode ? (
-        <div className="space-y-5 animate-in fade-in">
-          {/* Direct Quick Add Bar */}
-          <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 shadow-sm space-y-3">
-            <span className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5">
-              <Plus className="w-4 h-4 text-emerald-500" />
-              <span>ثبت آسان و سریع کار جدید:</span>
-            </span>
-            <QuickAddBar />
-          </div>
-
-          {/* Simple Today Task Checklist */}
-          <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
-              <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <CheckSquare className="w-4 h-4 text-emerald-500" />
-                <span>کارهای امروز شما</span>
-              </h3>
-              <span className="text-xs font-bold text-slate-500 dark:text-zinc-400 font-mono">
-                {toPersianDigits(todayCompleted)} / {toPersianDigits(todayTotal)}
-              </span>
-            </div>
-            <DashboardTaskList onNavigateToTasks={() => setActiveTab('tasks')} />
-          </div>
-
-          {/* Micro Habit & Garden Duo in Simple Mode */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <FocusGardenWidget />
-            <MicroHabitsWidget />
-          </div>
-        </div>
-      ) : (
-        /* 3. ADVANCED MODULAR DASHBOARD VIEW */
-        <>
-          {/* Edit Mode Banner */}
-          {isEditMode && (
-            <div className="p-4 rounded-3xl bg-gradient-to-r from-indigo-50 via-white to-slate-50 dark:from-indigo-950/40 dark:via-zinc-900 dark:to-zinc-900 border-2 border-indigo-400 dark:border-indigo-600 shadow-xl space-y-3 animate-in slide-in-from-top-2">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
-                    <SlidersHorizontal className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                      <span>حالت ویرایش چیدمان داشبورد</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-200/80 dark:bg-indigo-900/80 text-indigo-900 dark:text-indigo-200 font-bold">
-                        فعال
-                      </span>
-                    </h4>
-                    <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
-                      جهت‌ها را تغییر دهید، عرض المان را با دکمه‌های درصدی تعیین کنید یا کارت‌ها را بکشید و رها کنید.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
-                  {hiddenWidgets.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowHiddenTray(!showHiddenTray)}
-                      className="px-3 py-1.5 rounded-xl bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900/80 text-indigo-900 dark:text-indigo-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>المان‌های مخفی ({toPersianDigits(hiddenWidgets.length)})</span>
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="px-3 py-1.5 rounded-xl bg-slate-200/80 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-                    title="بازنشانی چیدمان به حالت پیش‌فرض"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>بازنشانی پیش‌فرض</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      sounds.playComplete();
-                      setIsEditMode(false);
-                    }}
-                    className="px-4 py-1.5 rounded-xl bg-[#121212] dark:bg-white text-white dark:text-zinc-900 text-xs font-black transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shadow-xs"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>تایید</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Hidden Widgets Shelf */}
-              {showHiddenTray && hiddenWidgets.length > 0 && (
-                <div className="pt-3 border-t border-indigo-100 dark:border-indigo-900/50 space-y-2">
-                  <span className="text-[11px] font-bold text-slate-600 dark:text-zinc-400">
-                    المان‌های غیرفعال (برای بازگرداندن به داشبورد، روی + کلیک کنید):
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {hiddenWidgets.map((hw) => (
-                      <button
-                        key={hw.id}
-                        type="button"
-                        onClick={() => unhideWidget(hw.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-bold hover:border-emerald-500 transition-colors shadow-2xs cursor-pointer group"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-125 transition-transform" />
-                        <span>{hw.title}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 4. MODULAR GRID */}
-          <div
-            className={`grid grid-cols-12 gap-5 w-full relative transition-all ${
-              isEditMode
-                ? 'p-3 sm:p-5 rounded-[36px] bg-slate-100/50 dark:bg-zinc-950/40 border-2 border-dashed border-indigo-300 dark:border-indigo-800/80 bg-[radial-gradient(#6366f1_1px,transparent_1px)] [background-size:20px_20px]'
-                : ''
-            }`}
-          >
-            {widgets.map((w, index) => {
-              if (!w.visible && !isEditMode) return null;
-
-              const colSpanClass = getColSpanClass(w.colSpan);
-              const isDraggingThis = draggedIndex === index;
-
-              return (
-                <div
-                  key={w.id}
-                  draggable={isEditMode}
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, index)}
-                  className={`${colSpanClass} transition-all duration-300 relative group/card ${
-                    !w.visible ? 'opacity-40 grayscale' : ''
-                  } ${
-                    isEditMode
-                      ? 'p-1.5 rounded-[32px] ring-2 ring-indigo-500/20 hover:ring-indigo-500/60 shadow-lg bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xs'
-                      : ''
-                  } ${isDraggingThis ? 'scale-95 opacity-50 rotate-1' : ''}`}
-                >
-                  {/* EDIT OVERLAY TOOLBAR: ONE-TOUCH FREEDOM CONTROLS */}
-                  {isEditMode && (
-                    <div className="absolute -top-3 left-2 right-2 z-30 flex items-center justify-between p-1 px-2.5 rounded-2xl bg-[#121212] dark:bg-zinc-800 text-white shadow-xl border border-white/10 text-xs animate-in fade-in flex-wrap gap-1">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <GripVertical className="w-3.5 h-3.5 text-slate-400 cursor-grab active:cursor-grabbing flex-shrink-0" />
-                        <span className="font-black text-[10px] text-white truncate max-w-[110px]">
-                          {w.title}
-                        </span>
-                      </div>
-
-                      {/* Directional Move Controls */}
-                      <div className="flex items-center gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => moveUp(index)}
-                          disabled={index === 0}
-                          title="ردیف بالا ⬆️"
-                          className="p-1 rounded-md hover:bg-white/20 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                        >
-                          <ArrowUp className="w-3 h-3" />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => moveDown(index)}
-                          disabled={index === widgets.length - 1}
-                          title="ردیف پایین ⬇️"
-                          className="p-1 rounded-md hover:bg-white/20 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                        >
-                          <ArrowDown className="w-3 h-3" />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => moveRight(index)}
-                          disabled={index === 0}
-                          title="به راست ➡️"
-                          className="p-1 rounded-md hover:bg-white/20 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                        >
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => moveLeft(index)}
-                          disabled={index === widgets.length - 1}
-                          title="به چپ ⬅️"
-                          className="p-1 rounded-md hover:bg-white/20 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                        >
-                          <ArrowLeft className="w-3 h-3" />
-                        </button>
-                      </div>
-
-                      {/* Direct Width Selectors (33%, 50%, 66%, 100%) */}
-                      <div className="flex items-center gap-0.5 bg-white/10 rounded-lg p-0.5">
-                        {[
-                          { span: 4, label: '۳۳٪' },
-                          { span: 6, label: '۵۰٪' },
-                          { span: 8, label: '۶۶٪' },
-                          { span: 12, label: '۱۰۰٪' },
-                        ].map((btn) => (
-                          <button
-                            key={btn.span}
-                            type="button"
-                            onClick={() => setWidgetWidth(index, btn.span as any)}
-                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-all cursor-pointer ${
-                              w.colSpan === btn.span
-                                ? 'bg-emerald-500 text-white font-black'
-                                : 'text-zinc-300 hover:text-white hover:bg-white/10'
-                            }`}
-                          >
-                            {btn.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Visibility Toggle */}
-                      <button
-                        type="button"
-                        onClick={() => toggleVisibility(index)}
-                        title={w.visible ? 'مخفی کردن المان' : 'نمایش المان'}
-                        className="p-1 rounded-md hover:bg-white/20 text-slate-400 hover:text-red-400 cursor-pointer"
-                      >
-                        {w.visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* WIDGET CONTENT */}
-                  <div className="h-full w-full">
-                    {renderWidgetContent(w.id, w.colSpan)}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      {/* ZEN STANDBY MODAL */}
+      {/* ─────────────────────────────────────────────────────────────
+          3. MODALS (All Features Fully Preserved & Functional)
+      ───────────────────────────────────────────────────────────── */}
       <ZenStandbyModal isOpen={isZenOpen} onClose={() => setIsZenOpen(false)} />
-
-      {/* CALENDAR SYNC MODAL */}
       <CalendarSyncModal isOpen={isCalendarSyncOpen} onClose={() => setIsCalendarSyncOpen(false)} />
-
-      {/* TRIBE SOCIAL CHALLENGES MODAL */}
       <TribeChallengesModal isOpen={isTribeModalOpen} onClose={() => setIsTribeModalOpen(false)} />
-
-      {/* MONTHLY REPORT CARD MODAL */}
       <MonthlyReportCardModal isOpen={isReportCardOpen} onClose={() => setIsReportCardOpen(false)} />
-
-      {/* DATA BACKUP & RESTORE MODAL */}
       <DataBackupModal isOpen={isDataBackupOpen} onClose={() => setIsDataBackupOpen(false)} />
+
+      {/* Focus Garden Shop Modal */}
+      <FocusGardenShopModal
+        isOpen={isGardenShopOpen}
+        onClose={() => setIsGardenShopOpen(false)}
+        gardenGems={dashboardGems}
+        onUpdateGems={(g) => setDashboardGems(g)}
+        customization={{ species: 'clover', pot: 'terracotta', aura: 'none' }}
+        onUpdateCustomization={() => {}}
+      />
     </div>
   );
 };
