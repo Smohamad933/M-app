@@ -20,7 +20,10 @@ import {
   Eye,
   EyeOff,
   Sparkles,
+  Code2,
+  Zap,
 } from 'lucide-react';
+import { toPersianDigits } from '../utils/persianDate';
 
 import { BaleVerificationModal, type BaleVerificationInfo } from './BaleVerificationModal';
 
@@ -29,6 +32,10 @@ export const LoginScreen: React.FC = () => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [selectedDevForModal, setSelectedDevForModal] = useState<AppDeveloper | null>(null);
+
+  // Show/Hide password toggles
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
 
   // Bale Verification Modal State
   const [baleVerificationData, setBaleVerificationData] = useState<BaleVerificationInfo | null>(null);
@@ -332,24 +339,34 @@ export const LoginScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#edf0f4] flex flex-col items-center justify-center p-3 sm:p-6 selection:bg-[#121212] selection:text-white w-full overflow-x-hidden">
-      <div className={`w-full ${mode === 'register' ? 'max-w-lg' : 'max-w-md'} bg-white rounded-[32px] sm:rounded-[36px] p-6 sm:p-9 shadow-[0_20px_60px_-15px_rgba(15,23,42,0.08)] border border-slate-200/70 space-y-6 animate-in fade-in zoom-in-95 transition-all`}>
+    <div className="min-h-screen bg-[#f5f5f7] dark:bg-[#000000] flex flex-col items-center justify-center p-3.5 sm:p-6 selection:bg-slate-900 selection:text-white dark:selection:bg-white dark:selection:text-black w-full overflow-x-hidden relative transition-colors duration-300">
+      {/* Ambient Aurora Glows */}
+      <div className="absolute top-12 -right-24 w-96 h-96 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-12 -left-24 w-96 h-96 rounded-full bg-indigo-500/10 dark:bg-indigo-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-amber-500/5 dark:bg-amber-500/10 blur-3xl pointer-events-none" />
+
+      {/* Main Luxury Bento Glass Card */}
+      <div className={`w-full ${mode === 'register' ? 'max-w-lg' : 'max-w-md'} bg-white/90 dark:bg-[#1c1c1e]/90 backdrop-blur-2xl rounded-[36px] sm:rounded-[40px] p-6 sm:p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06),0_0_1px_1px_rgba(0,0,0,0.04)] dark:shadow-[0_25px_70px_-15px_rgba(0,0,0,0.6)] border border-black/[0.06] dark:border-white/[0.08] space-y-5 sm:space-y-6 animate-in fade-in zoom-in-95 transition-all relative z-10`}>
         
         {/* Brand Header */}
         <div className="text-center space-y-3">
           <div className="flex justify-center">
             {appLogo ? (
-              <img src={appLogo} alt={appName} className="w-14 h-14 rounded-2xl object-cover shadow-sm border border-slate-100" />
+              <div className="p-1 rounded-2xl bg-white dark:bg-zinc-800 border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
+                <img src={appLogo} alt={appName} className="w-14 h-14 rounded-xl object-cover" />
+              </div>
             ) : (
-              <TaskMasterHexagon size={54} className="shadow-xs" />
+              <div className="p-2 rounded-2xl bg-gradient-to-tr from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border border-emerald-500/20 shadow-xs">
+                <TaskMasterHexagon size={50} className="shadow-xs" />
+              </div>
             )}
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 flex items-center justify-center gap-1">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center justify-center gap-1 tracking-tight font-mono">
               <span>{appName}</span>
-              <span className="text-[#00b884]">.</span>
+              <span className="text-emerald-500">.</span>
             </h1>
-            <p className="text-sm font-bold text-slate-500 mt-1">
+            <p className="text-xs sm:text-sm font-bold text-slate-500 dark:text-zinc-400 mt-1">
               روزت رو شروع کن و پرانرژی باش ✌️
             </p>
           </div>
@@ -357,29 +374,33 @@ export const LoginScreen: React.FC = () => {
 
         {/* Room Invite Banner if any */}
         {inviteRoom && (
-          <div className="p-3.5 rounded-2xl bg-indigo-50 text-indigo-900 text-xs border border-indigo-200/80 text-center font-bold animate-in fade-in space-y-1">
-            <div className="flex items-center justify-center gap-1.5 text-indigo-950 font-black">
-              <Timer className="w-4 h-4 text-indigo-600" />
+          <div className="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 text-xs border border-indigo-200/80 dark:border-indigo-800/60 text-center font-bold animate-in fade-in space-y-1">
+            <div className="flex items-center justify-center gap-1.5 text-indigo-950 dark:text-indigo-100 font-black">
+              <Timer className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               <span>{getText('inviteBannerTitle')}</span>
             </div>
-            <p className="text-[11px] font-medium text-indigo-700">
+            <p className="text-[11px] font-medium text-indigo-700 dark:text-indigo-300">
               {getText('inviteBannerText')}
             </p>
           </div>
         )}
 
         {/* HERO: DIRECT BALE 1-CLICK LOGIN / REGISTER */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 p-4 sm:p-5 text-white shadow-xl shadow-emerald-500/20 border border-emerald-400/30 space-y-3.5">
-          <div className="flex items-start justify-between">
+        <div className="relative overflow-hidden rounded-[26px] bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 p-4 sm:p-5 text-white shadow-xl shadow-emerald-500/20 border border-emerald-400/30 space-y-3.5 group">
+          {/* Soft ambient highlight */}
+          <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full bg-white/10 blur-xl pointer-events-none" />
+
+          <div className="flex items-start justify-between relative z-10">
             <div className="space-y-1">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black backdrop-blur-xs">
-                <span>⚡ سریع‌ترین روش</span>
+                <Zap className="w-3 h-3 fill-current" />
+                <span>سریع‌ترین و آسان‌ترین روش</span>
               </div>
               <h3 className="text-sm sm:text-base font-black leading-tight text-white">
                 ورود یا ثبت‌نام مستقیم با پیام‌رسان بله
               </h3>
               <p className="text-[11px] text-emerald-100 font-medium leading-relaxed">
-                تنها با ۱ کلیک در ربات بله، بدون نیاز به کلمه عبور یا پر کردن فرم‌های طولانی!
+                تنها با ۱ لمس در بازوی بله، بدون نیاز به پسورد یا پر کردن فرم‌های طولانی!
               </p>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/20">
@@ -391,12 +412,12 @@ export const LoginScreen: React.FC = () => {
             type="button"
             onClick={handleStartAutoBaleLogin}
             disabled={isStartingBaleLogin}
-            className="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-50 text-emerald-800 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+            className="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-50 text-emerald-800 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 relative z-10"
           >
             {isStartingBaleLogin ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin text-emerald-600" />
-                <span>در حال ایجاد نشست بله...</span>
+                <span>در حال ایجاد نشست امن بله...</span>
               </>
             ) : (
               <>
@@ -410,57 +431,57 @@ export const LoginScreen: React.FC = () => {
         {/* OR DIVIDER */}
         <div className="relative my-1 flex items-center justify-center">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-200"></div>
+            <div className="w-full border-t border-black/[0.06] dark:border-white/[0.08]"></div>
           </div>
-          <div className="relative bg-white px-3 text-[11px] font-bold text-slate-400">
+          <div className="relative bg-white dark:bg-[#1c1c1e] px-3 text-[11px] font-bold text-slate-400 dark:text-zinc-500">
             یا با نام کاربری و کلمه عبور
           </div>
         </div>
 
-        {/* Tab switch between Login and Register (Dribbble pill style) */}
-        <div className="grid grid-cols-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/60 text-xs font-extrabold">
+        {/* Tab Switcher: Login vs Register (Apple Segmented Bar) */}
+        <div className="grid grid-cols-2 p-1.5 bg-slate-100 dark:bg-[#252528] rounded-2xl border border-black/[0.04] dark:border-white/[0.06] text-xs font-black gap-1">
           <button
             type="button"
             onClick={() => switchMode('login')}
             className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
               mode === 'login'
-                ? 'bg-[#121212] text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-900'
+                ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-xs font-black'
+                : 'text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white font-bold'
             }`}
           >
-            <LogIn className="w-4 h-4" />
-            ورود به حساب
+            <LogIn className="w-3.5 h-3.5 text-emerald-500" />
+            <span>ورود به حساب</span>
           </button>
           <button
             type="button"
             onClick={() => switchMode('register')}
             className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
               mode === 'register'
-                ? 'bg-[#121212] text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-900'
+                ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-xs font-black'
+                : 'text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white font-bold'
             }`}
           >
-            <UserPlus className="w-4 h-4" />
-            ثبت‌نام کامل
+            <UserPlus className="w-3.5 h-3.5 text-indigo-500" />
+            <span>ثبت‌نام کامل</span>
           </button>
         </div>
 
         {/* Step indicator for Registration */}
         {mode === 'register' && (
-          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 text-center font-bold">
-            ثبت‌نام سریع و رایگان در تسک‌روز
+          <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 text-[11px] text-indigo-800 dark:text-indigo-300 text-center font-bold">
+            ✨ عضویت رایگان و دسترسی به تمام ابزارهای هوشمند
           </div>
         )}
 
         {successNotice && (
-          <div className="p-3.5 rounded-2xl bg-emerald-50 text-emerald-900 text-xs border border-emerald-200 leading-relaxed font-bold animate-in fade-in flex items-center gap-2">
-            <Check className="w-4 h-4 text-[#00b884] flex-shrink-0" />
+          <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 text-xs border border-emerald-200/80 dark:border-emerald-800/60 leading-relaxed font-bold animate-in fade-in flex items-center gap-2">
+            <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
             <span>{successNotice}</span>
           </div>
         )}
 
         {error && (
-          <div className="p-3.5 rounded-2xl bg-rose-50 text-rose-700 text-xs border border-rose-200 text-center font-bold animate-in fade-in">
+          <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs border border-rose-200/80 dark:border-rose-800/60 text-center font-bold animate-in fade-in">
             {error}
           </div>
         )}
@@ -470,7 +491,7 @@ export const LoginScreen: React.FC = () => {
           {mode === 'login' && (
             <>
               <div className="space-y-1.5">
-                <label className="font-extrabold text-slate-700">نام کاربری</label>
+                <label className="font-black text-slate-700 dark:text-zinc-300">نام کاربری</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -478,35 +499,42 @@ export const LoginScreen: React.FC = () => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="نام کاربری شما"
-                    className="w-full pl-3 pr-10 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 text-xs font-mono outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
+                    className="w-full pl-3 pr-10 py-3 rounded-2xl bg-slate-50/90 dark:bg-[#252528]/80 border border-black/[0.06] dark:border-white/[0.08] text-slate-900 dark:text-white text-xs font-mono outline-none focus:bg-white dark:focus:bg-zinc-800 focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     autoFocus
                   />
-                  <User className="w-4 h-4 absolute right-3.5 top-3.5 text-slate-400" />
+                  <User className="w-4 h-4 absolute right-3.5 top-3.5 text-slate-400 dark:text-zinc-500" />
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="font-extrabold text-slate-700">کلمه عبور</label>
+                  <label className="font-black text-slate-700 dark:text-zinc-300">کلمه عبور</label>
                   <a
                     href="https://t.me/Mohusyn_ir"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[11px] font-bold text-slate-500 hover:text-emerald-600 transition-colors"
+                    className="text-[11px] font-bold text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                   >
                     فراموشی رمز عبور؟
                   </a>
                 </div>
                 <div className="relative">
                   <input
-                    type="password"
+                    type={showLoginPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="کلمه عبور شما"
-                    className="w-full pl-3 pr-10 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
+                    className="w-full pl-10 pr-10 py-3 rounded-2xl bg-slate-50/90 dark:bg-[#252528]/80 border border-black/[0.06] dark:border-white/[0.08] text-slate-900 dark:text-white text-xs outline-none focus:bg-white dark:focus:bg-zinc-800 focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   />
-                  <Lock className="w-4 h-4 absolute right-3.5 top-3.5 text-slate-400" />
+                  <Lock className="w-4 h-4 absolute right-3.5 top-3.5 text-slate-400 dark:text-zinc-500" />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="absolute left-3.5 top-3.5 text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                  >
+                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
             </>
@@ -516,8 +544,9 @@ export const LoginScreen: React.FC = () => {
           {mode === "register" && (
             <div className="space-y-3.5 animate-in fade-in">
               <div className="space-y-1.5">
-                <label className="font-extrabold text-slate-700">
-                  نام و نام خانوادگی <span className="text-rose-500">*</span>
+                <label className="font-black text-slate-700 dark:text-zinc-300 flex items-center justify-between">
+                  <span>نام و نام خانوادگی</span>
+                  <span className="text-[10px] text-rose-500 font-bold">* الزامی</span>
                 </label>
                 <input
                   type="text"
@@ -525,75 +554,93 @@ export const LoginScreen: React.FC = () => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="مثال: سید محمدحسین"
-                  className="w-full px-4 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-50/90 dark:bg-[#252528]/80 border border-black/[0.06] dark:border-white/[0.08] text-slate-900 dark:text-white text-xs outline-none focus:bg-white dark:focus:bg-zinc-800 focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   autoFocus
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="font-extrabold text-slate-700">
-                    نام کاربری <span className="text-rose-500">*</span>
+                  <label className="font-black text-slate-700 dark:text-zinc-300 flex items-center justify-between">
+                    <span>نام کاربری</span>
+                    <span className="text-[10px] text-slate-400 font-mono">انگلیسی</span>
                   </label>
                   <input
                     type="text"
                     required
+                    dir="ltr"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="انگلیسی (ali_m)"
-                    className="w-full px-4 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 font-mono text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
+                    placeholder="ali_m"
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50/90 dark:bg-[#252528]/80 border border-black/[0.06] dark:border-white/[0.08] text-slate-900 dark:text-white font-mono text-xs text-left outline-none focus:bg-white dark:focus:bg-zinc-800 focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-extrabold text-slate-700">
-                    کلمه عبور <span className="text-rose-500">*</span>
+                  <label className="font-black text-slate-700 dark:text-zinc-300 flex items-center justify-between">
+                    <span>کلمه عبور</span>
+                    <span className="text-[10px] text-slate-400 font-mono">۴+ رقم</span>
                   </label>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="حداقل ۴ کاراکتر"
-                    className="w-full px-4 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showRegisterPassword ? 'text' : 'password'}
+                      required
+                      dir="ltr"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="کلمه عبور"
+                      className="w-full pl-9 pr-3.5 py-3 rounded-2xl bg-slate-50/90 dark:bg-[#252528]/80 border border-black/[0.06] dark:border-white/[0.08] text-slate-900 dark:text-white text-xs outline-none focus:bg-white dark:focus:bg-zinc-800 focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                      className="absolute left-3 top-3.5 text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                    >
+                      {showRegisterPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-extrabold text-slate-700 flex items-center justify-between">
+                <label className="font-black text-slate-700 dark:text-zinc-300 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-slate-400" />
-                    <span>شماره موبایل (اجباری)</span>
+                    <span>شماره موبایل</span>
                   </span>
                   <span className="text-[10px] text-rose-500 font-bold">* الزامی</span>
                 </label>
                 <input
                   type="tel"
                   required
+                  dir="ltr"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="مثال: ۰۹۱۲۳۴۵۶۷۸۹ (الزامی)"
-                  className="w-full px-4 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 font-mono text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
+                  placeholder="09123456789"
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-50/90 dark:bg-[#252528]/80 border border-black/[0.06] dark:border-white/[0.08] text-slate-900 dark:text-white font-mono text-xs text-left outline-none focus:bg-white dark:focus:bg-zinc-800 focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-extrabold text-slate-700 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-slate-400" />
-                  <span>ایمیل معتبر (اختیاری)</span>
+                <label className="font-black text-slate-700 dark:text-zinc-300 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-slate-400" />
+                    <span>ایمیل (اختیاری)</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-bold">جهت بازیابی</span>
                 </label>
                 <input
                   type="email"
+                  dir="ltr"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="yourname@gmail.com"
-                  className="w-full px-4 py-3 rounded-2xl bg-[#f8fafc] border border-slate-200 text-slate-900 font-mono text-xs outline-hidden focus:border-slate-400 focus:bg-white transition-colors"
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-50/90 dark:bg-[#252528]/80 border border-black/[0.06] dark:border-white/[0.08] text-slate-900 dark:text-white font-mono text-xs text-left outline-none focus:bg-white dark:focus:bg-zinc-800 focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                 />
               </div>
 
-              <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-[11px] text-indigo-700 leading-relaxed font-medium">
-                💡 ساخت حساب رایگان است. پس از ورود، اطلاعات تکمیلی در اولین ورود تکمیل می‌شود.
+              <div className="p-3 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/50 dark:border-indigo-800/40 text-[11px] text-indigo-800 dark:text-indigo-300 leading-relaxed font-medium">
+                💡 ایجاد حساب کاملاً رایگان است و اطلاعات شما در سرور امن و رمزنگاری‌شده نگهداری می‌شود.
               </div>
             </div>
           )}
@@ -603,13 +650,13 @@ export const LoginScreen: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-2xl bg-[#121212] hover:bg-black text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
+              className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-slate-900 font-black text-xs shadow-lg shadow-black/10 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
             >
               {loading
                 ? "لطفاً شکیبا باشید..."
                 : mode === "login"
                 ? "ورود به داشبورد"
-                : "ثبت‌نام و ایجاد حساب کاربری 🚀"}
+                : "ثبت‌نام و ورود به بگ‌تایم 🚀"}
               {mode === "login" ? (
                 <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
               ) : (
@@ -619,61 +666,75 @@ export const LoginScreen: React.FC = () => {
           </div>
         </form>
 
-        {/* App Developers Footer - Configured by Admin in Panel */}
-        <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-          <div className="flex items-center -space-x-2 space-x-reverse">
+        {/* APP DEVELOPERS BENTO CARD - LUXURY APPLE REDESIGN */}
+        <div className="pt-4 border-t border-black/[0.06] dark:border-white/[0.08] space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <Code2 className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-black text-slate-800 dark:text-zinc-200">
+                تیم توسعه و معماران سیستم
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold">
+              {toPersianDigits(appDevelopers.length)} عضو سازنده
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {appDevelopers.map((dev: AppDeveloper) => (
               <button
                 key={dev.id}
                 type="button"
                 onClick={() => setSelectedDevForModal(dev)}
-                title={`${dev.name} (${dev.role}) - کلیک برای مشاهده پروفایل کامل`}
-                className="relative group cursor-pointer transition-transform hover:scale-110 active:scale-95 focus:outline-none"
+                className="p-2.5 rounded-2xl bg-slate-50/80 hover:bg-slate-100 dark:bg-[#252528]/80 dark:hover:bg-zinc-800 border border-black/[0.04] dark:border-white/[0.06] transition-all cursor-pointer flex items-center gap-2.5 text-right group active:scale-98 shadow-2xs hover:shadow-sm"
               >
-                {dev.avatarUrl ? (
-                  <img
-                    src={dev.avatarUrl}
-                    alt={dev.name}
-                    className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-xs"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-black text-xs flex items-center justify-center border-2 border-white shadow-xs">
-                    {dev.name.charAt(0)}
+                <div className="relative shrink-0">
+                  {dev.avatarUrl ? (
+                    <img
+                      src={dev.avatarUrl}
+                      alt={dev.name}
+                      className="w-10 h-10 rounded-xl object-cover border border-white dark:border-zinc-700 shadow-2xs group-hover:scale-105 transition-transform"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-sm flex items-center justify-center border border-white dark:border-zinc-700 shadow-2xs group-hover:scale-105 transition-transform">
+                      {dev.name.charAt(0)}
+                    </div>
+                  )}
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-xs font-black text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      {dev.name}
+                    </span>
+                    <ArrowLeft className="w-3 h-3 text-slate-300 dark:text-zinc-600 group-hover:text-indigo-500 group-hover:-translate-x-0.5 transition-all shrink-0" />
                   </div>
-                )}
-                {/* Tooltip on hover */}
-                <div className="absolute bottom-full mb-1.5 right-0 hidden group-hover:flex flex-col bg-slate-900 text-white text-[10px] py-1 px-2.5 rounded-xl whitespace-nowrap shadow-lg z-30 pointer-events-none">
-                  <span className="font-black">{dev.name}</span>
-                  <span className="text-[9px] text-slate-300">{dev.role}</span>
+                  <span className="text-[10px] text-slate-500 dark:text-zinc-400 truncate block font-medium">
+                    {dev.role}
+                  </span>
                 </div>
               </button>
             ))}
           </div>
-          <div className="text-right">
-            <span className="text-[11px] font-extrabold text-slate-700 block">
-              اعضای توسعه‌دهنده این آپ
-            </span>
-            <span className="text-[9px] text-slate-400 block font-medium">
-              جهت مشاهده پروفایل کلیک کنید
-            </span>
-          </div>
         </div>
 
-        {/* Micro Footer: "بَگ‌تایم، از خانوادهٔ کیان فناوران نگاه" */}
+        {/* Micro Footer: Company / Platform Branding */}
         {globalSettings?.footerBranding?.enabled !== false && (
-          <div className="pt-3 border-t border-slate-100/70 text-center text-[10px] text-slate-400 select-none">
+          <div className="pt-2 border-t border-black/[0.04] dark:border-white/[0.06] text-center text-[10px] text-slate-400 dark:text-zinc-500 select-none">
             <span>{globalSettings?.footerBranding?.prefixText || 'بَگ‌تایم، از خانوادهٔ'}{' '}</span>
             {globalSettings?.footerBranding?.isLinkEnabled && globalSettings?.footerBranding?.companyUrl ? (
               <a
                 href={globalSettings.footerBranding.companyUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-black text-slate-600 hover:text-indigo-600 transition-colors underline decoration-slate-300 underline-offset-2"
+                className="font-black text-slate-600 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors underline decoration-slate-300 dark:decoration-zinc-700 underline-offset-2"
               >
                 {globalSettings?.footerBranding?.companyName || 'کیان فناوران نگاه'}
               </a>
             ) : (
-              <strong className="font-black text-slate-600">
+              <strong className="font-black text-slate-600 dark:text-zinc-300">
                 {globalSettings?.footerBranding?.companyName || 'کیان فناوران نگاه'}
               </strong>
             )}
@@ -681,21 +742,21 @@ export const LoginScreen: React.FC = () => {
         )}
       </div>
 
-      {/* Developer Profile Modal */}
+      {/* Developer Profile Modal - Luxury Bento */}
       {selectedDevForModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in"
           onClick={() => setSelectedDevForModal(null)}
           dir="rtl"
         >
           <div
-            className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 text-center relative"
+            className="w-full max-w-sm bg-white dark:bg-[#1c1c1e] rounded-[32px] p-6 sm:p-7 shadow-2xl space-y-4 animate-in zoom-in-95 text-center relative border border-black/[0.08] dark:border-white/[0.1]"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={() => setSelectedDevForModal(null)}
-              className="absolute top-4 left-4 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              className="absolute top-4 left-4 p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -707,26 +768,30 @@ export const LoginScreen: React.FC = () => {
                   <img
                     src={selectedDevForModal.avatarUrl}
                     alt={selectedDevForModal.name}
-                    className="w-24 h-24 rounded-3xl object-cover shadow-xl border-4 border-slate-100"
+                    className="w-24 h-24 rounded-3xl object-cover shadow-xl border-4 border-white dark:border-zinc-800"
                   />
                 ) : (
-                  <div className="w-24 h-24 rounded-3xl bg-slate-900 text-white font-black text-3xl flex items-center justify-center shadow-xl border-4 border-slate-100">
+                  <div className="w-24 h-24 rounded-3xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-3xl flex items-center justify-center shadow-xl border-4 border-white dark:border-zinc-800 font-mono">
                     {selectedDevForModal.name.charAt(0)}
                   </div>
                 )}
-                <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-bold border-2 border-white shadow-xs">
-                  توسعه‌دهنده 💻
+                <span className="absolute -bottom-1 -right-1 px-2.5 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-black border-2 border-white dark:border-zinc-800 shadow-xs">
+                  سازنده 💻
                 </span>
               </div>
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-base font-black text-slate-900">{selectedDevForModal.name}</h3>
-              <p className="text-xs font-bold text-indigo-600">{selectedDevForModal.role}</p>
+              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                {selectedDevForModal.name}
+              </h3>
+              <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                {selectedDevForModal.role}
+              </p>
             </div>
 
             {selectedDevForModal.bio && (
-              <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100 leading-relaxed font-medium">
+              <p className="text-xs text-slate-600 dark:text-zinc-300 bg-slate-50 dark:bg-[#252528] p-3.5 rounded-2xl border border-black/[0.04] dark:border-white/[0.06] leading-relaxed font-medium text-right">
                 {selectedDevForModal.bio}
               </p>
             )}
@@ -736,7 +801,7 @@ export const LoginScreen: React.FC = () => {
                 href={selectedDevForModal.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:underline pt-1"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline pt-1"
               >
                 <span>مشاهده وبسایت یا رزومه</span>
                 <ArrowLeft className="w-3.5 h-3.5" />
@@ -746,7 +811,7 @@ export const LoginScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => setSelectedDevForModal(null)}
-              className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+              className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-slate-900 text-xs font-black transition-all shadow-md active:scale-95 cursor-pointer"
             >
               بستن
             </button>
@@ -757,11 +822,11 @@ export const LoginScreen: React.FC = () => {
       {/* AUTO BALE LOGIN MODAL */}
       {baleLoginModalData && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in"
           dir="rtl"
         >
           <div
-            className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 text-center relative border border-emerald-100"
+            className="w-full max-w-sm bg-white dark:bg-[#1c1c1e] rounded-[32px] p-6 shadow-2xl space-y-5 animate-in zoom-in-95 text-center relative border border-emerald-500/20"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -770,7 +835,7 @@ export const LoginScreen: React.FC = () => {
                 setBaleLoginModalData(null);
                 setBalePollingActive(false);
               }}
-              className="absolute top-4 left-4 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              className="absolute top-4 left-4 p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -778,7 +843,7 @@ export const LoginScreen: React.FC = () => {
             {/* Glowing Bot Icon */}
             <div className="flex justify-center pt-2">
               <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border-2 border-emerald-200 shadow-inner animate-pulse">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border-2 border-emerald-500/30 shadow-inner animate-pulse">
                   <Bot className="w-9 h-9" />
                 </div>
                 <span className="absolute -top-1 -right-1 flex h-4 w-4">
@@ -789,21 +854,21 @@ export const LoginScreen: React.FC = () => {
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="font-black text-slate-900 text-base">ورود سریع با پیام‌رسان بله</h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                لطفاً روی دکمه زیر کلیک کرده و در صفحه باز شده در بله دکمه <span className="font-bold text-emerald-700">«شروع / Start»</span> را بزنید.
+              <h3 className="font-black text-slate-900 dark:text-white text-base">ورود سریع با پیام‌رسان بله</h3>
+              <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+                لطفاً روی دکمه زیر کلیک کرده و در صفحه باز شده در بله دکمه <span className="font-bold text-emerald-600 dark:text-emerald-400">«شروع / Start»</span> را بزنید.
               </p>
             </div>
 
             {/* Status indicator */}
             {balePollingStep === 'waiting_contact' ? (
-              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center gap-2 text-xs text-amber-900 font-bold animate-pulse">
-                <Phone className="w-4 h-4 text-amber-600 shrink-0" />
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center gap-2 text-xs text-amber-800 dark:text-amber-200 font-bold animate-pulse">
+                <Phone className="w-4 h-4 text-amber-500 shrink-0" />
                 <span>لطفاً در بله دکمه «📱 ارسال شماره تماس» را لمس کنید</span>
               </div>
             ) : (
-              <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/60 flex items-center justify-center gap-2.5 text-xs text-emerald-800 font-bold">
-                <RefreshCw className="w-4 h-4 animate-spin text-emerald-600 shrink-0" />
+              <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center gap-2.5 text-xs text-emerald-700 dark:text-emerald-300 font-bold">
+                <RefreshCw className="w-4 h-4 animate-spin text-emerald-500 shrink-0" />
                 <span>در انتظار تأیید ورود شما در بله...</span>
               </div>
             )}
@@ -813,7 +878,7 @@ export const LoginScreen: React.FC = () => {
                 href={baleLoginModalData.baleBotLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
               >
                 <span>باز کردن پیام‌رسان بله</span>
                 <ExternalLink className="w-4 h-4 stroke-[2.5]" />
@@ -825,7 +890,7 @@ export const LoginScreen: React.FC = () => {
                   setBaleLoginModalData(null);
                   setBalePollingActive(false);
                 }}
-                className="w-full py-2.5 rounded-xl text-slate-500 hover:text-slate-800 text-xs font-bold transition-colors cursor-pointer"
+                className="w-full py-2.5 rounded-xl text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-white text-xs font-bold transition-colors cursor-pointer"
               >
                 انصراف و ورود با رمز عبور
               </button>
@@ -845,11 +910,11 @@ export const LoginScreen: React.FC = () => {
       {/* BALE POST-LOGIN ONBOARDING MODAL */}
       {baleOnboardingData && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in"
           dir="rtl"
         >
           <div
-            className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 relative border border-slate-200"
+            className="w-full max-w-md bg-white dark:bg-[#1c1c1e] rounded-[32px] p-6 sm:p-7 shadow-2xl space-y-4 animate-in zoom-in-95 relative border border-black/[0.08] dark:border-white/[0.1]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -857,23 +922,23 @@ export const LoginScreen: React.FC = () => {
               <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
                 <Sparkles className="w-7 h-7" />
               </div>
-              <h3 className="text-base font-black text-slate-900">
+              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
                 تنظیم مشخصات ورود به بگ تایم
               </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
                 ورود شما با بله انجام شد. لطفاً نام کاربری و رمز دلخواهتان را تعیین کنید تا در دفعات بعدی نیز بتوانید بدون نیاز به بله به سامانه وارد شوید.
               </p>
             </div>
 
             {onboardingError && (
-              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold leading-relaxed">
+              <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-700 dark:text-rose-300 text-xs font-bold leading-relaxed">
                 {onboardingError}
               </div>
             )}
 
             <form onSubmit={handleCompleteBaleOnboarding} className="space-y-3.5">
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-700">
+                <label className="block text-xs font-black text-slate-700 dark:text-zinc-300">
                   نام و نام خانوادگی <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -882,13 +947,13 @@ export const LoginScreen: React.FC = () => {
                   value={onboardingName}
                   onChange={(e) => setOnboardingName(e.target.value)}
                   placeholder="مثال: علیرضا احمدی"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#f8fafc] border border-slate-200 text-slate-800 text-xs outline-none focus:border-slate-800 focus:bg-white transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#252528] border border-black/[0.06] dark:border-white/[0.08] text-slate-800 dark:text-zinc-200 text-xs outline-none focus:bg-white dark:focus:bg-zinc-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                 />
               </div>
 
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-700">
+                  <label className="block text-xs font-black text-slate-700 dark:text-zinc-300">
                     نام کاربری انگلیسی (Username) <span className="text-rose-500">*</span>
                   </label>
                   <span className="text-[10px] text-slate-400 font-mono">حداقل ۳ حرف</span>
@@ -902,14 +967,14 @@ export const LoginScreen: React.FC = () => {
                     value={onboardingUsername}
                     onChange={(e) => setOnboardingUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                     placeholder="alireza_ahmadi"
-                    className="w-full px-3.5 pl-8 py-2.5 rounded-xl bg-[#f8fafc] border border-slate-200 text-slate-800 font-mono text-xs text-left outline-none focus:border-slate-800 focus:bg-white transition-all"
+                    className="w-full px-4 pl-8 py-2.5 rounded-xl bg-slate-50 dark:bg-[#252528] border border-black/[0.06] dark:border-white/[0.08] text-slate-800 dark:text-zinc-200 font-mono text-xs text-left outline-none focus:bg-white dark:focus:bg-zinc-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-700">
+                  <label className="block text-xs font-black text-slate-700 dark:text-zinc-300">
                     رمز عبور <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
@@ -920,12 +985,12 @@ export const LoginScreen: React.FC = () => {
                       value={onboardingPassword}
                       onChange={(e) => setOnboardingPassword(e.target.value)}
                       placeholder="حداقل ۴ کاراکتر"
-                      className="w-full px-3.5 pr-8 py-2.5 rounded-xl bg-[#f8fafc] border border-slate-200 text-slate-800 text-xs outline-none focus:border-slate-800 focus:bg-white transition-all"
+                      className="w-full px-4 pr-8 py-2.5 rounded-xl bg-slate-50 dark:bg-[#252528] border border-black/[0.06] dark:border-white/[0.08] text-slate-800 dark:text-zinc-200 text-xs outline-none focus:bg-white dark:focus:bg-zinc-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setShowOnboardingPassword(!showOnboardingPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200"
                     >
                       {showOnboardingPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
@@ -933,7 +998,7 @@ export const LoginScreen: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-700">
+                  <label className="block text-xs font-black text-slate-700 dark:text-zinc-300">
                     تکرار رمز عبور <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -943,7 +1008,7 @@ export const LoginScreen: React.FC = () => {
                     value={onboardingConfirmPassword}
                     onChange={(e) => setOnboardingConfirmPassword(e.target.value)}
                     placeholder="تکرار رمز عبور"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#f8fafc] border border-slate-200 text-slate-800 text-xs outline-none focus:border-slate-800 focus:bg-white transition-all"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#252528] border border-black/[0.06] dark:border-white/[0.08] text-slate-800 dark:text-zinc-200 text-xs outline-none focus:bg-white dark:focus:bg-zinc-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   />
                 </div>
               </div>
@@ -952,7 +1017,7 @@ export const LoginScreen: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSubmittingOnboarding}
-                  className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-black text-white text-xs font-black transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
+                  className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-slate-900 text-xs font-black transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
                 >
                   {isSubmittingOnboarding ? (
                     <>
@@ -969,7 +1034,7 @@ export const LoginScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSkipBaleOnboarding}
-                  className="w-full py-2 text-slate-400 hover:text-slate-700 text-[11px] font-bold transition-colors cursor-pointer text-center block"
+                  className="w-full py-2 text-slate-400 hover:text-slate-700 dark:hover:text-zinc-300 text-[11px] font-bold transition-colors cursor-pointer text-center block"
                 >
                   فعلاً رد کردن و ورود مستقیم
                 </button>

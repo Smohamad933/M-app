@@ -3121,37 +3121,52 @@ export const UserManagementView: React.FC = () => {
               <span className="text-[10px] text-emerald-400 font-mono font-bold">LIVE PREVIEW</span>
             </div>
 
-            {/* The exact box as it appears in LoginScreen */}
-            <div className="max-w-md mx-auto bg-zinc-950 p-4 rounded-2xl border border-zinc-800 shadow-sm flex items-center justify-between">
-              <div className="flex items-center -space-x-2 space-x-reverse">
+            {/* The exact box as it appears in LoginScreen - Apple Bento Luxury */}
+            <div className="max-w-md mx-auto bg-zinc-950 p-3.5 rounded-3xl border border-zinc-800 shadow-sm space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                    <Code2 className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-black text-zinc-200">
+                    تیم توسعه و معماران سیستم
+                  </span>
+                </div>
+                <span className="text-[10px] text-zinc-500 font-bold">
+                  {toPersianDigits(developersList.length)} عضو سازنده
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {developersList.slice(0, 4).map((dev) => (
-                  <div key={dev.id} title={`${dev.name} (${dev.role})`} className="relative group">
-                    {dev.avatarUrl ? (
-                      <img
-                        src={dev.avatarUrl}
-                        alt={dev.name}
-                        className="w-7 h-7 rounded-full object-cover border-2 border-zinc-800 shadow-xs"
-                      />
-                    ) : (
-                      <div className="w-7 h-7 rounded-full bg-zinc-800 text-white font-black text-[10px] flex items-center justify-center border-2 border-zinc-700 shadow-xs">
-                        {dev.name.charAt(0)}
-                      </div>
-                    )}
+                  <div
+                    key={dev.id}
+                    className="p-2 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center gap-2 text-right"
+                  >
+                    <div className="relative shrink-0">
+                      {dev.avatarUrl ? (
+                        <img
+                          src={dev.avatarUrl}
+                          alt={dev.name}
+                          className="w-8 h-8 rounded-xl object-cover border border-zinc-700 shadow-xs"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-xl bg-zinc-800 text-white font-black text-xs flex items-center justify-center border border-zinc-700 shadow-xs">
+                          {dev.name.charAt(0)}
+                        </div>
+                      )}
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-zinc-900" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-xs font-black text-white truncate block">
+                        {dev.name}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 truncate block">
+                        {dev.role}
+                      </span>
+                    </div>
                   </div>
                 ))}
-                {developersList.length > 4 && (
-                  <div className="w-7 h-7 rounded-full bg-zinc-800 border-2 border-zinc-700 text-[9px] font-black text-zinc-300 flex items-center justify-center">
-                    +{toPersianDigits(developersList.length - 4)}
-                  </div>
-                )}
-              </div>
-              <div className="text-right">
-                <span className="text-[11px] font-extrabold text-white block">
-                  اعضای توسعه‌دهنده این آپ
-                </span>
-                <span className="text-[9px] text-zinc-400 block font-medium">
-                  {developersList.map((d) => d.name).join('، ')}
-                </span>
               </div>
             </div>
           </div>
