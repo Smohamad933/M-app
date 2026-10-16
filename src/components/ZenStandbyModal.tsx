@@ -410,14 +410,15 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
         <div className="flex flex-col items-center justify-center text-center">
           <div
             dir="ltr"
-            className="font-mono font-black tracking-wider text-5xl sm:text-7xl md:text-8xl lg:text-9xl drop-shadow-[0_0_35px_rgba(255,255,255,0.18)] flex items-baseline justify-center select-all whitespace-nowrap tabular-nums leading-none"
+            style={{ direction: 'ltr', unicodeBidi: 'bidi-override' }}
+            className="font-mono font-black tracking-wider text-5xl sm:text-7xl md:text-8xl lg:text-9xl landscape:text-6xl landscape:sm:text-7xl drop-shadow-[0_0_35px_rgba(255,255,255,0.18)] flex flex-row flex-nowrap items-baseline justify-center select-all whitespace-nowrap tabular-nums leading-none"
           >
-            <span className="w-[1.25ch] text-center inline-block">{hours}</span>
+            <span className="w-[1.2ch] text-center inline-block">{hours}</span>
             <span className="opacity-70 animate-pulse mx-1">:</span>
-            <span className="w-[1.25ch] text-center inline-block">{minutes}</span>
-            <span className="text-3xl sm:text-5xl md:text-6xl text-zinc-400/80 font-normal ml-2">
+            <span className="w-[1.2ch] text-center inline-block">{minutes}</span>
+            <span className="text-3xl sm:text-5xl md:text-6xl landscape:text-4xl text-zinc-400/80 font-normal ml-2 inline-flex flex-row flex-nowrap items-baseline">
               <span className="opacity-50">:</span>
-              <span className="w-[1.25ch] text-center inline-block">{seconds}</span>
+              <span className="w-[1.2ch] text-center inline-block">{seconds}</span>
             </span>
           </div>
 

@@ -176,6 +176,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
   const [isExtensionModalOpen, setIsExtensionModalOpen] = useState(false);
   const [isAiAgentModalOpen, setIsAiAgentModalOpen] = useState(false);
   const [isLiveUpdateOpen, setIsLiveUpdateOpen] = useState(false);
+  const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState(false);
   const [isGardenShopOpen, setIsGardenShopOpen] = useState(false);
   const [userGems, setUserGems] = useState<number>(() => getUserGems(currentUser?.id || 'guest'));
   const [gardenCustomization, setGardenCustomization] = useState<PlantCustomization>(() => {
@@ -1072,140 +1073,132 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   <Search className="w-3.5 h-3.5" />
                 </button>
 
-                {/* Admin User Filter Dropdown */}
-                {isAdmin && users.length > 1 && (
-                  <select
-                    value={selectedFilterUserId || ''}
-                    onChange={(e) => setSelectedFilterUserId(e.target.value || null)}
-                    className="hidden xl:block px-2.5 py-1.5 rounded-full bg-[#f4f6f8] dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 text-xs outline-none cursor-pointer max-w-[130px] truncate"
-                  >
-                    <option value="">همه کاربران</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-
-                {/* Share Button (desktop/tablet) */}
-                <button
-                  type="button"
-                  onClick={() => setIsShareModalOpen(true)}
-                  className="w-8 sm:w-9 h-8 sm:h-9 rounded-full border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center justify-center text-slate-600 dark:text-zinc-300 transition-colors shadow-2xs hidden sm:flex cursor-pointer"
-                  title="اشتراک‌گذاری گزارش"
-                >
-                  <Share2 className="w-4 h-4" />
-                </button>
-
-                {/* Browser Extension Assistant Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playPop();
-                    setIsExtensionModalOpen(true);
-                  }}
-                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-indigo-200/80 dark:border-indigo-900/40 bg-indigo-50/80 dark:bg-indigo-950/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 items-center gap-1.5 text-indigo-700 dark:text-indigo-300 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 hidden lg:flex"
-                  title="افزونه دستیار نیوتَب مرورگر (کروم، اج، فایرفاکس)"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 animate-pulse" />
-                  <span>افزونه دستیار</span>
-                </button>
-
-                {/* Instagram Carousel Studio Button - ONLY FOR SUPER ADMIN (hidden on mobile) */}
-                {isAdmin && (
+                {/* 3. Consolidated Tools Dropdown Menu (Replaces all scattered extra buttons!) */}
+                <div className="relative">
                   <button
                     type="button"
-                    onClick={() => {
-                      sounds.playPop();
-                      if (onOpenInstagramStudio) {
-                        onOpenInstagramStudio();
-                      } else {
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('page', 'instagram');
-                        window.location.href = url.toString();
-                      }
-                    }}
-                    className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-pink-200/80 dark:border-pink-900/40 bg-pink-50/80 dark:bg-pink-950/20 hover:bg-pink-100 dark:hover:bg-pink-900/30 items-center gap-1.5 text-pink-700 dark:text-pink-300 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 hidden lg:flex"
-                    title="استودیو ساخت اسلایدهای گرافیکی اینستاگرام (مخصوص مدیر کل)"
+                    onClick={() => setIsToolsDropdownOpen(!isToolsDropdownOpen)}
+                    className="h-8 sm:h-9 px-3 rounded-full border border-slate-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-800 flex items-center gap-1.5 text-slate-700 dark:text-zinc-200 font-bold text-xs transition-all shadow-2xs cursor-pointer flex-shrink-0"
+                    title="سایر امکانات و ابزارهای بگ‌تایم"
                   >
-                    <span className="text-xs">📸</span>
-                    <span>اسلایدهای اینستاگرام</span>
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>امکانات و ابزارها</span>
+                    <ChevronDown className="w-3 h-3 opacity-60" />
                   </button>
-                )}
 
-                {/* Zero-Downtime Live Server Updater - ONLY FOR SUPER ADMIN */}
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      sounds.playPop();
-                      setIsLiveUpdateOpen(true);
-                    }}
-                    className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 items-center gap-1.5 flex"
-                    title="بروزرسانی زنده و آنی سرور بدون داون‌تایم با فایل ZIP"
-                  >
-                    <span className="text-xs">⚡</span>
-                    <span className="hidden sm:inline">بروزرسانی زنده</span>
-                  </button>
-                )}
+                  {isToolsDropdownOpen && (
+                    <div
+                      className="absolute left-0 mt-2 w-56 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 select-none"
+                      onClick={() => setIsToolsDropdownOpen(false)}
+                    >
+                      <div className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 px-2.5 py-1 border-b border-slate-100 dark:border-zinc-800 mb-1 text-right">
+                        امکانات و ابزارهای بگ‌تایم:
+                      </div>
 
-                {/* Progress Newspaper Story Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playPop();
-                    setIsNewspaperStoryOpen(true);
-                  }}
-                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-amber-300/80 dark:border-amber-900/40 bg-amber-50/80 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 items-center gap-1.5 text-amber-900 dark:text-amber-300 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 flex"
-                  title="استوری پیشرفت سامانه روزنامه و مقایسه با سلبریتی‌ها"
-                >
-                  <Newspaper className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span className="hidden xl:inline">استوری روزنامه</span>
-                </button>
+                      <button
+                        type="button"
+                        onClick={() => { sounds.playPop(); setIsNewspaperStoryOpen(true); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
+                      >
+                        <Newspaper className="w-4 h-4 text-amber-500" />
+                        <span>استوری روزنامه و مفاخر</span>
+                      </button>
 
-                {/* Daily Story / Journal Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playPop();
-                    setIsDailyStoryOpen(true);
-                  }}
-                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-800 items-center gap-1.5 text-slate-700 dark:text-zinc-300 font-bold text-xs transition-colors shadow-2xs cursor-pointer flex-shrink-0 flex"
-                  title="داستان روز (وقایع‌نگاری و خاطرات)"
-                >
-                  <Feather className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span className="hidden xl:inline">داستان روز</span>
-                </button>
+                      <button
+                        type="button"
+                        onClick={() => { sounds.playPop(); setIsDailyStoryOpen(true); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
+                      >
+                        <Feather className="w-4 h-4 text-emerald-500" />
+                        <span>داستان روز و خاطره‌نگاری</span>
+                      </button>
 
-                {/* Device 3-Time Web Notifications Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playPop();
-                    setIsDeviceNotifModalOpen(true);
-                  }}
-                  className="w-8 sm:w-9 h-8 sm:h-9 rounded-full border border-indigo-200/80 dark:border-indigo-900/40 bg-indigo-50/60 dark:bg-indigo-950/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 flex items-center justify-center text-indigo-700 dark:text-indigo-300 transition-colors shadow-2xs relative cursor-pointer flex-shrink-0 hidden sm:flex"
-                  title="سیستم اعلان ۳ گانه گوشی و یادآور تسک"
-                >
-                  <Smartphone className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                </button>
+                      <button
+                        type="button"
+                        onClick={() => { sounds.playPop(); setIsDeviceNotifModalOpen(true); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
+                      >
+                        <Smartphone className="w-4 h-4 text-indigo-500" />
+                        <span>اعلان‌های هوشمند گوشی</span>
+                      </button>
 
-                {/* Reminders Button (desktop/tablet) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playPop();
-                    setIsRemindersModalOpen(true);
-                  }}
-                  className="w-8 sm:w-9 h-8 sm:h-9 rounded-full border border-amber-200/80 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 flex items-center justify-center text-amber-700 dark:text-amber-300 transition-colors shadow-2xs relative cursor-pointer flex-shrink-0 hidden sm:flex"
-                  title="سیستم یادآورها و آلارم‌های ۳۰ روزه"
-                >
-                  <Bell className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  {reminders.filter((r) => r.active).length > 0 && (
-                    <span className="w-2 h-2 rounded-full bg-amber-500 absolute top-1 right-1 ring-2 ring-white dark:ring-zinc-900" />
+                      <button
+                        type="button"
+                        onClick={() => { sounds.playPop(); setIsRemindersModalOpen(true); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
+                      >
+                        <Bell className="w-4 h-4 text-sky-500" />
+                        <span>یادآورها و آلارم‌های ۳۰ روزه</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => { sounds.playPop(); setIsExtensionModalOpen(true); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
+                      >
+                        <Sparkles className="w-4 h-4 text-purple-500" />
+                        <span>افزونه نیوتَب مرورگر</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => { sounds.playPop(); setIsShareModalOpen(true); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
+                      >
+                        <Share2 className="w-4 h-4 text-teal-500" />
+                        <span>اشتراک‌گذاری گزارش</span>
+                      </button>
+
+                      {isAdmin && (
+                        <>
+                          <div className="border-t border-slate-100 dark:border-zinc-800 my-1" />
+                          {users.length > 1 && (
+                            <div className="px-2 py-1">
+                              <div className="text-[10px] text-slate-400 font-bold mb-1">فیلتر تسک‌های کاربر:</div>
+                              <select
+                                value={selectedFilterUserId || ''}
+                                onChange={(e) => setSelectedFilterUserId(e.target.value || null)}
+                                className="w-full px-2 py-1 rounded-xl bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-zinc-200 text-xs outline-none cursor-pointer truncate"
+                              >
+                                <option value="">همه کاربران</option>
+                                {users.map((u) => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => { sounds.playPop(); setIsLiveUpdateOpen(true); }}
+                            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer text-right"
+                          >
+                            <span className="text-xs">⚡</span>
+                            <span>بروزرسانی زنده سرور (ZIP)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              sounds.playPop();
+                              if (onOpenInstagramStudio) onOpenInstagramStudio();
+                              else {
+                                const url = new URL(window.location.href);
+                                url.searchParams.set('page', 'instagram');
+                                window.location.href = url.toString();
+                              }
+                            }}
+                            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-pink-700 dark:text-pink-300 hover:bg-pink-50 dark:hover:bg-pink-950/40 transition-colors cursor-pointer text-right"
+                          >
+                            <span className="text-xs">📸</span>
+                            <span>اسلایدهای اینستاگرام</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
                   )}
-                </button>
+                </div>
 
                 {/* Notification Bell with interactive Modal */}
                 <button
@@ -1414,8 +1407,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
 
           {/* Scrollable Container for Main Content & Footer */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
-            {/* Main Body */}
-            <main className="flex-1 p-3 sm:p-7 space-y-5 sm:space-y-6 max-w-7xl w-full mx-auto pb-24 lg:pb-10 min-w-0 overflow-x-hidden">
+            {/* Main Body - Full-Width Bleed Layout with no artificial side gutters */}
+            <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 w-full pb-24 lg:pb-10 min-w-0 overflow-x-hidden">
             {/* Unverified User Restriction Banner */}
             {currentUser && currentUser.role !== 'admin' && currentUser.username?.toLowerCase() !== 'mohusyn' && (!currentUser.isVerified || currentUser.status === 'pending_verification') && (
               <div className="p-4 rounded-3xl border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 shadow-sm animate-in slide-in-from-top-2">
@@ -2098,9 +2091,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
         onClose={() => setIsFirstLoginModalOpen(false)}
       />
 
-      {/* 12-Hour Offline-First Mandatory Sync Modal */}
+      {/* 12-Hour Offline-First Sync Modal (Only on manual user click, never blocking) */}
       <MandatorySyncModal
-        isOpen={isSyncModalOpen || isMandatorySyncDue}
+        isOpen={isSyncModalOpen}
         onClose={() => setIsSyncModalOpen(false)}
       />
 

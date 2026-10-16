@@ -45,6 +45,7 @@ import {
   Trophy,
   Database,
   Share2,
+  ChevronDown,
 } from 'lucide-react';
 
 export interface SamsungWidgetConfig {
@@ -230,6 +231,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
   const [isTribeModalOpen, setIsTribeModalOpen] = useState(false);
   const [isReportCardOpen, setIsReportCardOpen] = useState(false);
   const [isDataBackupOpen, setIsDataBackupOpen] = useState(false);
+  const [isHeroToolsOpen, setIsHeroToolsOpen] = useState(false);
 
   // Gems synchronization
   const userKey = currentUser?.id || 'guest';
@@ -967,7 +969,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
           </p>
         </div>
 
-        {/* Quick Action Dock */}
+        {/* Quick Action Dock - Streamlined & Responsive */}
         <div className="flex items-center gap-2 flex-wrap relative z-10 w-full lg:w-auto">
           <button
             type="button"
@@ -975,10 +977,11 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
               sounds.playPop();
               setIsZenOpen(true);
             }}
-            className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+            className="py-2 px-3.5 rounded-2xl bg-white/20 hover:bg-white/30 text-white text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+            title="حالت ساعت رومیزی تمام‌صفحه و تایمر تمرکز ۱۶:۹"
           >
-            <Clock className="w-3.5 h-3.5 text-amber-300" />
-            <span>ساعت رومیزی</span>
+            <Clock className="w-4 h-4 text-amber-300" />
+            <span>ساعت رومیزی و تمرکز</span>
           </button>
 
           <button
@@ -988,6 +991,7 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
               setIsTribeModalOpen(true);
             }}
             className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+            title="چالش‌های گروهی و هفتگی با دوستان"
           >
             <Trophy className="w-3.5 h-3.5 text-amber-300" />
             <span>چالش‌های قبیله</span>
@@ -997,61 +1001,82 @@ export const SamsungControlCenterDashboard: React.FC<SamsungControlCenterDashboa
             type="button"
             onClick={() => {
               sounds.playPop();
-              setIsReportCardOpen(true);
-            }}
-            className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-          >
-            <Share2 className="w-3.5 h-3.5 text-indigo-200" />
-            <span>کارنامه ماهانه</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playPop();
-              setActiveTab('hourly');
-            }}
-            className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-          >
-            <CalendarDays className="w-3.5 h-3.5 text-emerald-200" />
-            <span>بلاک ۲۴ساعته</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playPop();
-              setIsDataBackupOpen(true);
-            }}
-            className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-          >
-            <Database className="w-3.5 h-3.5 text-teal-200" />
-            <span>پشتیبان‌گیری</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playPop();
-              setIsCalendarSyncOpen(true);
-            }}
-            className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-          >
-            <Calendar className="w-3.5 h-3.5 text-sky-300" />
-            <span>خروجی تقویم</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playPop();
               onOpenNewspaperStory();
             }}
-            className="py-2 px-3 rounded-2xl bg-white text-emerald-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
+            className="py-2 px-3 rounded-2xl bg-white text-emerald-950 hover:bg-emerald-50 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
+            title="استوری پیشرفت و داستان روز"
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
             <span>استوری روز</span>
           </button>
+
+          {/* Secondary Tools Dropdown in Hero */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsHeroToolsOpen(!isHeroToolsOpen)}
+              className="py-2 px-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+              title="سایر امکانات و ابزارها"
+            >
+              <span>سایر ابزارها</span>
+              <ChevronDown className="w-3 h-3 opacity-80" />
+            </button>
+
+            {isHeroToolsOpen && (
+              <div
+                className="absolute left-0 mt-2 w-52 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-1.5 shadow-2xl z-50 text-slate-800 dark:text-zinc-100 animate-in fade-in zoom-in-95"
+                onClick={() => setIsHeroToolsOpen(false)}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setIsReportCardOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
+                >
+                  <Share2 className="w-4 h-4 text-indigo-500" />
+                  <span>کارنامه ماهانه (استوری)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setActiveTab('hourly');
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
+                >
+                  <CalendarDays className="w-4 h-4 text-emerald-500" />
+                  <span>بلاک‌بندی ۲۴ساعته</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setIsDataBackupOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
+                >
+                  <Database className="w-4 h-4 text-teal-500" />
+                  <span>پشتیبان‌گیری و بازیابی داده</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playPop();
+                    setIsCalendarSyncOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-right"
+                >
+                  <Calendar className="w-4 h-4 text-sky-500" />
+                  <span>خروجی و همگام‌سازی تقویم</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

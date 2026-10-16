@@ -842,19 +842,33 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [remainingHoursUntilSync, setRemainingHoursUntilSync] = useState<number>(() => api.getRemainingHoursUntilMandatorySync());
   const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
 
-  // Periodically check 12-hour sync requirement
+  // Periodically perform silent background auto-sync without interrupting the user
   useEffect(() => {
-    const checkSyncStatus = () => {
+    const autoSyncInBackground = async () => {
       const isDue = api.isMandatorySyncDue();
       setIsMandatorySyncDue(isDue);
       setRemainingHoursUntilSync(api.getRemainingHoursUntilMandatorySync());
-      if (isDue) {
-        setIsSyncModalOpen(true);
+
+      // If due and online, auto-sync silently in the background
+      if (navigator.onLine) {
+        try {
+          await api.syncDataWithServer();
+          setIsMandatorySyncDue(false);
+          setRemainingHoursUntilSync(12);
+          setIsSyncModalOpen(false);
+        } catch (e) {
+          console.warn('Background auto-sync silently deferred:', e);
+        }
       }
     };
-    checkSyncStatus();
-    const interval = setInterval(checkSyncStatus, 45000);
-    return () => clearInterval(interval);
+
+    autoSyncInBackground();
+    window.addEventListener('online', autoSyncInBackground);
+    const interval = setInterval(autoSyncInBackground, 60000);
+    return () => {
+      window.removeEventListener('online', autoSyncInBackground);
+      clearInterval(interval);
+    };
   }, []);
 
   const triggerServerSync = async () => {

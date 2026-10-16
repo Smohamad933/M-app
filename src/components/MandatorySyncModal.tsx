@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTask } from '../context/TaskContext';
 import { toPersianDigits } from '../utils/persianDate';
 import { sounds } from '../utils/sound';
@@ -8,6 +8,7 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
+  X,
 } from 'lucide-react';
 
 interface MandatorySyncModalProps {
@@ -21,7 +22,14 @@ export const MandatorySyncModal: React.FC<MandatorySyncModalProps> = ({ isOpen, 
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  if (!isOpen && !isMandatorySyncDue) return null;
+  // Auto-sync immediately when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      handleSyncNow();
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   const handleSyncNow = async () => {
     setIsSyncing(true);
@@ -33,7 +41,7 @@ export const MandatorySyncModal: React.FC<MandatorySyncModalProps> = ({ isOpen, 
       setTimeout(() => {
         setSyncSuccess(false);
         if (onClose) onClose();
-      }, 2000);
+      }, 1500);
     } catch (err: any) {
       setSyncError(err.message || 'عدم برقراری ارتباط با سرور. لطفاً اتصال اینترنت خود را بررسی نمایید.');
       sounds.playPop();
@@ -44,7 +52,19 @@ export const MandatorySyncModal: React.FC<MandatorySyncModalProps> = ({ isOpen, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in" dir="rtl">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5 animate-in zoom-in-95 text-center">
+      <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5 animate-in zoom-in-95 text-center relative">
+        {/* Close X Button */}
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-4 left-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
+            title="بستن"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+
         {/* Top Icon */}
         <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center mx-auto shadow-sm">
           {syncSuccess ? (
@@ -59,12 +79,12 @@ export const MandatorySyncModal: React.FC<MandatorySyncModalProps> = ({ isOpen, 
           <h3 className="text-base font-black text-slate-900">
             {syncSuccess
               ? 'همگام‌سازی با موفقیت انجام شد! 🎉'
-              : 'همگام‌سازی اجباری ۱۲ ساعته با سرور ⏳'}
+              : 'همگام‌سازی خودکار با سرور 🔄'}
           </h3>
           <p className="text-xs leading-relaxed text-slate-600">
             {syncSuccess
-              ? 'اطلاعات و تسک‌های شما با سرور مرکزی تطبیق و ذخیره شد. تا ۱۲ ساعت آینده می‌توانید بدون نیاز به اینترنت از برنامه استفاده نمایید.'
-              : 'سامانه بگ تایم به صورت آفلاین کار می‌کند؛ اما جهت امنیت اطلاعات و بکاپ در سرور مرکزی، هر ۱۲ ساعت اتصال به اینترنت و همگام‌سازی داده‌ها الزامی است.'}
+              ? 'اطلاعات و تسک‌های شما با سرور مرکزی تطبیق و ذخیره شد.'
+              : 'سامانه به صورت خودکار اطلاعات و تسک‌ها را در پس‌زمینه با سرور ابری همگام‌سازی می‌کند.'}
           </p>
         </div>
 
@@ -74,8 +94,8 @@ export const MandatorySyncModal: React.FC<MandatorySyncModalProps> = ({ isOpen, 
             <Wifi className="w-4 h-4 text-emerald-600" />
             وضعیت همگام‌سازی:
           </span>
-          <span className="font-bold text-amber-600">
-            {isMandatorySyncDue ? 'زمان همگام‌سازی فرا رسیده' : `${toPersianDigits(remainingHoursUntilSync)} ساعت تا سینک بعدی`}
+          <span className="font-bold text-emerald-600">
+            {isSyncing ? 'در حال ارسال و دریافت...' : isMandatorySyncDue ? 'زمان سینک فرا رسیده' : `${toPersianDigits(remainingHoursUntilSync)} ساعت تا سینک بعدی`}
           </span>
         </div>
 
@@ -88,7 +108,7 @@ export const MandatorySyncModal: React.FC<MandatorySyncModalProps> = ({ isOpen, 
         )}
 
         {/* Action Button */}
-        <div className="pt-2">
+        <div className="pt-2 space-y-2">
           <button
             type="button"
             disabled={isSyncing}
@@ -96,16 +116,16 @@ export const MandatorySyncModal: React.FC<MandatorySyncModalProps> = ({ isOpen, 
             className="w-full py-3.5 px-5 rounded-2xl bg-slate-900 hover:bg-black text-white font-black text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 text-emerald-400 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{isSyncing ? 'در حال ارسال و ذخیره اطلاعات در سرور...' : 'همگام‌سازی اکنون با سرور 🔄'}</span>
+            <span>{isSyncing ? 'در حال همگام‌سازی در پس‌زمینه...' : 'همگام‌سازی مجدد 🔄'}</span>
           </button>
 
-          {!isMandatorySyncDue && onClose && (
+          {onClose && (
             <button
               type="button"
               onClick={onClose}
-              className="mt-2 text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
+              className="w-full py-2 text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
             >
-              بستن
+              بستن و ادامه کار با برنامه
             </button>
           )}
         </div>
