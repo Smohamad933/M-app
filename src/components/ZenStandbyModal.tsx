@@ -21,6 +21,8 @@ import {
   Clock,
   Droplets,
   Flame,
+  Calendar,
+  Smartphone,
 } from 'lucide-react';
 
 interface ZenStandbyModalProps {
@@ -32,6 +34,8 @@ export type AmbientSoundType = 'none' | 'clock' | 'river' | 'fireplace' | 'rain'
 
 export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClose }) => {
   const { tasks, updateTask, toggleTaskComplete, selectedDate } = useTask();
+
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Clock state
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -45,10 +49,11 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
 
   // Ambience & Theme
   const [activeSound, setActiveSound] = useState<AmbientSoundType>('none');
-  const [theme, setTheme] = useState<'obsidian' | 'emerald' | 'amber' | 'indigo'>('obsidian');
+  const [theme, setTheme] = useState<'emerald' | 'obsidian' | 'amber' | 'indigo'>('emerald');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSavedNotice, setIsSavedNotice] = useState(false);
   const [soundMenuOpen, setSoundMenuOpen] = useState(false);
+  const [isPortraitOnMobile, setIsPortraitOnMobile] = useState(false);
 
   // Active task selection
   const todayISO = new Date().toISOString().split('T')[0];
@@ -66,6 +71,23 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
     if (!isOpen) return;
     const interval = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(interval);
+  }, [isOpen]);
+
+  // Check orientation on mobile
+  useEffect(() => {
+    if (!isOpen) return;
+    const checkOrientation = () => {
+      const isMobile = window.innerWidth <= 768;
+      const isPortrait = window.innerHeight > window.innerWidth;
+      setIsPortraitOnMobile(isMobile && isPortrait);
+    };
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
   }, [isOpen]);
 
   // Handle countdown timer & elapsed focus tracking
@@ -190,7 +212,6 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
         filter.frequency.setValueAtTime(500, ctx.currentTime);
         gain.gain.setValueAtTime(0.15, ctx.currentTime);
 
-        // Periodic crackles for wood fire
         const playCrackle = () => {
           if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') return;
           const osc = ctx.createOscillator();
@@ -222,11 +243,30 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
     };
   }, [activeSound, isOpen]);
 
+  // Fullscreen & Orientation Listener
+  useEffect(() => {
+    const handleFsChange = () => {
+      const isFs = !!document.fullscreenElement;
+      setIsFullscreen(isFs);
+      if (!isFs && screen.orientation && screen.orientation.unlock) {
+        try {
+          screen.orientation.unlock();
+        } catch {}
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+  }, []);
+
   if (!isOpen) return null;
 
   const currentTask = tasks.find((t) => t.id === selectedTaskId);
 
-  // Time formatting (pad zero)
+  // Time formatting
   const hours = currentTime.getHours().toString().padStart(2, '0');
   const minutes = currentTime.getMinutes().toString().padStart(2, '0');
   const seconds = currentTime.getSeconds().toString().padStart(2, '0');
@@ -258,28 +298,104 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
     setTimeout(() => setIsSavedNotice(false), 3000);
   };
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen?.().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen?.().catch(() => {});
-      setIsFullscreen(false);
+  // Toggle Fullscreen with Landscape Lock for Mobile
+  const toggleFullscreen = async () => {
+    sounds.playPop();
+    try {
+      if (!document.fullscreenElement) {
+        const elem = containerRef.current || document.documentElement;
+        if (elem.requestFullscreen) {
+          await elem.requestFullscreen();
+        } else if ((elem as any).webkitRequestFullscreen) {
+          await (elem as any).webkitRequestFullscreen();
+        }
+        setIsFullscreen(true);
+
+        // Lock to landscape on mobile devices supporting Screen Orientation API
+        if (screen.orientation && (screen.orientation as any).lock) {
+          try {
+            await (screen.orientation as any).lock('landscape');
+          } catch (e) {
+            console.log('Orientation lock unavailable or denied:', e);
+          }
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        }
+        setIsFullscreen(false);
+
+        if (screen.orientation && screen.orientation.unlock) {
+          try {
+            screen.orientation.unlock();
+          } catch {}
+        }
+      }
+    } catch (err) {
+      console.error('Fullscreen toggle error:', err);
     }
   };
 
-  const getThemeGradient = () => {
+  const handleClose = () => {
+    sounds.playPop();
+    if (document.fullscreenElement) {
+      try {
+        document.exitFullscreen?.();
+      } catch {}
+    }
+    if (screen.orientation && screen.orientation.unlock) {
+      try {
+        screen.orientation.unlock();
+      } catch {}
+    }
+    onClose();
+  };
+
+  // Dynamic Theme Configs with 2 Moving Blurred Blobs
+  const getThemeConfig = () => {
     switch (theme) {
       case 'emerald':
-        return 'from-emerald-950 via-zinc-950 to-black text-emerald-400';
+        return {
+          bg: 'bg-[#03130d]',
+          blob1: 'bg-emerald-500/40',
+          blob2: 'bg-teal-400/35',
+          accent: 'text-emerald-400',
+          button: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/60',
+          pill: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+        };
       case 'amber':
-        return 'from-amber-950 via-zinc-950 to-black text-amber-400';
+        return {
+          bg: 'bg-[#150a02]',
+          blob1: 'bg-amber-500/40',
+          blob2: 'bg-orange-500/35',
+          accent: 'text-amber-400',
+          button: 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-950/60',
+          pill: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+        };
       case 'indigo':
-        return 'from-indigo-950 via-zinc-950 to-black text-indigo-400';
-      default:
-        return 'from-zinc-950 via-black to-zinc-950 text-white';
+        return {
+          bg: 'bg-[#09061a]',
+          blob1: 'bg-indigo-500/40',
+          blob2: 'bg-purple-500/35',
+          accent: 'text-indigo-400',
+          button: 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-950/60',
+          pill: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+        };
+      default: // obsidian
+        return {
+          bg: 'bg-[#05070d]',
+          blob1: 'bg-blue-600/35',
+          blob2: 'bg-violet-600/35',
+          accent: 'text-blue-400',
+          button: 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-950/60',
+          pill: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+        };
     }
   };
+
+  const currentTheme = getThemeConfig();
 
   const soundOptions = [
     { id: 'none' as const, label: 'خاموش', icon: VolumeX },
@@ -292,17 +408,69 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
 
   return (
     <div
-      className={`fixed inset-0 z-[100] bg-gradient-to-b ${getThemeGradient()} flex flex-col justify-between p-4 sm:p-8 select-none transition-colors duration-700 overflow-hidden`}
+      ref={containerRef}
+      className={`fixed inset-0 z-[100] ${currentTheme.bg} text-white flex flex-col justify-between p-3 sm:p-6 lg:p-8 select-none transition-colors duration-700 overflow-hidden w-full h-full`}
       dir="rtl"
     >
-      {/* 1. TOP BAR: STATUS & TOOLS */}
+      {/* CSS KEYFRAMES FOR THE 2 SMOOTH BLURRED FLOATING MESH BLOBS */}
+      <style>{`
+        @keyframes zenBlobOne {
+          0% {
+            transform: translate(-10%, -10%) scale(1) rotate(0deg);
+          }
+          30% {
+            transform: translate(25vw, 15vh) scale(1.3) rotate(60deg);
+          }
+          60% {
+            transform: translate(-10vw, 30vh) scale(0.9) rotate(120deg);
+          }
+          100% {
+            transform: translate(15vw, -5vh) scale(1.15) rotate(180deg);
+          }
+        }
+
+        @keyframes zenBlobTwo {
+          0% {
+            transform: translate(15%, 20%) scale(1.1) rotate(0deg);
+          }
+          30% {
+            transform: translate(-25vw, -20vh) scale(0.85) rotate(-60deg);
+          }
+          60% {
+            transform: translate(20vw, -25vh) scale(1.25) rotate(-120deg);
+          }
+          100% {
+            transform: translate(-15vw, 20vh) scale(1) rotate(-180deg);
+          }
+        }
+
+        .zen-blob-1 {
+          animation: zenBlobOne 22s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+        }
+
+        .zen-blob-2 {
+          animation: zenBlobTwo 28s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+        }
+      `}</style>
+
+      {/* 2 LIVING ANIMATED BLURRED MESH BLOBS FLOATING BEHIND */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div
+          className={`absolute top-1/4 right-1/4 w-[42vw] h-[42vw] max-w-[650px] max-h-[650px] min-w-[280px] min-h-[280px] rounded-full blur-[100px] sm:blur-[140px] opacity-75 zen-blob-1 ${currentTheme.blob1}`}
+        />
+        <div
+          className={`absolute bottom-1/4 left-1/4 w-[46vw] h-[46vw] max-w-[700px] max-h-[700px] min-w-[300px] min-h-[300px] rounded-full blur-[110px] sm:blur-[150px] opacity-75 zen-blob-2 ${currentTheme.blob2}`}
+        />
+      </div>
+
+      {/* 1. TOP BAR: STATUS, AUDIO & SCREEN CONTROLS */}
       <div className="flex items-center justify-between w-full max-w-6xl mx-auto z-20 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs sm:text-sm font-black tracking-wide text-zinc-200">
-            میز کار رومیزی و تمرکز عمیق (Zen Mode)
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_12px_rgba(52,199,89,0.8)]" />
+          <span className="text-xs sm:text-sm font-black tracking-wide text-zinc-100">
+            میز کار رومیزی (Zen StandBy)
           </span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 font-mono">
+          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/10 text-zinc-300 font-mono font-bold border border-white/10">
             نوبت {toPersianDigits(sessionCount)}
           </span>
         </div>
@@ -314,14 +482,18 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
             <button
               type="button"
               onClick={() => setSoundMenuOpen(!soundMenuOpen)}
-              className={`p-1.5 px-3 rounded-2xl text-xs flex items-center gap-1.5 border transition-all cursor-pointer ${
+              className={`p-1.5 px-3 rounded-2xl text-xs flex items-center gap-1.5 border transition-all cursor-pointer backdrop-blur-md ${
                 activeSound !== 'none'
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                  : 'bg-black/50 border-white/10 text-zinc-400 hover:text-white'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-lg'
+                  : 'bg-black/40 border-white/10 text-zinc-300 hover:text-white'
               }`}
               title="انتخاب صدای محیطی آرامش‌بخش"
             >
-              {activeSound === 'none' ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 animate-pulse text-amber-400" />}
+              {activeSound === 'none' ? (
+                <VolumeX className="w-3.5 h-3.5" />
+              ) : (
+                <Volume2 className="w-3.5 h-3.5 animate-pulse text-amber-400" />
+              )}
               <span className="text-[11px] font-bold">
                 {soundOptions.find((s) => s.id === activeSound)?.label || 'صدا'}
               </span>
@@ -329,7 +501,7 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
             </button>
 
             {soundMenuOpen && (
-              <div className="absolute left-0 mt-2 w-44 bg-zinc-900 border border-white/15 rounded-2xl p-1.5 shadow-2xl z-50 backdrop-blur-md animate-in fade-in zoom-in-95">
+              <div className="absolute left-0 mt-2 w-48 bg-black/80 border border-white/15 rounded-2xl p-1.5 shadow-2xl z-50 backdrop-blur-2xl animate-in fade-in zoom-in-95">
                 <div className="text-[10px] font-bold text-zinc-400 px-2 py-1 border-b border-white/10">
                   اصوات آرامش‌بخش رومیزی:
                 </div>
@@ -367,35 +539,41 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
           <button
             type="button"
             onClick={() => {
-              const themes: Array<'obsidian' | 'emerald' | 'amber' | 'indigo'> = ['obsidian', 'emerald', 'amber', 'indigo'];
+              const themes: Array<'emerald' | 'obsidian' | 'amber' | 'indigo'> = [
+                'emerald',
+                'obsidian',
+                'amber',
+                'indigo',
+              ];
               const nextIndex = (themes.indexOf(theme) + 1) % themes.length;
               setTheme(themes[nextIndex]);
               sounds.playPop();
             }}
-            className="p-2 rounded-2xl bg-black/50 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
-            title="تغییر تم رنگی"
+            className="p-2 rounded-2xl bg-black/40 border border-white/10 text-zinc-300 hover:text-white transition-all cursor-pointer backdrop-blur-md"
+            title="تغییر پالت رنگی هاله متحرک"
           >
             <Palette className="w-4 h-4" />
           </button>
 
-          {/* Fullscreen Toggle */}
+          {/* Fullscreen Toggle (Rotates to Landscape on Mobile) */}
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="p-2 rounded-2xl bg-black/50 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
-            title="حالت تمام صفحه"
+            className={`p-2 rounded-2xl border transition-all cursor-pointer backdrop-blur-md ${
+              isFullscreen
+                ? 'bg-white/20 border-white/30 text-white'
+                : 'bg-black/40 border-white/10 text-zinc-300 hover:text-white'
+            }`}
+            title="حالت تمام صفحه و چرخش افقی"
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
 
-          {/* Close */}
+          {/* Close Modal */}
           <button
             type="button"
-            onClick={() => {
-              sounds.playPop();
-              onClose();
-            }}
-            className="p-2 rounded-2xl bg-white/10 hover:bg-rose-500/30 hover:text-rose-300 text-zinc-300 border border-white/10 transition-all cursor-pointer"
+            onClick={handleClose}
+            className="p-2 rounded-2xl bg-white/10 hover:bg-rose-500/30 hover:text-rose-300 text-zinc-300 border border-white/10 transition-all cursor-pointer backdrop-blur-md"
             title="خروج از حالت ذن"
           >
             <X className="w-4 h-4" />
@@ -403,77 +581,90 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
         </div>
       </div>
 
-      {/* 2. MAIN CENTERPIECE: 16:9 DESK CLOCK & TIMER CONTROLS */}
-      <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col landscape:flex-row items-center justify-center gap-6 sm:gap-14 my-auto z-10 py-4">
-        
-        {/* Left Side (or Top on Portrait): THE DIGITAL DESK CLOCK */}
-        <div className="flex flex-col items-center justify-center text-center">
+      {/* 2. MAIN CENTERPIECE: 16:9 APPLE STANDBY CLOCK & FOCUS TIMER */}
+      <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col landscape:flex-row items-center justify-center gap-5 sm:gap-10 my-auto z-10 py-2">
+        {/* RIGHT SIDE (IN RTL): THE DIGITAL APPLE STANDBY CLOCK */}
+        <div className="flex flex-col items-center justify-center text-center p-6 sm:p-10 rounded-[36px] bg-black/40 border border-white/10 backdrop-blur-2xl shadow-2xl relative overflow-hidden flex-1 max-w-lg w-full">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+
+          {/* LTR Digital Clock Numbers with Glow */}
           <div
             dir="ltr"
-            style={{ direction: 'ltr', unicodeBidi: 'bidi-override' }}
-            className="font-mono font-black tracking-wider text-5xl sm:text-7xl md:text-8xl lg:text-9xl landscape:text-6xl landscape:sm:text-7xl drop-shadow-[0_0_35px_rgba(255,255,255,0.18)] flex flex-row flex-nowrap items-baseline justify-center select-all whitespace-nowrap tabular-nums leading-none"
+            style={{ direction: 'ltr', unicodeBidi: 'isolate' }}
+            className="font-mono font-black text-6xl sm:text-7xl md:text-8xl text-white tracking-wider flex items-baseline justify-center select-none tabular-nums drop-shadow-[0_0_35px_rgba(255,255,255,0.25)]"
           >
-            <span className="w-[1.2ch] text-center inline-block">{hours}</span>
-            <span className="opacity-70 animate-pulse mx-1">:</span>
-            <span className="w-[1.2ch] text-center inline-block">{minutes}</span>
-            <span className="text-3xl sm:text-5xl md:text-6xl landscape:text-4xl text-zinc-400/80 font-normal ml-2 inline-flex flex-row flex-nowrap items-baseline">
-              <span className="opacity-50">:</span>
-              <span className="w-[1.2ch] text-center inline-block">{seconds}</span>
+            <span className="w-[1.2ch] text-center inline-block">{toPersianDigits(hours)}</span>
+            <span className="opacity-80 animate-pulse mx-1 sm:mx-2 text-white">:</span>
+            <span className="w-[1.2ch] text-center inline-block">{toPersianDigits(minutes)}</span>
+            <span className="text-2xl sm:text-4xl text-white/50 font-normal ml-2 sm:ml-3 inline-flex items-baseline">
+              <span className="opacity-40 mr-0.5">:</span>
+              <span className="w-[1.2ch] text-center inline-block">{toPersianDigits(seconds)}</span>
             </span>
           </div>
 
-          <div className="mt-3 text-xs sm:text-sm font-bold text-zinc-400 flex items-center gap-2">
-            <span>ساعت رسمی ایران</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-            <span className="text-zinc-500 font-mono">
-              {currentTime.toLocaleDateString('fa-IR', { weekday: 'long', day: 'numeric', month: 'long' })}
+          {/* Persian Date Capsule */}
+          <div className="mt-4 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-2 text-xs sm:text-sm font-bold text-zinc-300">
+            <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+            <span>
+              {currentTime.toLocaleDateString('fa-IR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
             </span>
           </div>
         </div>
 
-        {/* Divider for Landscape Mode */}
-        <div className="hidden landscape:block w-px h-64 bg-gradient-to-b from-transparent via-white/20 to-transparent" />
+        {/* LEFT SIDE (IN RTL): FOCUS TIMER CONTROLS */}
+        <div className="flex flex-col items-center justify-between p-6 sm:p-8 rounded-[36px] bg-black/40 border border-white/10 backdrop-blur-2xl shadow-2xl w-full max-w-sm sm:max-w-md space-y-4 relative overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
-        {/* Right Side: POMODORO TIMER & STEPPERS */}
-        <div className="flex flex-col items-center justify-center p-5 sm:p-7 rounded-3xl bg-black/40 border border-white/10 backdrop-blur-xl shadow-2xl w-full max-w-sm space-y-4">
-          <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>تایمر تمرکز عمیق (Focus Timer)</span>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-black tracking-wide text-zinc-200">
+                تایمر تمرکز عمیق (Focus Timer)
+              </span>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 font-mono font-bold">
+              جلسه {toPersianDigits(sessionCount)}
+            </span>
           </div>
 
-          {/* Stepper + Timer Digits Display */}
-          <div className="flex items-center justify-center gap-3 w-full" dir="ltr">
-            {/* -5 Minutes Button */}
+          {/* Countdown Display with Steppers */}
+          <div className="flex items-center justify-center gap-3 sm:gap-4 w-full" dir="ltr">
             <button
               type="button"
               onClick={() => handleAdjustTimer(-5)}
-              className="p-2 sm:p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-zinc-200 font-mono font-bold text-xs transition-all cursor-pointer active:scale-95"
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-mono font-bold text-xs sm:text-sm transition-all flex items-center justify-center border border-white/10 shadow-sm cursor-pointer"
               title="کاهش ۵ دقیقه"
             >
               -۵د
             </button>
 
-            {/* Countdown Digits */}
-            <div className="font-mono font-black text-4xl sm:text-5xl text-white tracking-wider tabular-nums px-3 py-1 bg-white/5 rounded-2xl border border-white/10 shadow-inner">
-              {timerMin}:{timerSec}
+            <div
+              style={{ direction: 'ltr' }}
+              className="font-mono font-black text-4xl sm:text-5xl text-white tracking-widest tabular-nums px-5 py-2 rounded-2xl bg-white/5 border border-white/10 shadow-inner drop-shadow-md select-none"
+            >
+              {toPersianDigits(timerMin)}:{toPersianDigits(timerSec)}
             </div>
 
-            {/* +5 Minutes Button */}
             <button
               type="button"
               onClick={() => handleAdjustTimer(+5)}
-              className="p-2 sm:p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-zinc-200 font-mono font-bold text-xs transition-all cursor-pointer active:scale-95"
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-mono font-bold text-xs sm:text-sm transition-all flex items-center justify-center border border-white/10 shadow-sm cursor-pointer"
               title="افزایش ۵ دقیقه"
             >
               +۵د
             </button>
           </div>
 
-          {/* Preset Buttons */}
-          <div className="flex items-center justify-between w-full pt-1 px-1">
-            <span className="text-[10px] text-zinc-500 font-bold">زمان‌های آماده:</span>
-            <div className="flex items-center gap-1">
-              {[15, 25, 45].map((mins) => (
+          {/* Preset Pills */}
+          <div className="flex items-center justify-between w-full pt-1">
+            <span className="text-[11px] text-zinc-400 font-bold">زمان‌های آماده:</span>
+            <div className="flex items-center gap-1.5">
+              {[15, 25, 45, 60].map((mins) => (
                 <button
                   key={mins}
                   type="button"
@@ -483,8 +674,10 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
                     setInitialSeconds(mins * 60);
                     setTimerSeconds(mins * 60);
                   }}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
-                    initialSeconds === mins * 60 ? 'bg-white/20 text-white border border-white/30' : 'bg-white/5 text-zinc-400 hover:text-white'
+                  className={`px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold transition-all cursor-pointer ${
+                    initialSeconds === mins * 60
+                      ? 'bg-white/20 text-white border border-white/30 shadow-xs'
+                      : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   {toPersianDigits(mins)}د
@@ -493,18 +686,18 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
             </div>
           </div>
 
-          {/* Main Controls (Play / Pause / Reset) */}
-          <div className="flex items-center gap-2.5 w-full pt-1">
+          {/* Main Action Buttons */}
+          <div className="flex items-center gap-3 w-full pt-1">
             <button
               type="button"
               onClick={() => {
                 sounds.playPop();
                 setIsRunning(!isRunning);
               }}
-              className={`flex-1 py-2.5 px-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 ${
+              className={`flex-1 py-3 px-5 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl active:scale-95 ${
                 isRunning
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
-                  : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-900/40'
+                  : currentTheme.button
               }`}
             >
               {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
@@ -518,8 +711,8 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
                 setIsRunning(false);
                 setTimerSeconds(initialSeconds);
               }}
-              className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-zinc-300 transition-all cursor-pointer"
-              title="شروع مجدد"
+              className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white border border-white/10 transition-all cursor-pointer active:scale-95"
+              title="شروع مجدد تایمر"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -527,10 +720,10 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
         </div>
       </div>
 
-      {/* 3. BOTTOM BAR: ACTIVE TASK & DIRECT FOCUS SYNC */}
+      {/* 3. BOTTOM BAR: DYNAMIC ISLAND TASK CAPSULE */}
       <div className="w-full max-w-xl mx-auto z-20 shrink-0">
         {currentTask ? (
-          <div className="p-3 sm:p-4 rounded-3xl bg-black/60 border border-white/15 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
+          <div className="p-3 sm:p-4 rounded-3xl bg-black/50 border border-white/15 backdrop-blur-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl">
             <div className="flex items-center gap-2.5 min-w-0 w-full sm:w-auto">
               <button
                 type="button"
@@ -545,7 +738,9 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
               </button>
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] font-bold text-emerald-400">تسک متصل به تایمر تمرکز:</div>
-                <div className="text-xs sm:text-sm font-black text-white truncate">{currentTask.title}</div>
+                <div className="text-xs sm:text-sm font-black text-white truncate">
+                  {currentTask.title}
+                </div>
               </div>
             </div>
 
@@ -557,7 +752,7 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
                   className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow-md transition-all cursor-pointer active:scale-95"
                 >
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
-                  <span>ثبت {toPersianDigits(Math.max(1, Math.round(elapsedFocusSeconds / 60)))} دقیقه تمرکز</span>
+                  <span>ثبت {toPersianDigits(Math.max(1, Math.round(elapsedFocusSeconds / 60)))} دقیقه</span>
                 </button>
               )}
 
@@ -567,30 +762,36 @@ export const ZenStandbyModal: React.FC<ZenStandbyModalProps> = ({ isOpen, onClos
                 </span>
               )}
 
-              {/* Quick switch task */}
+              {/* Task Switcher */}
               {activeTasks.length > 1 && (
-                <div className="relative">
-                  <select
-                    value={selectedTaskId}
-                    onChange={(e) => {
-                      setSelectedTaskId(e.target.value);
-                      sounds.playPop();
-                    }}
-                    className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-xs font-bold text-zinc-300 outline-none cursor-pointer"
-                  >
-                    {activeTasks.map((t) => (
-                      <option key={t.id} value={t.id} className="bg-zinc-900 text-white">
-                        {t.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <select
+                  value={selectedTaskId}
+                  onChange={(e) => {
+                    setSelectedTaskId(e.target.value);
+                    sounds.playPop();
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-xs font-bold text-zinc-300 outline-none cursor-pointer max-w-[130px] truncate"
+                >
+                  {activeTasks.map((t) => (
+                    <option key={t.id} value={t.id} className="bg-zinc-900 text-white">
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
           </div>
         ) : (
-          <div className="p-3 text-center rounded-2xl bg-black/40 border border-white/10 text-xs text-zinc-400">
+          <div className="p-3 text-center rounded-2xl bg-black/40 border border-white/10 text-xs text-zinc-400 backdrop-blur-md">
             برای ثبت هوشمند دقایق تمرکز، یک تسک فعال در امروز ایجاد نمایید.
+          </div>
+        )}
+
+        {/* Subtle Orientation Hint for Mobile Portrait */}
+        {isPortraitOnMobile && (
+          <div className="mt-2 text-center text-[11px] font-bold text-zinc-400/80 flex items-center justify-center gap-1.5 animate-pulse">
+            <Smartphone className="w-3.5 h-3.5 rotate-90" />
+            <span>برای تجربه کامل ساعت رومیزی ۱۶:۹، گوشی را افقی بگیرید</span>
           </div>
         )}
       </div>

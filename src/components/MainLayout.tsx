@@ -1045,17 +1045,17 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                     sounds.playPop();
                     setIsGardenShopOpen(true);
                   }}
-                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-amber-400/80 dark:border-amber-500/40 bg-gradient-to-r from-amber-100/90 via-amber-50 to-indigo-50/80 dark:from-amber-950/40 dark:to-indigo-950/30 hover:shadow-md transition-all flex items-center gap-1.5 text-amber-800 dark:text-amber-200 font-bold text-xs cursor-pointer flex-shrink-0 active:scale-95 shadow-2xs group"
+                  className="h-8 sm:h-9 px-2 sm:px-3 rounded-full border border-amber-400/80 dark:border-amber-500/40 bg-gradient-to-r from-amber-100/90 via-amber-50 to-indigo-50/80 dark:from-amber-950/40 dark:to-indigo-950/30 hover:shadow-md transition-all flex items-center gap-1 sm:gap-1.5 text-amber-800 dark:text-amber-200 font-bold text-xs cursor-pointer flex-shrink-0 active:scale-95 shadow-2xs group"
                   title="موجودی الماس‌های شما - کلیک کنید تا وارد فروشگاه باغچه شوید"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500 animate-pulse group-hover:rotate-12 transition-transform" />
                   <span className="font-mono font-black">{toPersianDigits(userGems)}</span>
-                  <span className="text-[11px] font-black text-amber-700 dark:text-amber-300">الماس</span>
+                  <span className="text-[11px] font-black text-amber-700 dark:text-amber-300 hidden sm:inline">الماس</span>
                 </button>
 
                 {/* 2. Streak Badge */}
                 <div
-                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-rose-200/80 dark:border-rose-900/40 bg-rose-50/70 dark:bg-rose-950/20 flex items-center gap-1.5 text-rose-700 dark:text-rose-300 font-bold text-xs flex-shrink-0"
+                  className="h-8 sm:h-9 px-2 sm:px-3 rounded-full border border-rose-200/80 dark:border-rose-900/40 bg-rose-50/70 dark:bg-rose-950/20 flex items-center gap-1 text-rose-700 dark:text-rose-300 font-bold text-xs flex-shrink-0"
                   title={`زنجیره استمرار: ${toPersianDigits(streak.currentStreak)} روز`}
                 >
                   <Flame className="w-3.5 h-3.5 text-rose-500 fill-rose-500/30 animate-pulse" />
@@ -1078,12 +1078,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   <button
                     type="button"
                     onClick={() => setIsToolsDropdownOpen(!isToolsDropdownOpen)}
-                    className="h-8 sm:h-9 px-3 rounded-full border border-slate-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-800 flex items-center gap-1.5 text-slate-700 dark:text-zinc-200 font-bold text-xs transition-all shadow-2xs cursor-pointer flex-shrink-0"
+                    className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-slate-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-800 flex items-center gap-1.5 text-slate-700 dark:text-zinc-200 font-bold text-xs transition-all shadow-2xs cursor-pointer flex-shrink-0"
                     title="سایر امکانات و ابزارهای بگ‌تایم"
                   >
                     <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>امکانات و ابزارها</span>
-                    <ChevronDown className="w-3 h-3 opacity-60" />
+                    <span className="hidden md:inline">امکانات و ابزارها</span>
+                    <ChevronDown className="w-3 h-3 opacity-60 hidden md:block" />
                   </button>
 
                   {isToolsDropdownOpen && (
@@ -1351,8 +1351,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
             )}
 
             {/* Sub-header info bar */}
-            <div className="flex items-center justify-between text-xs pt-1.5 px-1 border-t border-slate-100 dark:border-zinc-800/80 flex-wrap gap-1.5">
-              <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex items-center justify-between text-xs pt-1.5 px-1 border-t border-slate-100 dark:border-zinc-800/80 gap-1.5 overflow-x-auto scrollbar-none">
+              <div className="flex items-center gap-1.5 min-w-0 flex-shrink-0">
                 <span className="font-extrabold text-slate-800 dark:text-zinc-100 text-xs sm:text-sm truncate" title={greetingSub}>
                   {greetingText}
                   {firstName ? <span className="text-indigo-600 dark:text-indigo-400">، {firstName}</span> : null}
@@ -1380,8 +1380,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   <Wifi className={`w-3 h-3 ${isMandatorySyncDue ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
                   <span>
                     {isMandatorySyncDue
-                      ? 'سینک اجباری ۱۲h'
-                      : `${toPersianDigits(remainingHoursUntilSync)}h تا سینک`}
+                      ? 'سینک ۱۲h'
+                      : `${toPersianDigits(remainingHoursUntilSync)}h`}
                   </span>
                 </button>
 
@@ -1392,7 +1392,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onOpenInstagramStudio })
                   title="کلیک برای تغییر بین تقویم شمسی و میلادی"
                 >
                   <CalendarDays className="w-3 h-3 text-indigo-500 dark:text-indigo-400" />
-                  <span>{formatAppDate(new Date(), calendarType, 'full')}</span>
+                  <span className="hidden sm:inline">{formatAppDate(new Date(), calendarType, 'full')}</span>
+                  <span className="sm:hidden">{formatAppDate(new Date(), calendarType, 'dayMonth')}</span>
                   <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-black">
                     {calendarType === 'jalali' ? 'شمسی' : 'میلادی'}
                   </span>
